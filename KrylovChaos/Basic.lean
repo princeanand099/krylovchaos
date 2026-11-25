@@ -3,10 +3,12 @@ Copyright (c) 2026 Prince Anand. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Prince Anand
 -/
+import Mathlib.Analysis.Calculus.MeanValue
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
 import Mathlib.Data.Nat.Choose.Sum
 import Mathlib.Tactic
 
@@ -59,8 +61,8 @@ theorem betaWC_lt_two_kappa {r : ℕ} {Jsite : ℝ} (hr : 2 ≤ r) (hJ : 0 < Jsi
     have : (6 : ℝ) ^ 2 ≤ (6 : ℝ) ^ r := pow_le_pow_right₀ (by norm_num) hr
     linarith [show (6 : ℝ) ^ 2 = 36 by norm_num]
   have hr0 : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
-  have hcoeff : ((r : ℝ) - 1) < 4 * Real.exp 2 * (r : ℝ) * (6 : ℝ) ^ r := by
-    nlinarith
+  have h1 : 4 * (r : ℝ) < 4 * Real.exp 2 * (r : ℝ) := by nlinarith
+  have hcoeff : ((r : ℝ) - 1) < 4 * Real.exp 2 * (r : ℝ) * (6 : ℝ) ^ r := by nlinarith
   exact mul_lt_mul_of_pos_right hcoeff hJ
 
 /-- `β_wc ≤ (8 e² r J_site)⁻¹` (used in Proposition 6.4 and Theorem 1.3(c)). -/
@@ -90,7 +92,7 @@ theorem le_exp_div_e_mul {x θ : ℝ} (hx : 0 ≤ x) (hθ : 0 < θ) :
   have h1 : θ * x ≤ Real.exp (θ * x) / Real.exp 1 := by
     rw [Real.exp_sub] at h
     linarith
-  rw [div_le_iff₀ (by positivity)]
+  rw [le_div_iff₀ (by positivity)]
   have h2 : θ * x * Real.exp 1 ≤ Real.exp (θ * x) := by
     rwa [le_div_iff₀ (Real.exp_pos 1)] at h1
   nlinarith
@@ -110,21 +112,21 @@ theorem sech_ge_exp_neg {u : ℝ} (hu : 0 ≤ u) :
 theorem sinh_le_mul_cosh {x : ℝ} (hx : 0 ≤ x) :
     Real.sinh x ≤ x * Real.cosh x := by
   let f : ℝ → ℝ := fun t ↦ t * Real.cosh t - Real.sinh t
-  have hderiv : ∀ t ∈ Set.Ici (0 : ℝ), HasDerivAt f (t * Real.sinh t) t := by
-    intro t _
+  have hderiv : ∀ t : ℝ, HasDerivAt f (t * Real.sinh t) t := by
+    intro t
     have h1 : HasDerivAt (fun t ↦ t * Real.cosh t) (1 * Real.cosh t + t * Real.sinh t) t :=
       (hasDerivAt_id t).mul (Real.hasDerivAt_cosh t)
     have h2 : HasDerivAt Real.sinh (Real.cosh t) t := Real.hasDerivAt_sinh t
-    simpa [f] using h1.sub h2
+    simpa [f] using h1.fun_sub h2
   have hmono : MonotoneOn f (Set.Ici 0) := by
     apply monotoneOn_of_deriv_nonneg (convex_Ici 0)
-    · exact fun t ht ↦ (hderiv t ht).continuousAt.continuousWithinAt
-    · exact fun t ht ↦ (hderiv t (interior_subset ht)).differentiableAt.differentiableWithinAt
+    · exact fun t _ ↦ (hderiv t).continuousAt.continuousWithinAt
+    · exact fun t _ ↦ (hderiv t).differentiableAt.differentiableWithinAt
     · intro t ht
       have ht0 : 0 ≤ t := interior_subset ht
-      rw [(hderiv t ht0).deriv]
+      rw [(hderiv t).deriv]
       exact mul_nonneg ht0 (Real.sinh_nonneg_iff.mpr ht0)
-  have h0 : f 0 ≤ f x := hmono (Set.left_mem_Ici) hx hx
+  have h0 : f 0 ≤ f x := hmono (le_rfl : (0 : ℝ) ∈ Set.Ici 0) hx hx
   simp [f] at h0
   linarith
 
