@@ -1,9 +1,18 @@
 cff-version: 1.2.0
-message: "If you use this Lean 4 formalization, please cite the accompanying manuscript."
-title: "Finite-Temperature Bounds on Operator Growth and Quantum Chaos (Lean 4 Formalization)"
+message: "If you use this Lean 4 formalization or the accompanying manuscript, please cite it as below."
+title: "KrylovChaos: Lean 4 Formalization of Finite-Temperature Bounds on Operator Growth and Quantum Chaos"
+type: software
 authors:
-  - family-names: "Anand"
-    given-names: "Prince"
+  - family-names: Anand
+    given-names: Prince
 date-released: "2026-11-26"
-license: "Apache-2.0"
+license: Apache-2.0
 repository-code: "https://github.com/princeanand099/krylovchaos"
+keywords:
+  - lean4
+  - mathlib
+  - quantum-chaos
+  - krylov-complexity
+  - operator-growth
+  - wightman-inner-product
+  - reverse-poincare

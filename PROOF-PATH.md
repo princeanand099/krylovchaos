@@ -1,19 +1,34 @@
-# Proof Path & Manuscript-to-Lean Correspondence
+# Proof Path and Module Dependency DAG
 
-This file tracks the dependency-ordered correspondence between *Finite-Temperature Bounds on Operator Growth and Quantum Chaos* (`finite_temp_krylov_chaos.tex`) and the Lean 4 modules in `KrylovChaos/`.
+```
+KrylovChaos.Basic
+├── KrylovChaos.WightmanIsometry
+│   ├── KrylovChaos.SpectralDyck
+│   └── KrylovChaos.GlauberDecoupling
+├── KrylovChaos.KrylovTail
+├── KrylovChaos.Filtration
+├── KrylovChaos.ProductState
+│   └── KrylovChaos.DepolarizedFrame
+├── KrylovChaos.PolymerTrees
+├── KrylovChaos.ClassicalIsing
+└── KrylovChaos.StructuralNecessity
+        │
+        ▼
+KrylovChaos.SanityChecks
+        │
+        ▼
+KrylovChaos (root aggregator)
+├── KrylovChaos.AuditAxioms (standalone `#print axioms` gate)
+└── comparator/Solution.lean (discharges all 19 locked theorems in comparator/Challenge.lean)
+```
 
-| Manuscript Result | Section | Lean Module | Status |
-|---|---|---|---|
-| Scales $\kappa, \beta_{\mathrm{wc}}$, Eq. (1.19), elementary inequalities | §1.2–1.3 | `KrylovChaos/Basic.lean` | Implemented |
-| Lemma 2.1 (Nested-Commutator Cluster Bound) | §2.1 | `KrylovChaos/WightmanIsometry.lean` | Implemented |
-| Proposition 2.2 (Wightman–Hilbert–Schmidt Isometry) | §2.2 | `KrylovChaos/WightmanIsometry.lean` | Implemented |
-| Proposition 2.3 (MSS-OTOC & Thermal-Size Identity) | §2.3 | `KrylovChaos/WightmanIsometry.lean` | Implemented |
-| Lemma 3.1 & Theorem 1.1(a) (Krylov Tail & Complexity) | §3 | `KrylovChaos/KrylovTail.lean` | Pending |
-| Proposition 4.1, Lemma 4.2, Theorem 1.1(b) | §4.1–4.2 | `KrylovChaos/Filtration.lean` | Pending |
-| Proposition 4.3 (Product State Static Bound) | §4.3 | `KrylovChaos/ProductState.lean` | Pending |
-| Theorem 1.2(a)–(c), Lemma 5.1 (Spectral Decay & Dyck Paths) | §5 | `KrylovChaos/SpectralDyck.lean` | Pending |
-| Lemma 6.1, Proposition 6.2, Proposition 6.4, Corollary 6.5 | §6 | `KrylovChaos/GlauberDecoupling.lean` | Pending |
-| Lemma 7.1, Lemma 7.3, Theorem 1.3(a)–(c) | §7 | `KrylovChaos/DepolarizedFrame.lean` | Pending |
-| Lemmas A.1–A.3, Lemma 6.3, Lemma 7.2 (Trees & Cluster Bounds) | App. A, §6–7 | `KrylovChaos/PolymerTrees.lean` | Pending |
-| Proposition 8.1, Lemma 8.2, Proposition 8.3 (1D & Classical Ising) | §8 | `KrylovChaos/ClassicalIsing.lean` | Pending |
-| Proposition 9.1(1)–(3), Lemma B.1 (Structural Necessity & Double Well) | §9, App. B | `KrylovChaos/StructuralNecessity.lean` | Pending |
+## Proof Flow by Manuscript Section
+
+1. **Section 2 (`Basic`, `WightmanIsometry`)**: Defines `invLocalityScale` (`κ`), `betaWC` (`β_wc`), Wightman inner product & isometry, Liouvillian self-adjointness and zero diagonal, commutator/Majorana size identities, and causal commutator induction (`lemma_2_1_*`).
+2. **Section 3 (`KrylovTail`)**: Establishes finite-chain unitarity, characteristic-curve MGF bound (`lemma_3_1_finite_chain_mgf`), finite-chain exponential tail & complexity bounds (`theorem_1_1a_finite_tail`, `theorem_1_1a_finite_complexity`), Fatou infinite-chain extension (`theorem_1_1a_infinite_tail_and_complexity`), and log-rate bound (`theorem_1_1a_log_rate_bound`).
+3. **Section 4 (`Filtration`, `ProductState`)**: Proves Krylov locality filtration (`prop_4_1_krylov_filtration`), `Q`-complexity bound (`prop_4_1_q_complexity_bound`), thermal-size truncation (`lemma_4_2_thermal_size_truncation`), static reduction `λ_L ≤ 2 α` (`theorem_1_1b_static_reduction`), and product-state thermal-size static bound (`prop_4_3_product_state_static_bound`).
+4. **Section 5 (`SpectralDyck`)**: Proves bilateral Laplace shift (`theorem_1_2a_laplace_identity`), even-measure exponential moment dominance (`theorem_1_2a_even_exp_moment`), binomial series convergence (`theorem_1_2a_binomial_series_summable`), Dyck-path shifting & weight monotonicity (`lemma_5_1_path_weight_lower`), smoothness-free Lanczos rate bound (`theorem_1_2b_lanczos_rate_bound`, `theorem_1_2b_rate_chain`), and finite-volume OTOC dominance (`theorem_1_2c_otoc_dominance`).
+5. **Section 6 (`GlauberDecoupling`, `PolymerTrees`)**: Proves single-site commutator & high-temperature Glauber bounds (`lemma_6_1_single_site_commutator`, `prop_6_2_high_temp_glauber`), commutator splitting, variational optimization, decoupling combination (`prop_6_4_*`), and Kotecký–Preiss pinning verification (`lemma_6_3_kp_pinning_verification`).
+6. **Section 7 & Appendix A (`DepolarizedFrame`, `PolymerTrees`)**: Constructs the explicit 6-element depolarized 2-design frame (`depolP`, `depolF`), proves Hermiticity, trace, uniform conditioning `(1/4) I ⪯ P̃_s ⪯ (3/4) I`, exact dual reconstruction, minimal polynomial `(X - 7/2)(X + 5/2) = 0`, product-space union & filtration identities (`lemma_7_3_*`), plane/Cayley/unordered tree polymer bounds (`lemma_A_1`–`A_3`, `lemma_7_2_kp_verification`), global reverse Poincaré (`theorem_1_3a_reverse_poincare`), explicit `54`/`216` constants (`theorem_1_3b_constants`), and high-temperature MSS Lyapunov bound (`theorem_1_3c_mss_lyapunov_bound`).
+7. **Section 8 (`ClassicalIsing`)**: Proves 1D commutator bound (`prop_8_1_one_dim_commutator_bound`), discrete Hubbard–Stratonovich identity & coupling bound (`lemma_8_2_*`), and product-Bernoulli reverse Poincaré (`prop_8_3_product_bernoulli_reverse_poincare`).
+8. **Section 9 & Appendix B (`StructuralNecessity`)**: Proves Gaussian kernel obstruction (`prop_9_1_gaussian_kernel_bound`, `prop_9_1_no_linear_lower_bound`), bimodal exact background size (`prop_9_1_bimodal_exact_size`), Neumann tail sum (`lemma_B_1_neumann_tail_sum`), and double-well tunneling limit (`prop_9_1_double_well_tunneling_limit`).

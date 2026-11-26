@@ -50,7 +50,7 @@ theorem sanity_theorem_1_1a_static_zero :
       have hn0 : n = 0 := by omega
       subst hn0
       simpa using hasDerivAt_const t (1 : ℝ))
-    (fun n hn ↦ by have hn0 : n = 0 := by omega; subst hn0; simp)
+    (fun _ _ ↦ rfl)
     0 le_rfl
 
 /-- Concrete check of **Lemma 7.1** on `s = 0` (`P̃_0` Hermitian, trace `1`). -/
