@@ -181,7 +181,7 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
           push_cast; field_simp [hpos]; ring
         refine Filter.Tendsto.congr' (hrew.mono fun m hm ↦ hm.symm) ?_
         have hinv : Filter.Tendsto (fun m : ℕ ↦ 1 / ((m + K : ℕ) : ℝ)) Filter.atTop (nhds 0) := by
-          have := tendsto_one_div_atTop_nhds_zero_nat.comp (Filter.tendsto_add_atTop_nat K)
+          have := (tendsto_one_div_atTop_nhds_zero_nat (𝕜 := ℝ)).comp (Filter.tendsto_add_atTop_nat K)
           simpa [Function.comp_def] using this
         simpa using tendsto_const_nhds.add hinv
       have hpow := (hbase.pow K).mul_const u
@@ -276,18 +276,16 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
           · left; omega
           · right; omega
       · by_cases heq2 : k.1 = 2 * n - N₀
-        · have hN₀pos : 0 < N₀ := by have := k.2; omega
-          have ha1 : ¬ (k.1 ≤ N₀) := by
-            by_cases hn0 : n = N₀
-            · subst hn0; omega
-            · omega
-          by_cases hn0 : n = N₀
+        · by_cases hn0 : n = N₀
           · subst hn0
+            have hkn : k.1 = n := by omega
             have ha : k.1 ≤ n := by omega
             have hb1 : ¬ (k.1 + 1 ≤ n) := by omega
             have hb2 : ¬ (k.1 + 1 ≤ 2 * n - n) := by omega
             simp only [ha, hb1, hb2, ↓reduceDIte]
-            right; omega
+            right
+            have hklt : k.1 < 2 * n := k.2
+            omega
           · have ha1' : ¬ (k.1 ≤ N₀) := by omega
             have ha2 : k.1 ≤ 2 * n - N₀ := by omega
             have hb1 : ¬ (k.1 + 1 ≤ N₀) := by omega
@@ -369,7 +367,9 @@ theorem lemma_5_1_path_weight_lower {n N₀ : ℕ} {α₁ : ℝ}
         have hstep1 : shiftDyckPath hN₀ γ ⟨N₀ + j, by omega⟩ = N₀ + γ ⟨j, by omega⟩ := by
           unfold shiftDyckPath
           by_cases hj0 : j = 0
-          · subst hj0; simp [hγ.1]
+          · subst hj0
+            have hγ0 : γ ⟨0, by omega⟩ = 0 := hγ.1
+            simp [hγ0]
           · have h1 : ¬ (N₀ + j ≤ N₀) := by omega
             have h2 : N₀ + j ≤ 2 * n - N₀ := by omega
             simp only [h1, h2, ↓reduceDIte, Nat.add_sub_cancel_left]
@@ -494,7 +494,7 @@ theorem theorem_1_2b_lanczos_rate_bound {N₀ : ℕ} {W₀ α₁ rW : ℝ}
     simpa [Nat.cast_mul] using hcast
   have htend1 : Filter.Tendsto (fun n : ℕ ↦ c₁ ^ ((1 : ℝ) / (2 * (n : ℝ)))) Filter.atTop (nhds 1) := by
     have h0 : Filter.Tendsto (fun n : ℕ ↦ Real.log c₁ * ((1 : ℝ) / (2 * (n : ℝ)))) Filter.atTop (nhds 0) := by
-      have := tendsto_one_div_atTop_nhds_zero_nat
+      have := tendsto_one_div_atTop_nhds_zero_nat (𝕜 := ℝ)
       have hmul : Filter.Tendsto (fun n : ℕ ↦ (Real.log c₁ / 2) * (1 / (n : ℝ))) Filter.atTop (nhds 0) := by
         simpa using this.const_mul (Real.log c₁ / 2)
       refine Filter.Tendsto.congr (fun n ↦ ?_) hmul
@@ -532,7 +532,7 @@ theorem theorem_1_2b_lanczos_rate_bound {N₀ : ℕ} {W₀ α₁ rW : ℝ}
     have h0 : Filter.Tendsto (fun n : ℕ ↦ Real.log c₂ * (1 - (N₀ : ℝ) / (n : ℝ)))
         Filter.atTop (nhds (Real.log c₂)) := by
       have h1 : Filter.Tendsto (fun n : ℕ ↦ (N₀ : ℝ) / (n : ℝ)) Filter.atTop (nhds 0) := by
-        have := tendsto_one_div_atTop_nhds_zero_nat.const_mul (N₀ : ℝ)
+        have := (tendsto_one_div_atTop_nhds_zero_nat (𝕜 := ℝ)).const_mul (N₀ : ℝ)
         simpa [div_eq_mul_inv] using this
       have h2 : Filter.Tendsto (fun n : ℕ ↦ 1 - (N₀ : ℝ) / (n : ℝ)) Filter.atTop (nhds 1) := by
         simpa using tendsto_const_nhds.sub h1

@@ -129,7 +129,6 @@ theorem prop_6_4_third_term_identity
         = Matrix.trace ((Dᴴ * ρHinv) * ((ρQ * A * ρQ * (ρQ * A * ρQ)) * (ρHinv * D))) := by
           simp only [Matrix.mul_assoc]
           rw [← Matrix.mul_assoc ρHinv ρQ, hQinvL]
-          simp only [Matrix.mul_assoc]
           rw [← Matrix.mul_assoc ρQ ρHinv, hQinvR]
       _ = Matrix.trace (((ρQ * A * ρQ * (ρQ * A * ρQ)) * (ρHinv * D)) * (Dᴴ * ρHinv)) :=
           Matrix.trace_mul_comm _ _

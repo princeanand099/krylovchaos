@@ -242,13 +242,17 @@ theorem theorem_1_1b_static_reduction
       simp only [η]; ring
     have h2 : 1 - (1 - δ) * ρ ≤ 1 := by nlinarith only [hδ1, hρ_pos]
     have h3 : ε * (1 - (1 - δ) * ρ) ≤ ε := by nlinarith only [hε_pos, h2]
-    linarith only [h1, h3, hε_gap]
+    have h4 : ε < (1 - δ) * (1 - ρ) := by
+      simp only [gap] at hε_gap hgap_pos
+      linarith only [hε_gap, hgap_pos]
+    linarith only [h1, h3, h4]
   set diff := (1 - ε) - η
   have hdiff_pos : 0 < diff := by linarith only [hη_lt]
   have h1mε_pos : 0 < 1 - ε := by linarith only [hε_half]
   have hρ1mε_le_η : ρ * (1 - ε) ≤ η := by
+    have hle1 : ρ * (1 - ε) ≤ 1 := by nlinarith only [hρ_lt, hρ_pos, h1mε_pos, hε_pos]
     simp only [η]
-    nlinarith only [hδ0, hρ_lt, h1mε_pos, hε_pos]
+    nlinarith only [hδ0, hle1]
   set K := (1 / Real.tanh 1) * (max 1 ((r : ℝ) - 1)) + (s₀ : ℝ) + (max 1 ((r : ℝ) - 1))
   have htanh1_pos : 0 < Real.tanh 1 := tanh_one_pos
   have hK_pos : 0 < K := by

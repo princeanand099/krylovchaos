@@ -5,6 +5,7 @@ Authors: Prince Anand
 -/
 import KrylovChaos.Basic
 import KrylovChaos.ProductState
+import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
 import Mathlib.Data.Matrix.Basic
 import Mathlib.LinearAlgebra.Matrix.Trace
 import Mathlib.Tactic
@@ -21,9 +22,9 @@ Formalizes:
   dominance `C_W ≤ 54 Q`, `I ≤ 216 Q` (1.21–1.22), and high-temperature Lyapunov bounds (1.23–1.24).
 -/
 
-namespace KrylovChaos
+open scoped Matrix
 
-open Matrix
+namespace KrylovChaos
 
 section SingleSiteFrame
 
@@ -70,7 +71,9 @@ theorem lemma_7_1_herm_trace_avg :
     fin_cases i <;> fin_cases j <;>
       simp [Fin.sum_univ_six, depolP, signedPauli, pauliX, pauliY, pauliZ] <;> ring
 
-/-- **Lemma 7.1(1b)** (Uniform Conditioning, condition number 3). -/
+/-- **Lemma 7.1(1b)** (Uniform Conditioning, condition number 3):
+For every `s : Fin 6` and every `v : Fin 2 → ℂ`,
+`(1/4) ‖v‖² ≤ Re ⟨v, P̃_s v⟩ ≤ (3/4) ‖v‖²`. -/
 theorem lemma_7_1_conditioning (s : Fin 6) (v : Fin 2 → ℂ) :
     (1 / 4 : ℝ) * (‖v 0‖ ^ 2 + ‖v 1‖ ^ 2) ≤
       (∑ i : Fin 2, ∑ j : Fin 2, star (v i) * depolP s i j * v j).re ∧
@@ -97,14 +100,18 @@ theorem lemma_7_1_conditioning (s : Fin 6) (v : Fin 2 → ℂ) :
         sq_nonneg ((v 0).re - (v 1).im), sq_nonneg ((v 0).re + (v 1).im),
         sq_nonneg ((v 0).im - (v 1).re), sq_nonneg ((v 0).im + (v 1).re)]
 
-/-- **Lemma 7.1(2)** (Exact Dual Reconstruction, Eq. 7.3). -/
+/-- **Lemma 7.1(2)** (Exact Dual Reconstruction, Eq. 7.3):
+For every `2 × 2` complex matrix `B`,
+`(1/2) B = (1/6) ∑_{s=0}^5 ((1/2) Tr(B F̃_s)) P̃_s`. -/
 theorem lemma_7_1_dual_reconstruction (B : Matrix (Fin 2) (Fin 2) ℂ) :
     (1 / 2 : ℂ) • B =
     (1 / 6 : ℂ) • ∑ s : Fin 6, ((1 / 2 : ℂ) * Matrix.trace (B * depolF s)) • depolP s := by
   ext i j
   fin_cases i <;> fin_cases j <;>
-    simp [Fin.sum_univ_six, Fin.sum_univ_two, depolP, depolF, signedPauli,
-      pauliX, pauliY, pauliZ, Matrix.trace, Matrix.diag, Matrix.mul_apply] <;>
+  · simp [Fin.sum_univ_six, Fin.sum_univ_two, depolP, depolF, signedPauli,
+      pauliX, pauliY, pauliZ, Matrix.trace, Matrix.diag, Matrix.mul_apply]
+    ring_nf
+    simp [Complex.I_sq]
     ring
 
 /-- **Lemma 7.1(2b)**: If `B` is Hermitian (`Bᴴ = B`), then `(1/2) Tr(B F̃_s)` is real. -/
@@ -123,14 +130,16 @@ theorem lemma_7_1_dual_real_of_herm (B : Matrix (Fin 2) (Fin 2) ℂ) (hB : Bᴴ 
     simp only [Complex.conj_im] at him
     linarith
   have h01 : B 1 0 = star (B 0 1) := by
-    have := congr_fun (congr_fun hB 0) 1
-    simpa [Matrix.conjTranspose_apply] using this
+    have := congr_fun (congr_fun hB 1) 0
+    simpa [Matrix.conjTranspose_apply] using this.symm
   fin_cases s <;>
     simp [depolF, signedPauli, pauliX, pauliY, pauliZ, Matrix.trace, Matrix.diag,
       Matrix.mul_apply, Fin.sum_univ_two, h01, h00, h11] <;>
     ring
 
-/-- **Lemma 7.1(3)** (Dual Frame Eigenvalue & Trace-Norm Identity). -/
+/-- **Lemma 7.1(3)** (Dual Frame Eigenvalue & Trace-Norm Identity):
+`(1/2) F̃_s` satisfies the exact minimal polynomial `(X - 7/2)(X + 5/2) = 0`,
+with eigenvalues `7/2` and `-5/2` whose absolute values sum to `6`. -/
 theorem lemma_7_1_dual_eigenvalues (s : Fin 6) :
     let D := (1 / 2 : ℂ) • depolF s
     (D - (7 / 2 : ℂ) • (1 : Matrix (Fin 2) (Fin 2) ℂ)) *
@@ -138,14 +147,16 @@ theorem lemma_7_1_dual_eigenvalues (s : Fin 6) :
     (|(7 / 2 : ℝ)| + |(-5 / 2 : ℝ)| = 6) := by
   refine ⟨?_, by norm_num⟩
   fin_cases s <;> ext i j <;> fin_cases i <;> fin_cases j <;>
-    simp [depolF, signedPauli, pauliX, pauliY, pauliZ, Matrix.mul_apply, Fin.sum_univ_two] <;>
-    ring
+  · simp [depolF, signedPauli, pauliX, pauliY, pauliZ, Matrix.mul_apply, Fin.sum_univ_two]
+    try (ring_nf; simp [Complex.I_sq])
 
 end SingleSiteFrame
 
 section ProductSpaceComparison
 
-/-- **Lemma 7.3(1)** (Subset Union Bound in Product Orthonormal Basis, Eq. 7.11). -/
+/-- **Lemma 7.3(1)** (Subset Union Bound in Product Orthonormal Basis, Eq. 7.11):
+For any subset `U ⊆ Fin N` and any coefficients `c : (Fin N → Fin 4) → ℂ`,
+`∑_{a: ∃ x ∈ U, a_x ≠ 0} ‖c_a‖² ≤ ∑_{x ∈ U} ∑_{a: a_x ≠ 0} ‖c_a‖²`. -/
 theorem lemma_7_3_subset_union_bound {N : ℕ} (U : Finset (Fin N)) (c : (Fin N → Fin 4) → ℂ) :
     (∑ a : Fin N → Fin 4, if (∃ x ∈ U, a x ≠ 0) then ‖c a‖ ^ 2 else 0) ≤
     ∑ x ∈ U, ∑ a : Fin N → Fin 4, if a x ≠ 0 then ‖c a‖ ^ 2 else 0 := by
@@ -161,7 +172,8 @@ theorem lemma_7_3_subset_union_bound {N : ℕ} (U : Finset (Fin N)) (c : (Fin N 
   · rw [if_neg hex]
     exact Finset.sum_nonneg fun x _ ↦ by split_ifs <;> positivity
 
-/-- **Lemma 7.3(2)** (Exact Product-Space Sitewise = Filtration Identity, Eq. 7.12). -/
+/-- **Lemma 7.3(2)** (Exact Product-Space Sitewise = Filtration Identity, Eq. 7.12):
+`∑_{x=1}^N ∑_{a: a_x ≠ 0} ‖c_a‖² = ∑_{k=0}^{N-1} ∑_{a: |a| > k} ‖c_a‖²`. -/
 theorem lemma_7_3_product_filtration_identity {N : ℕ} (c : (Fin N → Fin 4) → ℂ) :
     (∑ x : Fin N, ∑ a : Fin N → Fin 4, if a x ≠ 0 then ‖c a‖ ^ 2 else 0) =
     ∑ k ∈ Finset.range N, ∑ a : Fin N → Fin 4, if k < stringWeight a then ‖c a‖ ^ 2 else 0 := by
@@ -184,7 +196,9 @@ theorem lemma_7_3_product_filtration_identity {N : ℕ} (c : (Fin N → Fin 4) �
     rw [hfilt, Finset.card_range]
   rw [hlhs, hrhs]
 
-/-- **Theorem 1.3(a)** (Global Quantum Reverse-Poincaré Inequality via Convex Averaging, Eq. 1.20). -/
+/-- **Theorem 1.3(a)** (Global Quantum Reverse-Poincaré Inequality via Convex Averaging, Eq. 1.20):
+Averaging Lemma 7.3(1)–(2) over any nonnegative product mixture weights `w : ι → ℝ` yields
+`Q̃_W ≤ ∑_x ‖S_x(A)‖_W² ≤ 9 Q_W`. -/
 theorem theorem_1_3a_reverse_poincare {N : ℕ} {ι : Type*} [Fintype ι]
     (w : ι → ℝ) (hw : ∀ s, 0 ≤ w s)
     (sxSq projProdSq filtBetaSq : ι → Fin N → ℝ)
@@ -213,7 +227,11 @@ theorem theorem_1_3a_reverse_poincare {N : ℕ} {ι : Type*} [Fintype ι]
     _ = 9 * ∑ k : Fin N, ∑ s : ι, w s * filtBetaSq s k := by
         congr 1; simp_rw [Finset.mul_sum]; rw [Finset.sum_comm]
 
-/-- **Theorem 1.3(b)** (Global Wightman & MSS Commutator Dominance Constants, Eq. 1.21–1.22). -/
+/-- **Theorem 1.3(b)** (Global Wightman & MSS Commutator Dominance Constants, Eq. 1.21–1.22):
+For `β ∈ [0, β_wc]` (`r ≥ 2`, `J_site > 0`):
+1. `(1 - β/(4κ))⁻² < 4`, so `(3/2)(1 - β/(4κ))⁻² · 9 < 54` (hence `C_W(A) ≤ 54 Q(A)`).
+2. `2 β · 3^{r-1} e r J_site ≤ 1/2`, so the geometric causal sum is `≤ 24` and
+   `(3/8) · 24² = 216` (hence `I(A) ≤ 216 Q(A)`). -/
 theorem theorem_1_3b_constants {r : ℕ} {β Jsite : ℝ}
     (hr : 2 ≤ r) (hJ : 0 < Jsite) (hβ0 : 0 ≤ β) (hβ : β ≤ betaWC r Jsite) :
     (3 / 2 : ℝ) * (1 - β / (4 * invLocalityScale r Jsite))⁻¹ ^ 2 * 9 < 54 ∧
@@ -259,9 +277,12 @@ theorem theorem_1_3b_constants {r : ℕ} {β Jsite : ℝ}
     linarith
   exact ⟨h1, h2, by norm_num⟩
 
-/-- **Theorem 1.3(c)** (High-Temperature MSS Lyapunov Exponent Bound, Eq. 1.24). -/
+/-- **Theorem 1.3(c)** (High-Temperature MSS Lyapunov Exponent Bound, Eq. 1.24):
+If for arbitrarily small `ε ∈ (0, 1/2)` there exist `c > 0` and `N₁` such that for all `N ≥ N₁`,
+`c N^{1 - ε} ≤ A N^{ρ (1 - ε)} + B √(N · N^{ρ (1 - ε)}) + C √N` (where `ρ = 2 α / lamL`),
+then `lamL ≤ 2 α`. -/
 theorem theorem_1_3c_mss_lyapunov_bound {α lamL A B C : ℝ}
-    (hα : 0 < α) (hλ : 0 < lamL) (hA : 0 ≤ A) (hB : 0 ≤ B) (hC : 0 ≤ C)
+    (hα : 0 < α) (hlam : 0 < lamL) (hA : 0 ≤ A) (hB : 0 ≤ B) (hC : 0 ≤ C)
     (hH : ∀ ε₀ > 0, ∃ ε ∈ Set.Ioo (0 : ℝ) ε₀, ∃ c > 0, ∃ N₁ : ℕ,
       ∀ N ≥ N₁,
         c * (N : ℝ) ^ (1 - ε) ≤
@@ -270,10 +291,10 @@ theorem theorem_1_3c_mss_lyapunov_bound {α lamL A B C : ℝ}
           C * Real.sqrt (N : ℝ)) :
     lamL ≤ 2 * α := by
   by_contra hlt
-  push_neg at hlt
+  have hlt' : 2 * α < lamL := lt_of_not_ge hlt
   set ρ := 2 * α / lamL
-  have hρ_pos : 0 < ρ := div_pos (by linarith) hλ
-  have hρ_lt : ρ < 1 := (div_lt_one hλ).mpr hlt
+  have hρ_pos : 0 < ρ := div_pos (by linarith) hlam
+  have hρ_lt : ρ < 1 := (div_lt_one hlam).mpr hlt'
   set gap := (1 - ρ) / 2
   have hgap_pos : 0 < gap := by linarith
   set ε₀ := min (1 / 4) (gap / 2)
@@ -287,7 +308,9 @@ theorem theorem_1_3c_mss_lyapunov_bound {α lamL A B C : ℝ}
     · nlinarith
     · have h1 : 1 - ε - (1 / 2 + 1 / 2 * ρ * (1 - ε)) =
           (1 - ρ) / 2 - ε * (1 - ρ / 2) := by ring
-      have h2 : ε * (1 - ρ / 2) < (1 - ρ) / 2 := by nlinarith
+      have h2 : ε * (1 - ρ / 2) < (1 - ρ) / 2 := by
+        simp only [gap] at hε_g
+        nlinarith
       linarith
   have hhalf_le_η : (1 / 2 : ℝ) ≤ η := by
     apply le_trans _ (le_max_right _ _)
@@ -307,6 +330,10 @@ theorem theorem_1_3c_mss_lyapunov_bound {α lamL A B C : ℝ}
   have hNpos : (0 : ℝ) < (N : ℝ) := by exact_mod_cast (by omega : 0 < N)
   have hNge1 : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast (by omega : 1 ≤ N)
   have hineq := hN₁ N hN1
+  change c * (N : ℝ) ^ (1 - ε) ≤
+      A * (N : ℝ) ^ (ρ * (1 - ε)) +
+      B * Real.sqrt ((N : ℝ) * (N : ℝ) ^ (ρ * (1 - ε))) +
+      C * Real.sqrt (N : ℝ) at hineq
   have hrt_mid : Real.sqrt ((N : ℝ) * (N : ℝ) ^ (ρ * (1 - ε))) =
       (N : ℝ) ^ (1 / 2 + (1 / 2) * ρ * (1 - ε)) := by
     rw [Real.sqrt_eq_rpow, Real.mul_rpow hNpos.le (Real.rpow_nonneg hNpos.le _),
