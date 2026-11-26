@@ -44,7 +44,7 @@ private lemma fin_sum_eq_range {D : ℕ} (f : Fin D → ℝ) :
 
 private lemma jacobiMat_symm_local (D : ℕ) (b : ℕ → ℝ) (i j : Fin D) :
     jacobiMat D b i j = jacobiMat D b j i := by
-  unfold jacobiMat
+  simp only [jacobiMat, Matrix.of_apply]
   by_cases h1 : j.1 = i.1 + 1
   · have h2 : i.1 ≠ j.1 + 1 := by omega
     rw [if_pos h1, if_neg h2, if_pos h1]
@@ -62,7 +62,7 @@ private lemma jacobiCLM_apply_tridiag (D : ℕ) (b : ℕ → ℝ)
       (if j.1 + 1 = n.1 then (b n.1 : ℂ) * v j else 0) +
       (if n.1 + 1 = j.1 then (b (n.1 + 1) : ℂ) * v j else 0) := by
     intro j
-    unfold jacobiMat
+    simp only [jacobiMat, Matrix.of_apply]
     by_cases h1 : n.1 = j.1 + 1
     · have h2 : j.1 ≠ n.1 + 1 := by omega
       have h1' : j.1 + 1 = n.1 := h1.symm
