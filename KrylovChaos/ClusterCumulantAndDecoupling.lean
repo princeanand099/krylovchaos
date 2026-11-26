@@ -14,7 +14,7 @@ Closes Open Sub-Gap 3 strictly on top of Mathlib `v4.35.0` with zero custom axio
 zero `sorry`s, and zero hypothesis-laundering:
 1. **Concrete Power-Series Schwarz Lemma** (`power_series_schwarz_bound`) and
    **Normalized Trace Polymer Expansion** (`normalizedTrace`, `normalizedTrace_mul_of_disjoint`,
-   `norm_normalizedTrace_le`, `lemma_6_3_trace_polymer_kp` via `KoteckyPreiss.kotecky_preiss_convergence`
+   `norm_normalizedTrace_le`, `lemma_6_3_trace_polymer_kp` via `kotecky_preiss_convergence`
    and `lemma_A_3_concrete_unordered_tree_sum`).
 2. **Concrete Entropic Background Decoupling (Prop. 6.4(2))**:
    - `gibbsRelEntropy_unitary_invariant` & `gibbsRelEntropy_heisenberg_invariant`:
@@ -91,7 +91,7 @@ lemma normalizedTrace_one {N : ℕ} : normalizedTrace (1 : QubitOp N) = 1 := by
       mul_one]
     push_cast; rfl
   rw [htr]
-  have hne : ((2 : ℝ) ^ N : ℂ) ≠ 0 := by positivity
+  have hne : ((2 : ℝ) ^ N : ℂ) ≠ 0 := Complex.ofReal_ne_zero.mpr (by positivity)
   exact inv_mul_cancel₀ hne
 
 lemma normalizedTrace_add {N : ℕ} (A B : QubitOp N) :
@@ -142,7 +142,7 @@ lemma normalizedTrace_mul_of_disjoint {N : ℕ} {U V : Finset (Fin N)}
     rw [one_div, inv_pow]
     push_cast; rfl
   have hpauli0 : (1 / 2 : ℂ) * (pauliMat 0).trace = 1 := by
-    simp [pauliMat, Matrix.trace, Fin.sum_univ_two]; norm_num
+    simp [pauliMat, Matrix.trace, Fin.sum_univ_two]
   have hmat0 : pauliMat 0 = (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
     ext p q; fin_cases p <;> fin_cases q <;> simp [pauliMat]
   induction hA using Submodule.span_induction with
@@ -184,8 +184,8 @@ noncomputable def tracePolyWeight {N : ℕ} (h : Finset (Fin N) → QubitOp N) (
 
 lemma norm_tracePolyWeight_le {N : ℕ} (h : Finset (Fin N) → QubitOp N)
     {β' : ℝ} (hβ' : 0 ≤ β') (γ : Finset (Finset (Fin N))) :
-    ‖tracePolyWeight h β' γ‖ ≤ ∏ X ∈ γ, (Real.exp (β' * opNorm (h X)) - 1) := by
-  simpa [abs_of_nonneg hβ'] using le_trans (norm_normalizedTrace_le _) (opNorm_polyOp_le h β' γ)
+    ‖tracePolyWeight h β' γ‖ ≤ ∏ X ∈ γ, (Real.exp (β' * opNorm (h X)) - 1) :=
+  by unfold tracePolyWeight; simpa [abs_of_nonneg hβ'] using le_trans (norm_normalizedTrace_le _) (opNorm_polyOp_le h β' γ)
 
 /-- **Concrete Lemma 6.3 Trace Polymer Kotecký–Preiss Verification**:
 For any `r`-local interaction `h` on `QubitOp N` in the high-temperature regime
@@ -193,7 +193,7 @@ For any `r`-local interaction `h` on `QubitOp N` in the high-temperature regime
 system `(connectedPolymers E, polyIncompat, tracePolyWeight h β')` satisfies the exact
 Kotecký–Preiss convergence criterion and yields `polymerZ ≠ 0` directly via
 `sum_connectedPolymers_le_unorderedTreeSum`, `lemma_A_3_concrete_unordered_tree_sum`, and
-`KoteckyPreiss.kotecky_preiss_convergence`. -/
+`kotecky_preiss_convergence`. -/
 theorem lemma_6_3_trace_polymer_kp {N r : ℕ} (hr : 1 ≤ r)
     (E : Finset (Finset (Fin N))) (hne : ∀ X ∈ E, X.Nonempty)
     (hcard : ∀ X ∈ E, X.card ≤ r)
@@ -284,8 +284,7 @@ theorem lemma_6_3_trace_polymer_kp {N r : ℕ} (hr : 1 ≤ r)
           _ ≤ c := hkp
       have htree : ∀ X₀ ∈ E, unorderedTreeSum E η E.card X₀ ≤ η X₀ * Real.exp (c * (r : ℝ)) := by
         intro X₀ hX₀
-        have htree0 := lemma_A_3_concrete_unordered_tree_sum E hcard η hη_nn
-          (η₀ * Real.exp (c * (r : ℝ))) c (mul_nonneg hη₀_nn (Real.exp_pos _).le) hc.le
+        have htree0 := lemma_A_3_concrete_unordered_tree_sum E hcard η hη_nn hc.le
           hη_site hA3_param E.card X₀ hX₀
         exact le_trans htree0 (mul_le_mul_of_nonneg_left
           (Real.exp_le_exp.mpr (mul_le_mul_of_nonneg_left (by exact_mod_cast hcard X₀ hX₀) hc.le))
@@ -331,8 +330,45 @@ theorem lemma_6_3_trace_polymer_kp {N r : ℕ} (hr : 1 ≤ r)
               hη_nn X ((mem_connectedPolymers.mp (Finset.mem_filter.mp hγ₂').1).1 hX)
       _ ≤ ∑ _x ∈ polySupp γ₁, c := Finset.sum_le_sum hsite_sum
       _ = a γ₁ := by rw [Finset.sum_const, nsmul_eq_mul]; ring
-  exact ⟨hkp_cond, (KoteckyPreiss.kotecky_preiss_convergence polyIncompat_symm w a
-    (fun _ ↦ mul_nonneg hc.le (Nat.cast_nonneg _)) hkp_cond).1⟩
+  let incompatRefl : Polymer N → Polymer N → Prop := fun γ₁ γ₂ ↦ γ₁ = γ₂ ∨ polyIncompat γ₁ γ₂
+  have hrefl : ∀ γ, incompatRefl γ γ := fun _ ↦ Or.inl rfl
+  have hsym : ∀ γ₁ γ₂, incompatRefl γ₁ γ₂ → incompatRefl γ₂ γ₁ := by
+    rintro γ₁ γ₂ (rfl | hinc)
+    · exact Or.inl rfl
+    · exact Or.inr (polyIncompat_symm _ _ hinc)
+  have hinc_eq : ∀ γ ∈ Γ, ∀ γ' ∈ Γ, incompatRefl γ γ' ↔ polyIncompat γ γ' := by
+    intro γ hγ γ' _
+    constructor
+    · rintro (rfl | hinc)
+      · unfold polyIncompat
+        rcases (mem_connectedPolymers.mp hγ).2.1 with ⟨X, hXγ⟩
+        rcases hne X ((mem_connectedPolymers.mp hγ).1 hXγ) with ⟨x, hxX⟩
+        intro hd
+        exact Finset.disjoint_left.mp hd
+          (Finset.mem_biUnion.mpr ⟨X, hXγ, hxX⟩)
+          (Finset.mem_biUnion.mpr ⟨X, hXγ, hxX⟩)
+      · exact hinc
+    · exact Or.inr
+  have hkp' : ∀ γ ∈ Γ,
+      ∑ γ' ∈ Γ.filter (fun γ' ↦ incompatRefl γ γ'), kpActivity w a γ' ≤ a γ := by
+    intro γ hγ
+    have hfeq : Γ.filter (fun γ' ↦ incompatRefl γ γ') = Γ.filter (fun γ' ↦ polyIncompat γ γ') := by
+      ext γ'; simp only [Finset.mem_filter]
+      exact ⟨fun ⟨h1, h2⟩ ↦ ⟨h1, (hinc_eq γ hγ γ' h1).mp h2⟩,
+             fun ⟨h1, h2⟩ ↦ ⟨h1, (hinc_eq γ hγ γ' h1).mpr h2⟩⟩
+    rw [hfeq]; exact hkp_cond γ hγ
+  have hZ_ne := (kotecky_preiss_convergence incompatRefl hrefl hsym w a Γ hkp' Γ Finset.Subset.rfl).1
+  have hZ_eq : polymerZ incompatRefl w Γ = polymerZ polyIncompat w Γ := by
+    unfold polymerZ
+    apply Finset.sum_congr _ (fun _ _ ↦ rfl)
+    ext I; simp only [Finset.mem_filter, Finset.mem_powerset]
+    constructor
+    · rintro ⟨hsub, hci⟩; refine ⟨hsub, fun u hu v hv huv ↦ ?_⟩
+      rw [← hinc_eq u (hsub hu) v (hsub hv)]; exact hci u hu v hv huv
+    · rintro ⟨hsub, hci⟩; refine ⟨hsub, fun u hu v hv huv ↦ ?_⟩
+      rw [hinc_eq u (hsub hu) v (hsub hv)]; exact hci u hu v hv huv
+  rw [hZ_eq] at hZ_ne
+  exact ⟨hkp_cond, hZ_ne⟩
 
 end SchwarzAndTracePolymer
 
@@ -355,18 +391,28 @@ private lemma unitary_conj_hermFunc {N : ℕ} {ρ U : QubitOp N}
     (hρ : ρ.IsHermitian) (hU : Uᴴ * U = 1) (f : ℝ → ℂ)
     (hρU : (U * ρ * Uᴴ).IsHermitian) :
     ((U * ρ * Uᴴ) * hermFunc hρU f).trace = (ρ * hermFunc hρ f).trace := by
-  have hU' : U * Uᴴ = 1 := mul_eq_one_comm.mp hU
-  let P : QubitOp N := (hρ.eigenvectorUnitary : QubitOp N)
-  let Q : QubitOp N := (hρU.eigenvectorUnitary : QubitOp N)
+  -- Both `U * ρ * Uᴴ` and `ρ` have the same spectrum; we compare via trace of polynomial/diagonal.
+  -- In fact, let `V := U * hρ.eigenvectorUnitary`, then `V` is unitary and diagonalizes `U * ρ * Uᴴ`
+  -- with the SAME eigenvalues as `ρ`, so `hermFunc hρU f = U * hermFunc hρ f * Uᴴ`!
+  -- Wait: for general `f`, `hρU.eigenvectorUnitary` may differ from `V` within degenerate eigenspaces.
+  -- We prove `hermFunc hρU f = U * hermFunc hρ f * Uᴴ` directly on every eigenvector of `ρ`!
+  have hU' : U * Uᴴ = 1 := Matrix.mul_eq_one_comm.mp hU
+  set P : QubitOp N := (hρ.eigenvectorUnitary : QubitOp N)
+  set Q : QubitOp N := (hρU.eigenvectorUnitary : QubitOp N)
+  have hPP : P * Pᴴ = 1 := eigU_mul_star_dec hρ
+  have hPHP : Pᴴ * P = 1 := eigU_star_mul_dec hρ
+  have hQQ : Q * Qᴴ = 1 := eigU_mul_star_dec hρU
+  have hQHQ : Qᴴ * Q = 1 := eigU_star_mul_dec hρU
   let W : QubitOp N := Qᴴ * U * P
   have hW_unit : Wᴴ * W = 1 := by
     simp only [W, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
     calc Pᴴ * Uᴴ * Q * (Qᴴ * U * P)
         = Pᴴ * Uᴴ * (Q * Qᴴ) * U * P := by simp only [Matrix.mul_assoc]
-      _ = Pᴴ * (Uᴴ * U) * P := by rw [eigU_mul_star_dec hρU, Matrix.mul_one]; simp only [Matrix.mul_assoc]
+      _ = Pᴴ * (Uᴴ * U) * P := by rw [hQQ, Matrix.mul_one]; simp only [Matrix.mul_assoc]
       _ = Pᴴ * P := by rw [hU, Matrix.mul_one]
-      _ = 1 := eigU_star_mul_dec hρ
-  have hW_unit' : W * Wᴴ = 1 := mul_eq_one_comm.mp hW_unit
+      _ = 1 := hPHP
+  have hW_unit' : W * Wᴴ = 1 := Matrix.mul_eq_one_comm.mp hW_unit
+  -- `W` intertwines `diag(λ_ρ)` and `diag(λ_{ρU})`: `diag(λ_{ρU}) * W = W * diag(λ_ρ)`.
   have hinter : ∀ a b : QubitIdx N,
       (hρU.eigenvalues a : ℂ) * W a b = W a b * (hρ.eigenvalues b : ℂ) := by
     intro a b
@@ -378,7 +424,7 @@ private lemma unitary_conj_hermFunc {N : ℕ} {ρ U : QubitOp N}
         _ = (Qᴴ * Q) * Matrix.diagonal (fun i ↦ (hρU.eigenvalues i : ℂ)) * (Qᴴ * Q) := by
             simp only [Matrix.mul_assoc]
         _ = Matrix.diagonal (fun i ↦ (hρU.eigenvalues i : ℂ)) := by
-            rw [eigU_star_mul_dec hρU, Matrix.one_mul, Matrix.mul_one]
+            rw [hQHQ, Matrix.one_mul, Matrix.mul_one]
     have hD2 : Pᴴ * ρ * P = Matrix.diagonal (fun j ↦ (hρ.eigenvalues j : ℂ)) := by
       have h1 := hermFunc_id hρ
       unfold hermFunc at h1
@@ -387,16 +433,16 @@ private lemma unitary_conj_hermFunc {N : ℕ} {ρ U : QubitOp N}
         _ = (Pᴴ * P) * Matrix.diagonal (fun j ↦ (hρ.eigenvalues j : ℂ)) * (Pᴴ * P) := by
             simp only [Matrix.mul_assoc]
         _ = Matrix.diagonal (fun j ↦ (hρ.eigenvalues j : ℂ)) := by
-            rw [eigU_star_mul_dec hρ, Matrix.one_mul, Matrix.mul_one]
+            rw [hPHP, Matrix.one_mul, Matrix.mul_one]
     have hmat : Matrix.diagonal (fun i ↦ (hρU.eigenvalues i : ℂ)) * W =
         W * Matrix.diagonal (fun j ↦ (hρ.eigenvalues j : ℂ)) := by
       rw [← hD1, ← hD2]
       dsimp only [W]
       calc Qᴴ * (U * ρ * Uᴴ) * Q * (Qᴴ * U * P)
           = Qᴴ * U * ρ * Uᴴ * (Q * Qᴴ) * U * P := by simp only [Matrix.mul_assoc]
-        _ = Qᴴ * U * ρ * (Uᴴ * U) * P := by rw [eigU_mul_star_dec hρU, Matrix.mul_one]; simp only [Matrix.mul_assoc]
+        _ = Qᴴ * U * ρ * (Uᴴ * U) * P := by rw [hQQ, Matrix.mul_one]; simp only [Matrix.mul_assoc]
         _ = Qᴴ * U * ρ * P := by rw [hU, Matrix.mul_one]
-        _ = Qᴴ * U * (P * Pᴴ) * ρ * P := by rw [eigU_mul_star_dec hρ, Matrix.mul_one]
+        _ = Qᴴ * U * (P * Pᴴ) * ρ * P := by rw [hPP, Matrix.mul_one]
         _ = Qᴴ * U * P * (Pᴴ * ρ * P) := by simp only [Matrix.mul_assoc]
     have hent := congrFun (congrFun hmat a) b
     simpa [Matrix.diagonal_mul, Matrix.mul_diagonal] using hent
@@ -430,7 +476,7 @@ private lemma unitary_conj_hermFunc {N : ℕ} {ρ U : QubitOp N}
           have hQW : Q * W = U * P := by
             dsimp only [W]
             calc Q * (Qᴴ * U * P) = (Q * Qᴴ) * (U * P) := by simp only [Matrix.mul_assoc]
-              _ = U * P := by rw [eigU_mul_star_dec hρU, Matrix.one_mul]
+              _ = U * P := by rw [hQQ, Matrix.one_mul]
           rw [hQW]
       _ = U * (P * Matrix.diagonal (fun b ↦ f (hρ.eigenvalues b)) * Pᴴ) * Uᴴ := by
           simp only [Matrix.conjTranspose_mul, Matrix.mul_assoc]
@@ -450,7 +496,7 @@ theorem gibbsRelEntropy_unitary_invariant {N : ℕ} {ρ H U : QubitOp N}
     (hU : Uᴴ * U = 1) (hcomm : U * H = H * U) (β : ℝ) :
     gibbsRelEntropy (unitary_conj_isHermitian (U := U) hρ) hH β =
       gibbsRelEntropy hρ hH β := by
-  have hU' : U * Uᴴ = 1 := mul_eq_one_comm.mp hU
+  have hU' : U * Uᴴ = 1 := Matrix.mul_eq_one_comm.mp hU
   have hlog := unitary_conj_hermFunc hρ hU (fun x ↦ (Real.log x : ℂ))
     (unitary_conj_isHermitian (U := U) hρ)
   have hH_tr : ((U * ρ * Uᴴ) * (((β : ℝ) : ℂ) • H)).trace =
@@ -466,9 +512,12 @@ theorem gibbsRelEntropy_unitary_invariant {N : ℕ} {ρ H U : QubitOp N}
               _ = H * Uᴴ := by rw [hU, Matrix.one_mul]
           simp only [Matrix.mul_assoc, hUH]
       _ = (((β : ℝ) : ℂ) • (Uᴴ * (U * ρ * H))).trace := by
-          congr 1; simp only [Matrix.mul_assoc]; exact Matrix.trace_mul_comm _ _
-      _ = (((β : ℝ) : ℂ) • (ρ * H)).trace := by
+          rw [Matrix.trace_smul, Matrix.trace_smul]
           congr 1
+          calc (U * ρ * (H * Uᴴ)).trace = ((U * ρ * H) * Uᴴ).trace := by simp only [Matrix.mul_assoc]
+            _ = (Uᴴ * (U * ρ * H)).trace := Matrix.trace_mul_comm _ _
+      _ = (((β : ℝ) : ℂ) • (ρ * H)).trace := by
+          congr 2
           calc Uᴴ * (U * ρ * H) = (Uᴴ * U) * (ρ * H) := by simp only [Matrix.mul_assoc]
             _ = ρ * H := by rw [hU, Matrix.one_mul]
       _ = (ρ * (((β : ℝ) : ℂ) • H)).trace := by simp [Matrix.mul_smul]
@@ -585,7 +634,6 @@ theorem gibbsRelEntropy_le_log_of_renyi2 {N : ℕ} {ρ H : QubitOp N}
       Matrix.conjTranspose_apply, ite_mul, zero_mul, mul_ite, mul_zero,
       Finset.sum_ite_eq, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte, Complex.re_sum]
     apply Finset.sum_congr rfl; intro i _
-    rw [Finset.sum_mul, Complex.re_sum]
     apply Finset.sum_congr rfl; intro j _
     have hnorm : W i j * star (W i j) = ((‖W i j‖ ^ 2 : ℝ) : ℂ) := by
       rw [Complex.star_def, Complex.mul_conj', Complex.ofReal_pow]
@@ -637,7 +685,7 @@ theorem gibbsRelEntropy_le_log_of_renyi2 {N : ℕ} {ρ H : QubitOp N}
             have : ∀ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * hρ.eigenvalues i = hρ.eigenvalues i := fun i ↦ by
               rw [← Finset.sum_mul, hrow i, one_mul]
             simp_rw [this]; exact hsum_ρ
-          rw [← h1]
+          conv_rhs => arg 2; rw [← h1]
           simp_rw [Finset.mul_sum, ← Finset.sum_sub_distrib]
           apply Finset.sum_congr rfl; intro i _
           apply Finset.sum_congr rfl; intro j _
@@ -651,22 +699,22 @@ theorem gibbsRelEntropy_le_log_of_renyi2 {N : ℕ} {ρ H : QubitOp N}
 Combines `gibbs_variational_bound` + `gibbsRelEntropy_heisenberg_invariant` + quadratic
 cumulant scaling on `QubitOp N`: for any time-evolved state `ρ_t = U(t) ρ U(t)ᴴ` and
 centered Hermitian observable `X̃ = X - ⟨X⟩_β I` satisfying the trace cumulant bound
-`log(Z(-β H + λ X̃) / Z(-β H)) ≤ K₀ N λ^2` at `λ > 0`,
-`Re Tr(ρ_t X̃) ≤ D(ρ ‖ ρ_β) / λ + K₀ N λ`. -/
+`log(Z(-β H + lam X̃) / Z(-β H)) ≤ K₀ N lam^2` at `lam > 0`,
+`Re Tr(ρ_t X̃) ≤ D(ρ ‖ ρ_β) / lam + K₀ N lam` for any `lam > 0`. -/
 theorem prop_6_4_2_concrete_entropic_decoupling {N : ℕ} {ρ H X : QubitOp N}
     (hρ : ρ.IsHermitian) (hH : H.IsHermitian) (hX : X.IsHermitian)
     (hρ_pos : ∀ i : QubitIdx N, 0 < hρ.eigenvalues i)
     (hρ_tr : ρ.trace = 1) (β t : ℝ)
-    {λ K₀ : ℝ} (hλ : 0 < λ)
+    {lam K₀ : ℝ} (hlam : 0 < lam)
     (hcum :
-      let K : QubitOp N := ((-β : ℝ) : ℂ) • H + ((λ : ℝ) : ℂ) • X
+      let K : QubitOp N := ((-β : ℝ) : ℂ) • H + ((lam : ℝ) : ℂ) • X
       have hK : K.IsHermitian := by
         simp only [K, Matrix.IsHermitian, Matrix.conjTranspose_add, Matrix.conjTranspose_smul,
           Complex.star_def, Complex.conj_ofReal, hH.eq, hX.eq]
-      Real.log (gibbsPartitionFn hK (-1) / gibbsPartitionFn hH β) ≤ K₀ * (N : ℝ) * λ ^ 2) :
+      Real.log (gibbsPartitionFn hK (-1) / gibbsPartitionFn hH β) ≤ K₀ * (N : ℝ) * lam ^ 2) :
     let U := complexPropagator hH (t : ℂ)
     let ρt := U * ρ * Uᴴ
-    (ρt * X).trace.re ≤ gibbsRelEntropy hρ hH β / λ + K₀ * (N : ℝ) * λ := by
+    (ρt * X).trace.re ≤ gibbsRelEntropy hρ hH β / lam + K₀ * (N : ℝ) * lam := by
   intro U ρt
   have hU_unit : Uᴴ * U = 1 := by
     dsimp only [U, complexPropagator]
@@ -698,7 +746,7 @@ theorem prop_6_4_2_concrete_entropic_decoupling {N : ℕ} {ρ H X : QubitOp N}
         calc Qᴴ * U * P * (Pᴴ * Uᴴ * Q)
             = Qᴴ * U * (P * Pᴴ) * Uᴴ * Q := by simp only [Matrix.mul_assoc]
           _ = Qᴴ * (U * Uᴴ) * Q := by rw [eigU_mul_star_dec hρ, Matrix.mul_one]; simp only [Matrix.mul_assoc]
-          _ = Qᴴ * Q := by rw [mul_eq_one_comm.mp hU_unit, Matrix.mul_one]
+          _ = Qᴴ * Q := by rw [Matrix.mul_eq_one_comm.mp hU_unit, Matrix.mul_one]
           _ = 1 := eigU_star_mul_dec hρt
       have h1 := congrFun (congrFun hW1 i) i
       simp only [Matrix.mul_apply, Matrix.conjTranspose_apply, Matrix.one_apply_eq] at h1
@@ -740,22 +788,22 @@ theorem prop_6_4_2_concrete_entropic_decoupling {N : ℕ} {ρ H X : QubitOp N}
     rcases hex with ⟨j₀, hj₀⟩
     exact Finset.sum_pos' (fun j _ ↦ mul_nonneg (sq_nonneg _) (hρ_pos j).le)
       ⟨j₀, Finset.mem_univ j₀, mul_pos hj₀ (hρ_pos j₀)⟩
-  have hλX : (((λ : ℝ) : ℂ) • X).IsHermitian := by
+  have hlamX : (((lam : ℝ) : ℂ) • X).IsHermitian := by
     simp only [Matrix.IsHermitian, Matrix.conjTranspose_smul, Complex.star_def,
       Complex.conj_ofReal, hX.eq]
-  have hvar := gibbs_variational_bound hρt hH hλX hρt_pos hρt_tr β
+  have hvar := gibbs_variational_bound hρt hH hlamX hρt_pos hρt_tr β
   have hinv := gibbsRelEntropy_heisenberg_invariant hρ hH β t
-  have htr_smul : (ρt * (((λ : ℝ) : ℂ) • X)).trace.re = λ * (ρt * X).trace.re := by
+  have htr_smul : (ρt * (((lam : ℝ) : ℂ) • X)).trace.re = lam * (ρt * X).trace.re := by
     rw [Matrix.mul_smul, Matrix.trace_smul, smul_eq_mul, Complex.mul_re,
       Complex.ofReal_re, Complex.ofReal_im]; ring
   rw [htr_smul] at hvar
-  have hcomb : λ * (ρt * X).trace.re ≤ gibbsRelEntropy hρ hH β + K₀ * (N : ℝ) * λ ^ 2 := by
+  have hcomb : lam * (ρt * X).trace.re ≤ gibbsRelEntropy hρ hH β + K₀ * (N : ℝ) * lam ^ 2 := by
     have h1 : gibbsRelEntropy hρt hH β = gibbsRelEntropy hρ hH β := hinv
     linarith [hvar, hcum]
-  have hdiv := div_le_div_of_nonneg_right hcomb hλ.le
-  have hlhs : λ * (ρt * X).trace.re / λ = (ρt * X).trace.re := by field_simp [hλ.ne']
-  have hrhs : (gibbsRelEntropy hρ hH β + K₀ * (N : ℝ) * λ ^ 2) / λ =
-      gibbsRelEntropy hρ hH β / λ + K₀ * (N : ℝ) * λ := by field_simp [hλ.ne']
+  have hdiv := div_le_div_of_nonneg_right hcomb hlam.le
+  have hlhs : lam * (ρt * X).trace.re / lam = (ρt * X).trace.re := by field_simp [hlam.ne']
+  have hrhs : (gibbsRelEntropy hρ hH β + K₀ * (N : ℝ) * lam ^ 2) / lam =
+      gibbsRelEntropy hρ hH β / lam + K₀ * (N : ℝ) * lam := by field_simp [hlam.ne']
   linarith
 
 end ConcreteEntropicDecoupling
@@ -830,7 +878,8 @@ For any `r`-local Hermitian Hamiltonian `H = ∑ X ∈ E, h X` of interaction ra
 and local strength `∑_{X ∋ x} ‖h_X‖_op ≤ J`, any `O ∈ supportedOn U₀`, and any `B ∈ supportedOn V`
 separated by `∀ x ∈ U₀, ∀ y ∈ V, m * R_int < dist x y`, the Heisenberg commutator
 `matComm (heisenbergEvol hH (t : ℂ) O) B` vanishes to order `m` in the causal Dyson expansion
-and satisfies the concrete operator-norm tail bound for all `t : ℝ` with `2 * |t| * r * J < 1`. -/
+and satisfies the concrete operator-norm tail bound for all `t : ℝ` with `2 * |t| * r * J < 1`
+(and unconditionally for all `m` via the exact factorial series). -/
 theorem lieb_robinson_concrete_opNorm {N r R_int : ℕ} (hr : 1 ≤ r)
     (dist : Fin N → Fin N → ℕ)
     (hself : ∀ x : Fin N, dist x x = 0)
@@ -853,6 +902,7 @@ theorem lieb_robinson_concrete_opNorm {N r R_int : ℕ} (hr : 1 ≤ r)
             fwdCausalSum E (fun X ↦ opNorm (h X)) k U₀ := by
   intro q
   have hhas_ev := hasSum_heisenbergEvol_adPow hH (t : ℂ) O
+  -- Continuous linear map `M ↦ matComm M B`
   let Lcomm : QubitOp N →L[ℂ] QubitOp N :=
     LinearMap.toContinuousLinearMap
       { toFun := fun M ↦ matComm M B
@@ -863,8 +913,7 @@ theorem lieb_robinson_concrete_opNorm {N r R_int : ℕ} (hr : 1 ≤ r)
       (matComm (heisenbergEvol hH (t : ℂ) O) B) := by
     have h1 := hhas_ev.map Lcomm Lcomm.continuous
     refine h1.congr_fun fun k ↦ ?_
-    change matComm (((Complex.I * (t : ℂ)) ^ k / (k.factorial : ℂ)) • adPowMat (∑ X ∈ E, h X) k O) B = _
-    unfold matComm; simp [Matrix.smul_mul, Matrix.mul_smul, smul_sub]
+    exact (Lcomm.map_smul _ _).symm
   have hhas_clm : HasSum (fun k : ℕ ↦
       opToCLM (((Complex.I * (t : ℂ)) ^ k / (k.factorial : ℂ)) • matComm (adPowMat (∑ X ∈ E, h X) k O) B))
       (opToCLM (matComm (heisenbergEvol hH (t : ℂ) O) B)) := by
@@ -874,6 +923,7 @@ theorem lieb_robinson_concrete_opNorm {N r R_int : ℕ} (hr : 1 ≤ r)
           map_add' := opToCLM_add
           map_smul' := fun c A ↦ by simp [opToCLM_smul] }
     exact hhas_comm.map φ φ.continuous
+  -- Each term `k ≤ m` vanishes!
   have hzero_le : ∀ k ≤ m, matComm (adPowMat (∑ X ∈ E, h X) k O) B = 0 := by
     intro k hkm
     rw [adPowMat_eq_sum_causal E h hsupp hO k]
@@ -884,6 +934,7 @@ theorem lieb_robinson_concrete_opNorm {N r R_int : ℕ} (hr : 1 ≤ r)
       fun j ↦ Fintype.mem_piFinset.mp (Finset.mem_filter.mp hf).1 j
     exact matComm_iterComm_eq_zero_of_dist dist hself htri E hdiam h hsupp hO hB f hfE
       (fun x hx y hy ↦ lt_of_le_of_lt (Nat.mul_le_mul_right R_int hkm) (hsep x hx y hy))
+  -- Termwise operator-norm bound
   let bound : ℕ → ℝ := fun k ↦
     if k ≤ m then (0 : ℝ)
     else 2 * opNorm O * opNorm B *
@@ -929,7 +980,6 @@ theorem lieb_robinson_concrete_opNorm {N r R_int : ℕ} (hr : 1 ≤ r)
           _ = (2 : ℝ) ^ k * fwdCausalSum E (fun X ↦ opNorm (h X)) k U₀ * opNorm O := by
               unfold fwdCausalSum
               rw [Finset.mul_sum, Finset.sum_mul]
-              apply Finset.sum_congr rfl; intro f _; ring
       have hfac_nn : 0 ≤ |t| ^ k / (k.factorial : ℝ) := by positivity
       calc |t| ^ k / (k.factorial : ℝ) * opNorm (matComm (adPowMat (∑ X ∈ E, h X) k O) B)
           ≤ |t| ^ k / (k.factorial : ℝ) * (2 * opNorm (adPowMat (∑ X ∈ E, h X) k O) * opNorm B) :=
@@ -941,6 +991,7 @@ theorem lieb_robinson_concrete_opNorm {N r R_int : ℕ} (hr : 1 ≤ r)
         _ = 2 * opNorm O * opNorm B *
               ((|t| ^ k / (k.factorial : ℝ)) * (2 : ℝ) ^ k * fwdCausalSum E (fun X ↦ opNorm (h X)) k U₀) := by
             ring
+  -- Summability of the tail bound via `fwdCausalSum_le` and `q = 2 |t| r J < 1`
   have hq_nn : 0 ≤ q := by dsimp only [q]; positivity
   have hsumm_raw : Summable (fun k : ℕ ↦
       (|t| ^ k / (k.factorial : ℝ)) * (2 : ℝ) ^ k * fwdCausalSum E (fun X ↦ opNorm (h X)) k U₀) := by
@@ -951,6 +1002,7 @@ theorem lieb_robinson_concrete_opNorm {N r R_int : ℕ} (hr : 1 ≤ r)
       intro k
       have hfwd := fwdCausalSum_general_le hr E hcard (fun X ↦ opNorm (h X)) (fun X _ ↦ opNorm_nonneg _)
         hJ hsite k U₀
+      -- `∏ j : Fin k, (p + j * r) ≤ ∏ j : Fin k, (p + j) * r = r^k * (p+k)! / p!`
       have hprod_le : (∏ j : Fin k, ((U₀.card : ℝ) + (j.val : ℝ) * (r : ℝ))) ≤
           (r : ℝ) ^ k * ((∏ j : Fin k, ((p + j.val + 1 : ℕ) : ℝ))) := by
         have hr1 : (1 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
@@ -966,6 +1018,7 @@ theorem lieb_robinson_concrete_opNorm {N r R_int : ℕ} (hr : 1 ≤ r)
       have hfact_prod : (∏ j : Fin k, ((p + j.val + 1 : ℕ) : ℝ)) =
           ((k + p).choose p : ℝ) * (k.factorial : ℝ) := by
         have hnat : (∏ j : Fin k, (p + j.val + 1)) * p.factorial = (k + p).factorial := by
+          clear hfwd hprod_le
           induction k with
           | zero => simp
           | succ k ihk =>
@@ -998,9 +1051,13 @@ theorem lieb_robinson_concrete_opNorm {N r R_int : ℕ} (hr : 1 ≤ r)
               (((k + p).choose p : ℝ) * (k.factorial : ℝ) * ((r : ℝ) * J) ^ k) :=
             mul_le_mul_of_nonneg_left hfwd_le (by positivity)
         _ = ((k + p).choose p : ℝ) * q ^ k := by
-            dsimp only [q]; rw [mul_pow, mul_pow, mul_pow]
-            field_simp [hkf.ne']
+            dsimp only [q]; simp only [mul_pow]
+            field_simp [hkf.ne']; ring
+    -- `((k + p).choose p : ℝ) * q ^ k ≤ ((k + p + 1) : ℝ) ^ p * q ^ k`, summable since `0 ≤ q < 1`
     have hsumm_poly : Summable (fun k : ℕ ↦ ((k + p).choose p : ℝ) * q ^ k) := by
+      -- Since `q < 1`, choose `s = (q + 1) / 2 ∈ (q, 1)` and bound `choose (k+p) p ≤ (k+p)^p ≤ C * (s/q)^k`
+      -- Even simpler: `((k + p).choose p : ℝ) ≤ (2 : ℝ) ^ (k + p)` only works for `q < 1/2`.
+      -- For ALL `q < 1`, use `summable_of_ratio_norm_eventually_le`!
       by_cases hq0 : q = 0
       · simp only [hq0]
         refine summable_of_ne_finset_zero (s := {0}) fun k hk ↦ ?_
@@ -1018,7 +1075,7 @@ theorem lieb_robinson_concrete_opNorm {N r R_int : ℕ} (hr : 1 ≤ r)
           have hbig : (p : ℝ) * q / (r_lim - q) < (k + 1 : ℝ) := by
             have : (N₀ : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
             linarith
-          have hmul : (p : ℝ) * q < (r_lim - q) * (k + 1 : ℝ) := (div_lt_iff₀ hrq).mp hbig
+          have hmul : (p : ℝ) * q < (r_lim - q) * (k + 1 : ℝ) := by linarith [(div_lt_iff₀ hrq).mp hbig]
           rw [div_mul_eq_mul_div, div_le_iff₀ hk1]
           linarith
         rcases hN with ⟨N₀, hN₀⟩
