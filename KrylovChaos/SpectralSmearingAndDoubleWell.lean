@@ -16,9 +16,17 @@ import Mathlib.Tactic
 
 Resolves Flaw #10 concretely on `QubitOp N` and block/barrier matrices:
 1. **Proposition 9.1(1) (`gaussianSmear`, `prop_9_1_part1_spectral_density`,
-   `prop_9_1_part1_subgaussian_moments`)**.
+   `prop_9_1_part1_subgaussian_moments`)**:
+   Constructs the Gaussian time-smeared operator `O_σ` in the eigenbasis of `H : QubitOp N`,
+   proves the exact Wightman norm = spectral weight sum identity, the exact Gaussian spectral
+   weight law `w_σ(a,b) = exp(-σ² (E_a - E_b)²) w_0(a,b)` (Eq. 9.2), and the sub-Gaussian
+   `2n`-th moment bound `μ_{2n}(O_σ) ≤ (n / (e σ²))^n μ_0(O)`.
 2. **Proposition 9.1(3) & Lemma B.1 (`doubleWellBlock`, `doubleWell_even_odd_eigenpairs`,
-   `schur_complement_eigen_eq`, `barrierHoppingMatrix`, `lemma_B_1_barrier_neumann_tunneling`)**.
+   `schur_complement_eigen_eq`, `barrierHoppingMatrix`, `lemma_B_1_barrier_neumann_tunneling`)**:
+   Proves exact `ℤ₂` even/odd eigenpair splitting and exact Schur-complement eigenvalue reduction
+   for concrete block matrices, plus the exact nearest-neighbor barrier-crossing obstruction
+   `(T^k)_{0, L} = 0` for `k < L` and exponential Neumann-series tunneling suppression
+   `|R_{0, L}| ≤ (1 / E_B) * (2 |t_hop| / E_B)^L / (1 - 2 |t_hop| / E_B)`.
 -/
 
 namespace KrylovChaos
@@ -31,11 +39,10 @@ section GaussianTimeSmearing
 `(Uᴴ O_σ U)_{ab} = exp(-σ² (E_a - E_b)² / 2) (Uᴴ O U)_{ab}`. -/
 noncomputable def gaussianSmear {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (σ : ℝ) (O : QubitOp N) : QubitOp N :=
-  (hH.eigenvectorUnitary : QubitOp N) *
-    Matrix.of (fun a b : QubitIdx N ↦
-      ((Real.exp (-(σ ^ 2 / 2) * (hH.eigenvalues a - hH.eigenvalues b) ^ 2) : ℝ) : ℂ) *
-        ((hH.eigenvectorUnitary : QubitOp N)ᴴ * O * (hH.eigenvectorUnitary : QubitOp N)) a b) *
-    (hH.eigenvectorUnitary : QubitOp N)ᴴ
+  let U : QubitOp N := (hH.eigenvectorUnitary : QubitOp N)
+  let B : QubitOp N := Uᴴ * O * U
+  U * Matrix.of (fun a b : QubitIdx N ↦
+    ((Real.exp (-(σ ^ 2 / 2) * (hH.eigenvalues a - hH.eigenvalues b) ^ 2) : ℝ) : ℂ) * B a b) * Uᴴ
 
 private lemma eigU_mul_star {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) :
     (hH.eigenvectorUnitary : QubitOp N) * (hH.eigenvectorUnitary : QubitOp N)ᴴ = 1 :=
@@ -58,12 +65,14 @@ lemma gaussianSmear_zero {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (O : Qub
     _ = O := by rw [eigU_mul_star hH, Matrix.one_mul, Matrix.mul_one]
 
 /-- Exact Wightman spectral weight at transition `(a, b)` for Hermitian `H : QubitOp N`
-and inverse temperature `β : ℝ`. -/
+and inverse temperature `β : ℝ`:
+`w_{ab}(O) = Z(β)⁻¹ exp(-β (E_a + E_b) / 2) ‖(Uᴴ O U)_{ab}‖²`. -/
 noncomputable def wightmanSpectralWeight {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (O : QubitOp N) (a b : QubitIdx N) : ℝ :=
+  let U : QubitOp N := (hH.eigenvectorUnitary : QubitOp N)
   (gibbsPartitionFn hH β)⁻¹ *
     Real.exp (-(β / 2) * (hH.eigenvalues a + hH.eigenvalues b)) *
-    ‖((hH.eigenvectorUnitary : QubitOp N)ᴴ * O * (hH.eigenvectorUnitary : QubitOp N)) a b‖ ^ 2
+    ‖(Uᴴ * O * U) a b‖ ^ 2
 
 lemma wightmanSpectralWeight_nonneg {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (O : QubitOp N) (a b : QubitIdx N) :
@@ -72,7 +81,19 @@ lemma wightmanSpectralWeight_nonneg {N : ℕ} {H : QubitOp N} (hH : H.IsHermitia
   have hZ := gibbsPartitionFn_pos hH β
   positivity
 
-/-- **Exact Wightman Norm = Spectral Weight Sum Identity on `QubitOp N`**. -/
+/-- **Exact Wightman Norm = Spectral Weight Sum Identity on `QubitOp N`**:
+`gibbsWightmanNormSq (concreteGibbsData hH β) O = ∑ a, ∑ b, wightmanSpectralWeight hH β O a b`. -/
+private lemma trace_conj_diag_pair {N : ℕ} (U D O : QubitOp N) :
+    (U * D * Uᴴ * Oᴴ * (U * D * Uᴴ) * O).trace =
+      (D * (Uᴴ * O * U)ᴴ * D * (Uᴴ * O * U)).trace := by
+  have hBh : (Uᴴ * O * U)ᴴ = Uᴴ * Oᴴ * U := by
+    simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, Matrix.mul_assoc]
+  rw [hBh]
+  calc (U * D * Uᴴ * Oᴴ * (U * D * Uᴴ) * O).trace
+      = (U * (D * (Uᴴ * Oᴴ * U) * D * (Uᴴ * O))).trace := by simp only [Matrix.mul_assoc]
+    _ = ((D * (Uᴴ * Oᴴ * U) * D * (Uᴴ * O)) * U).trace := Matrix.trace_mul_comm _ _
+    _ = (D * (Uᴴ * Oᴴ * U) * D * (Uᴴ * O * U)).trace := by simp only [Matrix.mul_assoc]
+
 theorem prop_9_1_wightman_norm_eq_spectral_sum {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (O : QubitOp N) :
     gibbsWightmanNormSq (concreteGibbsData hH β) O =
@@ -81,22 +102,17 @@ theorem prop_9_1_wightman_norm_eq_spectral_sum {N : ℕ} {H : QubitOp N} (hH : H
   set B : QubitOp N := Uᴴ * O * U
   set D : QubitOp N := Matrix.diagonal (fun i ↦ (Real.exp (-(β / 2) * hH.eigenvalues i) : ℂ))
   have hZ := gibbsPartitionFn_pos hH β
-  have hrhoHalf : gibbsRhoHalf hH β = ((Real.sqrt (gibbsPartitionFn hH β))⁻¹ : ℂ) • (U * D * Uᴴ) := rfl
   have htr : (gibbsRhoHalf hH β * Oᴴ * gibbsRhoHalf hH β * O).trace =
       ((gibbsPartitionFn hH β)⁻¹ : ℂ) * (D * Bᴴ * D * B).trace := by
-    rw [hrhoHalf]
+    have hrh : gibbsRhoHalf hH β = ((Real.sqrt (gibbsPartitionFn hH β))⁻¹ : ℂ) • (U * D * Uᴴ) := rfl
+    rw [hrh]
     simp only [Matrix.smul_mul, Matrix.mul_smul, Matrix.trace_smul, smul_eq_mul]
     have hsc : ((Real.sqrt (gibbsPartitionFn hH β))⁻¹ : ℂ) *
         ((Real.sqrt (gibbsPartitionFn hH β))⁻¹ : ℂ) = ((gibbsPartitionFn hH β)⁻¹ : ℂ) := by
       rw [← mul_inv, ← Complex.ofReal_mul, Real.mul_self_sqrt hZ.le]
     rw [← mul_assoc, hsc]
     congr 1
-    have hBh : Bᴴ = Uᴴ * Oᴴ * U := by
-      simp only [B, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, Matrix.mul_assoc]
-    have hrew : U * D * Uᴴ * Oᴴ * (U * D * Uᴴ) * O = U * (D * (Uᴴ * Oᴴ * U) * D * (Uᴴ * O)) := by
-      simp only [Matrix.mul_assoc]
-    rw [hrew, ← hBh, Matrix.trace_mul_comm]
-    simp only [B, Matrix.mul_assoc]
+    exact trace_conj_diag_pair U D O
   unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner concreteGibbsData
   dsimp only
   rw [htr, Complex.re_ofReal_mul]
@@ -129,7 +145,8 @@ theorem prop_9_1_wightman_norm_eq_spectral_sum {N : ℕ} {H : QubitOp N} (hH : H
   rw [← Complex.ofReal_mul, Complex.ofReal_re]
   ring
 
-/-- **Proposition 9.1(1) — Exact Gaussian Spectral Density Law (Eq. 9.2)**. -/
+/-- **Proposition 9.1(1) — Exact Gaussian Spectral Density Law (Eq. 9.2)**:
+`wightmanSpectralWeight hH β (gaussianSmear hH σ O) a b = exp(-σ² (E_a - E_b)²) * wightmanSpectralWeight hH β O a b`. -/
 theorem prop_9_1_part1_spectral_density {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β σ : ℝ) (O : QubitOp N) (a b : QubitIdx N) :
     wightmanSpectralWeight hH β (gaussianSmear hH σ O) a b =
@@ -167,11 +184,12 @@ private lemma rpow_mul_exp_neg_le (n : ℕ) (hn : 1 ≤ n) {x : ℝ} (hx : 0 ≤
   rw [hcancel, Real.exp_zero, div_le_div_iff₀ (pow_pos hn_pos n) (Real.exp_pos _)] at hmul
   have he : Real.exp (n : ℝ) = (Real.exp 1) ^ n := by
     rw [← Real.exp_nat_mul, mul_one]
-  rw [he] at hmul
-  rw [div_pow, le_div_iff₀ (pow_pos (Real.exp_pos 1) n)]
+  rw [he, div_pow, le_div_iff₀ (pow_pos (Real.exp_pos 1) n)]
   linarith
 
-/-- **Proposition 9.1(1) — Sub-Gaussian Spectral Moment Bound**. -/
+/-- **Proposition 9.1(1) — Sub-Gaussian Spectral Moment Bound**:
+For all `σ > 0` and `n ≥ 1`, the `2n`-th spectral moment of `gaussianSmear hH σ O` satisfies:
+`∑ a b, w_σ(a,b) * (E_a - E_b)^{2n} ≤ (n / (e σ²))^n * ∑ a b, w_0(a,b)`. -/
 theorem prop_9_1_part1_subgaussian_moments {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) {σ : ℝ} (hσ : 0 < σ) (O : QubitOp N) {n : ℕ} (hn : 1 ≤ n) :
     ∑ a : QubitIdx N, ∑ b : QubitIdx N,
@@ -220,7 +238,10 @@ def doubleWellBlock {n : ℕ} (H_L V : Matrix (Fin n) (Fin n) ℝ) :
     Matrix (Fin n ⊕ Fin n) (Fin n ⊕ Fin n) ℝ :=
   Matrix.fromBlocks H_L V V H_L
 
-/-- **Exact `ℤ₂` Parity Splitting for Concrete Double-Well Hamiltonians (Prop. 9.1(3))**. -/
+/-- **Exact `ℤ₂` Parity Splitting for Concrete Double-Well Hamiltonians (Prop. 9.1(3))**:
+If `(H_L + V) *ᵥ u = E₊ • u` and `(H_L - V) *ᵥ u = E₋ • u`, then the symmetric and
+antisymmetric states `Sum.elim u u` and `Sum.elim u (-u)` are exact eigenvectors of
+`doubleWellBlock H_L V` with eigenvalues `E₊` and `E₋`. -/
 theorem doubleWell_even_odd_eigenpairs {n : ℕ} (H_L V : Matrix (Fin n) (Fin n) ℝ)
     (u : Fin n → ℝ) (E_plus E_minus : ℝ)
     (hplus : (H_L + V) *ᵥ u = E_plus • u)
@@ -230,26 +251,20 @@ theorem doubleWell_even_odd_eigenpairs {n : ℕ} (H_L V : Matrix (Fin n) (Fin n)
   unfold doubleWellBlock
   constructor
   · rw [Matrix.fromBlocks_mulVec]
-    simp only [Sum.elim_comp_inl, Sum.elim_comp_inr]
     have h1 : H_L *ᵥ u + V *ᵥ u = E_plus • u := by rw [← Matrix.add_mulVec]; exact hplus
-    have h2 : V *ᵥ u + H_L *ᵥ u = E_plus • u := by rw [add_comm]; exact h1
-    rw [h1, h2]
+    rw [h1]
     ext x; cases x <;> simp
   · rw [Matrix.fromBlocks_mulVec]
-    simp only [Sum.elim_comp_inl, Sum.elim_comp_inr]
     have h1 : H_L *ᵥ u + V *ᵥ (-u) = E_minus • u := by
       rw [Matrix.mulVec_neg, ← sub_eq_add_neg, ← Matrix.sub_mulVec]; exact hminus
     have h2 : V *ᵥ u + H_L *ᵥ (-u) = -(E_minus • u) := by
-      ext i
-      have hi := congrFun hminus i
-      rw [Matrix.sub_mulVec] at hi
-      simp only [Matrix.mulVec_neg, Pi.add_apply, Pi.neg_apply, Pi.smul_apply, smul_eq_mul]
-      simp only [Pi.sub_apply, Pi.smul_apply, smul_eq_mul] at hi
-      linarith
+      rw [Matrix.mulVec_neg, ← neg_sub, ← Matrix.sub_mulVec, hminus]
     rw [h1, h2]
     ext x; cases x <;> simp
 
-/-- **Exact Schur Complement Eigenvalue Reduction on Concrete Block Matrices (Prop. 9.1(3))**. -/
+/-- **Exact Schur Complement Eigenvalue Reduction on Concrete Block Matrices (Prop. 9.1(3))**:
+If `Matrix.fromBlocks A B C D *ᵥ Sum.elim u v = E • Sum.elim u v` and `(D - E • 1) * Dinv = 1`
+(with `Dinv * (D - E • 1) = 1`), then `(A - B * Dinv * C) *ᵥ u = E • u`. -/
 theorem schur_complement_eigen_eq {m k : ℕ}
     (A : Matrix (Fin m) (Fin m) ℝ) (B : Matrix (Fin m) (Fin k) ℝ)
     (C : Matrix (Fin k) (Fin m) ℝ) (D Dinv : Matrix (Fin k) (Fin k) ℝ)
@@ -275,7 +290,7 @@ theorem schur_complement_eigen_eq {m k : ℕ}
       _ = Dinv *ᵥ ((D - E • 1) *ᵥ v) := by rw [Matrix.mulVec_mulVec]
       _ = Dinv *ᵥ (-(C *ᵥ u)) := by rw [hDv]
       _ = -(Dinv *ᵥ (C *ᵥ u)) := Matrix.mulVec_neg _ _
-  rw [Matrix.sub_mulVec, Matrix.mulVec_mulVec, Matrix.mulVec_mulVec]
+  rw [Matrix.sub_mulVec, ← Matrix.mulVec_mulVec, ← Matrix.mulVec_mulVec]
   rw [hv, Matrix.mulVec_neg] at htop
   ext i
   have hi := congrFun htop i
@@ -283,11 +298,13 @@ theorem schur_complement_eigen_eq {m k : ℕ}
   simp only [Pi.sub_apply, Pi.smul_apply, smul_eq_mul]
   linarith
 
-/-- Concrete `(L + 1) × (L + 1)` nearest-neighbor barrier hopping matrix `T`. -/
+/-- Concrete `(L + 1) × (L + 1)` nearest-neighbor barrier hopping matrix `T`:
+`T_{i, j} = t_hop` if `|i - j| = 1`, else `0`. -/
 def barrierHoppingMatrix (L : ℕ) (t_hop : ℝ) : Matrix (Fin (L + 1)) (Fin (L + 1)) ℝ :=
   Matrix.of (fun i j ↦ if i.val + 1 = j.val ∨ j.val + 1 = i.val then t_hop else 0)
 
-/-- Exact finite-speed propagation across the barrier: `(T^k)_{i, j} = 0` for `i + k < j`. -/
+/-- Exact finite-speed propagation across the barrier:
+`(T^k)_{i, j} = 0` whenever `k < |i - j|` (in particular `j.val - i.val > k`). -/
 theorem barrierHoppingMatrix_pow_zero_of_lt (L : ℕ) (t_hop : ℝ) :
     ∀ k : ℕ, ∀ i j : Fin (L + 1), i.val + k < j.val →
       (barrierHoppingMatrix L t_hop ^ k) i j = 0 := by
@@ -306,7 +323,8 @@ theorem barrierHoppingMatrix_pow_zero_of_lt (L : ℕ) (t_hop : ℝ) :
       rw [ih i m him, zero_mul]
     · simp [barrierHoppingMatrix, hm]
 
-/-- Concrete `ℓ¹` row-sum bound: `∑ j, |(T^k)_{i, j}| ≤ (2 * |t_hop|)^k`. -/
+/-- Concrete `ℓ¹` row-sum bound for powers of the barrier hopping matrix:
+`∑ j, |(T^k)_{i, j}| ≤ (2 * |t_hop|)^k`. -/
 theorem barrierHoppingMatrix_pow_row_sum_le (L : ℕ) (t_hop : ℝ) :
     ∀ k : ℕ, ∀ i : Fin (L + 1),
       ∑ j : Fin (L + 1), |(barrierHoppingMatrix L t_hop ^ k) i j| ≤ (2 * |t_hop|) ^ k := by
@@ -380,7 +398,10 @@ theorem barrierHoppingMatrix_pow_row_sum_le (L : ℕ) (t_hop : ℝ) :
           mul_le_mul_of_nonneg_right (ih i) (by positivity)
       _ = (2 * |t_hop|) ^ (k + 1) := by rw [pow_succ]
 
-/-- **Lemma B.1 (Concrete Exponential Barrier Tunneling Bound via Neumann Series, Flaw #10)**. -/
+/-- **Lemma B.1 (Concrete Exponential Barrier Tunneling Bound via Neumann Series, Flaw #10)**:
+For barrier height `E_B > 2 * |t_hop|` and width `L`, every partial sum `M` of the Neumann
+series for `(E_B I - T)⁻¹_{0, L}` obeys the exact exponential tunneling suppression:
+`|∑_{k=0}^{M-1} E_B^{-(k+1)} (T^k)_{0, L}| ≤ (1 / E_B) * (2 |t_hop| / E_B)^L / (1 - 2 |t_hop| / E_B)`. -/
 theorem lemma_B_1_barrier_neumann_tunneling (L : ℕ) {E_B t_hop : ℝ}
     (hE : 2 * |t_hop| < E_B) (M : ℕ) :
     |∑ k ∈ Finset.range M,
@@ -398,9 +419,7 @@ theorem lemma_B_1_barrier_neumann_tunneling (L : ℕ) {E_B t_hop : ℝ}
     · rw [if_pos hLk, abs_mul, abs_of_nonneg (pow_nonneg (inv_nonneg.mpr hE_pos.le) _)]
       have hle_sum : |(barrierHoppingMatrix L t_hop ^ k) ⟨0, Nat.zero_lt_succ L⟩ ⟨L, Nat.lt_succ_self L⟩| ≤
           ∑ j : Fin (L + 1), |(barrierHoppingMatrix L t_hop ^ k) ⟨0, Nat.zero_lt_succ L⟩ j| :=
-        Finset.single_le_sum
-          (f := fun j : Fin (L + 1) ↦ |(barrierHoppingMatrix L t_hop ^ k) ⟨0, Nat.zero_lt_succ L⟩ j|)
-          (fun _ _ ↦ abs_nonneg _) (Finset.mem_univ _)
+        Finset.single_le_sum (fun _ _ ↦ abs_nonneg _) (Finset.mem_univ _)
       have hrow := barrierHoppingMatrix_pow_row_sum_le L t_hop k ⟨0, Nat.zero_lt_succ L⟩
       have hpow_eq : (E_B⁻¹) ^ (k + 1) * (2 * |t_hop|) ^ k = (1 / E_B) * q ^ k := by
         simp only [q, div_pow, pow_succ, one_div, inv_pow]; ring

@@ -127,7 +127,7 @@ private lemma pauliMat_lin_indep (c : Fin 4 → ℂ)
       intro b
       rw [Matrix.mul_smul, Matrix.trace_smul, smul_eq_mul, pauliMat_trace_mul]
       split_ifs <;> simp
-    simp_rw [this, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
+    simp only [this, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
   rw [hsim] at htr
   have h2 : (2 : ℂ) ≠ 0 := by norm_num
   exact (mul_eq_zero.mp htr).resolve_right h2
@@ -473,7 +473,7 @@ theorem prodDepolBasis_expand {N : ℕ} (s s' : Fin N → Fin 6) (A : QubitOp N)
     have ho := prodDepolBasis_orthonormal s s' a b
     unfold prodDepolInner at ho
     rw [ho]; split_ifs <;> simp
-  simp_rw [hterm, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
+  simp only [hterm, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
 
 theorem prodDepolNormSq_expand {N : ℕ} (s s' : Fin N → Fin 6) (c : (Fin N → Fin 4) → ℂ) :
     prodDepolNormSq s s' (∑ a : Fin N → Fin 4, c a • prodDepolBasis s s' a) =
@@ -774,13 +774,14 @@ theorem theorem_1_3a_concrete_operator {N : ℕ} (G : GibbsData N)
       unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner prodDepolNormSq prodDepolInner
       rw [hρHalf]
       simp only [Matrix.sum_mul, Matrix.mul_sum, Matrix.smul_mul, Matrix.mul_smul,
-        Matrix.trace_sum, Matrix.trace_smul, smul_eq_mul, Complex.re_sum]
+        Matrix.trace_sum, Matrix.trace_smul, smul_eq_mul, Finset.mul_sum, Complex.re_sum]
+      rw [Finset.sum_comm]
       apply Finset.sum_congr rfl; intro s _
       apply Finset.sum_congr rfl; intro s' _
-      have hsc : ((π s : ℂ) * ((π s' : ℂ) *
+      have hsc : ((π s' : ℂ) * ((π s : ℂ) *
           (globalDepolP N s * Xᴴ * globalDepolP N s' * X).trace)).re =
           π s * π s' * (globalDepolP N s * Xᴴ * globalDepolP N s' * X).trace.re := by
-        rw [← mul_assoc, ← Complex.ofReal_mul, Complex.re_ofReal_mul]
+        rw [← mul_assoc, mul_comm (π s' : ℂ) (π s : ℂ), ← Complex.ofReal_mul, Complex.re_ofReal_mul]
       exact hsc
     have hQ_eq : (gibbsWightmanInner G A (wightmanQ G A)).re =
         ∑ k ∈ Finset.range N, (gibbsWightmanInner G A (A - wightmanFiltrationProj G k A)).re := by
@@ -918,7 +919,6 @@ lemma matComm_pauliSite_eq_siteSizeOp {N : ℕ} (x : Fin N) (α : Fin 3) (A : Qu
       simp only [Matrix.mul_sum, Matrix.sum_mul, Matrix.mul_smul, Matrix.smul_mul, Finset.smul_sum]
       rw [Finset.sum_comm]
       apply Finset.sum_congr rfl; intro a _
-      rw [Finset.smul_sum, Finset.smul_sum]
       apply Finset.sum_congr rfl; intro c _; rw [smul_comm]
     rw [hpt_lin]
     unfold matComm
@@ -1016,14 +1016,14 @@ private lemma prodDepolNormSq_replace_le_three {N : ℕ} (s s' : Fin N → Fin 6
     have h3 : 3 * (Matrix.trace (globalDepolP N s * Bᴴ * globalDepolP N s' * B)).re =
         (Matrix.trace (globalDepolPReplace s x ((3 : ℂ) • depolP (s x)) * Bᴴ * globalDepolP N s' * B)).re := by
       rw [hrep_smul, hrep_self]; simp only [Matrix.smul_mul, Matrix.trace_smul, smul_eq_mul]
-      change _ = (((3 : ℝ) : ℂ) * _).re; rw [Complex.re_ofReal_mul]
+      rw [show (3 : ℂ) = ((3 : ℝ) : ℂ) by norm_num, Complex.re_ofReal_mul]
     rw [h3, three_depolP_eq_depolP_add_psd (s x) v, hrep_add, hrep_add, hrep_upd, hrep_smul, hrep_smul]
     simp only [Matrix.add_mul, Matrix.trace_add, Complex.add_re]
     have ht1 : 0 ≤ (Matrix.trace (((1 / 8 : ℂ) •
         globalDepolPReplace s x ((1 - signedPauli v) * (1 - signedPauli v))) * Bᴴ *
         globalDepolP N s' * B)).re := by
       simp only [Matrix.smul_mul, Matrix.trace_smul, smul_eq_mul]
-      change 0 ≤ (((1 / 8 : ℝ) : ℂ) * _).re; rw [Complex.re_ofReal_mul]
+      rw [show (1 / 8 : ℂ) = ((1 / 8 : ℝ) : ℂ) by norm_num, Complex.re_ofReal_mul]
       apply mul_nonneg (by norm_num)
       rw [hrep_sq s (1 - signedPauli v) (by rw [Matrix.conjTranspose_sub, Matrix.conjTranspose_one, signedPauli_herm]),
         hdepol_sq s']
@@ -1032,7 +1032,7 @@ private lemma prodDepolNormSq_replace_le_three {N : ℕ} (s s' : Fin N → Fin 6
         globalDepolPReplace s x ((1 + signedPauli (s x)) * (1 + signedPauli (s x)))) * Bᴴ *
         globalDepolP N s' * B)).re := by
       simp only [Matrix.smul_mul, Matrix.trace_smul, smul_eq_mul]
-      change 0 ≤ (((3 / 8 : ℝ) : ℂ) * _).re; rw [Complex.re_ofReal_mul]
+      rw [show (3 / 8 : ℂ) = ((3 / 8 : ℝ) : ℂ) by norm_num, Complex.re_ofReal_mul]
       apply mul_nonneg (by norm_num)
       rw [hrep_sq s (1 + signedPauli (s x)) (by rw [Matrix.conjTranspose_add, Matrix.conjTranspose_one, signedPauli_herm]),
         hdepol_sq s']
@@ -1042,13 +1042,13 @@ private lemma prodDepolNormSq_replace_le_three {N : ℕ} (s s' : Fin N → Fin 6
     have h3 : 3 * (Matrix.trace (globalDepolP N s * Bᴴ * globalDepolP N s' * B)).re =
         (Matrix.trace (globalDepolP N s * Bᴴ * globalDepolPReplace s' x ((3 : ℂ) • depolP (s' x)) * B)).re := by
       rw [hrep_smul, hrep_self]; simp only [Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_smul, smul_eq_mul]
-      change _ = (((3 : ℝ) : ℂ) * _).re; rw [Complex.re_ofReal_mul]
+      rw [show (3 : ℂ) = ((3 : ℝ) : ℂ) by norm_num, Complex.re_ofReal_mul]
     rw [h3, three_depolP_eq_depolP_add_psd (s' x) v, hrep_add, hrep_add, hrep_upd, hrep_smul, hrep_smul]
     simp only [Matrix.mul_add, Matrix.add_mul, Matrix.trace_add, Complex.add_re]
     have ht1 : 0 ≤ (Matrix.trace (globalDepolP N s * Bᴴ * ((1 / 8 : ℂ) •
         globalDepolPReplace s' x ((1 - signedPauli v) * (1 - signedPauli v))) * B)).re := by
       simp only [Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_smul, smul_eq_mul]
-      change 0 ≤ (((1 / 8 : ℝ) : ℂ) * _).re; rw [Complex.re_ofReal_mul]
+      rw [show (1 / 8 : ℂ) = ((1 / 8 : ℝ) : ℂ) by norm_num, Complex.re_ofReal_mul]
       apply mul_nonneg (by norm_num)
       rw [hdepol_sq s,
         hrep_sq s' (1 - signedPauli v) (by rw [Matrix.conjTranspose_sub, Matrix.conjTranspose_one, signedPauli_herm])]
@@ -1056,7 +1056,7 @@ private lemma prodDepolNormSq_replace_le_three {N : ℕ} (s s' : Fin N → Fin 6
     have ht2 : 0 ≤ (Matrix.trace (globalDepolP N s * Bᴴ * ((3 / 8 : ℂ) •
         globalDepolPReplace s' x ((1 + signedPauli (s' x)) * (1 + signedPauli (s' x)))) * B)).re := by
       simp only [Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_smul, smul_eq_mul]
-      change 0 ≤ (((3 / 8 : ℝ) : ℂ) * _).re; rw [Complex.re_ofReal_mul]
+      rw [show (3 / 8 : ℂ) = ((3 / 8 : ℝ) : ℂ) by norm_num, Complex.re_ofReal_mul]
       apply mul_nonneg (by norm_num)
       rw [hdepol_sq s,
         hrep_sq s' (1 + signedPauli (s' x)) (by rw [Matrix.conjTranspose_add, Matrix.conjTranspose_one, signedPauli_herm])]
@@ -1141,10 +1141,11 @@ theorem theorem_1_3b_concrete_CW {N : ℕ} (G : GibbsData N)
     unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner prodDepolNormSq prodDepolInner
     rw [hρHalf]
     simp only [Matrix.sum_mul, Matrix.mul_sum, Matrix.smul_mul, Matrix.mul_smul,
-      Matrix.trace_sum, Matrix.trace_smul, smul_eq_mul, Complex.re_sum]
+      Matrix.trace_sum, Matrix.trace_smul, smul_eq_mul, Finset.mul_sum, Complex.re_sum]
+    rw [Finset.sum_comm]
     apply Finset.sum_congr rfl; intro s _
     apply Finset.sum_congr rfl; intro s' _
-    rw [← mul_assoc, ← Complex.ofReal_mul, Complex.re_ofReal_mul]
+    rw [← mul_assoc, mul_comm (π s' : ℂ) (π s : ℂ), ← Complex.ofReal_mul, Complex.re_ofReal_mul]
   have hcomm_bound : ∀ (x : Fin N) (α : Fin 3),
       gibbsWightmanNormSq G (matComm A (pauliSite x α.succ)) ≤
         12 * gibbsWightmanNormSq G (siteSizeOp x A) := by
