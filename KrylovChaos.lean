@@ -37,4 +37,6 @@ import KrylovChaos.HighTempReversePoincare
 import KrylovChaos.OperatorGlauberAndLanczosFiltration
 import KrylovChaos.ConcreteEndToEndWiring
 import KrylovChaos.Theorem12Concrete
+import KrylovChaos.SupportAndDualFrame
 import KrylovChaos.PolymerExpansionConcrete
+import KrylovChaos.Lemma72Concrete
