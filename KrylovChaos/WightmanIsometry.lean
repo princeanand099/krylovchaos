@@ -29,6 +29,18 @@ section WightmanIsometry
 
 variable {ι : Type*} [Fintype ι] [DecidableEq ι]
 
+/-- Matrix commutator `[A, B] = A B - B A`. -/
+def matComm (A B : Matrix ι ι ℂ) : Matrix ι ι ℂ := A * B - B * A
+
+/-- Wightman-to-Hilbert–Schmidt isometry `𝒥_β(A) = ρ^{1/4} A ρ^{1/4}` (shorthand `jBeta`). -/
+def jBeta (ρQuarter A : Matrix ι ι ℂ) : Matrix ι ι ℂ := ρQuarter * A * ρQuarter
+
+/-- Hilbert–Schmidt inner product `⟨A, B⟩_HS = Tr(A† B)`. -/
+def hsInner (A B : Matrix ι ι ℂ) : ℂ := (Aᴴ * B).trace
+
+/-- Squared Hilbert–Schmidt norm `‖A‖_HS² = Re Tr(A† A)`. -/
+def hsNormSq (A : Matrix ι ι ℂ) : ℝ := (hsInner A A).re
+
 /-- Finite-dimensional Wightman inner product `(A | B)_β^W = Tr(ρ^{1/2} A† ρ^{1/2} B)`. -/
 def wightmanInner (ρHalf A B : Matrix ι ι ℂ) : ℂ :=
   (ρHalf * Aᴴ * ρHalf * B).trace

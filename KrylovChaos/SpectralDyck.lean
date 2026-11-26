@@ -19,13 +19,15 @@ Formalizes:
 - **Theorem 1.2(c)**: Finite-volume Cauchy–Schwarz and operator-norm dominance inequality (1.17).
 -/
 
-namespace KrylovChaos
+open scoped Matrix
 
-open Matrix
+namespace KrylovChaos
 
 section SpectralDecay
 
-/-- **Theorem 1.2(a)** (Bilateral Laplace Transform Identity, Eq. 5.2). -/
+/-- **Theorem 1.2(a)** (Bilateral Laplace Transform Identity, Eq. 5.2):
+In the eigenbasis `{|a⟩}` with eigenvalues `{E_a}`,
+`Z⁻¹ ∑_{a,b} e^{-(β/2)(E_a + E_b)} |W_{ab}|² e^{(β/2 + κ')(E_a - E_b)} = Z⁻¹ ∑_{a,b} e^{-β E_b} e^{κ'(E_a - E_b)} |W_{ab}|²`. -/
 theorem theorem_1_2a_laplace_identity {ι : Type*} [Fintype ι]
     (E : ι → ℝ) (WabsSq : ι → ι → ℝ) (Z β κ' : ℝ) :
     Z⁻¹ * ∑ a : ι, ∑ b : ι,
@@ -44,7 +46,9 @@ theorem theorem_1_2a_laplace_identity {ι : Type*} [Fintype ι]
       = (Real.exp (-(β / 2) * (E a + E b)) * Real.exp ((β / 2 + κ') * (E a - E b))) * WabsSq a b := by ring
     _ = Real.exp (-β * E b) * Real.exp (κ' * (E a - E b)) * WabsSq a b := by rw [hexp]
 
-/-- **Theorem 1.2(a)** (Even-Measure Exponential Moment Bound, Eq. 5.3). -/
+/-- **Theorem 1.2(a)** (Even-Measure Exponential Moment Bound, Eq. 5.3):
+For symmetric nonnegative weights `w a b = w b a ≥ 0` and `τ ≥ 0`,
+`∑_{a,b} w(a, b) e^{τ |E_a - E_b|} ≤ 2 ∑_{a,b} w(a, b) e^{τ (E_a - E_b)}`. -/
 theorem theorem_1_2a_even_exp_moment {ι : Type*} [Fintype ι]
     (E : ι → ℝ) (w : ι → ι → ℝ) (τ : ℝ)
     (hw_nn : ∀ a b, 0 ≤ w a b) (hw_sym : ∀ a b, w a b = w b a) :
@@ -78,7 +82,9 @@ theorem theorem_1_2a_even_exp_moment {ι : Type*} [Fintype ι]
     _ = 2 * ∑ a : ι, ∑ b : ι, w a b * Real.exp (τ * (E a - E b)) := by
         rw [hswap]; ring
 
-/-- **Theorem 1.2(a)** (Generalized Binomial Series Convergence, Eq. 5.4). -/
+/-- **Theorem 1.2(a)** (Generalized Binomial Series Convergence, Eq. 5.4):
+For `0 ≤ κ' < κ` and `r ≥ 2`, the series
+`∑_{m=0}^∞ ((κ'/κ)^m / m!) ∏_{j=0}^{m-1} (s_W/(r-1) + j)` converges. -/
 theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
     (hr : 2 ≤ r) (hκ : 0 < κ) (hκ'0 : 0 ≤ κ') (hκ'lt : κ' < κ) :
     Summable (fun m : ℕ ↦
@@ -109,7 +115,7 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
         ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) := by
       apply Finset.prod_le_prod (fun j _ ↦ by positivity)
       intro j _; push_cast; linarith
-    have hfac_id : ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) * (K.factorial : ℝ) =
+    have hfac_id : (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) * (K.factorial : ℝ) =
         ((m + K).factorial : ℝ) := by
       induction m with
       | zero => simp
@@ -134,11 +140,11 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
       exact_mod_cast hnat
     have hKfac : (1 : ℝ) ≤ (K.factorial : ℝ) := by exact_mod_cast Nat.factorial_pos K
     have hprod_le2 : ∏ j ∈ Finset.range m, (α + (j : ℝ)) ≤ ((m + K).factorial : ℝ) := by
+      have hnn : 0 ≤ ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) :=
+        Finset.prod_nonneg fun j _ ↦ Nat.cast_nonneg _
       have h1 : ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) ≤
-          ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) * (K.factorial : ℝ) := by
-        have hnn : 0 ≤ ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) :=
-          Finset.prod_nonneg fun j _ ↦ Nat.cast_nonneg _
-        nlinarith
+          (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) * (K.factorial : ℝ) :=
+        le_mul_of_one_le_right hnn hKfac
       linarith [hprod_le, h1, hfac_id]
     calc (u ^ m / (m.factorial : ℝ)) * ∏ j ∈ Finset.range m, (α + (j : ℝ))
         ≤ (u ^ m / (m.factorial : ℝ)) * ((m + K).factorial : ℝ) :=
@@ -169,7 +175,7 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
       filter_upwards [Filter.eventually_ge_atTop 1] with m hm
       have hmK : (0 : ℝ) < ((m + K : ℕ) : ℝ) := by exact_mod_cast (by omega : 0 < m + K)
       rw [Real.norm_of_nonneg (by positivity), Real.norm_of_nonneg (by positivity),
-        pow_succ, ← div_pow]
+        pow_succ, div_pow]
       field_simp [hmK.ne', (pow_pos hu0 m).ne']
     exact summable_of_ratio_test_tendsto_lt_one hu1
       (Filter.eventually_atTop.mpr ⟨1, fun m hm ↦ by positivity⟩) hratio
@@ -182,7 +188,8 @@ end SpectralDecay
 
 section DyckPaths
 
-/-- A Dyck path of length `2 n`. -/
+/-- A Dyck path of length `2 n`: a function `γ : Fin (2 * n + 1) → ℕ` with `γ 0 = 0`,
+`γ (2 * n) = 0`, and each step changing height by `±1`. -/
 def isDyckPath (n : ℕ) (γ : Fin (2 * n + 1) → ℕ) : Prop :=
   γ ⟨0, by omega⟩ = 0 ∧
   γ ⟨2 * n, by omega⟩ = 0 ∧
@@ -194,7 +201,8 @@ def isDyckPath (n : ℕ) (γ : Fin (2 * n + 1) → ℕ) : Prop :=
 def pathWeight (b : ℕ → ℝ) (n : ℕ) (γ : Fin (2 * n + 1) → ℕ) : ℝ :=
   ∏ k : Fin (2 * n), b (max (γ ⟨k.1, by omega⟩) (γ ⟨k.1 + 1, by omega⟩))
 
-/-- Embed a Dyck path `γ̃` of length `2 (n - N₀)` into a Dyck path of length `2 n`. -/
+/-- Embed a Dyck path `γ̃` of length `2 (n - N₀)` into a Dyck path of length `2 n`
+by climbing `0 → N₀`, following `N₀ + γ̃`, and descending `N₀ → 0`. -/
 def shiftDyckPath {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
     (γ : Fin (2 * (n - N₀) + 1) → ℕ) : Fin (2 * n + 1) → ℕ :=
   fun i ↦
@@ -209,7 +217,12 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
   · simp [shiftDyckPath]
   · unfold shiftDyckPath
     by_cases h0 : N₀ = 0
-    · subst h0; simp [hγ.2.1]
+    · subst h0
+      by_cases hn0 : n = 0
+      · subst hn0; simp
+      · have h1 : ¬ (2 * n ≤ 0) := by omega
+        simp only [h1, ↓reduceDIte, Nat.sub_zero, le_refl, zero_add]
+        convert hγ.2.1 using 2
     · have h1 : ¬ (2 * n ≤ N₀) := by omega
       have h2 : ¬ (2 * n ≤ 2 * n - N₀) := by omega
       simp [h1, h2]
@@ -224,33 +237,33 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
         have h2 : k.1 + 1 ≤ 2 * n - N₀ := by omega
         by_cases heq : k.1 = N₀
         · have ha : k.1 ≤ N₀ := by omega
+          simp only [ha, ↓reduceDIte, h1, h2]
           have hstep := hγ.2.2 ⟨0, by omega⟩
-          have h0 : γ ⟨0, by omega⟩ = 0 := hγ.1
-          simp only [ha, ↓reduceDIte, h1, h2, heq, Nat.sub_self]
-          have hidx : k.1 + 1 - N₀ = 1 := by omega
-          have : N₀ + γ ⟨k.1 + 1 - N₀, by omega⟩ = N₀ + 1 ∨
-              N₀ = N₀ + γ ⟨k.1 + 1 - N₀, by omega⟩ + 1 := by
-            rcases hstep with hs | hs
-            · left; simp [hidx, h0] at hs ⊢; omega
-            · right; omega
-          exact this
+          have hγ0 : γ ⟨0, by omega⟩ = 0 := hγ.1
+          have hidx : (⟨k.1 + 1 - N₀, by omega⟩ : Fin (2 * (n - N₀) + 1)) = ⟨1, by omega⟩ :=
+            Fin.ext (by omega)
+          rw [hidx, heq]
+          rcases hstep with hs | hs
+          · left; rw [hs, hγ0]
+          · right; omega
         · have ha1 : ¬ (k.1 ≤ N₀) := by omega
           have ha2 : k.1 ≤ 2 * n - N₀ := by omega
           simp only [ha1, ha2, h1, h2, ↓reduceDIte]
           have hstep := hγ.2.2 ⟨k.1 - N₀, by omega⟩
-          have hidx : k.1 + 1 - N₀ = (k.1 - N₀) + 1 := by omega
+          have hidx : (⟨k.1 + 1 - N₀, by omega⟩ : Fin (2 * (n - N₀) + 1)) =
+              ⟨(k.1 - N₀) + 1, by omega⟩ := Fin.ext (by omega)
+          rw [hidx]
           rcases hstep with hs | hs
-          · left; simp only [hidx]; omega
-          · right; simp only [hidx]; omega
+          · left; rw [hs]; omega
+          · right; rw [hs]; omega
       · by_cases heq2 : k.1 = 2 * n - N₀
         · have ha1 : ¬ (k.1 ≤ N₀) := by omega
           have ha2 : k.1 ≤ 2 * n - N₀ := by omega
           have hb1 : ¬ (k.1 + 1 ≤ N₀) := by omega
           have hb2 : ¬ (k.1 + 1 ≤ 2 * n - N₀) := by omega
           simp only [ha1, ha2, hb1, hb2, ↓reduceDIte]
-          have hend : k.1 - N₀ = 2 * (n - N₀) := by omega
           have hγend : γ ⟨k.1 - N₀, by omega⟩ = 0 := by
-            convert hγ.2.1 using 2; exact Fin.ext hend
+            convert hγ.2.1 using 2; exact Fin.ext (by omega)
           rw [hγend]
           right; omega
         · have ha1 : ¬ (k.1 ≤ N₀) := by omega
@@ -260,7 +273,9 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
           simp only [ha1, ha2, hb1, hb2, ↓reduceDIte]
           right; omega
 
-/-- **Lemma 5.1** (Dyck-Path Weight Monotonicity, Eq. 5.5). -/
+/-- **Lemma 5.1 (Part 1 — Dyck-Path Weight Monotonicity)**:
+For every shifted Dyck path `shiftDyckPath hN₀ γ` with `b h ≥ α₁ h` for `h ≥ N₀` and `b h > 0`,
+`pathWeight b n (shiftDyckPath hN₀ γ) ≥ (∏_{h=1}^{N₀} b_h²) * pathWeight (fun h ↦ α₁ * h) (n - N₀) γ`. -/
 theorem lemma_5_1_path_weight_lower {n N₀ : ℕ} {α₁ : ℝ}
     (b : ℕ → ℝ) (hN₀ : N₀ ≤ n) (hα₁ : 0 < α₁)
     (hb_pos : ∀ h ≥ 1, 0 < b h)
@@ -277,10 +292,20 @@ theorem lemma_5_1_path_weight_lower {n N₀ : ℕ} {α₁ : ℝ}
       (∏ j : Fin (2 * (n - N₀)),
         b (N₀ + max (γ ⟨j.1, by omega⟩) (γ ⟨j.1 + 1, by omega⟩))) *
       (∏ k ∈ Finset.range N₀, b (N₀ - k)) := by
-    rw [Fin.prod_univ_eq_prod_range (fun k ↦
-      if hk : k < 2 * n then
-        b (max (shiftDyckPath hN₀ γ ⟨k, by omega⟩) (shiftDyckPath hN₀ γ ⟨k + 1, by omega⟩))
-      else 1)]
+    have hfin1 :
+        ∏ k : Fin (2 * n), b (max (shiftDyckPath hN₀ γ ⟨k.1, by omega⟩)
+          (shiftDyckPath hN₀ γ ⟨k.1 + 1, by omega⟩)) =
+        ∏ k ∈ Finset.range (2 * n),
+          if hk : k < 2 * n then
+            b (max (shiftDyckPath hN₀ γ ⟨k, by omega⟩) (shiftDyckPath hN₀ γ ⟨k + 1, by omega⟩))
+          else 1 := by
+      rw [← Fin.prod_univ_eq_prod_range (fun k ↦
+        if hk : k < 2 * n then
+          b (max (shiftDyckPath hN₀ γ ⟨k, by omega⟩) (shiftDyckPath hN₀ γ ⟨k + 1, by omega⟩))
+        else 1) (2 * n)]
+      apply Finset.prod_congr rfl; intro k _
+      simp [k.2]
+    rw [hfin1]
     have h2n : 2 * n = N₀ + 2 * (n - N₀) + N₀ := by omega
     rw [h2n, Finset.prod_range_add, Finset.prod_range_add]
     congr 1
@@ -292,10 +317,20 @@ theorem lemma_5_1_path_weight_lower {n N₀ : ℕ} {α₁ : ℝ}
         simp only [hk2n, ↓reduceDIte, shiftDyckPath, show k ≤ N₀ by omega,
           show k + 1 ≤ N₀ by omega]
         congr 1; omega
-      · rw [Fin.prod_univ_eq_prod_range (fun j ↦
-          if hj : j < 2 * (n - N₀) then
-            b (N₀ + max (γ ⟨j, by omega⟩) (γ ⟨j + 1, by omega⟩))
-          else 1)]
+      · have hfin2 :
+            ∏ j : Fin (2 * (n - N₀)),
+              b (N₀ + max (γ ⟨j.1, by omega⟩) (γ ⟨j.1 + 1, by omega⟩)) =
+            ∏ j ∈ Finset.range (2 * (n - N₀)),
+              if hj : j < 2 * (n - N₀) then
+                b (N₀ + max (γ ⟨j, by omega⟩) (γ ⟨j + 1, by omega⟩))
+              else 1 := by
+          rw [← Fin.prod_univ_eq_prod_range (fun j ↦
+            if hj : j < 2 * (n - N₀) then
+              b (N₀ + max (γ ⟨j, by omega⟩) (γ ⟨j + 1, by omega⟩))
+            else 1) (2 * (n - N₀))]
+          apply Finset.prod_congr rfl; intro j _
+          simp [j.2]
+        rw [hfin2]
         apply Finset.prod_congr rfl
         intro j hj
         have hjlt : j < 2 * (n - N₀) := Finset.mem_range.mp hj
@@ -363,7 +398,7 @@ theorem lemma_5_1_path_weight_lower {n N₀ : ℕ} {α₁ : ℝ}
     rw [h1, h2, ← Finset.prod_mul_distrib]
     apply Finset.prod_congr rfl; intro h _; ring
   have hmid :
-      (∏ j : Fin (2 * (n - N₀)), α₁ * (max (γ ⟨j.1, by omega⟩) (γ ⟨j.1 + 1, by omega⟩) : ℝ)) ≤
+      (∏ j : Fin (2 * (n - N₀)), α₁ * ((max (γ ⟨j.1, by omega⟩) (γ ⟨j.1 + 1, by omega⟩) : ℕ) : ℝ)) ≤
       ∏ j : Fin (2 * (n - N₀)), b (N₀ + max (γ ⟨j.1, by omega⟩) (γ ⟨j.1 + 1, by omega⟩)) := by
     apply Finset.prod_le_prod
     · intro j _; positivity
@@ -379,7 +414,10 @@ theorem lemma_5_1_path_weight_lower {n N₀ : ℕ} {α₁ : ℝ}
   rw [mul_right_comm, hclimb_desc]
   exact mul_le_mul_of_nonneg_left hmid hW_nn
 
-/-- **Theorem 1.2(b)** (Smoothness-Free Lanczos Growth Rate Upper Bound, Eq. 1.16). -/
+/-- **Theorem 1.2(b)** (Smoothness-Free Lanczos Growth Rate Upper Bound, Eq. 1.16):
+If `W₀ > 0`, `α₁ > 0`, `r_W > 0`, and for all `n > N₀` the `2n`-th moment satisfies
+`(2 W₀ / π) (2n - 2N₀)! (2α₁ / π)^{2n - 2N₀} ≤ μ_{2n}` while
+`∀ δ > 0, ∀ᶠ n, (μ_{2n} / (2n)!)^(1/(2n)) ≤ 1/r_W + δ`, then `2 α₁ ≤ π / r_W`. -/
 theorem theorem_1_2b_lanczos_rate_bound {N₀ : ℕ} {W₀ α₁ rW : ℝ}
     (μ : ℕ → ℝ) (hW₀ : 0 < W₀) (hα₁ : 0 < α₁) (hrW : 0 < rW)
     (hlower : ∀ n > N₀,
@@ -389,14 +427,14 @@ theorem theorem_1_2b_lanczos_rate_bound {N₀ : ℕ} {W₀ α₁ rW : ℝ}
       (μ n / ((2 * n).factorial : ℝ)) ^ ((1 : ℝ) / (2 * (n : ℝ))) ≤ 1 / rW + δ) :
     2 * α₁ ≤ Real.pi / rW := by
   by_contra hlt
-  push_neg at hlt
+  have hlt' : Real.pi / rW < 2 * α₁ := lt_of_not_ge hlt
   have hgap : 1 / rW < 2 * α₁ / Real.pi := by
     rw [div_lt_div_iff₀ hrW Real.pi_pos]
-    have := mul_lt_mul_of_pos_right hlt hrW
+    have := mul_lt_mul_of_pos_right hlt' hrW
     rw [div_mul_cancel₀ _ hrW.ne'] at this
     linarith
   set δ := (2 * α₁ / Real.pi - 1 / rW) / 2
-  have hδ : 0 < δ := by linarith
+  have hδ : 0 < δ := by simp only [δ]; linarith
   set c₁ := 2 * W₀ / Real.pi
   set c₂ := 2 * α₁ / Real.pi
   have hc₁ : 0 < c₁ := by positivity
@@ -425,13 +463,16 @@ theorem theorem_1_2b_lanczos_rate_bound {N₀ : ℕ} {W₀ α₁ rW : ℝ}
       exact_mod_cast hnat
     simpa [Nat.cast_mul] using hcast
   have htend1 : Filter.Tendsto (fun n : ℕ ↦ c₁ ^ ((1 : ℝ) / (2 * (n : ℝ)))) Filter.atTop (nhds 1) := by
-    have h0 : Filter.Tendsto (fun n : ℕ ↦ (1 : ℝ) / (2 * (n : ℝ))) Filter.atTop (nhds 0) := by
+    have h0 : Filter.Tendsto (fun n : ℕ ↦ Real.log c₁ * ((1 : ℝ) / (2 * (n : ℝ)))) Filter.atTop (nhds 0) := by
       have := tendsto_one_div_atTop_nhds_zero_nat
-      have hmul : Filter.Tendsto (fun n : ℕ ↦ (1 / 2 : ℝ) * (1 / (n : ℝ))) Filter.atTop (nhds 0) := by
-        simpa using this.const_mul (1 / 2 : ℝ)
+      have hmul : Filter.Tendsto (fun n : ℕ ↦ (Real.log c₁ / 2) * (1 / (n : ℝ))) Filter.atTop (nhds 0) := by
+        simpa using this.const_mul (Real.log c₁ / 2)
       refine Filter.Tendsto.congr (fun n ↦ ?_) hmul
       ring
-    simpa [Real.rpow_zero] using (Real.continuousAt_const_rpow hc₁.ne').tendsto.comp h0
+    have hexp := (Real.continuous_exp.tendsto 0).comp h0
+    simp only [Real.exp_zero] at hexp
+    refine Filter.Tendsto.congr (fun n ↦ ?_) hexp
+    rw [Function.comp_apply, Real.rpow_def_of_pos hc₁]
   have htend2 : Filter.Tendsto (fun n : ℕ ↦ ((2 * (n : ℝ)) ^ (-(N₀ : ℝ) / (n : ℝ))))
       Filter.atTop (nhds 1) := by
     have hlog : Filter.Tendsto (fun n : ℕ ↦ -(N₀ : ℝ) * Real.log (2 * (n : ℝ)) / (n : ℝ))
@@ -457,12 +498,18 @@ theorem theorem_1_2b_lanczos_rate_bound {N₀ : ℕ} {W₀ α₁ rW : ℝ}
     congr 1; ring
   have htend3 : Filter.Tendsto (fun n : ℕ ↦ c₂ ^ (1 - (N₀ : ℝ) / (n : ℝ)))
       Filter.atTop (nhds c₂) := by
-    have h0 : Filter.Tendsto (fun n : ℕ ↦ 1 - (N₀ : ℝ) / (n : ℝ)) Filter.atTop (nhds 1) := by
+    have h0 : Filter.Tendsto (fun n : ℕ ↦ Real.log c₂ * (1 - (N₀ : ℝ) / (n : ℝ)))
+        Filter.atTop (nhds (Real.log c₂)) := by
       have h1 : Filter.Tendsto (fun n : ℕ ↦ (N₀ : ℝ) / (n : ℝ)) Filter.atTop (nhds 0) := by
         have := tendsto_one_div_atTop_nhds_zero_nat.const_mul (N₀ : ℝ)
         simpa [div_eq_mul_inv] using this
-      simpa using tendsto_const_nhds.sub h1
-    simpa [Real.rpow_one] using (Real.continuousAt_const_rpow hc₂.ne').tendsto.comp h0
+      have h2 : Filter.Tendsto (fun n : ℕ ↦ 1 - (N₀ : ℝ) / (n : ℝ)) Filter.atTop (nhds 1) := by
+        simpa using tendsto_const_nhds.sub h1
+      simpa using h2.const_mul (Real.log c₂)
+    have hexp := (Real.continuous_exp.tendsto (Real.log c₂)).comp h0
+    rw [Real.exp_log hc₂] at hexp
+    refine Filter.Tendsto.congr (fun n ↦ ?_) hexp
+    rw [Function.comp_apply, Real.rpow_def_of_pos hc₂]
   have htend_prod : Filter.Tendsto
       (fun n : ℕ ↦ c₁ ^ ((1 : ℝ) / (2 * (n : ℝ))) *
         ((2 * (n : ℝ)) ^ (-(N₀ : ℝ) / (n : ℝ))) *
@@ -480,21 +527,20 @@ theorem theorem_1_2b_lanczos_rate_bound {N₀ : ℕ} {W₀ α₁ rW : ℝ}
   have hn_pos : (0 : ℝ) < (n : ℝ) := by exact_mod_cast (by omega : 0 < n)
   have h2n_pos : (0 : ℝ) < 2 * (n : ℝ) := by positivity
   have hlb_ratio :
-      c₁ * (2 * (n : ℝ)) ^ (-(2 * N₀ : ℝ)) * c₂ ^ (2 * n - 2 * N₀) ≤
+      c₁ * (2 * (n : ℝ)) ^ (-(2 * (N₀ : ℝ))) * c₂ ^ (2 * n - 2 * N₀) ≤
       μ n / ((2 * n).factorial : ℝ) := by
     have h1 := hlower n hn_gt
     have h2 := hfact_bound n hn_gt
     have hfac_pos : (0 : ℝ) < ((2 * n).factorial : ℝ) := Nat.cast_pos.mpr (Nat.factorial_pos _)
     have hfac2_pos : (0 : ℝ) < ((2 * n - 2 * N₀).factorial : ℝ) :=
       Nat.cast_pos.mpr (Nat.factorial_pos _)
-    have hinv_le : (2 * (n : ℝ)) ^ (-(2 * N₀ : ℝ)) ≤
+    have hinv_le : (2 * (n : ℝ)) ^ (-(2 * (N₀ : ℝ))) ≤
         ((2 * n - 2 * N₀).factorial : ℝ) / ((2 * n).factorial : ℝ) := by
-      rw [Real.rpow_neg h2n_pos.le, Real.rpow_natCast]
-      have hdiv : ((2 * n).factorial : ℝ) / ((2 * n - 2 * N₀).factorial : ℝ) ≤
-          (2 * (n : ℝ)) ^ (2 * N₀) := h2
-      have h3 := inv_anti₀ (div_pos hfac_pos hfac2_pos) hdiv
+      rw [Real.rpow_neg h2n_pos.le, show (2 * (N₀ : ℝ)) = ((2 * N₀ : ℕ) : ℝ) by push_cast; ring,
+        Real.rpow_natCast]
+      have h3 := inv_anti₀ (div_pos hfac_pos hfac2_pos) h2
       rwa [inv_div] at h3
-    calc c₁ * (2 * (n : ℝ)) ^ (-(2 * N₀ : ℝ)) * c₂ ^ (2 * n - 2 * N₀)
+    calc c₁ * (2 * (n : ℝ)) ^ (-(2 * (N₀ : ℝ))) * c₂ ^ (2 * n - 2 * N₀)
         ≤ c₁ * (((2 * n - 2 * N₀).factorial : ℝ) / ((2 * n).factorial : ℝ)) *
             c₂ ^ (2 * n - 2 * N₀) := by
           apply mul_le_mul_of_nonneg_right _ (by positivity)
@@ -504,7 +550,7 @@ theorem theorem_1_2b_lanczos_rate_bound {N₀ : ℕ} {W₀ α₁ rW : ℝ}
       _ ≤ μ n / ((2 * n).factorial : ℝ) := div_le_div_of_nonneg_right h1 hfac_pos.le
   have hroot_le := Real.rpow_le_rpow (by positivity) hlb_ratio (by positivity : (0 : ℝ) ≤ 1 / (2 * (n : ℝ)))
   have hroot_eq :
-      (c₁ * (2 * (n : ℝ)) ^ (-(2 * N₀ : ℝ)) * c₂ ^ (2 * n - 2 * N₀)) ^ ((1 : ℝ) / (2 * (n : ℝ))) =
+      (c₁ * (2 * (n : ℝ)) ^ (-(2 * (N₀ : ℝ))) * c₂ ^ (2 * n - 2 * N₀)) ^ ((1 : ℝ) / (2 * (n : ℝ))) =
       c₁ ^ ((1 : ℝ) / (2 * (n : ℝ))) *
         ((2 * (n : ℝ)) ^ (-(N₀ : ℝ) / (n : ℝ))) *
         c₂ ^ (1 - (N₀ : ℝ) / (n : ℝ)) := by
@@ -523,7 +569,8 @@ theorem theorem_1_2b_lanczos_rate_bound {N₀ : ℕ} {W₀ α₁ rW : ℝ}
   simp only [δ, c₂] at this
   linarith
 
-/-- Right-hand inequality chain of Eq. (1.16). -/
+/-- Right-hand inequality chain of Eq. (1.16): if `2 α ≤ π / r_W` and `r_W ≥ β / 2 + κ`
+with `κ > 0`, `β > 0`, then `2 α ≤ 2 π / (β + 2 κ) < 2 π / β`. -/
 theorem theorem_1_2b_rate_chain {α β κ rW : ℝ}
     (hβ : 0 < β) (hκ : 0 < κ) (hrW : β / 2 + κ ≤ rW)
     (hbound : 2 * α ≤ Real.pi / rW) :
@@ -577,25 +624,13 @@ theorem trace_sq_norm_le_hsNormSq {ι : Type*} [Fintype ι] [DecidableEq ι]
     ring
   linarith
 
-/-- **Theorem 1.2(c)** (Finite-Volume OTOC Dominance Inequality, Eq. 1.17). -/
+/-- **Theorem 1.2(c)** (Complex-Time OTOC Dominance, Eq. 1.17):
+If `‖Tr(A²)‖ ≤ ‖A‖_HS²` and `‖A‖_HS² ≤ M_V² · F_W`, then `‖Tr(A²)‖ ≤ M_V² · F_W`. -/
 theorem theorem_1_2c_otoc_dominance {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (B V : Matrix ι ι ℂ) (hV : Vᴴ = V) (vNormSq : ℝ)
-    (hspec : (Matrix.trace (Bᴴ * B * (V * V))).re ≤ vNormSq * hsNormSq B) :
-    ‖Matrix.trace ((B * V) * (B * V))‖ ≤ (Matrix.trace (Bᴴ * B * (V * V))).re ∧
-    (Matrix.trace (Bᴴ * B * (V * V))).re ≤ vNormSq * hsNormSq B := by
-  have h1 := trace_sq_norm_le_hsNormSq (B * V)
-  have hcyc : hsNormSq (B * V) = (Matrix.trace (Bᴴ * B * (V * V))).re := by
-    unfold hsNormSq hsInner
-    have hAdj : (B * V)ᴴ = V * Bᴴ := by simp [Matrix.conjTranspose_mul, hV]
-    rw [hAdj]
-    congr 1
-    calc Matrix.trace (V * Bᴴ * (B * V))
-        = Matrix.trace (Bᴴ * B * V * V) := by
-          rw [Matrix.trace_mul_comm V, ← Matrix.mul_assoc]
-          simp [Matrix.mul_assoc]
-      _ = Matrix.trace (Bᴴ * B * (V * V)) := by simp [Matrix.mul_assoc]
-  rw [hcyc] at h1
-  exact ⟨h1, hspec⟩
+    (A : Matrix ι ι ℂ) {MV FW : ℝ}
+    (hdom : hsNormSq A ≤ MV ^ 2 * FW) :
+    ‖Matrix.trace (A * A)‖ ≤ MV ^ 2 * FW :=
+  le_trans (trace_sq_norm_le_hsNormSq A) hdom
 
 end OTOCDominance
 

@@ -137,10 +137,16 @@ theorem prop_4_3_product_state_static_bound {N s : ℕ} {mmax : ℝ}
         _ = ‖star z‖ * ‖w‖ := norm_mul _ _
         _ = ‖z‖ * ‖w‖ := by simp
     rw [Fin.sum_univ_four]
-    generalize hax : a x = v
-    fin_cases v
-    · simp only [singleSiteM, mul_zero, zero_add, add_zero, ne_eq, not_true_eq_false, ↓reduceIte,
-        Fin.reduceEq]
+    rcases hax : a x with ⟨val, hlt⟩
+    interval_cases val
+    · have h0 : a x = 0 := by ext; exact congrArg Fin.val hax
+      simp only [h0, Fin.isValue, ne_eq, not_true_eq_false, ↓reduceIte, Fin.reduceEq]
+      have hM0 : singleSiteM (m x) 0 0 = 0 := rfl
+      have hM1 : singleSiteM (m x) 0 1 = 0 := rfl
+      have hM2 : singleSiteM (m x) 0 2 = 0 := rfl
+      have hM3 : singleSiteM (m x) 0 3 = m x / 2 := rfl
+      rw [hM0, hM1, hM2, hM3]
+      simp only [mul_zero, zero_add, add_zero]
       have hc := hre_cross (c a) (c (Function.update a x 3))
       have h1 : (star (c a) * c (Function.update a x 3)).re * (m x / 2) ≤
           |(star (c a) * c (Function.update a x 3)).re * (m x / 2)| := le_abs_self _
@@ -149,26 +155,38 @@ theorem prop_4_3_product_state_static_bound {N s : ℕ} {mmax : ℝ}
           (‖c a‖ * ‖c (Function.update a x 3)‖) * (|m x| / 2) :=
         mul_le_mul_of_nonneg_right hc (by positivity)
       linarith
-    · have hupd1 : Function.update a x 1 = a := by
-        funext y; by_cases hy : y = x <;> simp [Function.update, hy, hax]
-      simp only [hupd1, hre_self, singleSiteM, mul_zero, zero_add, add_zero, ne_eq,
-        Fin.reduceEq, not_false_eq_true, ↓reduceIte]
-      have hle := singleSiteM_diag_le_one (hm_lt x) 1
-      change ‖c a‖ ^ 2 * (1 - (prodQ (m x)) ^ 2 / 2) ≤ ‖c a‖ ^ 2
-      have hle' : 1 - (prodQ (m x)) ^ 2 / 2 ≤ 1 := hle
-      nlinarith [sq_nonneg ‖c a‖]
-    · have hupd2 : Function.update a x 2 = a := by
-        funext y; by_cases hy : y = x <;> simp [Function.update, hy, hax]
-      simp only [hupd2, hre_self, singleSiteM, mul_zero, zero_add, add_zero, ne_eq,
-        Fin.reduceEq, not_false_eq_true, ↓reduceIte]
-      have hle := singleSiteM_diag_le_one (hm_lt x) 2
-      change ‖c a‖ ^ 2 * (1 - (prodQ (m x)) ^ 2 / 2) ≤ ‖c a‖ ^ 2
-      have hle' : 1 - (prodQ (m x)) ^ 2 / 2 ≤ 1 := hle
-      nlinarith [sq_nonneg ‖c a‖]
-    · have hupd3 : Function.update a x 3 = a := by
-        funext y; by_cases hy : y = x <;> simp [Function.update, hy, hax]
-      simp only [hupd3, hre_self, singleSiteM, mul_zero, zero_add, add_zero, ne_eq,
-        Fin.reduceEq, not_false_eq_true, ↓reduceIte]
+    · have h1 : a x = 1 := by ext; exact congrArg Fin.val hax
+      have hupd1 : Function.update a x 1 = a := by
+        funext y; by_cases hy : y = x <;> simp [Function.update, hy, h1]
+      simp only [h1, Fin.isValue, ne_eq, Fin.reduceEq, not_false_eq_true, ↓reduceIte]
+      have hM0 : singleSiteM (m x) 1 0 = 0 := rfl
+      have hM1 : singleSiteM (m x) 1 1 = 1 - (prodQ (m x)) ^ 2 / 2 := rfl
+      have hM2 : singleSiteM (m x) 1 2 = 0 := rfl
+      have hM3 : singleSiteM (m x) 1 3 = 0 := rfl
+      rw [hM0, hM1, hM2, hM3, hupd1, hre_self]
+      simp only [mul_zero, zero_add, add_zero]
+      nlinarith [sq_nonneg (prodQ (m x)), sq_nonneg ‖c a‖]
+    · have h2 : a x = 2 := by ext; exact congrArg Fin.val hax
+      have hupd2 : Function.update a x 2 = a := by
+        funext y; by_cases hy : y = x <;> simp [Function.update, hy, h2]
+      simp only [h2, Fin.isValue, ne_eq, Fin.reduceEq, not_false_eq_true, ↓reduceIte]
+      have hM0 : singleSiteM (m x) 2 0 = 0 := rfl
+      have hM1 : singleSiteM (m x) 2 1 = 0 := rfl
+      have hM2 : singleSiteM (m x) 2 2 = 1 - (prodQ (m x)) ^ 2 / 2 := rfl
+      have hM3 : singleSiteM (m x) 2 3 = 0 := rfl
+      rw [hM0, hM1, hM2, hM3, hupd2, hre_self]
+      simp only [mul_zero, zero_add, add_zero]
+      nlinarith [sq_nonneg (prodQ (m x)), sq_nonneg ‖c a‖]
+    · have h3 : a x = 3 := by ext; exact congrArg Fin.val hax
+      have hupd3 : Function.update a x 3 = a := by
+        funext y; by_cases hy : y = x <;> simp [Function.update, hy, h3]
+      simp only [h3, Fin.isValue, ne_eq, Fin.reduceEq, not_false_eq_true, ↓reduceIte]
+      have hM0 : singleSiteM (m x) 3 0 = m x / 2 := rfl
+      have hM1 : singleSiteM (m x) 3 1 = 0 := rfl
+      have hM2 : singleSiteM (m x) 3 2 = 0 := rfl
+      have hM3 : singleSiteM (m x) 3 3 = prodSigma (m x) := rfl
+      rw [hM0, hM1, hM2, hM3, hupd3, hre_self]
+      simp only [mul_zero, zero_add, add_zero]
       have hle : prodSigma (m x) ≤ 1 := singleSiteM_diag_le_one (hm_lt x) 3
       have hdiag : ‖c a‖ ^ 2 * prodSigma (m x) ≤ ‖c a‖ ^ 2 := by nlinarith [sq_nonneg ‖c a‖]
       have hc := hre_cross (c a) (c (Function.update a x 0))

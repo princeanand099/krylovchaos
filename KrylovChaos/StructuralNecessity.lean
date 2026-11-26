@@ -152,15 +152,18 @@ theorem prop_9_1_no_linear_lower_bound {C' σ : ℝ} (b : ℕ → ℝ)
       W₀ * (α ^ 6 * (M : ℝ)) ^ M * (M : ℝ) ^ (3 * M) := by
     have hpow_add : (α ^ 2) ^ (M - N₀) * (α ^ 2) ^ N₀ = (α ^ 2) ^ M := by
       rw [← pow_add, Nat.sub_add_cancel hM1]
+    have hα_comb : (α ^ 2) ^ M * (α ^ 2) ^ (2 * M) = (α ^ 6) ^ M := by
+      rw [← pow_add, show M + 2 * M = 3 * M by omega, ← pow_mul,
+        show 2 * (3 * M) = 6 * M by omega, pow_mul]
+    have hM_comb : ((M : ℝ) ^ 2) ^ (2 * M) = (M : ℝ) ^ M * (M : ℝ) ^ (3 * M) := by
+      rw [← pow_mul, show 2 * (2 * M) = M + 3 * M by omega, pow_add]
     calc W₀ * (α ^ 2) ^ (M - N₀) * (α ^ 2 * (M : ℝ) ^ 2) ^ (2 * M) * (α ^ 2) ^ N₀
-        = W₀ * ((α ^ 2) ^ (M - N₀) * (α ^ 2) ^ N₀) * (α ^ 2) ^ (2 * M) * ((M : ℝ) ^ 2) ^ (2 * M) := by
+        = W₀ * ((α ^ 2) ^ (M - N₀) * (α ^ 2) ^ N₀) * ((α ^ 2) ^ (2 * M) * ((M : ℝ) ^ 2) ^ (2 * M)) := by
           rw [mul_pow]; ring
-      _ = W₀ * ((α ^ 2) ^ M * (α ^ 2) ^ (2 * M)) * (M : ℝ) ^ (2 * (2 * M)) := by
-          rw [hpow_add, ← pow_mul]; ring
+      _ = W₀ * ((α ^ 2) ^ M * (α ^ 2) ^ (2 * M)) * ((M : ℝ) ^ 2) ^ (2 * M) := by
+          rw [hpow_add]; ring
       _ = W₀ * (α ^ 6) ^ M * ((M : ℝ) ^ M * (M : ℝ) ^ (3 * M)) := by
-          rw [← pow_add, show M + 2 * M = 3 * M by omega, ← pow_mul,
-            show 2 * (3 * M) = 6 * M by omega, pow_mul,
-            show 2 * (2 * M) = M + 3 * M by omega, pow_add]
+          rw [hα_comb, hM_comb]
       _ = W₀ * (α ^ 6 * (M : ℝ)) ^ M * (M : ℝ) ^ (3 * M) := by
           rw [mul_pow]; ring
   have hrhs_simp :
@@ -276,7 +279,7 @@ theorem prop_9_1_bimodal_exact_size {N : ℕ} (hN : 2 ≤ N) :
         (2 : ℝ) ^ (-3 * ((N : ℝ) - 1) / 2) := by
       rw [← Real.rpow_add h2pos]; congr 1; ring
     have hpre : (2 : ℝ) ^ (N : ℝ) * (2 : ℝ) ^ (-3 : ℝ) = (2 : ℝ) ^ ((N : ℝ) - 3) := by
-      rw [← Real.rpow_add h2pos]; rfl
+      rw [← Real.rpow_add h2pos, sub_eq_add_neg]
     rw [hpre]
     have hsq : ((2 : ℝ) ^ (-((N : ℝ) - 1) / 2) - (2 : ℝ) ^ (-((N : ℝ) - 1))) ^ 2 =
         (2 : ℝ) ^ (-((N : ℝ) - 1)) - 2 * (2 : ℝ) ^ (-3 * ((N : ℝ) - 1) / 2) +

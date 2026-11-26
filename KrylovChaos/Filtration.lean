@@ -313,6 +313,12 @@ theorem theorem_1_1b_static_reduction
   rw [hexp_eq] at hineq
   set P := (N : ℝ) ^ (ρ * (1 - ε)) * Real.log (N : ℝ)
   set sN := (s₀ : ℝ) + ((r : ℝ) - 1) * ((1 / Real.tanh 1) * P + 1)
+  have hineq' : c * (N : ℝ) ^ (1 - ε) ≤
+      C₁ * sN + C₂ * (N : ℝ) ^ δ * sN ^ (1 - δ) +
+      2 * C₀ * (N : ℝ)⁻¹ + C₀ ^ 2 * (N : ℝ) ^ (-3 : ℝ) := by
+    have hmul_assoc : (1 / Real.tanh 1) * (N : ℝ) ^ (ρ * (1 - ε)) * Real.log (N : ℝ) =
+        (1 / Real.tanh 1) * P := by simp only [P]; ring
+    simpa only [sN, hmul_assoc] using hineq
   have hr_ge1 : (1 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
   have hpow_ge1 : (1 : ℝ) ≤ (N : ℝ) ^ (ρ * (1 - ε)) :=
     Real.one_le_rpow hNge1 (mul_nonneg hρ_pos.le h1mε_pos.le)
@@ -411,7 +417,7 @@ theorem theorem_1_1b_static_reduction
   have hterm3 : 2 * C₀ * (N : ℝ)⁻¹ + C₀ ^ 2 * (N : ℝ) ^ (-3 : ℝ) < (c / 2) * (N : ℝ) ^ (1 - ε) := by
     have : c / 2 ≤ (c / 2) * (N : ℝ) ^ (1 - ε) := le_mul_of_one_le_right (by linarith only [hc_pos]) hN1mε_ge1
     linarith only [hsm2, this]
-  linarith only [hineq, hterm12, hterm3]
+  linarith only [hineq', hterm12, hterm3]
 
 end ThermalTruncation
 
