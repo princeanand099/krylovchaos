@@ -916,10 +916,9 @@ private lemma trace_sq_siteSizeOp_le {N : ℕ} (x : Fin N) (L R Y : QubitOp N)
     rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hL_herm, hR_herm]
     have h1 : (L * (Zᴴ * R) * (R * Z * L)).trace = ((L * Zᴴ * (R * R) * Z) * L).trace := by
       simp only [Matrix.mul_assoc]
-    rw [h1, Matrix.trace_mul_comm]
     have h2 : (L * (L * Zᴴ * (R * R) * Z)).trace = ((L * L) * Zᴴ * (R * R) * Z).trace := by
       simp only [Matrix.mul_assoc]
-    rw [h2]
+    rw [h1, Matrix.trace_mul_comm (L * Zᴴ * (R * R) * Z) L, h2]
   rw [htr_hs (siteSizeOp x Y), htr_hs Y, siteSizeOp_comm_LR x L R Y hcommR hcommL]
   exact hsNormSq_siteSizeOp_le x (R * Y * L)
 
@@ -983,8 +982,10 @@ private lemma siteSizeOp_eq_zero_of_mem_trivial {N : ℕ} (x : Fin N)
           by_cases hy : y = x
           · subst hy; simp [hax, hp0, pauliMat_sq]
           · simp [hy, hp0]
-        simp_rw [hconj, Finset.sum_const, Finset.card_univ, Fintype.card_fin]
-        rw [nsmul_eq_smul_cast ℂ, smul_smul]; norm_num
+        simp_rw [hconj, Fin.sum_univ_four]
+        ext p q
+        simp only [Matrix.smul_apply, Matrix.add_apply, smul_eq_mul]
+        ring
       rw [hpt, sub_self]
     · unfold siteSizeOp partialTraceSite; simp
     · intro X Y _ _ hX hY
