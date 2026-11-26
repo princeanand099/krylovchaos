@@ -28,7 +28,7 @@ Closes the remaining Section 5 gaps from ground up without scalar assumptions:
 
 namespace KrylovChaos
 
-open scoped Classical
+open scoped Classical Matrix
 
 section JacobiDyckExpansion
 
@@ -110,7 +110,8 @@ theorem jacobiMat_pow_eq_sum_finPaths {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) :
     · have hempty : Finset.univ.filter (isFinPath 0 h) = ∅ := by
         rw [Finset.filter_eq_empty_iff]
         intro γ _ ⟨h1, h2, _⟩
-        exact hh (Fin.ext (by rw [← h1, h2]))
+        have hval : (0 : ℕ) = h.1 := by rw [← h1, h2]
+        exact hh (Fin.ext hval)
       simp [hh, hempty]
   | m + 1, h => by
     rw [pow_succ, Matrix.mul_apply]
@@ -118,7 +119,15 @@ theorem jacobiMat_pow_eq_sum_finPaths {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) :
         ∑ γ ∈ Finset.univ.filter (isFinPath m j), finPathWeight b m γ :=
       fun j ↦ jacobiMat_pow_eq_sum_finPaths hD b m j
     simp_rw [hIH, Finset.sum_mul]
-    rw [← Finset.sum_sigma']
+    have hsig :
+        (∑ j : Fin D, ∑ γ ∈ Finset.univ.filter (isFinPath m j),
+          finPathWeight b m γ * jacobiMat D b j h) =
+        ∑ p ∈ Finset.univ.sigma (fun j : Fin D ↦ Finset.univ.filter (isFinPath m j)),
+          finPathWeight b m p.2 * jacobiMat D b p.1 h :=
+      (Finset.sum_sigma (Finset.univ : Finset (Fin D))
+        (fun j ↦ Finset.univ.filter (isFinPath m j))
+        (fun j γ ↦ finPathWeight b m γ * jacobiMat D b j h)).symm
+    rw [hsig]
     have hadj : ∀ j : Fin D,
         jacobiMat D b j h =
           if h.1 = j.1 + 1 ∨ j.1 = h.1 + 1 then b (max j.1 h.1) else 0 := by
@@ -205,6 +214,7 @@ lemma isDyckPath_le_n {n : ℕ} {γ : Fin (2 * n + 1) → ℕ} (hγ : isDyckPath
     | succ j ih =>
       intro hj
       have hstep := hγ.2.2 ⟨j, by omega⟩
+      dsimp only at hstep
       have hprev := ih (by omega)
       omega
   have hdn : ∀ d : ℕ, (hd : d ≤ 2 * n) → γ ⟨2 * n - d, by omega⟩ ≤ d := by
@@ -212,11 +222,12 @@ lemma isDyckPath_le_n {n : ℕ} {γ : Fin (2 * n + 1) → ℕ} (hγ : isDyckPath
     induction d with
     | zero =>
       intro _
-      have : γ ⟨2 * n - 0, by omega⟩ = 0 := by convert hγ.2.1 using 2
+      have h0 : γ ⟨2 * n - 0, by omega⟩ = 0 := by convert hγ.2.1 using 2
       omega
     | succ d ih =>
       intro hd
       have hstep := hγ.2.2 ⟨2 * n - (d + 1), by omega⟩
+      dsimp only at hstep
       have hprev := ih (by omega)
       have hidx : 2 * n - (d + 1) + 1 = 2 * n - d := by omega
       have hsame : γ ⟨2 * n - (d + 1) + 1, by omega⟩ = γ ⟨2 * n - d, by omega⟩ := by
@@ -228,7 +239,7 @@ lemma isDyckPath_le_n {n : ℕ} {γ : Fin (2 * n + 1) → ℕ} (hγ : isDyckPath
   · exact le_trans (hup k.1 (by omega)) hk
   · have h1 := hdn (2 * n - k.1) (by omega)
     have h2 : γ ⟨2 * n - (2 * n - k.1), by omega⟩ = γ k := by
-      congr 1; exact Fin.ext (by omega)
+      congr 1; exact Fin.ext (by dsimp; omega)
     rw [h2] at h1
     omega
 
@@ -243,13 +254,11 @@ theorem jacobiMat_moment_eq_dyck_sum {D n : ℕ} (hD : n < D) (b : ℕ → ℝ) 
   have hfilt :
       Finset.univ.filter (isFinPath (2 * n) ⟨0, by omega⟩) =
       Finset.univ.filter (fun γ : Fin (2 * n + 1) → Fin D ↦ isDyckPath n (fun k ↦ (γ k).1)) := by
-    ext γ
+    apply Finset.ext
+    intro γ
     simp only [Finset.mem_filter, Finset.mem_univ, true_and, isFinPath, isDyckPath]
-    constructor
-    · rintro ⟨h0, hend, hsteps⟩
-      exact ⟨h0, congrArg Fin.val hend, hsteps⟩
-    · rintro ⟨h0, hend, hsteps⟩
-      exact ⟨h0, Fin.ext hend, hsteps⟩
+    exact ⟨fun ⟨h0, hend, hsteps⟩ ↦ ⟨h0, congrArg Fin.val hend, hsteps⟩,
+           fun ⟨h0, hend, hsteps⟩ ↦ ⟨h0, Fin.ext hend, hsteps⟩⟩
   rw [hfilt]
   rfl
 
@@ -281,7 +290,7 @@ theorem lemma_5_1_moment_lower_bound {D n N₀ : ℕ} {α₁ : ℝ}
     intro γ hγ k
     have hdyck : isDyckPath (n - N₀) (fun j ↦ (γ j).1) := (Finset.mem_filter.mp hγ).2
     have hshift : isDyckPath n (shiftDyckPath hN₀ (fun j ↦ (γ j).1)) :=
-      shiftDyckPath_isDyckPath hN₀ hdyck
+      shiftDyckPath_isDyck hN₀ hdyck
     exact lt_of_le_of_lt (isDyckPath_le_n hshift k) hD
   have hf_val : ∀ γ ∈ S₁, ∀ k : Fin (2 * n + 1),
       (f γ k).1 = shiftDyckPath hN₀ (fun j ↦ (γ j).1) k := by
@@ -294,13 +303,15 @@ theorem lemma_5_1_moment_lower_bound {D n N₀ : ℕ} {α₁ : ℝ}
     have hfun : (fun k ↦ (f γ k).1) = shiftDyckPath hN₀ (fun j ↦ (γ j).1) :=
       funext (hf_val γ hγ)
     rw [hfun]
-    exact shiftDyckPath_isDyckPath hN₀ hdyck
+    exact shiftDyckPath_isDyck hN₀ hdyck
   have hf_inj : Set.InjOn f S₁ := by
     intro γ₁ hγ₁ γ₂ hγ₂ heq
+    have hdyck₁ : isDyckPath (n - N₀) (fun j ↦ (γ₁ j).1) := (Finset.mem_filter.mp hγ₁).2
+    have hdyck₂ : isDyckPath (n - N₀) (fun j ↦ (γ₂ j).1) := (Finset.mem_filter.mp hγ₂).2
     have hsh : shiftDyckPath hN₀ (fun j ↦ (γ₁ j).1) = shiftDyckPath hN₀ (fun j ↦ (γ₂ j).1) := by
       funext k
       rw [← hf_val γ₁ hγ₁ k, ← hf_val γ₂ hγ₂ k, heq]
-    have hval := shiftDyckPath_injective hN₀ hsh
+    have hval := shiftDyckPath_injective hN₀ hdyck₁ hdyck₂ hsh
     funext j
     exact Fin.ext (congrFun hval j)
   calc ∑ γ ∈ S₁, (∏ h ∈ Finset.Icc 1 N₀, (b h) ^ 2) *
@@ -326,6 +337,7 @@ theorem lemma_5_1_moment_lower_bound {D n N₀ : ℕ} {α₁ : ℝ}
           apply Finset.prod_nonneg
           intro k _
           have hstep := hdyck.2.2 k
+          dsimp only at hstep
           have hpos : 1 ≤ max (γ' ⟨k.1, by omega⟩).1 (γ' ⟨k.1 + 1, by omega⟩).1 := by omega
           exact (hb_pos _ hpos).le
 
@@ -348,8 +360,8 @@ lemma exp_neg_le_inv_cosh {x : ℝ} (hx : 0 ≤ x) :
     have : 0 < Real.exp (-x) := Real.exp_pos (-x)
     linarith
   constructor
-  · rw [Real.exp_neg, inv_le_inv₀ hcosh_pos hexp_pos]
-    exact h1
+  · rw [Real.exp_neg]
+    exact inv_anti₀ hcosh_pos h1
   · rw [Real.exp_neg]
     have : (Real.cosh x)⁻¹ ≤ (Real.exp x / 2)⁻¹ :=
       inv_anti₀ (by positivity) h2
@@ -361,14 +373,12 @@ theorem integral_pow_mul_exp_neg_Ioi {a : ℝ} (ha : 0 < a) (k : ℕ) :
     ∫ ω in Set.Ioi (0 : ℝ), ω ^ k * Real.exp (-(a * ω)) =
     (k.factorial : ℝ) / a ^ (k + 1) := by
   have hΓ : ∫ x in Set.Ioi (0 : ℝ), Real.exp (-x) * x ^ k = (k.factorial : ℝ) := by
-    have h1 := Real.Gamma_eq_integral (show (0 : ℝ) < (k + 1 : ℕ) by positivity)
+    have h1 := Real.Gamma_eq_integral (show (0 : ℝ) < (k : ℝ) + 1 by positivity)
     rw [Real.Gamma_nat_eq_factorial k] at h1
     rw [h1]
     apply MeasureTheory.setIntegral_congr_fun measurableSet_Ioi
     intro x _
-    have hpow : x ^ (((k + 1 : ℕ) : ℝ) - 1) = x ^ k := by
-      rw [Nat.cast_add, Nat.cast_one, add_sub_cancel_right, Real.rpow_natCast]
-    rw [hpow]
+    rw [add_sub_cancel_right, Real.rpow_natCast]
   have hcomp :=
     MeasureTheory.Measure.integral_comp_mul_left
       (Set.indicator (Set.Ioi (0 : ℝ)) (fun x ↦ Real.exp (-x) * x ^ k)) a
@@ -383,7 +393,7 @@ theorem integral_pow_mul_exp_neg_Ioi {a : ℝ} (ha : 0 < a) (k : ℕ) :
       simp [Set.indicator_of_notMem, Set.mem_Ioi, hω, haω]
   rw [hind, MeasureTheory.integral_indicator measurableSet_Ioi,
       MeasureTheory.integral_indicator measurableSet_Ioi, hΓ,
-      abs_of_pos ha, smul_eq_mul] at hcomp
+      abs_of_pos (inv_pos.mpr ha), smul_eq_mul] at hcomp
   have hpull : ∫ ω in Set.Ioi (0 : ℝ), Real.exp (-(a * ω)) * (a * ω) ^ k =
       a ^ k * ∫ ω in Set.Ioi (0 : ℝ), ω ^ k * Real.exp (-(a * ω)) := by
     rw [← MeasureTheory.integral_const_mul]
@@ -413,11 +423,10 @@ theorem meixner_sech_moment_lower_bound {α₁ : ℝ} (hα₁ : 0 < α₁) (m : 
   simp_rw [harg]
   have hint_std : MeasureTheory.IntegrableOn
       (fun x : ℝ ↦ Real.exp (-x) * x ^ (2 * m)) (Set.Ioi 0) := by
-    have h0 := Real.GammaIntegral_convergent (show (0 : ℝ) < (2 * m + 1 : ℕ) by positivity)
+    have h0 := Real.GammaIntegral_convergent (show (0 : ℝ) < (2 * m : ℕ) + 1 by positivity)
     refine h0.congr_fun (fun x _ ↦ ?_) measurableSet_Ioi
-    have hpow : x ^ (((2 * m + 1 : ℕ) : ℝ) - 1) = x ^ (2 * m) := by
-      rw [Nat.cast_add, Nat.cast_one, add_sub_cancel_right, Real.rpow_natCast]
-    rw [hpow]
+    dsimp only
+    rw [add_sub_cancel_right, Real.rpow_natCast]
   have hint_exp : MeasureTheory.IntegrableOn
       (fun ω : ℝ ↦ ω ^ (2 * m) * Real.exp (-(a * ω))) (Set.Ioi 0) := by
     have h1 : MeasureTheory.Integrable
@@ -433,25 +442,31 @@ theorem meixner_sech_moment_lower_bound {α₁ : ℝ} (hα₁ : 0 < α₁) (m : 
       · have haω : ¬ (0 < a * ω) := fun h ↦ hω ((mul_pos_iff_of_pos_left ha).mp h)
         simp [Set.indicator_of_notMem, Set.mem_Ioi, hω, haω]
     rw [hind, MeasureTheory.integrable_indicator_iff measurableSet_Ioi] at h2
-    have h3 := h2.const_mul (a ^ (2 * m))⁻¹
+    have h3 : MeasureTheory.IntegrableOn
+        (fun ω : ℝ ↦ (a ^ (2 * m))⁻¹ * (Real.exp (-(a * ω)) * (a * ω) ^ (2 * m))) (Set.Ioi 0) :=
+      h2.const_mul (a ^ (2 * m))⁻¹
     refine h3.congr_fun (fun ω _ ↦ ?_) measurableSet_Ioi
+    dsimp only
     have hak : a ^ (2 * m) ≠ 0 := pow_ne_zero _ ha.ne'
     rw [mul_pow]
     field_simp [hak]
   have hint_cosh : MeasureTheory.IntegrableOn
       (fun ω : ℝ ↦ ω ^ (2 * m) * (Real.cosh (a * ω))⁻¹) (Set.Ioi 0) := by
-    refine (hint_exp.const_mul 2).mono' ?_ ?_
-    · exact (Continuous.aestronglyMeasurable (by fun_prop))
-    · filter_upwards [MeasureTheory.ae_restrict_mem measurableSet_Ioi] with ω hω
-      have hω_pos : 0 < ω := hω
-      have haω_nn : 0 ≤ a * ω := (mul_pos ha hω_pos).le
-      have hval_nn : 0 ≤ ω ^ (2 * m) * (Real.cosh (a * ω))⁻¹ := by
-        have := Real.cosh_pos (a * ω)
-        positivity
-      rw [Real.norm_of_nonneg hval_nn]
-      have hbd := (exp_neg_le_inv_cosh haω_nn).2
-      have := mul_le_mul_of_nonneg_left hbd (pow_nonneg hω_pos.le (2 * m))
-      linarith
+    have hcont : Continuous (fun ω : ℝ ↦ ω ^ (2 * m) * (Real.cosh (a * ω))⁻¹) :=
+      (continuous_pow (2 * m)).mul
+        ((Real.continuous_cosh.comp (continuous_const.mul continuous_id)).inv₀
+          fun x ↦ (Real.cosh_pos _).ne')
+    refine (hint_exp.const_mul 2).mono' hcont.aestronglyMeasurable ?_
+    filter_upwards [MeasureTheory.ae_restrict_mem measurableSet_Ioi] with ω hω
+    have hω_pos : 0 < ω := hω
+    have haω_nn : 0 ≤ a * ω := (mul_pos ha hω_pos).le
+    have hval_nn : 0 ≤ ω ^ (2 * m) * (Real.cosh (a * ω))⁻¹ := by
+      have := Real.cosh_pos (a * ω)
+      positivity
+    rw [Real.norm_of_nonneg hval_nn]
+    have hbd := (exp_neg_le_inv_cosh haω_nn).2
+    have := mul_le_mul_of_nonneg_left hbd (pow_nonneg hω_pos.le (2 * m))
+    linarith
   have hmono :
       ∫ ω in Set.Ioi (0 : ℝ), ω ^ (2 * m) * Real.exp (-(a * ω)) ≤
       ∫ ω in Set.Ioi (0 : ℝ), ω ^ (2 * m) * (Real.cosh (a * ω))⁻¹ := by

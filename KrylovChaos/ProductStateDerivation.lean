@@ -69,6 +69,11 @@ noncomputable def singleSiteJ (m : ℝ) (A : Matrix (Fin 2) (Fin 2) ℂ) : Matri
 noncomputable def singleSiteSizeForm (m : ℝ) (A B : Matrix (Fin 2) (Fin 2) ℂ) : ℂ :=
   ((singleSiteJ m A)ᴴ * singleSiteSizeOp (singleSiteJ m B)).trace
 
+private lemma diag_mul_diag (a b c d : ℂ) :
+    (!![a, 0; 0, b] : Matrix (Fin 2) (Fin 2) ℂ) * !![c, 0; 0, d] = !![a * c, 0; 0, b * d] := by
+  ext i j
+  fin_cases i <;> fin_cases j <;> simp [Matrix.mul_apply, Fin.sum_univ_two]
+
 /-- Verification of matrix root identities `ρ_x^{1/2} ρ_x^{1/2} = ρ_x` and
 `ρ_x^{1/4} ρ_x^{1/4} = ρ_x^{1/2}` for `|m| < 1`. -/
 theorem singleSiteRho_roots {m : ℝ} (hm : |m| < 1) :
@@ -90,18 +95,10 @@ theorem singleSiteRho_roots {m : ℝ} (hm : |m| < 1) :
       (Real.sqrt (Real.sqrt ((1 - m) / 2)) : ℂ) = (Real.sqrt ((1 - m) / 2) : ℂ) := by
     rw [← Complex.ofReal_mul, Real.mul_self_sqrt (Real.sqrt_nonneg _)]
   constructor
-  · ext i j
-    fin_cases i <;> fin_cases j <;>
-      simp only [singleSiteRhoHalf, singleSiteRho, Matrix.mul_apply, Fin.sum_univ_two,
-        Fin.isValue, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
-        Matrix.cons_val_one, Matrix.cons_val_fin_one, mul_zero, zero_mul, add_zero, zero_add,
-        hpp, hrr]
-  · ext i j
-    fin_cases i <;> fin_cases j <;>
-      simp only [singleSiteRhoQuarter, singleSiteRhoHalf, Matrix.mul_apply, Fin.sum_univ_two,
-        Fin.isValue, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
-        Matrix.cons_val_one, Matrix.cons_val_fin_one, mul_zero, zero_mul, add_zero, zero_add,
-        hqp, hqr]
+  · unfold singleSiteRhoHalf singleSiteRho
+    rw [diag_mul_diag, hpp, hrr]
+  · unfold singleSiteRhoQuarter singleSiteRhoHalf
+    rw [diag_mul_diag, hqp, hqr]
 
 /-- Wightman Gram–Schmidt orthonormal basis `{E_0, E_1, E_2, E_3}` for `ρ_x = (I + m Z)/2`. -/
 noncomputable def gsBasis (m : ℝ) : Fin 4 → Matrix (Fin 2) (Fin 2) ℂ
@@ -259,8 +256,8 @@ theorem gsBasis_wightman_orthonormal {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
       Matrix.cons_val_one, Matrix.cons_val_fin_one, star_zero, star_mul', star_inv₀, star_neg,
       Complex.star_def, Complex.conj_I, Complex.conj_ofReal, mul_zero, zero_mul, add_zero,
       zero_add, neg_neg, Complex.ofReal_inv]
-    change p * r * (sσ⁻¹ * -Complex.I * (Complex.I * sσ⁻¹) +
-      sσ⁻¹ * Complex.I * (-Complex.I * sσ⁻¹)) = 1
+    change p * r * (-Complex.I * sσ⁻¹ * (Complex.I * sσ⁻¹) +
+      Complex.I * sσ⁻¹ * (-Complex.I * sσ⁻¹)) = 1
     field_simp [hsσ_ne]; rw [hsσ2]
     linear_combination -2 * p * r * hII + h2prC
   | 2, 3 => rw [if_neg (by decide)]; simp [gsBasis]
@@ -268,9 +265,9 @@ theorem gsBasis_wightman_orthonormal {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
     rw [if_neg (by decide)]
     simp only [gsBasis, Fin.isValue, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
       Matrix.cons_val_one, Matrix.cons_val_fin_one, star_zero, star_one, star_mul', star_inv₀,
-      star_sub, star_neg, Complex.star_def, Complex.conj_ofReal, mul_zero, zero_mul, add_zero,
-      zero_add, mul_one, one_mul, Complex.ofReal_inv]
-    change p ^ 2 * ((1 - (m : ℂ)) * σ⁻¹) + r ^ 2 * ((-1 - (m : ℂ)) * σ⁻¹) = 0
+      star_sub, star_neg, Complex.star_def, Complex.conj_ofReal, map_one, mul_zero, zero_mul,
+      add_zero, zero_add, mul_one, one_mul, Complex.ofReal_inv]
+    change p ^ 2 * (σ⁻¹ * (1 - (m : ℂ))) + r ^ 2 * (σ⁻¹ * (-1 - (m : ℂ))) = 0
     field_simp [hσ_ne]; linear_combination (1 - (m : ℂ)) * hp2C + (-1 - (m : ℂ)) * hr2C
   | 3, 1 => rw [if_neg (by decide)]; simp [gsBasis]
   | 3, 2 => rw [if_neg (by decide)]; simp [gsBasis]
@@ -278,10 +275,10 @@ theorem gsBasis_wightman_orthonormal {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
     rw [if_pos rfl]
     simp only [gsBasis, Fin.isValue, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
       Matrix.cons_val_one, Matrix.cons_val_fin_one, star_zero, star_mul', star_inv₀, star_sub,
-      star_neg, Complex.star_def, Complex.conj_ofReal, mul_zero, zero_mul, add_zero, zero_add,
-      Complex.ofReal_inv]
-    change p ^ 2 * ((1 - (m : ℂ)) * σ⁻¹) * (σ⁻¹ * (1 - (m : ℂ))) +
-      r ^ 2 * ((-1 - (m : ℂ)) * σ⁻¹) * (σ⁻¹ * (-1 - (m : ℂ))) = 1
+      star_neg, Complex.star_def, Complex.conj_ofReal, map_one, mul_zero, zero_mul, add_zero,
+      zero_add, Complex.ofReal_inv]
+    change p ^ 2 * (σ⁻¹ * (1 - (m : ℂ))) * (σ⁻¹ * (1 - (m : ℂ))) +
+      r ^ 2 * (σ⁻¹ * (-1 - (m : ℂ))) * (σ⁻¹ * (-1 - (m : ℂ))) = 1
     field_simp [hσ_ne]
     linear_combination (1 - (m : ℂ)) ^ 2 * hp2C + (-1 - (m : ℂ)) ^ 2 * hr2C - hσ2
 
@@ -406,8 +403,8 @@ theorem gsBasis_derives_singleSiteM {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
       Complex.conj_ofReal, mul_zero, zero_mul, add_zero, zero_add, mul_one, one_mul,
       sub_zero, neg_neg, Complex.ofReal_sub, Complex.ofReal_one, Complex.ofReal_div,
       Complex.ofReal_pow, Complex.ofReal_ofNat, Complex.ofReal_inv]
-    change p * r * (sσ⁻¹ * -Complex.I * (Complex.I * sσ⁻¹) +
-        sσ⁻¹ * Complex.I * (-Complex.I * sσ⁻¹)) - 1 / 2 * (p - r) * (p - r) =
+    change p * r * (-Complex.I * sσ⁻¹ * (Complex.I * sσ⁻¹) +
+        Complex.I * sσ⁻¹ * (-Complex.I * sσ⁻¹)) - 1 / 2 * (p - r) * (p - r) =
       1 - (prodQ m : ℂ) ^ 2 / 2
     rw [hq2C]
     field_simp [hsσ_ne]; rw [hsσ2]
@@ -420,9 +417,9 @@ theorem gsBasis_derives_singleSiteM {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
     simp only [gsBasis, singleSiteM, Fin.isValue, Matrix.of_apply, Matrix.cons_val',
       Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_fin_one,
       star_zero, star_one, star_mul', star_inv₀, star_sub, star_neg, Complex.star_def,
-      Complex.conj_ofReal, mul_zero, zero_mul, add_zero, zero_add, mul_one, one_mul,
+      Complex.conj_ofReal, map_one, mul_zero, zero_mul, add_zero, zero_add, mul_one, one_mul,
       Complex.ofReal_div, Complex.ofReal_ofNat, Complex.ofReal_inv]
-    change 1 / 2 * (p * ((1 - (m : ℂ)) * σ⁻¹) - r * ((-1 - (m : ℂ)) * σ⁻¹)) * (p - r) = (m : ℂ) / 2
+    change 1 / 2 * (p * (σ⁻¹ * (1 - (m : ℂ))) - r * (σ⁻¹ * (-1 - (m : ℂ)))) * (p - r) = (m : ℂ) / 2
     field_simp [hσ_ne]
     linear_combination (1 - (m : ℂ)) * hp2C - (1 + (m : ℂ)) * hr2C + (m : ℂ) * h2prC
   | 3, 1 =>
@@ -436,9 +433,9 @@ theorem gsBasis_derives_singleSiteM {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
     simp only [gsBasis, singleSiteM, Fin.isValue, Matrix.of_apply, Matrix.cons_val',
       Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_fin_one,
       star_zero, star_one, star_mul', star_inv₀, star_sub, star_neg, Complex.star_def,
-      Complex.conj_ofReal, mul_zero, zero_mul, add_zero, zero_add, mul_one, one_mul,
+      Complex.conj_ofReal, map_one, mul_zero, zero_mul, add_zero, zero_add, mul_one, one_mul,
       Complex.ofReal_inv]
-    change 1 / 2 * (p * ((1 - (m : ℂ)) * σ⁻¹) - r * ((-1 - (m : ℂ)) * σ⁻¹)) *
+    change 1 / 2 * (p * (σ⁻¹ * (1 - (m : ℂ))) - r * (σ⁻¹ * (-1 - (m : ℂ)))) *
       (p * (σ⁻¹ * (1 - (m : ℂ))) - r * (σ⁻¹ * (-1 - (m : ℂ)))) -
       1 / 2 * (p - r) * (p - r) = σ
     field_simp [hσ_ne]
