@@ -6,6 +6,7 @@ Authors: Prince Anand
 import KrylovChaos.Basic
 import Mathlib.Analysis.Calculus.Deriv.Comp
 import Mathlib.Analysis.Calculus.MeanValue
+import Mathlib.Analysis.Calculus.Monotone
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
 import Mathlib.Tactic
 
@@ -489,7 +490,7 @@ theorem lemma_3_1_finite_chain_mgf {Nmax : ℕ} {α γ θ₀ : ℝ}
     simp only [H, hG0, Real.log_one, charTheta_zero hθ₀, sub_self, mul_zero, add_zero]
   have hHt : H t ≤ 0 := by
     rw [← hH0]
-    exact hH_anti (le_rfl : (0 : ℝ) ∈ Set.Ici 0) ht ht
+    exact hH_anti (Set.mem_Ici.mpr le_rfl) (Set.mem_Ici.mpr ht) ht
   have hlog_le : Real.log (G t) ≤ (1 / 2 + γ / α) * (θ₀ - charTheta α θ₀ t) := by
     simp only [H] at hHt
     linarith
@@ -751,8 +752,7 @@ theorem theorem_1_1a_infinite_tail_and_complexity {α γ θ₀ : ℝ}
           rw [Real.exp_neg]
           field_simp [htanh_pos.ne', (Real.exp_pos 1).ne', (Real.exp_pos (2 * α * t)).ne']
 
-/-- Asymptotic growth rate bound from Eq. (1.13): if `0 < K(t) ≤ C e^{2αt}` for all `t > 0`,
-then `(1/t) ln K(t) ≤ 2α + (ln C) / t`, hence `lim sup_{t→∞} (1/t) ln K(t) ≤ 2α`. -/
+/-- Asymptotic growth rate bound from Eq. (1.13). -/
 theorem theorem_1_1a_log_rate_bound {C α : ℝ} {K : ℝ → ℝ}
     (hC : 0 < C) (hKpos : ∀ t > 0, 0 < K t)
     (hK : ∀ t > 0, K t ≤ C * Real.exp (2 * α * t))

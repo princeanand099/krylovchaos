@@ -4,11 +4,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Prince Anand
 -/
 import Mathlib.Analysis.Calculus.MeanValue
+import Mathlib.Analysis.Calculus.Monotone
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
 import Mathlib.Data.Nat.Choose.Sum
 import Mathlib.Tactic
 
@@ -111,13 +111,22 @@ theorem sech_ge_exp_neg {u : ℝ} (hu : 0 ≤ u) :
 /-- Elementary inequality `sinh x ≤ x * cosh x` for all `x ≥ 0`. -/
 theorem sinh_le_mul_cosh {x : ℝ} (hx : 0 ≤ x) :
     Real.sinh x ≤ x * Real.cosh x := by
-  let f : ℝ → ℝ := fun t ↦ t * Real.cosh t - Real.sinh t
-  have hderiv : ∀ t : ℝ, HasDerivAt f (t * Real.sinh t) t := by
+  let f : ℝ → ℝ := fun t ↦
+    t * ((Real.exp t + Real.exp (-t)) / 2) - (Real.exp t - Real.exp (-t)) / 2
+  have hderiv : ∀ t : ℝ, HasDerivAt f (t * ((Real.exp t - Real.exp (-t)) / 2)) t := by
     intro t
-    have h1 : HasDerivAt (fun t ↦ t * Real.cosh t) (1 * Real.cosh t + t * Real.sinh t) t :=
-      (hasDerivAt_id t).mul (Real.hasDerivAt_cosh t)
-    have h2 : HasDerivAt Real.sinh (Real.cosh t) t := Real.hasDerivAt_sinh t
-    simpa [f] using h1.fun_sub h2
+    have hpos : HasDerivAt Real.exp (Real.exp t) t := Real.hasDerivAt_exp t
+    have hneg : HasDerivAt (fun s ↦ Real.exp (-s)) (-Real.exp (-t)) t := by
+      simpa using (hasDerivAt_neg t).exp
+    have hcosh : HasDerivAt (fun s ↦ (Real.exp s + Real.exp (-s)) / 2)
+        ((Real.exp t - Real.exp (-t)) / 2) t := by
+      convert (hpos.fun_add hneg).div_const 2 using 1; ring
+    have hsinh : HasDerivAt (fun s ↦ (Real.exp s - Real.exp (-s)) / 2)
+        ((Real.exp t + Real.exp (-t)) / 2) t := by
+      convert (hpos.fun_sub hneg).div_const 2 using 1; ring
+    have hprod := (hasDerivAt_id t).fun_mul hcosh
+    convert hprod.fun_sub hsinh using 1
+    ring
   have hmono : MonotoneOn f (Set.Ici 0) := by
     apply monotoneOn_of_deriv_nonneg (convex_Ici 0)
     · exact fun t _ ↦ (hderiv t).continuousAt.continuousWithinAt
@@ -125,9 +134,11 @@ theorem sinh_le_mul_cosh {x : ℝ} (hx : 0 ≤ x) :
     · intro t ht
       have ht0 : 0 ≤ t := interior_subset ht
       rw [(hderiv t).deriv]
-      exact mul_nonneg ht0 (Real.sinh_nonneg_iff.mpr ht0)
-  have h0 : f 0 ≤ f x := hmono (le_rfl : (0 : ℝ) ∈ Set.Ici 0) hx hx
-  simp [f] at h0
+      have hge : Real.exp (-t) ≤ Real.exp t := Real.exp_le_exp.mpr (by linarith)
+      nlinarith
+  have h0 : f 0 ≤ f x := hmono (Set.mem_Ici.mpr le_rfl) (Set.mem_Ici.mpr hx) hx
+  simp only [f, Real.sinh_eq, Real.cosh_eq] at h0 ⊢
+  simp only [zero_mul, neg_zero, sub_self, zero_div, sub_zero] at h0
   linarith
 
 /-- Elementary inequality `tanh x ≤ x` for all `x ≥ 0` (used in Theorem 1.1(a)). -/
