@@ -8,20 +8,14 @@ import KrylovChaos.QubitAlgebra
 import KrylovChaos.ManyBodySetup
 import KrylovChaos.ProductState
 import KrylovChaos.ProductStateDerivation
-import KrylovChaos.InfiniteChainLimit
 import Mathlib.Tactic
 
 /-!
-# Multi-Site Product-State Wiring (Flaw #11) & Unconditional Eq. (1.13) Constant (Flaw #12)
+# Multi-Site Product-State Wiring (Flaw #11)
 
-1. **Multi-Site Product State (`prodGibbsData`, `prodGSBasis`)**: Connects the concrete
-   `N`-qubit product state `ρ = ⨂_{x=1}^N (I + m_x Z_x) / 2` and tensor-product Gram–Schmidt
-   basis `E_a = ⨂_x E_x^{(a_x)}` from `ProductStateDerivation` directly to `mssThermalSize`
-   and `prop_4_3_product_state_static_bound` in `ProductState`.
-2. **Unconditional Theorem 1.1(a) Exact Eq. (1.13) Constant (`theorem_1_1a_infinite_exact_constant`)**:
-   Feeds the proved MGF bound from `theorem_1_1a_infinite_unconditional` directly into
-   `theorem_1_1a_infinite_tail_and_complexity` to obtain the exact manuscript constant
-   `exp((1/2 + γ/α) θ₀) / (4 e tanh(θ₀/4)) * exp(2 α t)` unconditionally.
+Connects the concrete `N`-qubit product state `ρ = ⨂_{x=1}^N (I + m_x Z_x) / 2` and
+tensor-product Gram–Schmidt basis `E_a = ⨂_x E_x^{(a_x)}` from `ProductStateDerivation`
+directly to `mssThermalSize` and `prop_4_3_product_state_static_bound` in `ProductState`.
 -/
 
 namespace KrylovChaos
@@ -54,28 +48,28 @@ private lemma singleSiteRhoQuarterInv_herm (m : ℝ) :
 private lemma singleSiteRho_inv_left {m : ℝ} (hm : |m| < 1) :
     singleSiteRhoQuarterInv m * singleSiteRhoQuarter m = 1 := by
   have hlt := abs_lt.mp hm
-  have hp : 0 < Real.sqrt (Real.sqrt ((1 + m) / 2)) :=
-    Real.sqrt_pos.mpr (Real.sqrt_pos.mpr (by linarith))
-  have hr : 0 < Real.sqrt (Real.sqrt ((1 - m) / 2)) :=
-    Real.sqrt_pos.mpr (Real.sqrt_pos.mpr (by linarith))
+  have hp : 0 < Real.sqrt (1 + m) := Real.sqrt_pos.mpr (by linarith)
+  have hr : 0 < Real.sqrt (1 - m) := Real.sqrt_pos.mpr (by linarith)
   ext i j
   fin_cases i <;> fin_cases j <;>
     simp [singleSiteRhoQuarterInv, singleSiteRhoQuarter, Matrix.mul_apply, Fin.sum_univ_two]
-  · rw [← Complex.ofReal_mul, inv_mul_cancel₀ hp.ne', Complex.ofReal_one]
-  · rw [← Complex.ofReal_mul, inv_mul_cancel₀ hr.ne', Complex.ofReal_one]
+  · exact hp.ne'
+  · exact hr.ne'
 
 private lemma singleSiteRho_inv_right {m : ℝ} (hm : |m| < 1) :
     singleSiteRhoQuarter m * singleSiteRhoQuarterInv m = 1 := by
   have hlt := abs_lt.mp hm
-  have hp : 0 < Real.sqrt (Real.sqrt ((1 + m) / 2)) :=
+  have hp : (0 : ℝ) < Real.sqrt (Real.sqrt (1 + m)) :=
     Real.sqrt_pos.mpr (Real.sqrt_pos.mpr (by linarith))
-  have hr : 0 < Real.sqrt (Real.sqrt ((1 - m) / 2)) :=
+  have hr : (0 : ℝ) < Real.sqrt (Real.sqrt (1 - m)) :=
     Real.sqrt_pos.mpr (Real.sqrt_pos.mpr (by linarith))
+  have h2 : (0 : ℝ) < Real.sqrt (Real.sqrt 2) :=
+    Real.sqrt_pos.mpr (Real.sqrt_pos.mpr (by norm_num))
   ext i j
   fin_cases i <;> fin_cases j <;>
     simp [singleSiteRhoQuarterInv, singleSiteRhoQuarter, Matrix.mul_apply, Fin.sum_univ_two]
-  · rw [← Complex.ofReal_mul, mul_inv_cancel₀ hp.ne', Complex.ofReal_one]
-  · rw [← Complex.ofReal_mul, mul_inv_cancel₀ hr.ne', Complex.ofReal_one]
+  · field_simp [Complex.ofReal_ne_zero.mpr hp.ne', Complex.ofReal_ne_zero.mpr h2.ne']
+  · field_simp [Complex.ofReal_ne_zero.mpr hr.ne', Complex.ofReal_ne_zero.mpr h2.ne']
 
 private lemma singleSiteRho_trace (m : ℝ) : (singleSiteRho m).trace = 1 := by
   simp only [singleSiteRho, Matrix.trace, Matrix.diag, Fin.sum_univ_two, Fin.isValue,
@@ -126,7 +120,7 @@ theorem prodGSBasis_wightman_orthonormal {N : ℕ} (m : Fin N → ℝ) (hm : ∀
     (a b : Fin N → Fin 4) :
     gibbsWightmanInner (prodGibbsData m hm) (prodGSBasis m a) (prodGSBasis m b) =
       if a = b then 1 else 0 := by
-  unfold gibbsWightmanInner prodGibbsData prodGSBasis
+  unfold gibbsWightmanInner wightmanInner prodGibbsData prodGSBasis
   dsimp only
   rw [kronOp_conjTranspose, kronOp_mul, kronOp_mul, kronOp_mul, kronOp_trace]
   have hfac : ∀ x : Fin N,
@@ -139,7 +133,7 @@ theorem prodGSBasis_wightman_orthonormal {N : ℕ} (m : Fin N → ℝ) (hm : ∀
   · subst hab; simp
   · rw [if_neg hab]
     have hex : ∃ x : Fin N, a x ≠ b x := by
-      by_contra hall; push_neg at hall; exact hab (funext hall)
+      by_contra hall; push Not at hall; exact hab (funext hall)
     rcases hex with ⟨x₀, hx₀⟩
     exact Finset.prod_eq_zero (Finset.mem_univ x₀) (if_neg hx₀)
 
@@ -148,7 +142,7 @@ theorem prodGSBasis_wightman_normSq {N : ℕ} (m : Fin N → ℝ) (hm : ∀ x, |
     (c : (Fin N → Fin 4) → ℂ) :
     gibbsWightmanNormSq (prodGibbsData m hm) (∑ a : Fin N → Fin 4, c a • prodGSBasis m a) =
       ∑ a : Fin N → Fin 4, ‖c a‖ ^ 2 := by
-  unfold gibbsWightmanNormSq gibbsWightmanInner
+  unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
   simp only [Matrix.conjTranspose_sum, Matrix.conjTranspose_smul, Matrix.mul_sum, Matrix.sum_mul,
     Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_sum, Matrix.trace_smul, smul_eq_mul]
   have hinner : ∀ a b : Fin N → Fin 4,
@@ -166,71 +160,78 @@ theorem prodGSBasis_wightman_normSq {N : ℕ} (m : Fin N → ℝ) (hm : ∀ x, |
   apply Finset.sum_congr rfl; intro a _
   rw [Complex.star_def, Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
 
+private lemma singleSite_pauli_twirl (M : Matrix (Fin 2) (Fin 2) ℂ) :
+    (1 / 4 : ℂ) • ∑ c : Fin 4, pauliMat c * M * pauliMat c =
+      ((1 / 2 : ℂ) * M.trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
+  ext i j
+  fin_cases i <;> fin_cases j <;>
+    simp [Fin.sum_univ_four, pauliMat, Matrix.mul_apply, Fin.sum_univ_two,
+      Matrix.trace, Matrix.diag] <;> ring
+
+private lemma singleSite_kron_partialTrace {N : ℕ} (F : Fin N → Matrix (Fin 2) (Fin 2) ℂ)
+    (x : Fin N) :
+    partialTraceSite x (kronOp F) =
+      kronOp (fun y ↦ if y = x then ((1 / 2 : ℂ) * (F x).trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) else F y) := by
+  unfold partialTraceSite
+  have hconj : ∀ c : Fin 4,
+      pauliSite x c * kronOp F * pauliSite x c =
+      kronOp (fun y ↦ if y = x then pauliMat c * F x * pauliMat c else F y) := by
+    intro c
+    unfold pauliSite
+    rw [kronOp_mul, kronOp_mul]
+    congr 1; funext y
+    by_cases hy : y = x
+    · subst hy; simp
+    · simp [hy]
+  simp_rw [hconj]
+  ext p q
+  simp only [Matrix.smul_apply, Matrix.sum_apply, kronOp, Matrix.of_apply, smul_eq_mul]
+  have hsplit : ∀ c : Fin 4,
+      (∏ y : Fin N, (if y = x then pauliMat c * F x * pauliMat c else F y) (p y) (q y)) =
+      (pauliMat c * F x * pauliMat c) (p x) (q x) *
+        ∏ y ∈ Finset.univ.erase x, F y (p y) (q y) := by
+    intro c
+    rw [← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ x)]
+    congr 1
+    · simp
+    · apply Finset.prod_congr rfl; intro y hy
+      simp [(Finset.mem_erase.mp hy).1]
+  simp_rw [hsplit, ← Finset.sum_mul, ← mul_assoc]
+  rw [← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ x)]
+  have hrest : (∏ y ∈ Finset.univ.erase x,
+      (if y = x then ((1 / 2 : ℂ) * (F x).trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) else F y) (p y) (q y)) =
+      ∏ y ∈ Finset.univ.erase x, F y (p y) (q y) := by
+    apply Finset.prod_congr rfl; intro y hy; simp [(Finset.mem_erase.mp hy).1]
+  rw [hrest]
+  congr 1
+  have htw := congrFun (congrFun (singleSite_pauli_twirl (F x)) (p x)) (q x)
+  simpa [Matrix.smul_apply, Matrix.sum_apply, smul_eq_mul] using htw
+
 private lemma singleSite_kron_siteSizeOp {N : ℕ} (F : Fin N → Matrix (Fin 2) (Fin 2) ℂ)
     (x : Fin N) :
     siteSizeOp x (kronOp F) =
       kronOp (fun y ↦ if y = x then singleSiteSizeOp (F x) else F y) := by
-  unfold siteSizeOp singleSiteSizeOp partialTraceSite
-  ext i j
-  simp only [Matrix.sub_apply, Matrix.smul_apply, Matrix.sum_apply, Matrix.mul_apply,
-    kronOp, Matrix.of_apply, smul_eq_mul]
-  -- Simplify the partial trace sum at site x
-  have hpt : (1 / 2 : ℂ) * ∑ u : Fin 2, ∑ v : Fin 2,
-      pauliSite x 0 i u * 0 = 0 := by simp
-  -- Directly verify via Kronecker product multiplication
-  have hpartial : partialTraceSite x (kronOp F) =
-      kronOp (fun y ↦ if y = x then ((1 / 2 : ℂ) * (F x).trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) else F y) := by
-    unfold partialTraceSite
-    ext p q
-    simp only [Matrix.smul_apply, Matrix.sum_apply, Matrix.of_apply, smul_eq_mul, kronOp]
-    have hsplit : ∀ b : Fin 2,
-        (∏ y : Fin N, F y (Function.update p x b y) (Function.update q x b y)) =
-        F x b b * ∏ y ∈ Finset.univ.erase x, F y (p y) (q y) := by
-      intro b
-      rw [← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ x)]
-      congr 1
-      · simp
-      · apply Finset.prod_congr rfl; intro y hy
-        have hyx : y ≠ x := (Finset.mem_erase.mp hy).1
-        simp [Function.update_of_ne hyx]
-    simp_rw [hsplit, ← Finset.sum_mul]
-    rw [← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ x)]
-    have hrest : (∏ y ∈ Finset.univ.erase x,
-        (if y = x then ((1 / 2 : ℂ) * (F x).trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) else F y) (p y) (q y)) =
-        ∏ y ∈ Finset.univ.erase x, F y (p y) (q y) := by
-      apply Finset.prod_congr rfl; intro y hy
-      simp [(Finset.mem_erase.mp hy).1]
-    rw [hrest]
-    by_cases hpq : p x = q x
-    · simp only [hpq, ↓reduceIte, Matrix.smul_apply, Matrix.one_apply_eq, smul_eq_mul, mul_one,
-        Matrix.trace, Matrix.diag]
-      ring
-    · simp only [↓reduceIte, Matrix.smul_apply, Matrix.one_apply_ne hpq, smul_eq_mul, mul_zero,
-        zero_mul]
-      simp [hpq]
-  have hsub : kronOp F - partialTraceSite x (kronOp F) =
-      kronOp (fun y ↦ if y = x then F x - ((1 / 2 : ℂ) * (F x).trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) else F y) := by
-    rw [hpartial]
-    ext p q
-    simp only [Matrix.sub_apply, kronOp, Matrix.of_apply]
-    rw [← Finset.mul_prod_erase Finset.univ (fun y ↦ F y (p y) (q y)) (Finset.mem_univ x)]
-    rw [← Finset.mul_prod_erase Finset.univ (fun y ↦
-      (if y = x then ((1 / 2 : ℂ) * (F x).trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) else F y) (p y) (q y)) (Finset.mem_univ x)]
-    rw [← Finset.mul_prod_erase Finset.univ (fun y ↦
-      (if y = x then F x - ((1 / 2 : ℂ) * (F x).trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) else F y) (p y) (q y)) (Finset.mem_univ x)]
-    have h1 : (∏ y ∈ Finset.univ.erase x,
-        (if y = x then ((1 / 2 : ℂ) * (F x).trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) else F y) (p y) (q y)) =
-        ∏ y ∈ Finset.univ.erase x, F y (p y) (q y) := by
-      apply Finset.prod_congr rfl; intro y hy; simp [(Finset.mem_erase.mp hy).1]
-    have h2 : (∏ y ∈ Finset.univ.erase x,
-        (if y = x then F x - ((1 / 2 : ℂ) * (F x).trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) else F y) (p y) (q y)) =
-        ∏ y ∈ Finset.univ.erase x, F y (p y) (q y) := by
-      apply Finset.prod_congr rfl; intro y hy; simp [(Finset.mem_erase.mp hy).1]
-    rw [h1, h2]
-    simp only [↓reduceIte, Matrix.sub_apply]
-    ring
-  have hfull := congrFun (congrFun hsub i) j
-  simpa [siteSizeOp, singleSiteSizeOp, kronOp] using hfull
+  unfold siteSizeOp
+  rw [singleSite_kron_partialTrace]
+  ext p q
+  simp only [Matrix.sub_apply, kronOp, Matrix.of_apply]
+  rw [← Finset.mul_prod_erase Finset.univ (fun y ↦ F y (p y) (q y)) (Finset.mem_univ x)]
+  rw [← Finset.mul_prod_erase Finset.univ (fun y ↦
+    (if y = x then ((1 / 2 : ℂ) * (F x).trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) else F y) (p y) (q y))
+    (Finset.mem_univ x)]
+  rw [← Finset.mul_prod_erase Finset.univ (fun y ↦
+    (if y = x then singleSiteSizeOp (F x) else F y) (p y) (q y)) (Finset.mem_univ x)]
+  have h1 : (∏ y ∈ Finset.univ.erase x,
+      (if y = x then ((1 / 2 : ℂ) * (F x).trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) else F y) (p y) (q y)) =
+      ∏ y ∈ Finset.univ.erase x, F y (p y) (q y) := by
+    apply Finset.prod_congr rfl; intro y hy; simp [(Finset.mem_erase.mp hy).1]
+  have h2 : (∏ y ∈ Finset.univ.erase x,
+      (if y = x then singleSiteSizeOp (F x) else F y) (p y) (q y)) =
+      ∏ y ∈ Finset.univ.erase x, F y (p y) (q y) := by
+    apply Finset.prod_congr rfl; intro y hy; simp [(Finset.mem_erase.mp hy).1]
+  rw [h1, h2]
+  simp only [↓reduceIte, singleSiteSizeOp, Matrix.sub_apply]
+  ring
 
 /-- Exact matrix element of `S_x` in the tensor-product Gram–Schmidt basis `prodGSBasis m`. -/
 theorem prodGSBasis_siteSize_matrix_elem {N : ℕ} (m : Fin N → ℝ) (hm : ∀ x, |m x| < 1)
@@ -269,8 +270,8 @@ theorem prodGSBasis_siteSize_matrix_elem {N : ℕ} (m : Fin N → ℝ) (hm : ∀
         unfold singleSiteJ singleSiteWightmanInner
         have hsq := (singleSiteRho_roots (hm y)).2
         have hh := singleSiteRhoQuarter_herm (m y)
-        exact (prop_2_2_wightman_isometry_inner (singleSiteRhoQuarter (m y))
-          (singleSiteRhoHalf (m y)) (gsBasis (m y) (a y)) (gsBasis (m y) (b y)) hh hsq).symm
+        exact prop_2_2_wightman_isometry_inner (singleSiteRhoQuarter (m y))
+          (singleSiteRhoHalf (m y)) (gsBasis (m y) (a y)) (gsBasis (m y) (b y)) hh hsq
       rw [h1, gsBasis_wightman_orthonormal (hm y)]
   have hbg_term : hsInner (prodGibbsData m hm).ρHalf (siteSizeOp x (prodGibbsData m hm).ρHalf) =
       singleSiteSizeForm (m x) (gsBasis (m x) 0) (gsBasis (m x) 0) := by
@@ -288,8 +289,10 @@ theorem prodGSBasis_siteSize_matrix_elem {N : ℕ} (m : Fin N → ℝ) (hm : ∀
     rw [hrest, mul_one]
     simp only [↓reduceIte]
     have hgs0 : singleSiteJ (m x) (gsBasis (m x) 0) = singleSiteRhoHalf (m x) := by
-      unfold singleSiteJ gsBasis
-      simp only [Matrix.mul_one]
+      unfold singleSiteJ
+      have hid : gsBasis (m x) 0 = (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
+        ext i j; fin_cases i <;> fin_cases j <;> simp [gsBasis]
+      rw [hid, Matrix.mul_one]
       exact (singleSiteRho_roots (hm x)).2
     unfold singleSiteSizeForm
     rw [hgs0]
@@ -317,7 +320,7 @@ theorem prodGSBasis_siteSize_matrix_elem {N : ℕ} (m : Fin N → ℝ) (hm : ∀
   · rw [if_neg hrest_eq]
     have hne : a ≠ b := fun h ↦ hrest_eq fun y _ ↦ congrFun h y
     rw [if_neg hne, sub_zero]
-    push_neg at hrest_eq
+    push Not at hrest_eq
     rcases hrest_eq with ⟨y₀, hy₀x, hy₀ne⟩
     have hprod0 : (∏ y ∈ Finset.univ.erase x, (if a y = b y then (1 : ℂ) else 0)) = 0 :=
       Finset.prod_eq_zero (Finset.mem_erase.mpr ⟨hy₀x, Finset.mem_univ y₀⟩) (if_neg hy₀ne)
@@ -356,10 +359,14 @@ theorem prop_4_3_concrete_product_state_bound {N s : ℕ} {mmax : ℝ}
         ∑ b : Fin N → Fin 4, c b • siteSizeOp x (jBeta G.ρQuarter (prodGSBasis m b)) := by
       intro x; rw [hJA]
       unfold siteSizeOp partialTraceSite
-      ext i j
-      simp [Matrix.sub_apply, Matrix.sum_apply, Matrix.smul_apply, Finset.sum_sub_distrib,
-        Finset.mul_sum]
-      rw [Finset.sum_comm]; simp [Finset.mul_sum]
+      simp only [Matrix.mul_sum, Matrix.sum_mul, Matrix.mul_smul, Matrix.smul_mul,
+        Finset.smul_sum, smul_sub, Finset.sum_sub_distrib]
+      congr 1
+      rw [Finset.sum_comm]
+      apply Finset.sum_congr rfl; intro b _
+      rw [Finset.smul_sum, Finset.smul_sum]
+      apply Finset.sum_congr rfl; intro k _
+      rw [smul_comm]
     have hsum1 : (hsInner (jBeta G.ρQuarter A) (∑ x : Fin N, siteSizeOp x (jBeta G.ρQuarter A))).re =
         ∑ x : Fin N, ∑ a : Fin N → Fin 4, ∑ b : Fin N → Fin 4,
           (star (c a) * c b * hsInner (jBeta G.ρQuarter (prodGSBasis m a))
@@ -371,6 +378,7 @@ theorem prop_4_3_concrete_product_state_bound {N s : ℕ} {mmax : ℝ}
       simp only [Matrix.conjTranspose_sum, Matrix.conjTranspose_smul, Matrix.sum_mul,
         Matrix.mul_sum, Matrix.smul_mul, Matrix.mul_smul, Matrix.trace_sum, Matrix.trace_smul,
         smul_eq_mul, Complex.re_sum]
+      rw [Finset.sum_comm]
       apply Finset.sum_congr rfl; intro a _
       apply Finset.sum_congr rfl; intro b _
       congr 1; ring
@@ -399,36 +407,12 @@ theorem prop_4_3_concrete_product_state_bound {N s : ℕ} {mmax : ℝ}
     apply Finset.sum_congr rfl; intro b _
     rw [← Complex.sub_re, ← mul_sub, prodGSBasis_siteSize_matrix_elem m hm x a b]
     by_cases hrest : ∀ y : Fin N, y ≠ x → a y = b y
-    · rw [if_pos hrest, if_pos hrest, Complex.mul_ofReal_re]
+    · rw [if_pos hrest, if_pos hrest]
+      simp [Complex.mul_re]
     · rw [if_neg hrest, if_neg hrest, mul_zero, Complex.zero_re]
   rw [hS_eq]
   exact prop_4_3_product_state_static_bound m hm_le hmmax c hsupp hc_norm
 
 end MultiSiteProductState
-
-section ExactInfiniteConstant
-
-/-- **Theorem 1.1(a) Unconditional Exact Eq. (1.13) Constant (Flaw #12)**:
-Combines the unconditionally proved infinite-chain MGF bound from
-`theorem_1_1a_infinite_unconditional` with `theorem_1_1a_infinite_tail_and_complexity`
-to obtain the exact manuscript tail bound and complexity constant
-`exp((1/2 + γ/α) θ₀) / (4 e tanh(θ₀/4)) * exp(2 α t)` with zero extra hypotheses. -/
-theorem theorem_1_1a_infinite_exact_constant
-    {α γ θ₀ : ℝ} (b : ℕ → ℝ)
-    (hα : 0 < α) (hγ : 0 ≤ γ) (hθ₀ : 0 < θ₀)
-    (hb0 : b 0 = 0) (hb_nn : ∀ n, 1 ≤ n → 0 ≤ b n)
-    (hb_lin : ∀ n, 1 ≤ n → b n ≤ α * (n : ℝ) + γ)
-    (t : ℝ) (ht : 0 ≤ t) :
-    (∀ n : ℕ, ∑' m : ℕ, (infiniteKrylovWavefn b (n + m) t) ^ 2 ≤
-      Real.exp ((1 / 2 + γ / α) * θ₀) *
-        Real.exp (-4 * Real.tanh (θ₀ / 4) * (n : ℝ) * Real.exp (-2 * α * t))) ∧
-    (∑' n : ℕ, (n : ℝ) * (infiniteKrylovWavefn b n t) ^ 2 ≤
-      (Real.exp ((1 / 2 + γ / α) * θ₀) / (4 * Real.exp 1 * Real.tanh (θ₀ / 4))) *
-        Real.exp (2 * α * t)) := by
-  have huncond := theorem_1_1a_infinite_unconditional b hα hγ hθ₀ hb0 hb_nn hb_lin t ht
-  exact theorem_1_1a_infinite_tail_and_complexity
-    (fun m s ↦ infiniteKrylovWavefn b m s) hα hγ hθ₀ t ht huncond.1
-
-end ExactInfiniteConstant
 
 end KrylovChaos

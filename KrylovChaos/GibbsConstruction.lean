@@ -9,9 +9,9 @@ import KrylovChaos.WightmanIsometry
 import KrylovChaos.ManyBodySetup
 import Mathlib.Analysis.InnerProductSpace.PiL2
 import Mathlib.Analysis.InnerProductSpace.Projection.Basic
+import Mathlib.Analysis.Matrix.Spectrum
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
-import Mathlib.LinearAlgebra.Matrix.Spectrum
 import Mathlib.Tactic
 
 /-!
@@ -444,7 +444,7 @@ lemma lanczosState_prev {N : ℕ} (G : GibbsData N) (H O : QubitOp N) (n : ℕ) 
     (lanczosState G H O (n + 1)).2.1 = lanczosOp G H O n := rfl
 
 /-- Exact three-term Lanczos recursion Eq. (2.6):
-`[H, 𝒪_n] = b_{n+1} 𝒪_{n+1} + b_n 𝒪_{n-1}` whenever `b_{n+1} > 0` (and for `n = 0`, `[H, 𝒪_0] = b_1 𝒪_1`). -/
+`[H, 𝒪_n] = b_{n+1} 𝒪_{n+1} + b_n 𝒪_{n-1}` whenever `b_{n+1} > 0`. -/
 theorem lanczos_three_term {N : ℕ} (G : GibbsData N) (H O : QubitOp N) (n : ℕ)
     (hb : lanczosCoeff G H O (n + 1) ≠ 0) :
     matComm H (lanczosOp G H O n) =
@@ -609,7 +609,7 @@ theorem wightmanQ_nonneg {N : ℕ} (G : GibbsData N) (A : QubitOp N) :
   simp only [LinearMap.finset_sum_apply, LinearMap.sub_apply, LinearMap.id_apply]
   have hsum : gibbsWightmanInner G A (∑ s ∈ Finset.range N, (A - wightmanFiltrationProj G s A)) =
       ∑ s ∈ Finset.range N, gibbsWightmanInner G A (A - wightmanFiltrationProj G s A) := by
-    unfold gibbsWightmanInner
+    unfold gibbsWightmanInner wightmanInner
     rw [Matrix.mul_sum, Matrix.trace_sum]
   rw [hsum, Complex.re_sum]
   exact Finset.sum_nonneg fun s _ ↦ wightmanSubspaceProj_complement_nonneg G _ A
@@ -621,7 +621,7 @@ theorem quantumGlauberGen_nonneg {N : ℕ} (G : GibbsData N) (A : QubitOp N) :
   simp only [LinearMap.finset_sum_apply, LinearMap.sub_apply, LinearMap.id_apply]
   have hsum : gibbsWightmanInner G A (∑ x : Fin N, (A - singleSiteWightmanProj G x A)) =
       ∑ x : Fin N, gibbsWightmanInner G A (A - singleSiteWightmanProj G x A) := by
-    unfold gibbsWightmanInner
+    unfold gibbsWightmanInner wightmanInner
     rw [Matrix.mul_sum, Matrix.trace_sum]
   rw [hsum, Complex.re_sum]
   exact Finset.sum_nonneg fun x _ ↦ wightmanSubspaceProj_complement_nonneg G _ A

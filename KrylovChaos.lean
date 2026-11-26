@@ -15,7 +15,9 @@ import KrylovChaos.SpectralDyck
 import KrylovChaos.GlauberDecoupling
 import KrylovChaos.DepolarizedFrame
 import KrylovChaos.PolymerTrees
+import KrylovChaos.ConcreteCombinatorics
 import KrylovChaos.ClassicalIsing
+import KrylovChaos.ClassicalIsingConcrete
 import KrylovChaos.StructuralNecessity
 import KrylovChaos.CarlemanJacobi
 import KrylovChaos.KoteckyPreiss
