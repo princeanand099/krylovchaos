@@ -14,6 +14,7 @@ import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.InnerProductSpace.Calculus
 import Mathlib.Analysis.InnerProductSpace.PiL2
 import Mathlib.Analysis.InnerProductSpace.Projection.Basic
+import Mathlib.Analysis.Matrix.Spectrum
 import Mathlib.Analysis.Normed.Algebra.Exponential
 import Mathlib.Analysis.PSeries
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
@@ -24,7 +25,9 @@ import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import Mathlib.Analysis.SpecificLimits.Normed
+import Mathlib.Data.Finset.Card
 import Mathlib.Data.Matrix.Basic
+import Mathlib.Data.Matrix.Block
 import Mathlib.Data.Nat.Choose.Sum
 import Mathlib.LinearAlgebra.Matrix.Trace
 import Mathlib.MeasureTheory.Integral.Gamma
