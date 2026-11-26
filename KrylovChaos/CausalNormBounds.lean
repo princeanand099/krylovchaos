@@ -187,8 +187,7 @@ theorem adPow_eq_binomial_sum (H O : E) :
           if k = m + 1 then (0 : E)
           else (-((-1 : ℂ) ^ (m + 1 - k) * (Nat.choose m k : ℂ))) •
             (H ^ k * O * H ^ (m + 1 - k)) := by
-      rw [Finset.sum_range_succ]
-      simp only [↓reduceIte, add_zero]
+      rw [Finset.sum_range_succ, if_pos rfl, add_zero]
       apply Finset.sum_congr rfl
       intro k hk
       have hne : k ≠ m + 1 := by have := Finset.mem_range.mp hk; omega
@@ -224,19 +223,20 @@ theorem exp_conj_eq_tsum_adPow (H O : E) (z : ℂ) :
   let g : ℕ → E := fun k ↦ ((k.factorial : ℂ)⁻¹) • (-(z • H)) ^ k
   have hexp_eq : ∀ x : E, NormedSpace.exp x = ∑' n : ℕ, ((n.factorial : ℂ)⁻¹) • x ^ n := by
     intro x
-    rw [NormedSpace.exp_eq_tsum]
-    refine tsum_congr fun n ↦ ?_
-    rw [← algebraMap_smul ℂ ((n.factorial : ℚ)⁻¹) (x ^ n)]
-    simp
+    exact NormedSpace.exp_eq_tsum (𝕂 := ℂ)
+  have hf_base_norm : Summable (fun j : ℕ ↦ ‖((j.factorial : ℂ)⁻¹) • (z • H) ^ j‖) := by
+    refine Summable.of_nonneg_of_le (fun j ↦ norm_nonneg _) (fun j ↦ ?_)
+      (Real.summable_pow_div_factorial ‖z • H‖)
+    calc ‖((j.factorial : ℂ)⁻¹) • (z • H) ^ j‖
+        = (j.factorial : ℝ)⁻¹ * ‖(z • H) ^ j‖ := by
+            rw [norm_smul, norm_inv, Complex.norm_natCast]
+      _ ≤ (j.factorial : ℝ)⁻¹ * ‖z • H‖ ^ j := by
+            gcongr; exact norm_pow_le _ _
+      _ = ‖z • H‖ ^ j / (j.factorial : ℝ) := by ring
   have hf_norm : Summable (fun j ↦ ‖f j‖) := by
     refine Summable.of_nonneg_of_le (fun j ↦ norm_nonneg _) (fun j ↦ ?_)
-      ((Real.summable_pow_div_factorial ‖z • H‖).mul_right ‖O‖)
-    calc ‖f j‖ ≤ ‖((j.factorial : ℂ)⁻¹) • (z • H) ^ j‖ * ‖O‖ := norm_mul_le _ _
-      _ = (j.factorial : ℝ)⁻¹ * ‖(z • H) ^ j‖ * ‖O‖ := by
-            rw [norm_smul, norm_inv, Complex.norm_natCast]
-      _ ≤ (j.factorial : ℝ)⁻¹ * ‖z • H‖ ^ j * ‖O‖ := by
-            gcongr; exact norm_pow_le _ _
-      _ = ‖z • H‖ ^ j / (j.factorial : ℝ) * ‖O‖ := by ring
+      (hf_base_norm.mul_right ‖O‖)
+    exact norm_mul_le _ _
   have hg_norm : Summable (fun k ↦ ‖g k‖) := by
     refine Summable.of_nonneg_of_le (fun k ↦ norm_nonneg _) (fun k ↦ ?_)
       (Real.summable_pow_div_factorial ‖-(z • H)‖)
@@ -246,7 +246,8 @@ theorem exp_conj_eq_tsum_adPow (H O : E) (z : ℂ) :
             gcongr; exact norm_pow_le _ _
       _ = ‖-(z • H)‖ ^ k / (k.factorial : ℝ) := by ring
   have hf_tsum : ∑' j : ℕ, f j = NormedSpace.exp (z • H) * O := by
-    rw [hexp_eq (z • H), ← tsum_mul_right]
+    rw [hexp_eq (z • H)]
+    exact (hf_base_norm.of_norm.hasSum.mul_right O).tsum_eq
   have hg_tsum : ∑' k : ℕ, g k = NormedSpace.exp (-(z • H)) :=
     (hexp_eq (-(z • H))).symm
   have hprod_summ : Summable (fun p : ℕ × ℕ ↦ f p.1 * g p.2) :=
@@ -279,7 +280,7 @@ theorem exp_conj_eq_tsum_adPow (H O : E) (z : ℂ) :
   simp only [f, g, smul_pow, hneg, smul_mul_assoc, mul_smul_comm, smul_smul, mul_assoc]
   congr 1
   have hzpow : z ^ j * z ^ (m - j) = z ^ m := by rw [← pow_add, Nat.add_sub_of_le hjm]
-  calc (j.factorial : ℂ)⁻¹ * z ^ j * (((m - j).factorial : ℂ)⁻¹ * ((-1 : ℂ) ^ (m - j) * z ^ (m - j)))
+  calc ((m - j).factorial : ℂ)⁻¹ * ((-1 : ℂ) ^ (m - j) * (z ^ (m - j) * ((j.factorial : ℂ)⁻¹ * z ^ j)))
       = ((j.factorial : ℂ)⁻¹ * ((m - j).factorial : ℂ)⁻¹) * ((-1 : ℂ) ^ (m - j) * (z ^ j * z ^ (m - j))) := by
           ring
     _ = ((Nat.choose m j : ℂ) / (m.factorial : ℂ)) * ((-1 : ℂ) ^ (m - j) * z ^ m) := by
