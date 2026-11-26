@@ -50,7 +50,7 @@ theorem carleman_divergence_of_linear_growth {α γ : ℝ} (b : ℕ → ℝ)
     refine h1.congr fun n ↦ ?_
     field_simp [hc_pos.ne']
   have hsum_harm : Summable (fun n : ℕ ↦ (1 : ℝ) / (n : ℝ)) :=
-    (summable_nat_add_iff 1).mp hsum_shift
+    (summable_nat_add_iff (f := fun n : ℕ ↦ (1 : ℝ) / (n : ℝ)) 1).mp hsum_shift
   exact Real.not_summable_one_div_natCast hsum_harm
 
 /-- **Carleman's Essential Self-Adjointness Criterion (Deficiency Indices `(0, 0)`)**:
@@ -75,8 +75,8 @@ theorem carleman_deficiency_zero {s : ℝ} (hs : s ≠ 0)
           = (s : ℂ) * (star z * z) * Complex.I := by ring
         _ = (s : ℂ) * ((‖z‖ ^ 2 : ℝ) : ℂ) * Complex.I := by rw [hconj]
         _ = ((s * ‖z‖ ^ 2 : ℝ) : ℂ) * Complex.I := by push_cast; ring
-    rw [h1]
-    simp [Complex.mul_im]
+    rw [h1, Complex.mul_im, Complex.ofReal_re, Complex.ofReal_im, Complex.I_re, Complex.I_im]
+    ring
   have hW_step : ∀ N : ℕ, W N = s * ∑ k ∈ Finset.range (N + 1), ‖u k‖ ^ 2 := by
     intro N
     induction N with
@@ -154,11 +154,12 @@ theorem carleman_deficiency_zero {s : ℝ} (hs : s ≠ 0)
     rw [mul_one_div, div_le_iff₀ hbN]
     linarith
   have hsum_rhs : Summable (fun k : ℕ ↦ (‖u (k + n₀)‖ ^ 2 + ‖u (k + n₀ + 1)‖ ^ 2) / 2) := by
-    have h1 : Summable (fun k : ℕ ↦ ‖u (k + n₀)‖ ^ 2) := (summable_nat_add_iff n₀).mpr hu_l2
+    have h1 : Summable (fun k : ℕ ↦ ‖u (k + n₀)‖ ^ 2) :=
+      (summable_nat_add_iff (f := fun n : ℕ ↦ ‖u n‖ ^ 2) n₀).mpr hu_l2
     have h2 : Summable (fun k : ℕ ↦ ‖u (k + (n₀ + 1))‖ ^ 2) :=
-      (summable_nat_add_iff (n₀ + 1)).mpr hu_l2
+      (summable_nat_add_iff (f := fun n : ℕ ↦ ‖u n‖ ^ 2) (n₀ + 1)).mpr hu_l2
     have h2' : Summable (fun k : ℕ ↦ ‖u (k + n₀ + 1)‖ ^ 2) :=
-      h2.congr fun k ↦ by congr 2; omega
+      h2.congr fun k ↦ by rw [Nat.add_assoc]
     exact (h1.add h2').div_const 2
   have hsum_scaled : Summable (fun k : ℕ ↦ (|s| * ‖u n₀‖ ^ 2) * (1 / b (k + n₀ + 1))) :=
     Summable.of_nonneg_of_le (fun k ↦ by
@@ -168,7 +169,7 @@ theorem carleman_deficiency_zero {s : ℝ} (hs : s ≠ 0)
     refine h1.congr fun k ↦ ?_
     field_simp [hS0_pos.ne']
   have hsum_all : Summable (fun n : ℕ ↦ 1 / b (n + 1)) :=
-    (summable_nat_add_iff n₀).mp (hsum_shift.congr fun k ↦ by congr 2; omega)
+    (summable_nat_add_iff (f := fun n : ℕ ↦ 1 / b (n + 1)) n₀).mp hsum_shift
   exact hcarl hsum_all
 
 /-- **Carleman Flux Vanishing**: If `b n > 0` (`n ≥ 1`), `¬ Summable (fun n ↦ 1 / b (n + 1))`,
@@ -198,11 +199,12 @@ theorem carleman_flux_liminf_zero (b ψ : ℕ → ℝ)
     have h3 := mul_le_mul_of_nonneg_left h2 hb.le
     linarith
   have hsum_rhs : Summable (fun k : ℕ ↦ ((ψ (k + N₀)) ^ 2 + (ψ (k + N₀ + 1)) ^ 2) / 2) := by
-    have h1 : Summable (fun k : ℕ ↦ (ψ (k + N₀)) ^ 2) := (summable_nat_add_iff N₀).mpr hψ
+    have h1 : Summable (fun k : ℕ ↦ (ψ (k + N₀)) ^ 2) :=
+      (summable_nat_add_iff (f := fun n : ℕ ↦ (ψ n) ^ 2) N₀).mpr hψ
     have h2 : Summable (fun k : ℕ ↦ (ψ (k + (N₀ + 1))) ^ 2) :=
-      (summable_nat_add_iff (N₀ + 1)).mpr hψ
+      (summable_nat_add_iff (f := fun n : ℕ ↦ (ψ n) ^ 2) (N₀ + 1)).mpr hψ
     have h2' : Summable (fun k : ℕ ↦ (ψ (k + N₀ + 1)) ^ 2) :=
-      h2.congr fun k ↦ by congr 2; omega
+      h2.congr fun k ↦ by rw [Nat.add_assoc]
     exact (h1.add h2').div_const 2
   have hsum_scaled : Summable (fun k : ℕ ↦ ε * (1 / b (k + N₀ + 1))) :=
     Summable.of_nonneg_of_le (fun k ↦ by
@@ -212,7 +214,7 @@ theorem carleman_flux_liminf_zero (b ψ : ℕ → ℝ)
     refine h1.congr fun k ↦ ?_
     field_simp [hε.ne']
   have hsum_all : Summable (fun n : ℕ ↦ 1 / b (n + 1)) :=
-    (summable_nat_add_iff N₀).mp (hsum_shift.congr fun k ↦ by congr 2; omega)
+    (summable_nat_add_iff (f := fun n : ℕ ↦ 1 / b (n + 1)) N₀).mp hsum_shift
   exact hcarl hsum_all
 
 end KrylovChaos

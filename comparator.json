@@ -20,7 +20,11 @@
     "lemma_8_2_hubbard_stratonovich_identity",
     "prop_8_3_product_bernoulli_reverse_poincare",
     "prop_9_1_no_linear_lower_bound",
-    "lemma_B_1_neumann_tail_sum"
+    "lemma_B_1_neumann_tail_sum",
+    "carleman_deficiency_zero",
+    "kotecky_preiss_convergence",
+    "vitali_power_series_convergence",
+    "araki_1d_entire_expansional"
   ],
   "definition_names": [],
   "permitted_axioms": [

@@ -68,4 +68,18 @@ def stringWeight {N : ℕ} (a : Fin N → Fin 4) : ℕ :=
 noncomputable def hsPhi (u : ℝ) : ℝ :=
   (1 / 2 : ℝ) * Real.log (Real.exp (2 * u) + Real.sqrt (Real.exp (4 * u) - 1))
 
+/-- Pairwise compatibility of a finite polymer subset `I`. -/
+abbrev isCompatPolymer {Γ : Type*} (incompat : Γ → Γ → Prop) (I : Finset Γ) : Prop :=
+  ∀ γ₁ ∈ I, ∀ γ₂ ∈ I, γ₁ ≠ γ₂ → ¬ incompat γ₁ γ₂
+
+/-- Finite-volume polymer partition function `Z(Λ) = ∑_{I ⊆ Λ, compat} ∏_{γ ∈ I} w(γ)`. -/
+noncomputable def polymerZ {Γ : Type*} [DecidableEq Γ]
+    (incompat : Γ → Γ → Prop) [DecidableRel incompat]
+    (w : Γ → ℂ) (Λ : Finset Γ) : ℂ :=
+  ∑ I ∈ Λ.powerset.filter (fun I ↦ isCompatPolymer incompat I), ∏ γ ∈ I, w γ
+
+/-- Kotecký–Preiss effective activity `r(γ) = ‖w γ‖ e^{a γ}`. -/
+noncomputable def kpActivity {Γ : Type*} (w : Γ → ℂ) (a : Γ → ℝ) (γ : Γ) : ℝ :=
+  ‖w γ‖ * Real.exp (a γ)
+
 end ChallengeDefs

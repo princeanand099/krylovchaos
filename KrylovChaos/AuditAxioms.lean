@@ -41,3 +41,11 @@ Every theorem must depend strictly on a subset of `[propext, Classical.choice, Q
 #print axioms KrylovChaos.prop_9_1_no_linear_lower_bound
 #print axioms KrylovChaos.prop_9_1_bimodal_exact_size
 #print axioms KrylovChaos.lemma_B_1_neumann_tail_sum
+#print axioms KrylovChaos.carleman_divergence_of_linear_growth
+#print axioms KrylovChaos.carleman_deficiency_zero
+#print axioms KrylovChaos.kotecky_preiss_convergence
+#print axioms KrylovChaos.kotecky_preiss_log_bound
+#print axioms KrylovChaos.vitali_power_series_convergence
+#print axioms KrylovChaos.vitali_strip_uniform_convergence
+#print axioms KrylovChaos.araki_1d_boundary_count
+#print axioms KrylovChaos.araki_1d_entire_expansional

@@ -110,8 +110,9 @@ theorem araki_1d_entire_expansional {E : Type*} [NormedAddCommGroup E] [NormedSp
       ‖(τ ^ m / (m.factorial : ℂ)) • a m‖ ≤ C₀ * ((C₁ * ‖τ‖) ^ m / (m.factorial : ℝ)) := by
     intro m
     rw [norm_smul, norm_div, norm_pow, Complex.norm_natCast]
-    have h1 := mul_le_mul_of_nonneg_left (ha m)
-      (div_nonneg (pow_nonneg (norm_nonneg τ) m) (Nat.cast_nonneg _))
+    have hcoeff_nn : (0 : ℝ) ≤ ‖τ‖ ^ m / (m.factorial : ℝ) :=
+      div_nonneg (pow_nonneg (norm_nonneg τ) m) (Nat.cast_nonneg m.factorial)
+    have h1 := mul_le_mul_of_nonneg_left (ha m) hcoeff_nn
     calc ‖τ‖ ^ m / (m.factorial : ℝ) * ‖a m‖
         ≤ ‖τ‖ ^ m / (m.factorial : ℝ) * (C₀ * C₁ ^ m) := h1
       _ = C₀ * ((C₁ * ‖τ‖) ^ m / (m.factorial : ℝ)) := by rw [mul_pow]; ring

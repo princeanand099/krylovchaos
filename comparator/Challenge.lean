@@ -9,8 +9,9 @@ import Mathlib.Analysis.InnerProductSpace.Basic
 /-!
 # Locked Headline Theorem Statements for `KrylovChaos` (`comparator` Challenge)
 
-Contains the 19 locked headline theorem signatures corresponding to
-*Finite-Temperature Bounds on Operator Growth and Quantum Chaos* (Prince Anand, 2026).
+Contains the 23 locked headline theorem signatures corresponding to
+*Finite-Temperature Bounds on Operator Growth and Quantum Chaos* (Prince Anand, 2026),
+including the 4 ground-up literature theorems (Carleman, Kotecký–Preiss, Vitali/Montel, Araki 1D).
 -/
 
 open ChallengeDefs Matrix
@@ -197,4 +198,48 @@ theorem prop_9_1_no_linear_lower_bound {C' σ : ℝ} (b : ℕ → ℝ)
 theorem lemma_B_1_neumann_tail_sum {d : ℕ} {EB : ℝ} (hd : 1 ≤ d) (hEB : 2 < EB) :
     Real.sqrt 2 * (∑' m : ℕ, (2 : ℝ) ^ (d - 1 + m) / EB ^ (d - 1 + m + 1)) =
     (Real.sqrt 2 / (EB - 2)) * (2 / EB) ^ (d - 1) := by
+  sorry
+
+theorem carleman_deficiency_zero {s : ℝ} (hs : s ≠ 0)
+    (b : ℕ → ℝ) (hb0 : b 0 = 0) (hb_pos : ∀ n ≥ 1, 0 < b n)
+    (hcarl : ¬ Summable (fun n : ℕ ↦ 1 / b (n + 1)))
+    (u : ℕ → ℂ) (hu_l2 : Summable (fun n : ℕ ↦ ‖u n‖ ^ 2))
+    (heig : ∀ n : ℕ, (b n : ℂ) * u (n - 1) + (b (n + 1) : ℂ) * u (n + 1) =
+      (s : ℂ) * Complex.I * u n) :
+    ∀ n : ℕ, u n = 0 := by
+  sorry
+
+theorem kotecky_preiss_convergence {Γ : Type*} [DecidableEq Γ]
+    (incompat : Γ → Γ → Prop) [DecidableRel incompat]
+    (hrefl : ∀ γ, incompat γ γ)
+    (hsym : ∀ γ₁ γ₂, incompat γ₁ γ₂ → incompat γ₂ γ₁)
+    (w : Γ → ℂ) (a : Γ → ℝ) (Λ₀ : Finset Γ)
+    (hkp : ∀ γ ∈ Λ₀,
+      ∑ γ' ∈ Λ₀.filter (fun γ' ↦ incompat γ γ'), kpActivity w a γ' ≤ a γ) :
+    ∀ Λ ⊆ Λ₀,
+      polymerZ incompat w Λ ≠ 0 ∧
+      ∀ γ ∈ Λ,
+        ‖polymerZ incompat w Λ / polymerZ incompat w (Λ.erase γ) - 1‖ ≤
+          kpActivity w a γ / (1 + kpActivity w a γ) ∧
+        ‖polymerZ incompat w (Λ.erase γ) / polymerZ incompat w Λ‖ ≤
+          1 + kpActivity w a γ := by
+  sorry
+
+theorem vitali_power_series_convergence {z₀ : ℂ} {R M : ℝ}
+    (hR : 0 < R) (hM : 0 ≤ M)
+    (c : ℕ → ℕ → ℂ) (cLim : ℕ → ℂ)
+    (hbound : ∀ N k, ‖c N k‖ ≤ M / R ^ k)
+    (hlim : ∀ k, Filter.Tendsto (fun N ↦ c N k) Filter.atTop (nhds (cLim k))) :
+    (∀ k, ‖cLim k‖ ≤ M / R ^ k) ∧
+    (∀ z ∈ Metric.ball z₀ R, Summable (fun k : ℕ ↦ cLim k * (z - z₀) ^ k)) ∧
+    (∀ r : ℝ, 0 ≤ r → r < R → ∀ ε > 0, ∃ N₀ : ℕ, ∀ N ≥ N₀,
+      ∀ z ∈ Metric.closedBall z₀ r,
+        ‖(∑' k : ℕ, c N k * (z - z₀) ^ k) - (∑' k : ℕ, cLim k * (z - z₀) ^ k)‖ < ε) := by
+  sorry
+
+theorem araki_1d_entire_expansional {E : Type*} [NormedAddCommGroup E] [NormedSpace ℂ E]
+    [CompleteSpace E] {C₀ C₁ : ℝ} (hC₀ : 0 ≤ C₀) (hC₁ : 0 ≤ C₁)
+    (a : ℕ → E) (ha : ∀ m : ℕ, ‖a m‖ ≤ C₀ * C₁ ^ m) (τ : ℂ) :
+    Summable (fun m : ℕ ↦ (τ ^ m / (m.factorial : ℂ)) • a m) ∧
+    ‖∑' m : ℕ, (τ ^ m / (m.factorial : ℂ)) • a m‖ ≤ C₀ * Real.exp (C₁ * ‖τ‖) := by
   sorry

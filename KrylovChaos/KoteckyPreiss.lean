@@ -61,7 +61,10 @@ lemma polymerZ_empty {Γ : Type*} [DecidableEq Γ]
   unfold polymerZ
   have h : (∅ : Finset Γ).powerset.filter (fun I ↦ isCompatPolymer incompat I) = {∅} := by
     ext I
-    simp [isCompatPolymer]
+    simp only [Finset.mem_filter, Finset.mem_powerset, Finset.subset_empty, Finset.mem_singleton]
+    constructor
+    · rintro ⟨rfl, _⟩; rfl
+    · rintro rfl; exact ⟨rfl, fun _ h ↦ by simp at h⟩
   rw [h, Finset.sum_singleton, Finset.prod_empty]
 
 /-- **Deletion–Neighborhood Recursion**: For any `γ ∈ Λ` and symmetric incompatibility `incompat`,
@@ -119,15 +122,15 @@ theorem polymerZ_eq_add_incompat {Γ : Type*} [DecidableEq Γ]
       simp only [S, Finset.mem_filter, Finset.mem_powerset]
       refine ⟨⟨?_, ?_⟩, Finset.mem_insert_self γ J⟩
       · intro x hx
-        rcases Finset.mem_insert.mp hx with rfl | hxJ
-        · exact hγ
+        rcases Finset.mem_insert.mp hx with hxγ | hxJ
+        · rw [hxγ]; exact hγ
         · exact (Finset.mem_filter.mp (hsub hxJ)).1
       · intro x hx y hy hxy
-        rcases Finset.mem_insert.mp hx with rfl | hxJ <;>
-        rcases Finset.mem_insert.mp hy with rfl | hyJ
-        · exact absurd rfl hxy
-        · exact (Finset.mem_filter.mp (hsub hyJ)).2
-        · intro hinc; exact (Finset.mem_filter.mp (hsub hxJ)).2 (hsym _ _ hinc)
+        rcases Finset.mem_insert.mp hx with hxγ | hxJ <;>
+        rcases Finset.mem_insert.mp hy with hyγ | hyJ
+        · exact absurd (hxγ.trans hyγ.symm) hxy
+        · rw [hxγ]; exact (Finset.mem_filter.mp (hsub hyJ)).2
+        · rw [hyγ]; intro hinc; exact (Finset.mem_filter.mp (hsub hxJ)).2 (hsym _ _ hinc)
         · exact hc x hxJ y hyJ hxy
     · intro I hI
       have hmem : γ ∈ I := (Finset.mem_filter.mp hI).2
@@ -270,8 +273,8 @@ theorem kotecky_preiss_convergence {Γ : Type*} [DecidableEq Γ]
             rw [← Real.exp_sum] at hexp_le
             have hsub_inc : insert γ (Λ' \ Λ'') ⊆ Λ₀.filter (fun γ' ↦ incompat γ γ') := by
               intro x hx
-              rcases Finset.mem_insert.mp hx with rfl | hx'
-              · exact Finset.mem_filter.mpr ⟨hsub hγ, hrefl γ⟩
+              rcases Finset.mem_insert.mp hx with hxγ | hx'
+              · rw [hxγ]; exact Finset.mem_filter.mpr ⟨hsub hγ, hrefl γ⟩
               · rcases Finset.mem_sdiff.mp hx' with ⟨hxΛ', hxnot⟩
                 have hxΛ : x ∈ Λ := (Finset.mem_erase.mp hxΛ').2
                 have hinc : incompat γ x := by
