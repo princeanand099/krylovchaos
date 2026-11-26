@@ -17,17 +17,15 @@ functions represented by power series on disks `ball z₀ R` and strips `{|Im z|
    plus termwise convergence `c N k → cLim k` imply:
    - `‖cLim k‖ ≤ M / R^k`,
    - absolute convergence of `fLim z = ∑' k, cLim k * (z - z₀)^k` on `ball z₀ R`,
-   - uniform convergence `f_N → fLim` on every closed subdisk `closedBall z₀ r` (`0 ≤ r < R`),
-   - preservation of any uniform bound `‖f_N z‖ ≤ M` by `fLim`.
-2. `vitali_power_series_differentiable`: Every convergent power series with `‖c k‖ ≤ M / R^k`
-   is complex-differentiable (`HasDerivAt`) at every `z ∈ ball z₀ R`.
+   - uniform convergence `f_N → fLim` on every closed subdisk `closedBall z₀ r` (`0 ≤ r < R`).
+2. `vitali_uniform_bound_preserved`: Preservation of any uniform bound `‖f_N z‖ ≤ M` by `fLim`.
 3. `vitali_strip_uniform_convergence`: Finite disk-cover upgrade from diskwise uniform
-   convergence to uniform convergence on any compact rectangle `{|Re z| ≤ T, |Im z| ≤ r}`.
+   convergence to uniform convergence on any compact rectangle `{|Re z| ≤ T, |Im z| ≤ r₁}`.
 -/
 
 namespace KrylovChaos
 
-/-- Uniform convergence, absolute summability, and bound preservation for a Vitali sequence
+/-- Uniform convergence and absolute summability for a Vitali sequence
 of power series on `Metric.ball z₀ R`. -/
 theorem vitali_power_series_convergence {z₀ : ℂ} {R M : ℝ}
     (hR : 0 < R) (hM : 0 ≤ M)
@@ -62,7 +60,6 @@ theorem vitali_power_series_convergence {z₀ : ℂ} {R M : ℝ}
   have hq1 : q < 1 := (div_lt_one hR).mpr hrR
   have hgeom : Summable (fun k : ℕ ↦ 2 * M * q ^ k) :=
     (summable_geometric_of_lt_one hq0 hq1).mul_left (2 * M)
-  -- Choose truncation K so the geometric tail ∑_{k ≥ K} 2 M q^k < ε / 2
   have htail_tend : Filter.Tendsto
       (fun K : ℕ ↦ ∑' k : ℕ, 2 * M * q ^ (k + K)) Filter.atTop (nhds 0) := by
     have h1 : ∀ K : ℕ, (∑' k : ℕ, 2 * M * q ^ (k + K)) =
@@ -76,14 +73,13 @@ theorem vitali_power_series_convergence {z₀ : ℂ} {R M : ℝ}
     simp_rw [h1]
     simpa using (tendsto_pow_atTop_nhds_zero_of_lt_one hq0 hq1).const_mul (2 * M / (1 - q))
   obtain ⟨K, hK⟩ := (htail_tend.eventually (gt_mem_nhds (by linarith : 0 < ε / 2))).exists
-  -- Choose N₀ so finite head ∑_{k < K} ‖c N k - cLim k‖ * r^k < ε / 2
   have hhead_tend : Filter.Tendsto
       (fun N : ℕ ↦ ∑ k ∈ Finset.range K, ‖c N k - cLim k‖ * r ^ k) Filter.atTop (nhds 0) := by
     have hterm : ∀ k ∈ Finset.range K,
         Filter.Tendsto (fun N ↦ ‖c N k - cLim k‖ * r ^ k) Filter.atTop (nhds 0) := by
       intro k _
       have h1 : Filter.Tendsto (fun N ↦ ‖c N k - cLim k‖) Filter.atTop (nhds 0) := by
-        simpa [sub_self, norm_zero] using ((hlim k).sub tendsto_const_nhds).norm
+        simpa [sub_self, norm_zero] using ((hlim k).sub (tendsto_const_nhds (x := cLim k))).norm
       simpa using h1.mul_const (r ^ k)
     simpa using tendsto_finset_sum (Finset.range K) hterm
   obtain ⟨N₀, hN₀⟩ := Filter.eventually_atTop.mp
@@ -129,14 +125,16 @@ theorem vitali_power_series_convergence {z₀ : ℂ} {R M : ℝ}
           ≤ (2 * M / R ^ (k + K)) * r ^ (k + K) :=
             mul_le_mul hc_le hz_pow (pow_nonneg (norm_nonneg _) _) (by positivity)
         _ = 2 * M * q ^ (k + K) := by simp only [q, div_pow]; ring
+    have hnorm_summ : Summable (fun k : ℕ ↦
+        ‖(c N (k + K) - cLim (k + K)) * (z - z₀) ^ (k + K)‖) :=
+      Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) hterm_le hgeomK
     have h1 : ‖∑' k : ℕ, (c N (k + K) - cLim (k + K)) * (z - z₀) ^ (k + K)‖ ≤
         ∑' k : ℕ, ‖(c N (k + K) - cLim (k + K)) * (z - z₀) ^ (k + K)‖ :=
-      norm_tsum_le_tsum_norm ((summable_nat_add_iff K).mpr hdiff_summ.norm)
+      norm_tsum_le_tsum_norm hnorm_summ
     have h2 : (∑' k : ℕ, ‖(c N (k + K) - cLim (k + K)) * (z - z₀) ^ (k + K)‖) ≤
         ∑' k : ℕ, 2 * M * q ^ (k + K) :=
-      Summable.tsum_le_tsum hterm_le ((summable_nat_add_iff K).mpr hdiff_summ.norm) hgeomK
-    linarith [norm_add_le (∑ k ∈ Finset.range K, (c N k - cLim k) * (z - z₀) ^ k)
-      (∑' k : ℕ, (c N (k + K) - cLim (k + K)) * (z - z₀) ^ (k + K))]
+      Summable.tsum_le_tsum hterm_le hnorm_summ hgeomK
+    linarith
   exact lt_of_le_of_lt (norm_add_le _ _) (by linarith)
 
 /-- Preservation of a uniform bound `‖f_N z‖ ≤ M` under Vitali power-series convergence. -/
@@ -149,7 +147,7 @@ theorem vitali_uniform_bound_preserved {z₀ : ℂ} {R M : ℝ}
     ∀ z ∈ Metric.ball z₀ R, ‖∑' k : ℕ, cLim k * (z - z₀) ^ k‖ ≤ M := by
   intro z hz
   have hdist : ‖z - z₀‖ < R := by simpa [Metric.mem_ball, dist_eq_norm] using hz
-  have hv := (vitali_power_series_convergence hR hM c cLim hbound hlim).2.2
+  have hv := (vitali_power_series_convergence (z₀ := z₀) hR hM c cLim hbound hlim).2.2
     ‖z - z₀‖ (norm_nonneg _) hdist
   have htend : Filter.Tendsto (fun N ↦ ∑' k : ℕ, c N k * (z - z₀) ^ k)
       Filter.atTop (nhds (∑' k : ℕ, cLim k * (z - z₀) ^ k)) := by
@@ -171,20 +169,18 @@ theorem vitali_strip_uniform_convergence {rW T r₁ : ℝ}
       ∀ ε > 0, ∃ N₀ : ℕ, ∀ N ≥ N₀, ∀ z ∈ Metric.closedBall (t : ℂ) r, ‖f N z - fLim z‖ < ε) :
     ∀ ε > 0, ∃ N₀ : ℕ, ∀ N ≥ N₀, ∀ z : ℂ, |z.re| ≤ T → |z.im| ≤ r₁ → ‖f N z - fLim z‖ < ε := by
   intro ε hε
-  -- Pick r₂ ∈ (r₁, rW) and step size δ = √(r₂² - r₁²) > 0
-  set r₂ := (r₁ + rW) / 2
-  have hr₂0 : 0 ≤ r₂ := by linarith
-  have hr₂lt : r₂ < rW := by linarith
-  have hr₁_lt_r₂ : r₁ < r₂ := by linarith
-  set δ := Real.sqrt (r₂ ^ 2 - r₁ ^ 2)
+  let r₂ := (r₁ + rW) / 2
+  have hr₂0 : 0 ≤ r₂ := by dsimp only [r₂]; linarith
+  have hr₂lt : r₂ < rW := by dsimp only [r₂]; linarith
+  have hr₁_lt_r₂ : r₁ < r₂ := by dsimp only [r₂]; linarith
+  let δ := Real.sqrt (r₂ ^ 2 - r₁ ^ 2)
   have hδ_pos : 0 < δ := Real.sqrt_pos.mpr (by nlinarith)
-  -- Cover [-T, T] by finitely many centers t_j = -T + j * δ for j ∈ range (K + 1)
-  set K := Nat.ceil (2 * T / δ) + 1
+  let K := Nat.ceil (2 * T / δ) + 1
   have hcover : ∀ x : ℝ, |x| ≤ T → ∃ j ∈ Finset.range (K + 1), |x - (-T + (j : ℝ) * δ)| ≤ δ := by
     intro x hx
     have hx_lo : -T ≤ x := (abs_le.mp hx).1
     have hx_hi : x ≤ T := (abs_le.mp hx).2
-    set j := Nat.floor ((x + T) / δ)
+    let j := Nat.floor ((x + T) / δ)
     have hj_le : (j : ℝ) ≤ (x + T) / δ := Nat.floor_le (div_nonneg (by linarith) hδ_pos.le)
     have hj_lt : (x + T) / δ < (j : ℝ) + 1 := Nat.lt_floor_add_one _
     have hj_mem : j ∈ Finset.range (K + 1) := by
@@ -194,31 +190,29 @@ theorem vitali_strip_uniform_convergence {rW T r₁ : ℝ}
       have h2 : 2 * T / δ ≤ (Nat.ceil (2 * T / δ) : ℝ) := Nat.le_ceil _
       have h3 : (j : ℝ) ≤ (Nat.ceil (2 * T / δ) : ℝ) := le_trans h1 h2
       have h4 : j ≤ Nat.ceil (2 * T / δ) := by exact_mod_cast h3
-      omega
+      dsimp only [K]; omega
     refine ⟨j, hj_mem, ?_⟩
     have hmul1 : (j : ℝ) * δ ≤ x + T := (le_div_iff₀ hδ_pos).mp hj_le
     have hmul2 : x + T < ((j : ℝ) + 1) * δ := (div_lt_iff₀ hδ_pos).mp hj_lt
     rw [abs_le]
     constructor <;> linarith
-  -- Choose N₀ = max_{j ≤ K} N_j
   choose N_of hN_of using fun j : Fin (K + 1) ↦
     hdisk (-T + (j.1 : ℝ) * δ) r₂ hr₂0 hr₂lt ε hε
-  set N₀ := (Finset.univ : Finset (Fin (K + 1))).sup N_of
+  let N₀ := (Finset.univ : Finset (Fin (K + 1))).sup N_of
   refine ⟨N₀, fun N hN z hre him ↦ ?_⟩
   obtain ⟨j, hj_mem, hj_dist⟩ := hcover z.re hre
   have hj_lt : j < K + 1 := Finset.mem_range.mp hj_mem
-  have hNj_le : N_of ⟨j, hj_lt⟩ ≤ N₀ := Finset.le_sup (Finset.mem_univ ⟨j, hj_lt⟩)
+  have hNj_le : N_of ⟨j, hj_lt⟩ ≤ N₀ :=
+    Finset.le_sup (f := N_of) (Finset.mem_univ (⟨j, hj_lt⟩ : Fin (K + 1)))
   refine hN_of ⟨j, hj_lt⟩ N (le_trans hNj_le hN) z ?_
   rw [Metric.mem_closedBall, Complex.dist_eq]
   have hnorm_sq : ‖z - ((-T + (j : ℝ) * δ : ℝ) : ℂ)‖ ^ 2 ≤ r₂ ^ 2 := by
     rw [← Complex.normSq_eq_norm_sq, Complex.normSq_apply]
     simp only [Complex.sub_re, Complex.ofReal_re, Complex.sub_im, Complex.ofReal_im, sub_zero]
-    have h1 : (z.re - (-T + (j : ℝ) * δ)) ^ 2 ≤ δ ^ 2 := by
-      have := sq_le_sq.mpr (show |z.re - (-T + (j : ℝ) * δ)| ≤ |δ| by rwa [abs_of_pos hδ_pos])
-      exact this
-    have h2 : z.im ^ 2 ≤ r₁ ^ 2 := by
-      have := sq_le_sq.mpr (show |z.im| ≤ |r₁| by rwa [abs_of_nonneg hr₁0])
-      exact this
+    have h1 : (z.re - (-T + (j : ℝ) * δ)) ^ 2 ≤ δ ^ 2 :=
+      sq_le_sq.mpr (show |z.re - (-T + (j : ℝ) * δ)| ≤ |δ| by rwa [abs_of_pos hδ_pos])
+    have h2 : z.im ^ 2 ≤ r₁ ^ 2 :=
+      sq_le_sq.mpr (show |z.im| ≤ |r₁| by rwa [abs_of_nonneg hr₁0])
     have hδsq : δ ^ 2 = r₂ ^ 2 - r₁ ^ 2 := Real.sq_sqrt (by nlinarith)
     nlinarith
   nlinarith [norm_nonneg (z - ((-T + (j : ℝ) * δ : ℝ) : ℂ))]

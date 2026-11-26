@@ -40,7 +40,6 @@ theorem carleman_divergence_of_linear_growth {α γ : ℝ} (b : ℕ → ℝ)
     have hbd : b (n + 1) ≤ (α + γ) * ((n + 1 : ℕ) : ℝ) := by
       have h1 := hb_lin (n + 1) (by omega)
       nlinarith
-    have hmul_pos : 0 < (α + γ) * ((n + 1 : ℕ) : ℝ) := by positivity
     rw [show (α + γ)⁻¹ * (1 / ((n + 1 : ℕ) : ℝ)) = 1 / ((α + γ) * ((n + 1 : ℕ) : ℝ)) by
       field_simp [hc_pos.ne', (by linarith : ((n + 1 : ℕ) : ℝ) ≠ 0)]]
     exact one_div_le_one_div_of_le hbn hbd
@@ -65,8 +64,19 @@ theorem carleman_deficiency_zero {s : ℝ} (hs : s ≠ 0)
     (heig : ∀ n : ℕ, (b n : ℂ) * u (n - 1) + (b (n + 1) : ℂ) * u (n + 1) =
       (s : ℂ) * Complex.I * u n) :
     ∀ n : ℕ, u n = 0 := by
-  -- Discrete Wronskian W(N) = b(N+1) * Im(conj(u N) * u (N+1))
   let W : ℕ → ℝ := fun n ↦ b (n + 1) * (star (u n) * u (n + 1)).im
+  have him_norm : ∀ z : ℂ, (star z * ((s : ℂ) * Complex.I * z)).im = s * ‖z‖ ^ 2 := by
+    intro z
+    have h1 : star z * ((s : ℂ) * Complex.I * z) =
+        ((s * ‖z‖ ^ 2 : ℝ) : ℂ) * Complex.I := by
+      have hconj : star z * z = ((‖z‖ ^ 2 : ℝ) : ℂ) := by
+        rw [Complex.star_def, Complex.conj_mul', Complex.ofReal_pow]
+      calc star z * ((s : ℂ) * Complex.I * z)
+          = (s : ℂ) * (star z * z) * Complex.I := by ring
+        _ = (s : ℂ) * ((‖z‖ ^ 2 : ℝ) : ℂ) * Complex.I := by rw [hconj]
+        _ = ((s * ‖z‖ ^ 2 : ℝ) : ℂ) * Complex.I := by push_cast; ring
+    rw [h1]
+    simp [Complex.mul_im]
   have hW_step : ∀ N : ℕ, W N = s * ∑ k ∈ Finset.range (N + 1), ‖u k‖ ^ 2 := by
     intro N
     induction N with
@@ -79,12 +89,8 @@ theorem carleman_deficiency_zero {s : ℝ} (hs : s ≠ 0)
       have hlhs : (star (u 0) * ((b 1 : ℂ) * u 1)).im = b 1 * (star (u 0) * u 1).im := by
         rw [show star (u 0) * ((b 1 : ℂ) * u 1) = (b 1 : ℂ) * (star (u 0) * u 1) by ring]
         simp [Complex.mul_im]
-      have hrhs : (star (u 0) * ((s : ℂ) * Complex.I * u 0)).im = s * ‖u 0‖ ^ 2 := by
-        rw [show star (u 0) * ((s : ℂ) * Complex.I * u 0) =
-          (s : ℂ) * Complex.I * (star (u 0) * u 0) by ring]
-        rw [Complex.star_def, Complex.conj_mul', ← Complex.ofReal_pow]
-        simp [Complex.mul_im, Complex.mul_re]
-      simp only [W, Finset.range_one, Finset.sum_singleton]
+      have hrhs : (star (u 0) * ((s : ℂ) * Complex.I * u 0)).im = s * ‖u 0‖ ^ 2 := him_norm (u 0)
+      simp only [W, Nat.zero_add, Finset.range_one, Finset.sum_singleton]
       linarith
     | succ N ih =>
       have hN := heig (N + 1)
@@ -112,14 +118,9 @@ theorem carleman_deficiency_zero {s : ℝ} (hs : s ≠ 0)
           simp only [Complex.mul_im, Complex.ofReal_re, Complex.ofReal_im, zero_mul, add_zero, W]
         linarith
       have hrhs : (star (u (N + 1)) * ((s : ℂ) * Complex.I * u (N + 1))).im =
-          s * ‖u (N + 1)‖ ^ 2 := by
-        rw [show star (u (N + 1)) * ((s : ℂ) * Complex.I * u (N + 1)) =
-          (s : ℂ) * Complex.I * (star (u (N + 1)) * u (N + 1)) by ring]
-        rw [Complex.star_def, Complex.conj_mul', ← Complex.ofReal_pow]
-        simp [Complex.mul_im, Complex.mul_re]
+          s * ‖u (N + 1)‖ ^ 2 := him_norm (u (N + 1))
       rw [Finset.sum_range_succ, mul_add]
       linarith
-  -- Now prove u n = 0 by contradiction
   intro n₀
   by_contra hne
   have hS0_pos : 0 < |s| * ‖u n₀‖ ^ 2 := by
@@ -133,7 +134,7 @@ theorem carleman_deficiency_zero {s : ℝ} (hs : s ≠ 0)
     set N := k + n₀
     have hmem : n₀ ∈ Finset.range (N + 1) := Finset.mem_range.mpr (by omega)
     have hsum_ge : ‖u n₀‖ ^ 2 ≤ ∑ j ∈ Finset.range (N + 1), ‖u j‖ ^ 2 :=
-      Finset.single_le_sum (fun j _ ↦ sq_nonneg _) hmem
+      Finset.single_le_sum (f := fun j ↦ ‖u j‖ ^ 2) (fun j _ ↦ sq_nonneg _) hmem
     have hW_ge : |s| * ‖u n₀‖ ^ 2 ≤ |W N| := by
       rw [hW_step N, abs_mul]
       have hnn : 0 ≤ ∑ j ∈ Finset.range (N + 1), ‖u j‖ ^ 2 :=
@@ -156,8 +157,8 @@ theorem carleman_deficiency_zero {s : ℝ} (hs : s ≠ 0)
     have h1 : Summable (fun k : ℕ ↦ ‖u (k + n₀)‖ ^ 2) := (summable_nat_add_iff n₀).mpr hu_l2
     have h2 : Summable (fun k : ℕ ↦ ‖u (k + (n₀ + 1))‖ ^ 2) :=
       (summable_nat_add_iff (n₀ + 1)).mpr hu_l2
-    have h2' : Summable (fun k : ℕ ↦ ‖u (k + n₀ + 1)‖ ^ 2) := by
-      simpa [Nat.add_assoc] using h2
+    have h2' : Summable (fun k : ℕ ↦ ‖u (k + n₀ + 1)‖ ^ 2) :=
+      h2.congr fun k ↦ by congr 2; omega
     exact (h1.add h2').div_const 2
   have hsum_scaled : Summable (fun k : ℕ ↦ (|s| * ‖u n₀‖ ^ 2) * (1 / b (k + n₀ + 1))) :=
     Summable.of_nonneg_of_le (fun k ↦ by
@@ -166,9 +167,8 @@ theorem carleman_deficiency_zero {s : ℝ} (hs : s ≠ 0)
     have h1 := hsum_scaled.mul_left (|s| * ‖u n₀‖ ^ 2)⁻¹
     refine h1.congr fun k ↦ ?_
     field_simp [hS0_pos.ne']
-  have hsum_all : Summable (fun n : ℕ ↦ 1 / b (n + 1)) := by
-    refine (summable_nat_add_iff n₀).mp ?_
-    simpa [Nat.add_assoc, Nat.add_comm] using hsum_shift
+  have hsum_all : Summable (fun n : ℕ ↦ 1 / b (n + 1)) :=
+    (summable_nat_add_iff n₀).mp (hsum_shift.congr fun k ↦ by congr 2; omega)
   exact hcarl hsum_all
 
 /-- **Carleman Flux Vanishing**: If `b n > 0` (`n ≥ 1`), `¬ Summable (fun n ↦ 1 / b (n + 1))`,
@@ -201,8 +201,8 @@ theorem carleman_flux_liminf_zero (b ψ : ℕ → ℝ)
     have h1 : Summable (fun k : ℕ ↦ (ψ (k + N₀)) ^ 2) := (summable_nat_add_iff N₀).mpr hψ
     have h2 : Summable (fun k : ℕ ↦ (ψ (k + (N₀ + 1))) ^ 2) :=
       (summable_nat_add_iff (N₀ + 1)).mpr hψ
-    have h2' : Summable (fun k : ℕ ↦ (ψ (k + N₀ + 1)) ^ 2) := by
-      simpa [Nat.add_assoc] using h2
+    have h2' : Summable (fun k : ℕ ↦ (ψ (k + N₀ + 1)) ^ 2) :=
+      h2.congr fun k ↦ by congr 2; omega
     exact (h1.add h2').div_const 2
   have hsum_scaled : Summable (fun k : ℕ ↦ ε * (1 / b (k + N₀ + 1))) :=
     Summable.of_nonneg_of_le (fun k ↦ by
@@ -211,9 +211,8 @@ theorem carleman_flux_liminf_zero (b ψ : ℕ → ℝ)
     have h1 := hsum_scaled.mul_left ε⁻¹
     refine h1.congr fun k ↦ ?_
     field_simp [hε.ne']
-  have hsum_all : Summable (fun n : ℕ ↦ 1 / b (n + 1)) := by
-    refine (summable_nat_add_iff N₀).mp ?_
-    simpa [Nat.add_assoc, Nat.add_comm] using hsum_shift
+  have hsum_all : Summable (fun n : ℕ ↦ 1 / b (n + 1)) :=
+    (summable_nat_add_iff N₀).mp (hsum_shift.congr fun k ↦ by congr 2; omega)
   exact hcarl hsum_all
 
 end KrylovChaos

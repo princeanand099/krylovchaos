@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Prince Anand
 -/
 import Mathlib.Analysis.Complex.Basic
-import Mathlib.Analysis.Normed.Algebra.MatrixExponential
+import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.SpecificLimits.Normed
 import Mathlib.Data.Matrix.Basic
 import Mathlib.Tactic
@@ -14,7 +14,7 @@ import Mathlib.Tactic
 
 Proves from scratch (using only Mathlib, zero external axioms or literature hypotheses)
 the core 1D structural ingredients of Araki's (1969) imaginary-time analyticity theorem:
-1. `araki_1d_boundary_count`: On any 1D chain `Fin N` with interaction range `r ≥ 2`, the
+1. `araki_1d_boundary_count`: On any 1D chain `Fin N` with interaction range `r ≥ 1`, the
    number of `r`-local interaction blocks `[j, j + r - 1]` crossing the boundary of any
    contiguous interval `[a, b]` is at most `2 * (r - 1)`, strictly independent of `N` and `b - a`.
 2. `araki_1d_block_commutator_indep`: If `H = H_B + H_env` with `[H_env, A] = 0` and
@@ -37,7 +37,7 @@ def iterMatComm {ι : Type*} [Fintype ι] [DecidableEq ι]
 /-- **1D Constant-Boundary-Size Bound**:
 On a 1D chain of length `N`, the set of starting sites `j : ℕ` of `r`-local blocks
 `{j, j+1, ..., j+r-1}` that straddle either endpoint of a contiguous interval `[a, b]`
-(i.e. `j < a ∧ a < j + r` or `j ≤ b ∧ b < j + r - 1`) has cardinality at most `2 * (r - 1)`,
+(i.e. `j < a ∧ a < j + r` or `j ≤ b ∧ b + 1 < j + r`) has cardinality at most `2 * (r - 1)`,
 strictly independent of `N`, `a`, and `b`. -/
 theorem araki_1d_boundary_count (N r a b : ℕ) (hr : 1 ≤ r) :
     ((Finset.range N).filter (fun j ↦ (j < a ∧ a < j + r) ∨ (j ≤ b ∧ b + 1 < j + r))).card ≤
@@ -115,16 +115,17 @@ theorem araki_1d_entire_expansional {E : Type*} [NormedAddCommGroup E] [NormedSp
     calc ‖τ‖ ^ m / (m.factorial : ℝ) * ‖a m‖
         ≤ ‖τ‖ ^ m / (m.factorial : ℝ) * (C₀ * C₁ ^ m) := h1
       _ = C₀ * ((C₁ * ‖τ‖) ^ m / (m.factorial : ℝ)) := by rw [mul_pow]; ring
-  have hexp_summ : Summable (fun m : ℕ ↦ C₀ * ((C₁ * ‖τ‖) ^ m / (m.factorial : ℝ))) := by
-    have h1 := (Real.summable_pow_div_factorial (C₁ * ‖τ‖)).mul_left C₀
-    exact h1
+  have hexp_summ : Summable (fun m : ℕ ↦ C₀ * ((C₁ * ‖τ‖) ^ m / (m.factorial : ℝ))) :=
+    (Real.summable_pow_div_factorial (C₁ * ‖τ‖)).mul_left C₀
+  have hnorm_summ : Summable (fun m : ℕ ↦ ‖(τ ^ m / (m.factorial : ℂ)) • a m‖) :=
+    Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) hterm hexp_summ
   have hsumm : Summable (fun m : ℕ ↦ (τ ^ m / (m.factorial : ℂ)) • a m) :=
     Summable.of_norm_bounded hexp_summ hterm
   refine ⟨hsumm, ?_⟩
   calc ‖∑' m : ℕ, (τ ^ m / (m.factorial : ℂ)) • a m‖
-      ≤ ∑' m : ℕ, ‖(τ ^ m / (m.factorial : ℂ)) • a m‖ := norm_tsum_le_tsum_norm hsumm.norm
+      ≤ ∑' m : ℕ, ‖(τ ^ m / (m.factorial : ℂ)) • a m‖ := norm_tsum_le_tsum_norm hnorm_summ
     _ ≤ ∑' m : ℕ, C₀ * ((C₁ * ‖τ‖) ^ m / (m.factorial : ℝ)) :=
-        Summable.tsum_le_tsum hterm hsumm.norm hexp_summ
+        Summable.tsum_le_tsum hterm hnorm_summ hexp_summ
     _ = C₀ * ∑' m : ℕ, (C₁ * ‖τ‖) ^ m / (m.factorial : ℝ) := tsum_mul_left
     _ = C₀ * Real.exp (C₁ * ‖τ‖) := by rw [Real.exp_eq_exp_ℝ, NormedSpace.exp_eq_tsum_div]
 

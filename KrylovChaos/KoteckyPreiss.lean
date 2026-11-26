@@ -42,7 +42,7 @@ private lemma kp_prod_le_prod {ι : Type*} (s : Finset ι) {f g : ι → ℝ}
       (le_trans (hf a (Finset.mem_insert_self a s)) (hfg a (Finset.mem_insert_self a s)))
 
 /-- Pairwise compatibility of a finite set of polymers `I` under incompatibility relation `incompat`. -/
-def isCompatPolymer {Γ : Type*} (incompat : Γ → Γ → Prop) (I : Finset Γ) : Prop :=
+abbrev isCompatPolymer {Γ : Type*} (incompat : Γ → Γ → Prop) (I : Finset Γ) : Prop :=
   ∀ γ₁ ∈ I, ∀ γ₂ ∈ I, γ₁ ≠ γ₂ → ¬ incompat γ₁ γ₂
 
 /-- Finite-volume polymer partition function `Z(Λ) = ∑_{I ⊆ Λ, compat} ∏_{γ ∈ I} w(γ)`. -/
@@ -169,15 +169,14 @@ theorem kotecky_preiss_convergence {Γ : Type*} [DecidableEq Γ]
       · subst hEmp
         refine ⟨?_, fun γ hγ ↦ by simp at hγ⟩
         rw [polymerZ_empty]; exact one_ne_zero
-      · -- Helper: telescoping ratio bound for any A ⊆ B ⊆ Λ with B.card < n
-        have htele : ∀ B ⊆ Λ, B.card < n → ∀ A ⊆ B,
+      · have htele : ∀ B ⊆ Λ, B.card < n → ∀ A ⊆ B,
             polymerZ incompat w B ≠ 0 ∧
             ‖polymerZ incompat w A / polymerZ incompat w B‖ ≤
               ∏ x ∈ B \ A, (1 + kpActivity w a x) := by
           intro B hB hBlt
+          have hBsub0 : B ⊆ Λ₀ := Finset.Subset.trans hB hsub
           have hBne : polymerZ incompat w B ≠ 0 :=
-            (ih B.card hBlt B (Finset.Subset.trans hB hsub) rfl).1
-          -- Induct on (B \ A).card
+            (ih B.card hBlt B hBsub0 rfl).1
           suffices ∀ k : ℕ, ∀ A ⊆ B, (B \ A).card = k →
               ‖polymerZ incompat w A / polymerZ incompat w B‖ ≤
                 ∏ x ∈ B \ A, (1 + kpActivity w a x) by
@@ -205,7 +204,16 @@ theorem kotecky_preiss_convergence {Γ : Type*} [DecidableEq Γ]
             set A' := insert x A
             have hA'B : A' ⊆ B := Finset.insert_subset hxB hAB
             have hdiff_eq : B \ A = insert x (B \ A') := by
-              ext y; simp only [A', Finset.mem_sdiff, Finset.mem_insert]; tauto
+              ext y
+              simp only [A', Finset.mem_sdiff, Finset.mem_insert]
+              constructor
+              · rintro ⟨hyB, hyA⟩
+                by_cases hyx : y = x
+                · exact Or.inl hyx
+                · exact Or.inr ⟨hyB, fun h ↦ h.elim hyx hyA⟩
+              · rintro (rfl | ⟨hyB, hnot⟩)
+                · exact ⟨hxB, hxA⟩
+                · exact ⟨hyB, fun hyA ↦ hnot (Or.inr hyA)⟩
             have hxnot : x ∉ B \ A' := by simp [A']
             have hcard' : (B \ A').card = k := by
               have h1 := congrArg Finset.card hdiff_eq
@@ -213,8 +221,9 @@ theorem kotecky_preiss_convergence {Γ : Type*} [DecidableEq Γ]
               omega
             have hstep1 := ihk A' hA'B hcard'
             have hA'lt : A'.card < n := lt_of_le_of_lt (Finset.card_le_card hA'B) hBlt
-            have hA'ne := (ih A'.card hA'lt A' (Finset.Subset.trans hA'B hsub) rfl).1
-            have hstep2 := ((ih A'.card hA'lt A' (Finset.Subset.trans hA'B hsub) rfl).2 x
+            have hA'sub0 : A' ⊆ Λ₀ := Finset.Subset.trans hA'B hBsub0
+            have hA'ne := (ih A'.card hA'lt A' hA'sub0 rfl).1
+            have hstep2 := ((ih A'.card hA'lt A' hA'sub0 rfl).2 x
               (Finset.mem_insert_self x A)).2
             have herase : A'.erase x = A := Finset.erase_insert hxA
             rw [herase] at hstep2
@@ -225,7 +234,6 @@ theorem kotecky_preiss_convergence {Γ : Type*} [DecidableEq Γ]
               field_simp [hA'ne, hBne]
             rw [hdiv, norm_mul]
             exact mul_le_mul hstep2 hstep1 (norm_nonneg _) (by unfold kpActivity; positivity)
-        -- Now prove the ratio bound for any γ ∈ Λ
         have hratio : ∀ γ ∈ Λ,
             polymerZ incompat w Λ ≠ 0 ∧
             ‖polymerZ incompat w Λ / polymerZ incompat w (Λ.erase γ) - 1‖ ≤
@@ -247,11 +255,13 @@ theorem kotecky_preiss_convergence {Γ : Type*} [DecidableEq Γ]
           have hquot : polymerZ incompat w Λ / polymerZ incompat w Λ' - 1 =
               w γ * (polymerZ incompat w Λ'' / polymerZ incompat w Λ') := by
             rw [hrec]; field_simp [hΛ'ne]; ring
-          -- Bound ∏_{x ∈ Λ' \ Λ''} (1 + r x) ≤ exp(a γ) / (1 + r γ)
           have hprod_le : (1 + kpActivity w a γ) * ∏ x ∈ Λ' \ Λ'', (1 + kpActivity w a x) ≤
               Real.exp (a γ) := by
             have hnot : γ ∉ Λ' \ Λ'' := by simp [Λ']
-            rw [← Finset.prod_insert hnot]
+            have hins : (1 + kpActivity w a γ) * ∏ x ∈ Λ' \ Λ'', (1 + kpActivity w a x) =
+                ∏ x ∈ insert γ (Λ' \ Λ''), (1 + kpActivity w a x) :=
+              (Finset.prod_insert (f := fun x ↦ 1 + kpActivity w a x) hnot).symm
+            rw [hins]
             have hexp_le : ∏ x ∈ insert γ (Λ' \ Λ''), (1 + kpActivity w a x) ≤
                 ∏ x ∈ insert γ (Λ' \ Λ''), Real.exp (kpActivity w a x) := by
               apply kp_prod_le_prod
@@ -305,8 +315,6 @@ theorem kotecky_preiss_convergence {Γ : Type*} [DecidableEq Γ]
             linarith [div_pos one_pos h1pr_pos]
           have hinv : ‖polymerZ incompat w Λ' / polymerZ incompat w Λ‖ ≤
               1 + kpActivity w a γ := by
-            have hpos_q : 0 < ‖polymerZ incompat w Λ / polymerZ incompat w Λ'‖ :=
-              lt_of_lt_of_le (div_pos one_pos h1pr_pos) hlow
             rw [show polymerZ incompat w Λ' / polymerZ incompat w Λ =
               (polymerZ incompat w Λ / polymerZ incompat w Λ')⁻¹ by rw [inv_div], norm_inv]
             have := inv_anti₀ (div_pos one_pos h1pr_pos) hlow
