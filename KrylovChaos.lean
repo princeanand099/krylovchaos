@@ -18,4 +18,5 @@ import KrylovChaos.CarlemanJacobi
 import KrylovChaos.KoteckyPreiss
 import KrylovChaos.VitaliAnalytic
 import KrylovChaos.ArakiOneDim
+import KrylovChaos.QubitAlgebra
 import KrylovChaos.SanityChecks
