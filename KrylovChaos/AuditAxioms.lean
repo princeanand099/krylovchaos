@@ -6,7 +6,7 @@ Authors: Prince Anand
 import KrylovChaos
 
 /-!
-# Comprehensive Kernel Axiom Audit for `KrylovChaos` (All 28 Modules)
+# Comprehensive Kernel Axiom Audit for `KrylovChaos` (All 29 Modules)
 
 Run with `lake env lean KrylovChaos/AuditAxioms.lean`.
 Every listed headline theorem must depend strictly on a subset of
@@ -33,7 +33,7 @@ Every listed headline theorem must depend strictly on a subset of
 #print axioms KrylovChaos.vitali_strip_uniform_convergence
 #print axioms KrylovChaos.araki_1d_entire_expansional
 
--- Concrete Operator-Algebraic & End-to-End Theorems (Milestones 6–10)
+-- Concrete Operator-Algebraic & End-to-End Theorems (Milestones 6–11)
 #print axioms KrylovChaos.eq_2_8_hs_commutator_size_identity
 #print axioms KrylovChaos.prop_2_3_full_qubit_thermal_size
 #print axioms KrylovChaos.prop_2_3_full_majorana_thermal_size
@@ -59,3 +59,8 @@ Every listed headline theorem must depend strictly on a subset of
 #print axioms KrylovChaos.theorem_1_1a_infinite_fatou_proved
 #print axioms KrylovChaos.qubitLocalInteractionDecomp
 #print axioms KrylovChaos.theorem_1_1b_end_to_end
+#print axioms KrylovChaos.complex_finite_chain_mgf_bound
+#print axioms KrylovChaos.jacobiWavefn_trunc_diff_bound
+#print axioms KrylovChaos.jacobiWavefn_coord_cauchy
+#print axioms KrylovChaos.infiniteKrylovWavefn_tendsto
+#print axioms KrylovChaos.theorem_1_1a_infinite_unconditional
