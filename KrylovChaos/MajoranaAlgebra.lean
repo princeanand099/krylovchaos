@@ -96,14 +96,12 @@ theorem majoranaProbe_anticomm {n : ℕ} {i j : Fin (2 * n)} (hij : i ≠ j) :
     apply Finset.prod_congr rfl; intro x _
     rw [hsite x, Matrix.smul_apply, smul_eq_mul]
   rw [hkron]
-  -- Exactly one site `x₀ = min (i/2) (j/2)` has anticommute sign `-1`
   let x₀ : Fin n := ⟨min (i.1 / 2) (j.1 / 2), by omega⟩
   have hprod_neg : (∏ x : Fin n,
       if jwWord n i x = 0 ∨ jwWord n j x = 0 ∨ jwWord n i x = jwWord n j x
         then (1 : ℂ) else (-1 : ℂ)) = -1 := by
     rw [Finset.prod_eq_single x₀]
-    · -- At x₀, the two Pauli matrices are distinct and both nonzero
-      have hne : ¬(jwWord n i x₀ = 0 ∨ jwWord n j x₀ = 0 ∨ jwWord n i x₀ = jwWord n j x₀) := by
+    · have hne : ¬(jwWord n i x₀ = 0 ∨ jwWord n j x₀ = 0 ∨ jwWord n i x₀ = jwWord n j x₀) := by
         unfold jwWord
         have hij' : i.1 ≠ j.1 := fun h ↦ hij (Fin.ext h)
         rcases lt_trichotomy (i.1 / 2) (j.1 / 2) with hlt | heq | hgt
@@ -209,25 +207,29 @@ theorem majorana_hs_commutator_size_identity {n : ℕ} (M : QubitOp n) :
     have hcomm_norm : hsNormSq (matComm M V) =
         2 * hsNormSq M - 2 * (Matrix.trace (Mᴴ * (V * M * V))).re := by
       unfold hsNormSq hsInner matComm
+      have hterm4 : Mᴴ * V * (V * M) = Mᴴ * M := by
+        calc Mᴴ * V * (V * M)
+            = Mᴴ * ((V * V) * M) := by simp only [Matrix.mul_assoc]
+          _ = Mᴴ * M := by rw [hVsq, Matrix.one_mul]
       have hadj : (M * V - V * M)ᴴ * (M * V - V * M) =
-          V * Mᴴ * M * V - V * Mᴴ * V * M - Mᴴ * V * M * V + Mᴴ * M := by
+          V * Mᴴ * (M * V) - V * Mᴴ * (V * M) - Mᴴ * V * (M * V) + Mᴴ * M := by
         rw [Matrix.conjTranspose_sub, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hVh,
-            Matrix.sub_mul, Matrix.mul_sub, Matrix.mul_sub]
-        simp only [Matrix.mul_assoc, hVsq, Matrix.mul_one]
+            Matrix.sub_mul, Matrix.mul_sub, Matrix.mul_sub, hterm4]
         abel
       rw [hadj]
       simp only [Matrix.trace_add, Matrix.trace_sub, Complex.add_re, Complex.sub_re]
-      have ht1 : Matrix.trace (V * Mᴴ * M * V) = Matrix.trace (Mᴴ * M) := by
-        calc Matrix.trace (V * Mᴴ * M * V)
-            = Matrix.trace (V * (V * Mᴴ * M)) := Matrix.trace_mul_comm _ V
-          _ = Matrix.trace ((V * V) * Mᴴ * M) := by simp only [Matrix.mul_assoc]
+      have ht1 : Matrix.trace (V * Mᴴ * (M * V)) = Matrix.trace (Mᴴ * M) := by
+        calc Matrix.trace (V * Mᴴ * (M * V))
+            = Matrix.trace ((V * Mᴴ * M) * V) := by simp only [Matrix.mul_assoc]
+          _ = Matrix.trace (V * (V * Mᴴ * M)) := Matrix.trace_mul_comm _ V
+          _ = Matrix.trace ((V * V) * (Mᴴ * M)) := by simp only [Matrix.mul_assoc]
           _ = Matrix.trace (Mᴴ * M) := by rw [hVsq, Matrix.one_mul]
-      have ht2 : Matrix.trace (V * Mᴴ * V * M) = Matrix.trace (Mᴴ * (V * M * V)) := by
-        calc Matrix.trace (V * Mᴴ * V * M)
-            = Matrix.trace (V * (Mᴴ * V * M)) := by simp only [Matrix.mul_assoc]
-          _ = Matrix.trace ((Mᴴ * V * M) * V) := Matrix.trace_mul_comm V _
+      have ht2 : Matrix.trace (V * Mᴴ * (V * M)) = Matrix.trace (Mᴴ * (V * M * V)) := by
+        calc Matrix.trace (V * Mᴴ * (V * M))
+            = Matrix.trace (V * (Mᴴ * (V * M))) := by simp only [Matrix.mul_assoc]
+          _ = Matrix.trace ((Mᴴ * (V * M)) * V) := Matrix.trace_mul_comm V _
           _ = Matrix.trace (Mᴴ * (V * M * V)) := by simp only [Matrix.mul_assoc]
-      have ht3 : Matrix.trace (Mᴴ * V * M * V) = Matrix.trace (Mᴴ * (V * M * V)) := by
+      have ht3 : Matrix.trace (Mᴴ * V * (M * V)) = Matrix.trace (Mᴴ * (V * M * V)) := by
         simp only [Matrix.mul_assoc]
       rw [ht1, ht2, ht3]
       ring
