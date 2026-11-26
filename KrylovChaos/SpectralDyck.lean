@@ -695,28 +695,25 @@ theorem theorem_1_2c_otoc_dominance {ι : Type*} [Fintype ι] [DecidableEq ι]
     simp [Matrix.mul_assoc]
   rw [hcyc] at h1
   refine ⟨h1, ?_⟩
-  -- Decompose Re Tr(B† B V²) = ∑_k Re ⟨x_k, V² x_k⟩ where x_k(j) = star (B k j)
   have htr_row : (Matrix.trace (Bᴴ * B * (V * V))).re =
       ∑ k : ι, (∑ i : ι, ∑ j : ι, star (star (B k i)) * (V * V) i j * star (B k j)).re := by
     have hcomplex : Matrix.trace (Bᴴ * B * (V * V)) =
         ∑ k : ι, ∑ i : ι, ∑ j : ι, star (star (B k i)) * (V * V) i j * star (B k j) := by
       simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply,
         star_star]
-      calc ∑ i : ι, ∑ j : ι, (∑ k : ι, star (B k i) * B k j) * (V * V) j i
-          = ∑ i : ι, ∑ j : ι, ∑ k : ι, star (B k i) * B k j * (V * V) j i := by
-            apply Finset.sum_congr rfl; intro i _
-            apply Finset.sum_congr rfl; intro j _
-            rw [Finset.sum_mul]
-        _ = ∑ k : ι, ∑ i : ι, ∑ j : ι, star (B k i) * B k j * (V * V) j i := by
-            rw [Finset.sum_comm]
-            apply Finset.sum_congr rfl; intro i _
-            exact Finset.sum_comm
-        _ = ∑ k : ι, ∑ j : ι, ∑ i : ι, B k j * (V * V) j i * star (B k i) := by
-            apply Finset.sum_congr rfl; intro k _
-            rw [Finset.sum_comm]
-            apply Finset.sum_congr rfl; intro j _
-            apply Finset.sum_congr rfl; intro i _
-            ring
+      have hstep1 : ∑ i : ι, ∑ j : ι, (∑ k : ι, star (B k i) * B k j) * (V * V) j i =
+          ∑ i : ι, ∑ k : ι, ∑ j : ι, star (B k i) * B k j * (V * V) j i := by
+        apply Finset.sum_congr rfl; intro i _
+        calc ∑ j : ι, (∑ k : ι, star (B k i) * B k j) * (V * V) j i
+            = ∑ j : ι, ∑ k : ι, star (B k i) * B k j * (V * V) j i := by
+              apply Finset.sum_congr rfl; intro j _; rw [Finset.sum_mul]
+          _ = ∑ k : ι, ∑ j : ι, star (B k i) * B k j * (V * V) j i := Finset.sum_comm
+      rw [hstep1, Finset.sum_comm]
+      apply Finset.sum_congr rfl; intro k _
+      rw [Finset.sum_comm]
+      apply Finset.sum_congr rfl; intro j _
+      apply Finset.sum_congr rfl; intro i _
+      ring
     rw [hcomplex, Complex.re_sum]
   have hhs_row : hsNormSq B = ∑ k : ι, ∑ i : ι, ‖star (B k i)‖ ^ 2 := by
     unfold hsNormSq hsInner

@@ -51,6 +51,7 @@ def pauliMulIdx : Fin 4 → Fin 4 → Fin 4
   | 3, 1 => 2
   | 3, 2 => 1
   | 3, 3 => 0
+  | _, _ => 0
 
 /-- Pauli product phase table `±1, ±i` on `Fin 4`. -/
 def pauliMulPhase : Fin 4 → Fin 4 → ℂ
@@ -264,6 +265,7 @@ theorem eq_2_8_hs_commutator_size_identity {N : ℕ} (A : QubitOp N) :
       ring
     have hsum4 : ∑ α : Fin 3, hsNormSq (matComm A (pauliSite x α.succ)) =
         ∑ α : Fin 4, hsNormSq (matComm A (pauliSite x α)) := by
+      symm
       rw [Fin.sum_univ_succ]
       have h0 : matComm A (pauliSite x 0) = 0 := by
         unfold matComm; rw [pauliSite_zero, Matrix.mul_one, Matrix.one_mul, sub_self]
