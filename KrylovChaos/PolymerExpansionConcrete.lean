@@ -651,10 +651,12 @@ lemma real_sum_biUnion_le {α β : Type*} [DecidableEq β]
       exact Finset.mem_biUnion.mpr ⟨x, Finset.mem_insert_of_mem hxu, hbx⟩)
     linarith
 
-private lemma hasSum_cauchy_product_complex {a b : ℕ → ℂ} {A B : ℂ}
+private lemma hasSum_cauchy_product_complex (a b : ℕ → ℂ) {A B : ℂ}
     (ha : HasSum a A) (hb : HasSum b B)
     (hsa : Summable (fun k ↦ ‖a k‖)) (hsb : Summable (fun k ↦ ‖b k‖)) :
-    HasSum (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2) (A * B) := by
+    HasSum (fun m : ℕ ↦ ∑ k ∈ Finset.range (m + 1), a k * b (m - k)) (A * B) := by
+  suffices h : HasSum (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2) (A * B) by
+    exact h.congr_fun fun m ↦ Finset.Nat.sum_antidiagonal_eq_sum_range_succ (fun x y ↦ a x * b y)
   have hanti_norm : Summable (fun m : ℕ ↦ ‖∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2‖) := by
     have h1 : Summable (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, ‖a p.1‖ * ‖b p.2‖) := by
       have hfib : ∀ n : ℕ, ∑ m ∈ Finset.range n, ∑ p ∈ Finset.antidiagonal m, ‖a p.1‖ * ‖b p.2‖ ≤
@@ -1014,7 +1016,7 @@ private lemma hasSum_finset_cauchy_product {ι : Type*} [DecidableEq ι]
     (hb : ∀ l ∈ s, HasSum (fun k ↦ b k l) (P2 l))
     (hb1 : ∀ l ∈ s, ∀ k, ‖a k l‖ ≤ r1 k) (hs1 : Summable r1)
     (hb2 : ∀ l ∈ s, ∀ k, ‖b k l‖ ≤ r2 k) (hs2 : Summable r2) :
-    HasSum (fun m : ℕ ↦ ∑ l ∈ s, ∑ p ∈ Finset.antidiagonal m, a p.1 l * b p.2 l)
+    HasSum (fun m : ℕ ↦ ∑ l ∈ s, ∑ k ∈ Finset.range (m + 1), a k l * b (m - k) l)
       (∑ l ∈ s, P1 l * P2 l) := by
   induction s using Finset.induction with
   | empty =>
@@ -1026,9 +1028,9 @@ private lemma hasSum_finset_cauchy_product {ι : Type*} [DecidableEq ι]
       Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) (hb1 l (Finset.mem_insert_self l t)) hs1
     have h2 : Summable (fun k ↦ ‖b k l‖) :=
       Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) (hb2 l (Finset.mem_insert_self l t)) hs2
-    have hl : HasSum (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, a p.1 l * b p.2 l) (P1 l * P2 l) :=
-      hasSum_cauchy_product_complex (ha l (Finset.mem_insert_self l t))
-        (hb l (Finset.mem_insert_self l t)) h1 h2
+    have hl : HasSum (fun m : ℕ ↦ ∑ k ∈ Finset.range (m + 1), a k l * b (m - k) l) (P1 l * P2 l) :=
+      hasSum_cauchy_product_complex (fun k ↦ a k l) (fun k ↦ b k l)
+        (ha l (Finset.mem_insert_self l t)) (hb l (Finset.mem_insert_self l t)) h1 h2
     have ht := ih
       (fun x hx ↦ ha x (Finset.mem_insert_of_mem hx))
       (fun x hx ↦ hb x (Finset.mem_insert_of_mem hx))
@@ -1052,9 +1054,9 @@ lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
     (fun X ↦ mul_nonneg (abs_nonneg _) (opNorm_nonneg _)) γ₂).summable
   have hanti : ∀ m : ℕ,
       ((-(β' : ℂ)) ^ m / (m.factorial : ℂ)) • polyTermSum h (γ₁ ∪ γ₂) m =
-        ∑ p ∈ Finset.antidiagonal m, A p.1 * B p.2 := by
+        ∑ k ∈ Finset.range (m + 1), A k * B (m - k) := by
     intro m
-    rw [hconv m, Finset.smul_sum, Finset.Nat.sum_antidiagonal_eq_sum_range_succ (fun a b ↦ A a * B b)]
+    rw [hconv m, Finset.smul_sum]
     apply Finset.sum_congr rfl; intro k hk
     have hkm : k ≤ m := Nat.lt_succ_iff.mp (Finset.mem_range.mp hk)
     dsimp only [A, B]
@@ -1071,11 +1073,11 @@ lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
     field_simp [hm_ne, hk_ne, hmk_ne]
     linear_combination ((-(β' : ℂ)) ^ k * (-(β' : ℂ)) ^ (m - k)) * hch
   have hmul_has : ∀ (i j : QubitIdx N),
-      HasSum (fun m : ℕ ↦ (∑ p ∈ Finset.antidiagonal m, A p.1 * B p.2) i j)
+      HasSum (fun m : ℕ ↦ (∑ k ∈ Finset.range (m + 1), A k * B (m - k)) i j)
         ((polyOp h β' γ₁ * polyOp h β' γ₂) i j) := by
     intro i j
-    have hterm : ∀ m : ℕ, (∑ p ∈ Finset.antidiagonal m, A p.1 * B p.2) i j =
-        ∑ l : QubitIdx N, ∑ p ∈ Finset.antidiagonal m, A p.1 i l * B p.2 l j := by
+    have hterm : ∀ m : ℕ, (∑ k ∈ Finset.range (m + 1), A k * B (m - k)) i j =
+        ∑ l : QubitIdx N, ∑ k ∈ Finset.range (m + 1), A k i l * B (m - k) l j := by
       intro m; simp only [Matrix.sum_apply, Matrix.mul_apply]; rw [Finset.sum_comm]
     simp_rw [hterm]
     rw [Matrix.mul_apply]
@@ -1089,7 +1091,7 @@ lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
       (fun l _ k ↦ le_trans (norm_entry_le_opNorm (A k) i l) (opNorm_polyTermSum_scaled_le h β' γ₁ k)) hsr1
       (fun l _ k ↦ le_trans (norm_entry_le_opNorm (B k) l j) (opNorm_polyTermSum_scaled_le h β' γ₂ k)) hsr2
   ext i j
-  have hhas_lhs : HasSum (fun m : ℕ ↦ (∑ p ∈ Finset.antidiagonal m, A p.1 * B p.2) i j)
+  have hhas_lhs : HasSum (fun m : ℕ ↦ (∑ k ∈ Finset.range (m + 1), A k * B (m - k)) i j)
       (polyOp h β' (γ₁ ∪ γ₂) i j) :=
     (hasSum_entry (hasSum_polyOp h β' (γ₁ ∪ γ₂)) i j).congr_fun fun m ↦ by rw [hanti m]
   exact hhas_lhs.unique (hmul_has i j)
