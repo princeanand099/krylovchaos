@@ -21,6 +21,8 @@ Formalizes:
   `≤ (1 - |τ|/(4κ))⁻¹` (Eq. 2.4), and `r`-local analyticity bound `≤ (1 - |τ|/(4κ))⁻²` (Eq. 2.5).
 -/
 
+open scoped Matrix
+
 namespace KrylovChaos
 
 section WightmanIsometry
@@ -67,7 +69,7 @@ theorem prop_2_2_wightman_isometry_commutes_liouvillian (ρQuarter H A : Matrix 
     wightmanIsometry ρQuarter (liouvillian H A) =
       liouvillian H (wightmanIsometry ρQuarter A) := by
   unfold wightmanIsometry liouvillian
-  rw [Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_sub, Matrix.sub_mul]
+  rw [Matrix.mul_sub, Matrix.sub_mul]
   congr 1
   · calc ρQuarter * (H * A) * ρQuarter
         = (ρQuarter * H) * A * ρQuarter := by simp only [Matrix.mul_assoc]
@@ -194,26 +196,22 @@ section NestedCommutatorBounds
 
 /-- **Lemma 2.1(1)** (Nested-Commutator Causal Induction, Eq. 2.3):
 If `a 0 ≤ B` and `a (m + 1) ≤ 2 * Jsite * (s + m * (r - 1)) * a m`, then
-`a m ≤ B * (1 / κ)^m * ∏_{j=0}^{m-1} (s / (r - 1) + j)` where `κ = (2 (r - 1) Jsite)⁻¹`. -/
+`a m ≤ B * (2 (r - 1) Jsite)^m * ∏_{j=0}^{m-1} (s / (r - 1) + j)`. -/
 theorem lemma_2_1_causal_commutator_induction {r s : ℕ} {Jsite B : ℝ}
     (hr : 2 ≤ r) (hJ : 0 < Jsite) (hB : 0 ≤ B)
     (a : ℕ → ℝ) (ha0 : a 0 ≤ B)
     (hstep : ∀ m : ℕ, a (m + 1) ≤ 2 * Jsite * ((s : ℝ) + (m : ℝ) * ((r : ℝ) - 1)) * a m) :
-    ∀ m : ℕ, a m ≤ B * (1 / kappa r Jsite) ^ m *
+    ∀ m : ℕ, a m ≤ B * (2 * ((r : ℝ) - 1) * Jsite) ^ m *
       ∏ j ∈ Finset.range m, ((s : ℝ) / ((r : ℝ) - 1) + (j : ℝ)) := by
   have hr1 : (0 : ℝ) < (r : ℝ) - 1 := by
-    have : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
+    have hr2 : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
     linarith
-  have hinvK : 1 / kappa r Jsite = 2 * ((r : ℝ) - 1) * Jsite := by
-    unfold kappa
-    field_simp [hr1.ne', hJ.ne']
   intro m
   induction m with
   | zero => simpa using ha0
   | succ m ih =>
     have hcoeff : 2 * Jsite * ((s : ℝ) + (m : ℝ) * ((r : ℝ) - 1)) =
-        (1 / kappa r Jsite) * ((s : ℝ) / ((r : ℝ) - 1) + (m : ℝ)) := by
-      rw [hinvK]
+        (2 * ((r : ℝ) - 1) * Jsite) * ((s : ℝ) / ((r : ℝ) - 1) + (m : ℝ)) := by
       field_simp [hr1.ne']
     have hcoeff_nn : 0 ≤ 2 * Jsite * ((s : ℝ) + (m : ℝ) * ((r : ℝ) - 1)) := by
       have : (0 : ℝ) ≤ (s : ℝ) := Nat.cast_nonneg s
@@ -222,9 +220,10 @@ theorem lemma_2_1_causal_commutator_induction {r s : ℕ} {Jsite B : ℝ}
     calc a (m + 1)
         ≤ 2 * Jsite * ((s : ℝ) + (m : ℝ) * ((r : ℝ) - 1)) * a m := hstep m
       _ ≤ 2 * Jsite * ((s : ℝ) + (m : ℝ) * ((r : ℝ) - 1)) *
-          (B * (1 / kappa r Jsite) ^ m * ∏ j ∈ Finset.range m, ((s : ℝ) / ((r : ℝ) - 1) + (j : ℝ))) :=
+          (B * (2 * ((r : ℝ) - 1) * Jsite) ^ m *
+            ∏ j ∈ Finset.range m, ((s : ℝ) / ((r : ℝ) - 1) + (j : ℝ))) :=
           mul_le_mul_of_nonneg_left ih hcoeff_nn
-      _ = B * (1 / kappa r Jsite) ^ (m + 1) *
+      _ = B * (2 * ((r : ℝ) - 1) * Jsite) ^ (m + 1) *
           ∏ j ∈ Finset.range (m + 1), ((s : ℝ) / ((r : ℝ) - 1) + (j : ℝ)) := by
           rw [hcoeff, pow_succ, Finset.prod_range_succ]
           ring
@@ -232,7 +231,7 @@ theorem lemma_2_1_causal_commutator_induction {r s : ℕ} {Jsite B : ℝ}
 private lemma rising_prod_single_site_le_factorial {r : ℕ} (hr : 2 ≤ r) (m : ℕ) :
     ∏ j ∈ Finset.range m, ((1 : ℝ) / ((r : ℝ) - 1) + (j : ℝ)) ≤ (m.factorial : ℝ) := by
   have hr1 : (1 : ℝ) ≤ (r : ℝ) - 1 := by
-    have : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
+    have hr2 : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
     linarith
   have hfrac : (1 : ℝ) / ((r : ℝ) - 1) ≤ 1 := (div_le_one (by linarith)).mpr hr1
   induction m with
@@ -252,7 +251,7 @@ private lemma rising_prod_single_site_le_factorial {r : ℕ} (hr : 2 ≤ r) (m :
 private lemma rising_prod_r_local_le_factorial {r s : ℕ} (hr : 2 ≤ r) (hs : s ≤ r) (m : ℕ) :
     ∏ j ∈ Finset.range m, ((s : ℝ) / ((r : ℝ) - 1) + (j : ℝ)) ≤ ((m + 1).factorial : ℝ) := by
   have hr1 : (1 : ℝ) ≤ (r : ℝ) - 1 := by
-    have : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
+    have hr2 : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
     linarith
   have hfrac : (s : ℝ) / ((r : ℝ) - 1) ≤ 2 := by
     rw [div_le_iff₀ (by linarith)]
@@ -307,7 +306,8 @@ theorem lemma_2_1_single_site_norm_bound {r : ℕ} {κ τ : ℝ}
         ∏ j ∈ Finset.range m, ((1 : ℝ) / ((r : ℝ) - 1) + (j : ℝ)) := by
     intro m
     have hr1 : (0 : ℝ) < (r : ℝ) - 1 := by
-      have : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr; linarith
+      have hr2 : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
+      linarith
     exact mul_nonneg (by positivity) (Finset.prod_nonneg fun j _ ↦ by positivity)
   have hsumm_q : Summable (fun m : ℕ ↦ q ^ m) := summable_geometric_of_lt_one hq0 hq1
   have hsumm : Summable (fun m : ℕ ↦ ((|τ| / 4) ^ m / (m.factorial : ℝ)) * (1 / κ) ^ m *
@@ -365,7 +365,8 @@ theorem lemma_2_1_r_local_norm_bound {r s : ℕ} {κ τ : ℝ}
         ∏ j ∈ Finset.range m, ((s : ℝ) / ((r : ℝ) - 1) + (j : ℝ)) := by
     intro m
     have hr1 : (0 : ℝ) < (r : ℝ) - 1 := by
-      have : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr; linarith
+      have hr2 : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
+      linarith
     exact mul_nonneg (by positivity) (Finset.prod_nonneg fun j _ ↦ by positivity)
   have hsumm : Summable (fun m : ℕ ↦ ((|τ| / 4) ^ m / (m.factorial : ℝ)) * (1 / κ) ^ m *
       ∏ j ∈ Finset.range m, ((s : ℝ) / ((r : ℝ) - 1) + (j : ℝ))) :=

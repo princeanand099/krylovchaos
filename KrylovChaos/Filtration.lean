@@ -240,24 +240,26 @@ theorem theorem_1_1b_static_reduction
   have hη_lt : η < 1 - ε := by
     have h1 : 1 - ε - η = (1 - δ) * (1 - ρ) - ε * (1 - (1 - δ) * ρ) := by
       simp only [η]; ring
-    have h2 : 1 - (1 - δ) * ρ ≤ 1 := by nlinarith
-    have h3 : ε * (1 - (1 - δ) * ρ) ≤ ε := by nlinarith
-    have h4 : ε < (1 - δ) * (1 - ρ) := by linarith
-    linarith
+    have h2 : 1 - (1 - δ) * ρ ≤ 1 := by nlinarith only [hδ1, hρ_pos]
+    have h3 : ε * (1 - (1 - δ) * ρ) ≤ ε := by nlinarith only [hε_pos, h2]
+    linarith only [h1, h3, hε_gap]
   set diff := (1 - ε) - η
-  have hdiff_pos : 0 < diff := by linarith
-  have h1mε_pos : 0 < 1 - ε := by linarith
-  have hρ1mε_le_η : ρ * (1 - ε) ≤ η := by simp only [η]; nlinarith
+  have hdiff_pos : 0 < diff := by linarith only [hη_lt]
+  have h1mε_pos : 0 < 1 - ε := by linarith only [hε_half]
+  have hρ1mε_le_η : ρ * (1 - ε) ≤ η := by
+    simp only [η]
+    nlinarith only [hδ0, hρ_lt, h1mε_pos, hε_pos]
   set K := (1 / Real.tanh 1) * (max 1 ((r : ℝ) - 1)) + (s₀ : ℝ) + (max 1 ((r : ℝ) - 1))
   have htanh1_pos : 0 < Real.tanh 1 := tanh_one_pos
   have hK_pos : 0 < K := by
-    have : 0 < 1 / Real.tanh 1 := by positivity
-    have : (1 : ℝ) ≤ max 1 ((r : ℝ) - 1) := le_max_left _ _
-    have : (0 : ℝ) ≤ (s₀ : ℝ) := Nat.cast_nonneg s₀
-    simp only [K]; nlinarith
+    have h1 : 0 < 1 / Real.tanh 1 := by positivity
+    have h2 : (1 : ℝ) ≤ max 1 ((r : ℝ) - 1) := le_max_left _ _
+    have h3 : (0 : ℝ) ≤ (s₀ : ℝ) := Nat.cast_nonneg s₀
+    simp only [K]
+    nlinarith only [h1, h2, h3]
   have hlog_o : (fun N : ℕ ↦ Real.log (N : ℝ)) =o[Filter.atTop]
       (fun N : ℕ ↦ (N : ℝ) ^ (diff / 2)) := by
-    have h := (isLittleO_log_rpow_atTop (by linarith : (0 : ℝ) < diff / 2)).comp_tendsto
+    have h := (isLittleO_log_rpow_atTop (by linarith only [hdiff_pos] : (0 : ℝ) < diff / 2)).comp_tendsto
       tendsto_natCast_atTop_atTop
     simpa [Function.comp_def] using h
   have hev_log : ∀ᶠ N : ℕ in Filter.atTop, Real.log (N : ℝ) ≤ (N : ℝ) ^ (diff / 2) := by
@@ -268,8 +270,10 @@ theorem theorem_1_1b_static_reduction
     rw [Real.norm_eq_abs, Real.norm_eq_abs, abs_of_nonneg hlog_nn, abs_of_nonneg hrpow_nn,
       one_mul] at hN
     exact hN
+  have hev_log_ge1 : ∀ᶠ N : ℕ in Filter.atTop, (1 : ℝ) ≤ Real.log (N : ℝ) :=
+    (Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop).eventually_ge_atTop 1
   have hpow_zero : Filter.Tendsto (fun N : ℕ ↦ (N : ℝ) ^ (-(diff / 2))) Filter.atTop (nhds 0) :=
-    (tendsto_rpow_neg_atTop (by linarith : (0 : ℝ) < diff / 2)).comp tendsto_natCast_atTop_atTop
+    (tendsto_rpow_neg_atTop (by linarith only [hdiff_pos] : (0 : ℝ) < diff / 2)).comp tendsto_natCast_atTop_atTop
   have hinv_zero : Filter.Tendsto (fun N : ℕ ↦ (N : ℝ)⁻¹) Filter.atTop (nhds 0) :=
     tendsto_inv_atTop_zero.comp tendsto_natCast_atTop_atTop
   set A := C₁ * K + C₂ * K ^ (1 - δ) + 1
@@ -286,24 +290,20 @@ theorem theorem_1_1b_static_reduction
         have h3 := (tendsto_rpow_neg_atTop (by norm_num : (0 : ℝ) < 3)).comp tendsto_natCast_atTop_atTop
         simpa using h3.const_mul (C₀ ^ 2)
       simpa using ht1.add ht2
-    exact h1.eventually (gt_mem_nhds (by linarith : 0 < c / 2))
+    exact h1.eventually (gt_mem_nhds (by linarith only [hc_pos] : 0 < c / 2))
   have hev_all : ∀ᶠ N : ℕ in Filter.atTop,
       N ≥ max N₁ 3 ∧
+      (1 : ℝ) ≤ Real.log (N : ℝ) ∧
       Real.log (N : ℝ) ≤ (N : ℝ) ^ (diff / 2) ∧
       (N : ℝ) ^ (-(diff / 2)) < c / (2 * A) ∧
       2 * C₀ * (N : ℝ)⁻¹ + C₀ ^ 2 * (N : ℝ) ^ (-3 : ℝ) < c / 2 :=
-    (Filter.eventually_ge_atTop (max N₁ 3)).and (hev_log.and (hev_small1.and hev_small2))
-  obtain ⟨N, hNge, hlogN, hsm1, hsm2⟩ := hev_all.exists
+    (Filter.eventually_ge_atTop (max N₁ 3)).and
+      (hev_log_ge1.and (hev_log.and (hev_small1.and hev_small2)))
+  obtain ⟨N, hNge, hlog_ge1, hlogN, hsm1, hsm2⟩ := hev_all.exists
   have hN1 : N ≥ N₁ := le_trans (le_max_left _ _) hNge
   have hN3 : 3 ≤ N := le_trans (le_max_right _ _) hNge
   have hNpos : (0 : ℝ) < (N : ℝ) := by exact_mod_cast (by omega : 0 < N)
   have hNge1 : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast (by omega : 1 ≤ N)
-  have hlog_ge1 : 1 ≤ Real.log (N : ℝ) := by
-    have h3 : Real.exp 1 ≤ (N : ℝ) := by
-      have : Real.exp 1 < 3 := lt_trans Real.exp_one_lt_d9 (by norm_num)
-      have hN3' : (3 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN3
-      linarith
-    exact (Real.le_log_iff_exp_le hNpos).mpr h3
   have hineq := hN₁ N hN1
   dsimp only at hineq
   have hexp_eq : Real.exp (2 * α * (((1 - ε) / lamL) * Real.log (N : ℝ))) =
@@ -311,30 +311,41 @@ theorem theorem_1_1b_static_reduction
     rw [Real.rpow_def_of_pos hNpos]
     congr 1; simp only [ρ]; ring
   rw [hexp_eq] at hineq
-  set sN := (s₀ : ℝ) + ((r : ℝ) - 1) *
-    ((1 / Real.tanh 1) * (N : ℝ) ^ (ρ * (1 - ε)) * Real.log (N : ℝ) + 1)
+  set P := (N : ℝ) ^ (ρ * (1 - ε)) * Real.log (N : ℝ)
+  set sN := (s₀ : ℝ) + ((r : ℝ) - 1) * ((1 / Real.tanh 1) * P + 1)
   have hr_ge1 : (1 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
-  have hsN_nn : 0 ≤ sN := by
-    simp only [sN]
-    have h1 : 0 ≤ (r : ℝ) - 1 := by linarith
-    have h2 : 0 ≤ (1 / Real.tanh 1) * (N : ℝ) ^ (ρ * (1 - ε)) * Real.log (N : ℝ) + 1 := by
-      have : 0 ≤ (N : ℝ) ^ (ρ * (1 - ε)) := Real.rpow_nonneg hNpos.le _
-      have : 0 ≤ Real.log (N : ℝ) := by linarith
-      positivity
-    have h3 : (0 : ℝ) ≤ (s₀ : ℝ) := Nat.cast_nonneg s₀
-    nlinarith
   have hpow_ge1 : (1 : ℝ) ≤ (N : ℝ) ^ (ρ * (1 - ε)) :=
     Real.one_le_rpow hNge1 (mul_nonneg hρ_pos.le h1mε_pos.le)
-  have hprod_ge1 : 1 ≤ (N : ℝ) ^ (ρ * (1 - ε)) * Real.log (N : ℝ) := by nlinarith
-  have hsN_le : sN ≤ K * ((N : ℝ) ^ (ρ * (1 - ε)) * Real.log (N : ℝ)) := by
-    simp only [sN, K]
+  have hP_ge1 : 1 ≤ P := by
+    simp only [P]
+    exact one_le_mul_of_one_le_of_one_le hpow_ge1 hlog_ge1
+  have hsN_nn : 0 ≤ sN := by
+    simp only [sN]
+    have h1 : 0 ≤ (r : ℝ) - 1 := by linarith only [hr_ge1]
+    have h2 : 0 ≤ (1 / Real.tanh 1) * P + 1 := by
+      have : 0 ≤ 1 / Real.tanh 1 := by positivity
+      nlinarith only [this, hP_ge1]
+    have h3 : (0 : ℝ) ≤ (s₀ : ℝ) := Nat.cast_nonneg s₀
+    nlinarith only [h1, h2, h3]
+  have hsN_le : sN ≤ K * P := by
     have hr_le : (r : ℝ) - 1 ≤ max 1 ((r : ℝ) - 1) := le_max_right _ _
-    have h1_le : (1 : ℝ) ≤ max 1 ((r : ℝ) - 1) := le_max_left _ _
     have hs0_nn : (0 : ℝ) ≤ (s₀ : ℝ) := Nat.cast_nonneg s₀
     have ht1_nn : 0 ≤ 1 / Real.tanh 1 := by positivity
-    nlinarith
+    have hmax_nn : 0 ≤ max 1 ((r : ℝ) - 1) := le_trans zero_le_one (le_max_left _ _)
+    have h1 : ((r : ℝ) - 1) * ((1 / Real.tanh 1) * P) ≤
+        max 1 ((r : ℝ) - 1) * ((1 / Real.tanh 1) * P) :=
+      mul_le_mul_of_nonneg_right hr_le (mul_nonneg ht1_nn (by linarith only [hP_ge1]))
+    have h2 : ((r : ℝ) - 1) * 1 ≤ max 1 ((r : ℝ) - 1) * P := by
+      calc ((r : ℝ) - 1) * 1 ≤ max 1 ((r : ℝ) - 1) * 1 := by linarith only [hr_le]
+        _ ≤ max 1 ((r : ℝ) - 1) * P := mul_le_mul_of_nonneg_left hP_ge1 hmax_nn
+    have h3 : (s₀ : ℝ) ≤ (s₀ : ℝ) * P := le_mul_of_one_le_right hs0_nn hP_ge1
+    have hrew : K * P = max 1 ((r : ℝ) - 1) * ((1 / Real.tanh 1) * P) +
+        (s₀ : ℝ) * P + max 1 ((r : ℝ) - 1) * P := by simp only [K]; ring
+    have hsN_rew : sN = (s₀ : ℝ) + ((r : ℝ) - 1) * ((1 / Real.tanh 1) * P) + ((r : ℝ) - 1) * 1 := by
+      simp only [sN]; ring
+    linarith only [h1, h2, h3, hrew, hsN_rew]
   have hsN_le2 : sN ≤ K * (N : ℝ) ^ (ρ * (1 - ε) + diff / 2) := by
-    calc sN ≤ K * ((N : ℝ) ^ (ρ * (1 - ε)) * Real.log (N : ℝ)) := hsN_le
+    calc sN ≤ K * P := hsN_le
       _ ≤ K * ((N : ℝ) ^ (ρ * (1 - ε)) * (N : ℝ) ^ (diff / 2)) := by
           apply mul_le_mul_of_nonneg_left _ hK_pos.le
           exact mul_le_mul_of_nonneg_left hlogN (Real.rpow_nonneg hNpos.le _)
@@ -342,7 +353,7 @@ theorem theorem_1_1b_static_reduction
           rw [← Real.rpow_add hNpos]
   have hterm1 : C₁ * sN ≤ C₁ * K * (N : ℝ) ^ (1 - ε - diff / 2) := by
     have hexp_le : ρ * (1 - ε) + diff / 2 ≤ 1 - ε - diff / 2 := by
-      simp only [diff]; linarith
+      simp only [diff]; linarith only [hρ1mε_le_η]
     calc C₁ * sN ≤ C₁ * (K * (N : ℝ) ^ (ρ * (1 - ε) + diff / 2)) :=
           mul_le_mul_of_nonneg_left hsN_le2 hC₁
       _ = C₁ * K * (N : ℝ) ^ (ρ * (1 - ε) + diff / 2) := by ring
@@ -350,7 +361,7 @@ theorem theorem_1_1b_static_reduction
           mul_le_mul_of_nonneg_left (Real.rpow_le_rpow_of_exponent_le hNge1 hexp_le) (by positivity)
   have hterm2 : C₂ * (N : ℝ) ^ δ * sN ^ (1 - δ) ≤
       C₂ * K ^ (1 - δ) * (N : ℝ) ^ (1 - ε - diff / 2) := by
-    have h1mδ : 0 ≤ 1 - δ := by linarith
+    have h1mδ : 0 ≤ 1 - δ := by linarith only [hδ1]
     have hsN_pow : sN ^ (1 - δ) ≤ K ^ (1 - δ) * (N : ℝ) ^ ((ρ * (1 - ε) + diff / 2) * (1 - δ)) := by
       calc sN ^ (1 - δ)
           ≤ (K * (N : ℝ) ^ (ρ * (1 - ε) + diff / 2)) ^ (1 - δ) :=
@@ -362,9 +373,9 @@ theorem theorem_1_1b_static_reduction
     have hexp_le2 : δ + (ρ * (1 - ε) + diff / 2) * (1 - δ) ≤ 1 - ε - diff / 2 := by
       have h1 : δ + (ρ * (1 - ε) + diff / 2) * (1 - δ) = η + (diff / 2) * (1 - δ) := by
         simp only [η]; ring
-      have h2 : (diff / 2) * (1 - δ) ≤ diff / 2 := by nlinarith
+      have h2 : (diff / 2) * (1 - δ) ≤ diff / 2 := by nlinarith only [hdiff_pos, hδ0]
       simp only [diff] at h2 ⊢
-      linarith
+      linarith only [h1, h2]
     calc C₂ * (N : ℝ) ^ δ * sN ^ (1 - δ)
         ≤ C₂ * (N : ℝ) ^ δ * (K ^ (1 - δ) * (N : ℝ) ^ ((ρ * (1 - ε) + diff / 2) * (1 - δ))) :=
           mul_le_mul_of_nonneg_left hsN_pow (mul_nonneg hC₂ (Real.rpow_nonneg hNpos.le _))
@@ -374,13 +385,16 @@ theorem theorem_1_1b_static_reduction
       _ ≤ C₂ * K ^ (1 - δ) * (N : ℝ) ^ (1 - ε - diff / 2) :=
           mul_le_mul_of_nonneg_left (Real.rpow_le_rpow_of_exponent_le hNge1 hexp_le2) (by positivity)
   have hN1mε_ge1 : (1 : ℝ) ≤ (N : ℝ) ^ (1 - ε) := Real.one_le_rpow hNge1 h1mε_pos.le
-  have hN1mε_pos : 0 < (N : ℝ) ^ (1 - ε) := by linarith
+  have hN1mε_pos : 0 < (N : ℝ) ^ (1 - ε) := by linarith only [hN1mε_ge1]
   have hterm12 : C₁ * sN + C₂ * (N : ℝ) ^ δ * sN ^ (1 - δ) < (c / 2) * (N : ℝ) ^ (1 - ε) := by
     have hsum_le : C₁ * sN + C₂ * (N : ℝ) ^ δ * sN ^ (1 - δ) ≤
         A * (N : ℝ) ^ (1 - ε - diff / 2) := by
       have hpos_rpow : 0 ≤ (N : ℝ) ^ (1 - ε - diff / 2) := Real.rpow_nonneg hNpos.le _
-      simp only [A]
-      nlinarith
+      have hrew : A * (N : ℝ) ^ (1 - ε - diff / 2) =
+          C₁ * K * (N : ℝ) ^ (1 - ε - diff / 2) +
+          C₂ * K ^ (1 - δ) * (N : ℝ) ^ (1 - ε - diff / 2) +
+          (N : ℝ) ^ (1 - ε - diff / 2) := by simp only [A]; ring
+      linarith only [hterm1, hterm2, hpos_rpow, hrew]
     have hsplit_pow : (N : ℝ) ^ (1 - ε - diff / 2) =
         (N : ℝ) ^ (-(diff / 2)) * (N : ℝ) ^ (1 - ε) := by
       rw [← Real.rpow_add hNpos]; congr 1; ring
@@ -388,14 +402,16 @@ theorem theorem_1_1b_static_reduction
     have hA_mul : A * (N : ℝ) ^ (-(diff / 2)) < c / 2 := by
       have := mul_lt_mul_of_pos_left hsm1 hA_pos
       have heq : A * (c / (2 * A)) = c / 2 := by field_simp [hA_pos.ne']
-      linarith
+      linarith only [this, heq]
     have hmul2 : A * (N : ℝ) ^ (-(diff / 2)) * (N : ℝ) ^ (1 - ε) < (c / 2) * (N : ℝ) ^ (1 - ε) :=
       mul_lt_mul_of_pos_right hA_mul hN1mε_pos
-    linarith
+    have hmul_assoc : A * ((N : ℝ) ^ (-(diff / 2)) * (N : ℝ) ^ (1 - ε)) =
+        A * (N : ℝ) ^ (-(diff / 2)) * (N : ℝ) ^ (1 - ε) := by ring
+    linarith only [hsum_le, hmul2, hmul_assoc]
   have hterm3 : 2 * C₀ * (N : ℝ)⁻¹ + C₀ ^ 2 * (N : ℝ) ^ (-3 : ℝ) < (c / 2) * (N : ℝ) ^ (1 - ε) := by
-    have : c / 2 ≤ (c / 2) * (N : ℝ) ^ (1 - ε) := by nlinarith
-    linarith
-  linarith
+    have : c / 2 ≤ (c / 2) * (N : ℝ) ^ (1 - ε) := le_mul_of_one_le_right (by linarith only [hc_pos]) hN1mε_ge1
+    linarith only [hsm2, this]
+  linarith only [hineq, hterm12, hterm3]
 
 end ThermalTruncation
 

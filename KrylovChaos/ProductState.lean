@@ -137,12 +137,9 @@ theorem prop_4_3_product_state_static_bound {N s : ℕ} {mmax : ℝ}
         _ = ‖star z‖ * ‖w‖ := norm_mul _ _
         _ = ‖z‖ * ‖w‖ := by simp
     rw [Fin.sum_univ_four]
-    have hax := a x
-    fin_cases hax
-    · have h0 : a x = 0 := by assumption
-      have hupd0 : Function.update a x 0 = a := by
-        funext y; by_cases hy : y = x <;> simp [Function.update, hy, h0]
-      simp only [h0, singleSiteM, mul_zero, zero_add, add_zero, ne_eq, not_true_eq_false, ↓reduceIte,
+    generalize hax : a x = v
+    fin_cases v
+    · simp only [singleSiteM, mul_zero, zero_add, add_zero, ne_eq, not_true_eq_false, ↓reduceIte,
         Fin.reduceEq]
       have hc := hre_cross (c a) (c (Function.update a x 3))
       have h1 : (star (c a) * c (Function.update a x 3)).re * (m x / 2) ≤
@@ -152,28 +149,25 @@ theorem prop_4_3_product_state_static_bound {N s : ℕ} {mmax : ℝ}
           (‖c a‖ * ‖c (Function.update a x 3)‖) * (|m x| / 2) :=
         mul_le_mul_of_nonneg_right hc (by positivity)
       linarith
-    · have h1 : a x = 1 := by assumption
-      have hupd1 : Function.update a x 1 = a := by
-        funext y; by_cases hy : y = x <;> simp [Function.update, hy, h1]
-      simp only [h1, hupd1, hre_self, singleSiteM, mul_zero, zero_add, add_zero, ne_eq,
+    · have hupd1 : Function.update a x 1 = a := by
+        funext y; by_cases hy : y = x <;> simp [Function.update, hy, hax]
+      simp only [hupd1, hre_self, singleSiteM, mul_zero, zero_add, add_zero, ne_eq,
         Fin.reduceEq, not_false_eq_true, ↓reduceIte]
       have hle := singleSiteM_diag_le_one (hm_lt x) 1
       change ‖c a‖ ^ 2 * (1 - (prodQ (m x)) ^ 2 / 2) ≤ ‖c a‖ ^ 2
       have hle' : 1 - (prodQ (m x)) ^ 2 / 2 ≤ 1 := hle
       nlinarith [sq_nonneg ‖c a‖]
-    · have h2 : a x = 2 := by assumption
-      have hupd2 : Function.update a x 2 = a := by
-        funext y; by_cases hy : y = x <;> simp [Function.update, hy, h2]
-      simp only [h2, hupd2, hre_self, singleSiteM, mul_zero, zero_add, add_zero, ne_eq,
+    · have hupd2 : Function.update a x 2 = a := by
+        funext y; by_cases hy : y = x <;> simp [Function.update, hy, hax]
+      simp only [hupd2, hre_self, singleSiteM, mul_zero, zero_add, add_zero, ne_eq,
         Fin.reduceEq, not_false_eq_true, ↓reduceIte]
       have hle := singleSiteM_diag_le_one (hm_lt x) 2
       change ‖c a‖ ^ 2 * (1 - (prodQ (m x)) ^ 2 / 2) ≤ ‖c a‖ ^ 2
       have hle' : 1 - (prodQ (m x)) ^ 2 / 2 ≤ 1 := hle
       nlinarith [sq_nonneg ‖c a‖]
-    · have h3 : a x = 3 := by assumption
-      have hupd3 : Function.update a x 3 = a := by
-        funext y; by_cases hy : y = x <;> simp [Function.update, hy, h3]
-      simp only [h3, hupd3, hre_self, singleSiteM, mul_zero, zero_add, add_zero, ne_eq,
+    · have hupd3 : Function.update a x 3 = a := by
+        funext y; by_cases hy : y = x <;> simp [Function.update, hy, hax]
+      simp only [hupd3, hre_self, singleSiteM, mul_zero, zero_add, add_zero, ne_eq,
         Fin.reduceEq, not_false_eq_true, ↓reduceIte]
       have hle : prodSigma (m x) ≤ 1 := singleSiteM_diag_le_one (hm_lt x) 3
       have hdiag : ‖c a‖ ^ 2 * prodSigma (m x) ≤ ‖c a‖ ^ 2 := by nlinarith [sq_nonneg ‖c a‖]
@@ -295,7 +289,16 @@ theorem prop_4_3_product_state_static_bound {N s : ℕ} {mmax : ℝ}
           (∑ x : Fin N, ∑ a : Fin N → Fin 4,
             (if a x = 0 then ‖c a‖ else 0) * (if a x = 0 then ‖c (Function.update a x 3)‖ else 0)) ≤
           Real.sqrt ((N : ℝ) * (s : ℝ)) := by
-        rw [← Fintype.sum_prod_type]
+        have hprod_eq :
+            (∑ x : Fin N, ∑ a : Fin N → Fin 4,
+              (if a x = 0 then ‖c a‖ else 0) * (if a x = 0 then ‖c (Function.update a x 3)‖ else 0)) =
+            ∑ p : Fin N × (Fin N → Fin 4),
+              (if p.2 p.1 = 0 then ‖c p.2‖ else 0) *
+              (if p.2 p.1 = 0 then ‖c (Function.update p.2 p.1 3)‖ else 0) :=
+          (Fintype.sum_prod_type (fun p : Fin N × (Fin N → Fin 4) ↦
+            (if p.2 p.1 = 0 then ‖c p.2‖ else 0) *
+            (if p.2 p.1 = 0 then ‖c (Function.update p.2 p.1 3)‖ else 0))).symm
+        rw [hprod_eq]
         have hsum_nn : 0 ≤ ∑ p : Fin N × (Fin N → Fin 4),
             (if p.2 p.1 = 0 then ‖c p.2‖ else 0) *
             (if p.2 p.1 = 0 then ‖c (Function.update p.2 p.1 3)‖ else 0) :=

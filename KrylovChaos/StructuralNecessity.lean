@@ -153,13 +153,14 @@ theorem prop_9_1_no_linear_lower_bound {C' σ : ℝ} (b : ℕ → ℝ)
     have hpow_add : (α ^ 2) ^ (M - N₀) * (α ^ 2) ^ N₀ = (α ^ 2) ^ M := by
       rw [← pow_add, Nat.sub_add_cancel hM1]
     calc W₀ * (α ^ 2) ^ (M - N₀) * (α ^ 2 * (M : ℝ) ^ 2) ^ (2 * M) * (α ^ 2) ^ N₀
-        = W₀ * ((α ^ 2) ^ (M - N₀) * (α ^ 2) ^ N₀) * ((α ^ 2) ^ (2 * M) * ((M : ℝ) ^ 2) ^ (2 * M)) := by
+        = W₀ * ((α ^ 2) ^ (M - N₀) * (α ^ 2) ^ N₀) * (α ^ 2) ^ (2 * M) * ((M : ℝ) ^ 2) ^ (2 * M) := by
           rw [mul_pow]; ring
-      _ = W₀ * ((α ^ 2) ^ M * ((α ^ 2) ^ (2 * M))) * ((M : ℝ) ^ (4 * M)) := by
-          rw [hpow_add, ← pow_mul]; congr 2; ring
+      _ = W₀ * ((α ^ 2) ^ M * (α ^ 2) ^ (2 * M)) * (M : ℝ) ^ (2 * (2 * M)) := by
+          rw [hpow_add, ← pow_mul]; ring
       _ = W₀ * (α ^ 6) ^ M * ((M : ℝ) ^ M * (M : ℝ) ^ (3 * M)) := by
-          rw [← pow_add, show M + 2 * M = 3 * M by omega, ← pow_mul, ← pow_mul,
-            show 2 * (3 * M) = 6 * M by omega, pow_mul, ← pow_add, show M + 3 * M = 4 * M by omega]
+          rw [← pow_add, show M + 2 * M = 3 * M by omega, ← pow_mul,
+            show 2 * (3 * M) = 6 * M by omega, pow_mul,
+            show 2 * (2 * M) = M + 3 * M by omega, pow_add]
       _ = W₀ * (α ^ 6 * (M : ℝ)) ^ M * (M : ℝ) ^ (3 * M) := by
           rw [mul_pow]; ring
   have hrhs_simp :
@@ -275,7 +276,7 @@ theorem prop_9_1_bimodal_exact_size {N : ℕ} (hN : 2 ≤ N) :
         (2 : ℝ) ^ (-3 * ((N : ℝ) - 1) / 2) := by
       rw [← Real.rpow_add h2pos]; congr 1; ring
     have hpre : (2 : ℝ) ^ (N : ℝ) * (2 : ℝ) ^ (-3 : ℝ) = (2 : ℝ) ^ ((N : ℝ) - 3) := by
-      rw [← Real.rpow_add h2pos]; congr 1; ring
+      rw [← Real.rpow_add h2pos]; rfl
     rw [hpre]
     have hsq : ((2 : ℝ) ^ (-((N : ℝ) - 1) / 2) - (2 : ℝ) ^ (-((N : ℝ) - 1))) ^ 2 =
         (2 : ℝ) ^ (-((N : ℝ) - 1)) - 2 * (2 : ℝ) ^ (-3 * ((N : ℝ) - 1) / 2) +
