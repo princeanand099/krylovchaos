@@ -602,7 +602,7 @@ lemma revCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
         _ ≤ J * ((r : ℝ) * (((k + 1).factorial : ℝ) * ((r : ℝ) * J) ^ k)) :=
             mul_le_mul_of_nonneg_right (hsite y) (by positivity)
         _ = ((r : ℝ) * J) * (((k + 1).factorial : ℝ) * ((r : ℝ) * J) ^ k) := by ring
-    have htot := Finset.sum_le_sum fun x _ ↦ hsplit_x x
+    have htot := Finset.sum_le_sum (s := Finset.univ) fun x _ ↦ hsplit_x x
     rw [Finset.sum_add_distrib] at htot
     have h1 := le_trans hcase1_le (mul_le_mul_of_nonneg_left (ih y) (by positivity))
     calc ∑ x : Fin N, ∑ f ∈ ((Fintype.piFinset fun _ : Fin (k + 1) ↦ E).filter (isCausalSeq {x})).filter
