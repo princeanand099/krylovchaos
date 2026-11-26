@@ -116,10 +116,9 @@ theorem prop_2_2_lanczos_invariance {N : ℕ} (G : GibbsData N) (H : QubitOp N)
     (∀ A B : QubitOp N, gibbsWightmanInner G A B = hsInner (jBeta G.ρQuarter A) (jBeta G.ρQuarter B)) ∧
     (∀ A : QubitOp N, jBeta G.ρQuarter (matComm H A) = matComm H (jBeta G.ρQuarter A)) := by
   refine ⟨fun A B ↦ ?_, fun A ↦ ?_⟩
-  · unfold gibbsWightmanInner
-    have h := prop_2_2_isometry G.ρQuarter G.ρHalf G.ρQuarter_herm G.sq_quarter A B
-    exact h.symm
-  · exact prop_2_2_intertwining G.ρQuarter H hcomm A
+  · unfold gibbsWightmanInner hsInner
+    exact (prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf A B G.ρQuarter_herm G.sq_quarter).symm
+  · exact prop_2_2_wightman_isometry_commutes_liouvillian G.ρQuarter H A hcomm
 
 /-- **Proposition 2.3 (Full N-Qubit Thermal-Subtracted Size Identity, Eq. 2.9)**:
 For any `N`-qubit thermal state `G : GibbsData N` and operator `A : QubitOp N`,
@@ -179,7 +178,7 @@ theorem bimodalState_trace (N : ℕ) (hN : 0 < N) :
   have ht0 : proj0.trace = 1 := by simp [proj0, Matrix.trace, Matrix.diag]
   have ht1 : proj1.trace = 1 := by simp [proj1, Matrix.trace, Matrix.diag]
   have hth : ((1 / 2 : ℂ) • (1 : Matrix (Fin 2) (Fin 2) ℂ)).trace = 1 := by
-    simp [Matrix.trace, Matrix.diag]; norm_num
+    simp [Matrix.trace, Matrix.diag]
   have hprod1 : (∏ x : Fin N,
       (if x.1 = 0 then proj0 else (1 / 2 : ℂ) • (1 : Matrix (Fin 2) (Fin 2) ℂ)).trace) = 1 := by
     apply Finset.prod_eq_one; intro x _

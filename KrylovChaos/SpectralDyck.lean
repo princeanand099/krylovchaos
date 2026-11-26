@@ -130,9 +130,9 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
     intro m
     have hprod_le : ∏ j ∈ Finset.range m, (α + (j : ℝ)) ≤
         ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) := by
-      apply Finset.prod_le_prod (fun j _ ↦ by positivity)
+      apply prod_le_prod_nonneg (Finset.range m) (fun j _ ↦ by positivity)
       intro j _; push_cast; linarith
-    have hfac_id : ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) * (K.factorial : ℝ) =
+    have hfac_id : (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) * (K.factorial : ℝ) =
         ((m + K).factorial : ℝ) := by
       induction m with
       | zero => simp
@@ -157,8 +157,8 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
       exact_mod_cast hnat
     have hKfac : (1 : ℝ) ≤ (K.factorial : ℝ) := by exact_mod_cast Nat.factorial_pos K
     have hprod_le2 : ∏ j ∈ Finset.range m, (α + (j : ℝ)) ≤ ((m + K).factorial : ℝ) := by
-      have h1 : ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) ≤
-          ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) * (K.factorial : ℝ) := by
+      have h1 : (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) ≤
+          (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) * (K.factorial : ℝ) := by
         have hnn : 0 ≤ ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) :=
           Finset.prod_nonneg fun j _ ↦ Nat.cast_nonneg _
         nlinarith
@@ -192,7 +192,7 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
       filter_upwards [Filter.eventually_ge_atTop 1] with m hm
       have hmK : (0 : ℝ) < ((m + K : ℕ) : ℝ) := by exact_mod_cast (by omega : 0 < m + K)
       rw [Real.norm_of_nonneg (by positivity), Real.norm_of_nonneg (by positivity),
-        pow_succ, ← div_pow]
+        pow_succ, div_pow]
       field_simp [hmK.ne', (pow_pos hu0 m).ne']
     exact summable_of_ratio_test_tendsto_lt_one hu1
       (Filter.eventually_atTop.mpr ⟨1, fun m hm ↦ by positivity⟩) hratio
@@ -234,7 +234,10 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
   · simp [shiftDyckPath]
   · unfold shiftDyckPath
     by_cases h0 : N₀ = 0
-    · subst h0; simp [hγ.2.1]
+    · subst h0
+      by_cases hn : n = 0
+      · subst hn; simp
+      · simp [hn, hγ.2.1]
     · have h1 : ¬ (2 * n ≤ N₀) := by omega
       have h2 : ¬ (2 * n ≤ 2 * n - N₀) := by omega
       simp [h1, h2]
@@ -253,7 +256,7 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
           have h0 : γ ⟨0, by omega⟩ = 0 := hγ.1
           simp only [ha, ↓reduceDIte, h1, h2]
           have hidx : (⟨k.1 + 1 - N₀, by omega⟩ : Fin (2 * (n - N₀) + 1)) =
-              ⟨1, by omega⟩ := Fin.ext (by omega)
+              ⟨1, by omega⟩ := Fin.ext (by dsimp only; omega)
           rw [hidx, heq]
           simp only [Nat.zero_add] at hstep
           rcases hstep with hs | hs
@@ -264,7 +267,7 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
           simp only [ha1, ha2, h1, h2, ↓reduceDIte]
           have hstep := hγ.2.2 ⟨k.1 - N₀, by omega⟩
           have hidx : (⟨k.1 + 1 - N₀, by omega⟩ : Fin (2 * (n - N₀) + 1)) =
-              ⟨(k.1 - N₀) + 1, by omega⟩ := Fin.ext (by omega)
+              ⟨(k.1 - N₀) + 1, by omega⟩ := Fin.ext (by dsimp only; omega)
           rw [hidx]
           simp only at hstep
           rcases hstep with hs | hs
@@ -284,7 +287,7 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
             have hb2 : ¬ (k.1 + 1 ≤ 2 * n - N₀) := by omega
             simp only [ha1, ha2, hb1, hb2, ↓reduceDIte]
             have hend : (⟨k.1 - N₀, by omega⟩ : Fin (2 * (n - N₀) + 1)) =
-                ⟨2 * (n - N₀), by omega⟩ := Fin.ext (by omega)
+                ⟨2 * (n - N₀), by omega⟩ := Fin.ext (by dsimp only; omega)
             rw [hend, hγ.2.1]
             right; omega
         · have ha1 : ¬ (k.1 ≤ N₀) := by omega
@@ -393,7 +396,7 @@ theorem lemma_5_1_path_weight_lower {n N₀ : ℕ} {α₁ : ℝ}
           have h2 : N₀ + j + 1 ≤ 2 * n - N₀ := by omega
           simp only [h1, h2, ↓reduceDIte]
           have hidx : (⟨N₀ + j + 1 - N₀, by omega⟩ : Fin (2 * (n - N₀) + 1)) =
-              ⟨j + 1, by omega⟩ := Fin.ext (by omega)
+              ⟨j + 1, by omega⟩ := Fin.ext (by dsimp only; omega)
           rw [hidx]
         rw [hstep1, hstep2, ← Nat.add_max_add_left]
     · apply Finset.prod_congr rfl
@@ -414,7 +417,7 @@ theorem lemma_5_1_path_weight_lower {n N₀ : ℕ} {α₁ : ℝ}
             have h2 : N₀ + 2 * (n - N₀) + 0 ≤ 2 * n - N₀ := by omega
             simp only [h1, h2, ↓reduceDIte]
             have hend : (⟨N₀ + 2 * (n - N₀) + 0 - N₀, by omega⟩ : Fin (2 * (n - N₀) + 1)) =
-                ⟨2 * (n - N₀), by omega⟩ := Fin.ext (by omega)
+                ⟨2 * (n - N₀), by omega⟩ := Fin.ext (by dsimp only; omega)
             rw [hend, hγ.2.1]; omega
         · have h1 : ¬ (N₀ + 2 * (n - N₀) + k ≤ N₀) := by omega
           have h2 : ¬ (N₀ + 2 * (n - N₀) + k ≤ 2 * n - N₀) := by omega
