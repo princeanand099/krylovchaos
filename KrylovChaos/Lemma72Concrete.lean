@@ -8,13 +8,6 @@ import Mathlib.Topology.Order.IntermediateValue
 
 /-!
 # Concrete Lemma 7.2 (Positive Depolarized Frame) & Unconditional Theorem 1.3(a)–(b) `C_W`
-
-Closes Open Sub-Gap 1 completely:
-- `sum_connectedPolymers_le_unorderedTreeSum`: bridges connected polymer sums to `unorderedTreeSum`
-- `lemma_7_2_concrete_positive_frame`: proves `gibbsRhoHalf hH β = ∑ s, (π s : ℂ) • globalDepolP N s`
-  with `∀ s, 0 < π s` via `lemma_A_3_concrete_unordered_tree_sum`, `kotecky_preiss_convergence`,
-  and Intermediate Value Theorem
-- `theorem_1_3a_unconditional` and `theorem_1_3b_CW_unconditional`: zero `hρHalf` hypothesis.
 -/
 
 namespace KrylovChaos
@@ -66,6 +59,7 @@ lemma sum_connectedPolymers_le_unorderedTreeSum {N : ℕ}
       (connectedPolymers E).filter (fun C ↦ Y ∈ C ∧ C.card ≤ h + 1)
     let dom := (connectedPolymers E).filter (fun γ ↦ X₀ ∈ γ ∧ γ.card ≤ h + 2)
     let target := N₀.powerset.sigma (fun T ↦ T.pi F)
+    -- For each `γ ∈ dom`, decompose `γ.erase X₀` into connected components `I`
     have hdecomp : ∀ γ ∈ dom,
         ∃ I ∈ (connectedPolymers E).powerset.filter (fun I ↦ isCompatPolymer polyIncompat I),
           I.biUnion id = γ.erase X₀ := by
@@ -73,6 +67,7 @@ lemma sum_connectedPolymers_le_unorderedTreeSum {N : ℕ}
       have hγE : γ ⊆ E := (mem_connectedPolymers.mp (Finset.mem_filter.mp hγ).1).1
       exact (compatible_connectedPolymers_bijection E hne).2 (γ.erase X₀)
         (Finset.mem_powerset.mpr (Finset.Subset.trans (Finset.erase_subset _ _) hγE))
+    -- Canonical representative `rep C ∈ C ∩ N₀`
     let rep : Polymer N → Finset (Fin N) := fun C ↦
       if hneCN : (C ∩ N₀).Nonempty then hneCN.choose else X₀
     have hcomp_hits : ∀ γ ∈ dom,
@@ -122,6 +117,7 @@ lemma sum_connectedPolymers_le_unorderedTreeSum {N : ℕ}
       have hcard_erase : (γ.erase X₀).card = γ.card - 1 := Finset.card_erase_of_mem hX₀γ
       have hle := Finset.card_le_card hCsub_erase
       omega
+    -- Map `γ ∈ dom` into `target`
     let toTarget : Polymer N → Σ T : Finset (Finset (Fin N)), (∀ Y ∈ T, Polymer N) := fun γ ↦
       if hγ : γ ∈ dom then
         let I := (hdecomp γ hγ).choose
@@ -209,6 +205,7 @@ lemma sum_connectedPolymers_le_unorderedTreeSum {N : ℕ}
       conv_lhs => rw [← hIU]
       have hpair_disj : (I : Set (Polymer N)).PairwiseDisjoint id := by
         intro C₁ hC₁ C₂ hC₂ hne12
+        change Disjoint C₁ C₂
         rw [Finset.disjoint_left]
         intro X hX1 hX2
         have hXE : X ∈ E :=
@@ -271,6 +268,63 @@ lemma sum_connectedPolymers_le_unorderedTreeSum {N : ℕ}
           · intro Y hY
             linarith [ih Y (Finset.mem_filter.mp hY).1]
 
+private lemma depolDualWeight_exp_re_pos_of_nonzero {N : ℕ}
+    {H : QubitOp N} (hH : H.IsHermitian) (s : Fin N → Fin 6) (β : ℝ)
+    (hnonzero : ∀ t ∈ Set.Icc (0 : ℝ) 1,
+      depolDualWeight s (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)))) ≠ 0) :
+    0 < (depolDualWeight s (hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ))))).re := by
+  let f : ℝ → ℝ := fun t ↦
+    (depolDualWeight s (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ))))).re
+  have hf_cont : Continuous f := by
+    let U : QubitOp N := (hH.eigenvectorUnitary : QubitOp N)
+    have hherm_cont : Continuous (fun t : ℝ ↦
+        hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)))) := by
+      refine continuous_pi fun i ↦ continuous_pi fun j ↦ ?_
+      have hentry : (fun t : ℝ ↦
+          (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)))) i j) =
+          fun t : ℝ ↦ ∑ k : QubitIdx N, U i k *
+            Complex.exp (-((t : ℂ) * ((β / 2 : ℝ) : ℂ)) * (hH.eigenvalues k : ℂ)) * Uᴴ k j := by
+        funext t
+        unfold hermFunc
+        simp only [U, Matrix.mul_apply, Matrix.diagonal_apply]
+        apply Finset.sum_congr rfl; intro x _
+        rw [Finset.sum_eq_single x]
+        · simp
+        · intro y _ hyx; simp [hyx]
+        · intro hx; exact absurd (Finset.mem_univ x) hx
+      rw [hentry]
+      fun_prop
+    exact Complex.continuous_re.comp ((depolDualWeight_continuous s).comp hherm_cont)
+  have hf0 : f 0 = 1 := by
+    dsimp only [f]
+    have h1 : (fun e : ℝ ↦ Complex.exp (-((0 : ℝ) * (β / 2) : ℂ) * (e : ℂ))) = fun _ ↦ 1 := by
+      funext e; simp
+    rw [h1, hermFunc_one, depolDualWeight_one]; simp
+  have hf_ne : ∀ t ∈ Set.Icc (0 : ℝ) 1, f t ≠ 0 := by
+    intro t ht hft0
+    have him : (depolDualWeight s
+        (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ))))).im = 0 := by
+      apply depolDualWeight_im_eq_zero_of_herm s
+      apply hermFunc_herm_of_real
+      intro e
+      have hreal : Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)) =
+          ((Real.exp (-(t * (β / 2)) * e) : ℝ) : ℂ) := by
+        rw [Complex.ofReal_exp]; congr 1; push_cast; ring
+      rw [hreal, Complex.ofReal_im]
+    have hz : depolDualWeight s
+        (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)))) = 0 :=
+      Complex.ext hft0 him
+    exact hnonzero t ht hz
+  by_contra hle
+  push Not at hle
+  have h1_val : f 1 = (depolDualWeight s
+      (hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ))))).re := by
+    dsimp only [f]; congr 3; funext e; simp
+  have h0mem' : (0 : ℝ) ∈ Set.Icc (f 1) (f 0) := ⟨by linarith [h1_val], by linarith⟩
+  rcases intermediate_value_Icc' (by norm_num : (0 : ℝ) ≤ 1) hf_cont.continuousOn h0mem' with
+    ⟨t, ht, hft⟩
+  exact hf_ne t ht hft
+
 /-- **Lemma 7.2 (Concrete Positive Depolarized Frame Representation — Open Sub-Gap 1)**:
 For ANY local Hamiltonian `H = ∑ X ∈ E, h X` with `∀ X ∈ E, X.Nonempty ∧ X.card ≤ r`,
 `∀ X, h X ∈ supportedOn X`, `hH : H.IsHermitian`, inverse temperature `β ≥ 0`, and
@@ -322,6 +376,7 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
     rw [mul_assoc, ← Real.exp_add]
     have : c * (r : ℝ) + c * (r : ℝ) = 2 * c * (r : ℝ) := by ring
     rw [this]; exact hkp_param
+  -- Show `depolDualWeight s (exp(-(t * β/2) H)) ≠ 0` for every `t ∈ [0, 1]` and `s`
   have hnonzero : ∀ s : Fin N → Fin 6, ∀ t ∈ Set.Icc (0 : ℝ) 1,
       depolDualWeight s (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)))) ≠ 0 := by
     intro s t ht
@@ -379,6 +434,7 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
           _ ≤ ηTilde Y * Real.exp (c * (Y.card : ℝ)) :=
               lemma_A_3_concrete_unordered_tree_sum E hcard ηTilde hηTilde_nn hc.le
                 hηTilde_site hcond_tilde E.card Y hY
+      -- Cover `{γ' ∈ Λ₀ | polyIncompat γ γ'}` by `x ∈ polySupp γ` and `Y ∈ E` with `x ∈ Y`
       have hcover : ∑ γ' ∈ Λ₀.filter (fun γ' ↦ polyIncompat γ γ'), ∏ X ∈ γ', ηTilde X ≤
           ∑ x ∈ polySupp γ, ∑ Y ∈ E.filter (fun Y ↦ x ∈ Y),
             ∑ γ' ∈ Λ₀.filter (fun γ' ↦ Y ∈ γ'), ∏ X ∈ γ', ηTilde X := by
@@ -416,13 +472,15 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
                   ∏ X ∈ γ', ηTilde X := by
               refine real_sum_biUnion_le _ _ _ fun γ' hγ' ↦ ?_
               rcases Finset.mem_biUnion.mp hγ' with ⟨_, _, h3⟩
-              have hγ'E := (mem_connectedPolymers.mp (Finset.mem_filter.mp h3).1).1
+              rcases Finset.mem_biUnion.mp h3 with ⟨_, _, h4⟩
+              have hγ'E := (mem_connectedPolymers.mp (Finset.mem_filter.mp h4).1).1
               exact Finset.prod_nonneg fun X hX ↦ hηTilde_nn X (hγ'E hX)
           _ ≤ ∑ x ∈ polySupp γ, ∑ Y ∈ E.filter (fun Y ↦ x ∈ Y),
                 ∑ γ' ∈ Λ₀.filter (fun γ' ↦ Y ∈ γ'), ∏ X ∈ γ', ηTilde X := by
               apply Finset.sum_le_sum; intro x _
               refine real_sum_biUnion_le _ _ _ fun γ' hγ' ↦ ?_
-              have hγ'E := (mem_connectedPolymers.mp (Finset.mem_filter.mp hγ').1).1
+              rcases Finset.mem_biUnion.mp hγ' with ⟨_, _, h4⟩
+              have hγ'E := (mem_connectedPolymers.mp (Finset.mem_filter.mp h4).1).1
               exact Finset.prod_nonneg fun X hX ↦ hηTilde_nn X (hγ'E hX)
       have hsite_c : ∀ x : Fin N,
           ∑ Y ∈ E.filter (fun Y ↦ x ∈ Y),
@@ -455,6 +513,7 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
         _ = ((polySupp γ).card : ℝ) * c := by simp
         _ ≤ (∑ X ∈ γ, (X.card : ℝ)) * c := mul_le_mul_of_nonneg_right hcard_supp hc.le
         _ = a γ := by dsimp only [a]; ring
+    -- Apply Kotecký–Preiss on `Λ₀` (noting `polyIncompat` is reflexive on `Λ₀` since every `γ ∈ Λ₀` has nonempty support)
     let incompatRefl : Polymer N → Polymer N → Prop := fun γ₁ γ₂ ↦ γ₁ = γ₂ ∨ polyIncompat γ₁ γ₂
     have hrefl : ∀ γ, incompatRefl γ γ := fun _ ↦ Or.inl rfl
     have hsym : ∀ γ₁ γ₂, incompatRefl γ₁ γ₂ → incompatRefl γ₂ γ₁ := by
@@ -496,64 +555,17 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
       · rintro ⟨hsub, hc⟩; refine ⟨hsub, fun a ha b hb hab ↦ ?_⟩
         rw [hinc_eq a (hsub ha) b (hsub hb)]; exact hc a ha b hb hab
     rw [hZ_eq] at hZ_ne
+    have hcast : (-(t * (β / 2) : ℂ) * ·) = (fun e : ℝ ↦ -((t * (β / 2) : ℝ) : ℂ) * (e : ℂ)) := by
+      funext e; push_cast; ring
     have heq := depolDualWeight_exp_eq_polymerZ E hne h hsupp hH s (t * (β / 2))
     rw [← heq] at hZ_ne
     convert hZ_ne using 2
     congr 1; funext e; push_cast; ring
+  -- By Intermediate Value Theorem on `t ∈ [0, 1]`, `0 < (depolDualWeight s (exp(-(β/2) H))).re`
   have hpos : ∀ s : Fin N → Fin 6,
-      0 < (depolDualWeight s (hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ))))).re := by
-    intro s
-    let f : ℝ → ℝ := fun t ↦
-      (depolDualWeight s (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ))))).re
-    have hf_cont : Continuous f := by
-      let U : QubitOp N := (hH.eigenvectorUnitary : QubitOp N)
-      have hherm_cont : Continuous (fun t : ℝ ↦
-          hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)))) := by
-        refine continuous_pi fun i ↦ continuous_pi fun j ↦ ?_
-        have hentry : (fun t : ℝ ↦
-            (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)))) i j) =
-            fun t : ℝ ↦ ∑ k : QubitIdx N, U i k *
-              Complex.exp (-((t : ℂ) * ((β / 2 : ℝ) : ℂ)) * (hH.eigenvalues k : ℂ)) * Uᴴ k j := by
-          funext t
-          unfold hermFunc
-          simp only [U, Matrix.mul_apply, Matrix.diagonal_apply]
-          apply Finset.sum_congr rfl; intro x _
-          rw [Finset.sum_eq_single x]
-          · simp; push_cast; ring
-          · intro y _ hyx; simp [hyx]
-          · intro hx; exact absurd (Finset.mem_univ x) hx
-        rw [hentry]
-        fun_prop
-      exact Complex.continuous_re.comp ((depolDualWeight_continuous s).comp hherm_cont)
-    have hf0 : f 0 = 1 := by
-      dsimp only [f]
-      have h1 : (fun e : ℝ ↦ Complex.exp (-((0 : ℝ) * (β / 2) : ℂ) * (e : ℂ))) = fun _ ↦ 1 := by
-        funext e; simp
-      rw [h1, hermFunc_one, depolDualWeight_one]; simp
-    have hf_ne : ∀ t ∈ Set.Icc (0 : ℝ) 1, f t ≠ 0 := by
-      intro t ht hft0
-      have him : (depolDualWeight s
-          (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ))))).im = 0 := by
-        apply depolDualWeight_im_eq_zero_of_herm s
-        apply hermFunc_herm_of_real
-        intro e
-        have hreal : Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)) =
-            ((Real.exp (-(t * (β / 2)) * e) : ℝ) : ℂ) := by
-          rw [Complex.ofReal_exp]; congr 1; push_cast; ring
-        rw [hreal, Complex.ofReal_im]
-      have hz : depolDualWeight s
-          (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)))) = 0 :=
-        Complex.ext hft0 him
-      exact hnonzero s t ht hz
-    by_contra hle
-    push Not at hle
-    have h1_val : f 1 = (depolDualWeight s
-        (hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ))))).re := by
-      dsimp only [f]; congr 3; funext e; simp
-    have h0mem' : (0 : ℝ) ∈ Set.Icc (f 1) (f 0) := ⟨by linarith [h1_val], by linarith⟩
-    rcases intermediate_value_Icc' (by norm_num : (0 : ℝ) ≤ 1) hf_cont.continuousOn h0mem' with
-      ⟨t, ht, hft⟩
-    exact hf_ne t ht hft
+      0 < (depolDualWeight s (hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ))))).re :=
+    fun s ↦ depolDualWeight_exp_re_pos_of_nonzero hH s β (hnonzero s)
+  -- Assemble strictly positive `π s` for `gibbsRhoHalf hH β`
   let Zhalf : ℝ := Real.sqrt (gibbsPartitionFn hH β)
   have hZhalf_pos : 0 < Zhalf := Real.sqrt_pos.mpr (gibbsPartitionFn_pos hH β)
   let π : (Fin N → Fin 6) → ℝ := fun s ↦
