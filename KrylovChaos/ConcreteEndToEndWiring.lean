@@ -174,7 +174,9 @@ private lemma sqrt_wightmanDistSq_add_le {N : ℕ} (G : GibbsData N)
       rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter]
       have h1 : (hsInner (jBeta G.ρQuarter Z) (jBeta G.ρQuarter Z)).re =
           ‖qubitOpToHS N (jBeta G.ρQuarter Z)‖ ^ 2 := by
-        rw [← qubitOpToHS_inner, inner_self_eq_norm_sq_to_K, ← Complex.ofReal_pow, Complex.ofReal_re]
+        rw [← qubitOpToHS_inner, inner_self_eq_norm_sq_to_K]
+        change ((‖qubitOpToHS N (jBeta G.ρQuarter Z)‖ : ℂ) ^ 2).re = _
+        rw [← Complex.ofReal_pow, Complex.ofReal_re]
       change Real.sqrt (hsInner (jBeta G.ρQuarter Z) (jBeta G.ρQuarter Z)).re = _
       rw [h1, Real.sqrt_sq (norm_nonneg _)]
     rw [hnorm_eq, hnorm_eq, hnorm_eq]
