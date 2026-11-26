@@ -737,17 +737,20 @@ theorem prop_6_4_2_concrete_entropic_decoupling {N : ℕ} {ρ H X : QubitOp N}
       _ = 1 := hρ_tr
   have hρt_pos : ∀ i : QubitIdx N, 0 < hρt.eigenvalues i := by
     intro i
-    let Q : QubitOp N := (hρt.eigenvectorUnitary : QubitOp N)
-    let P : QubitOp N := (hρ.eigenvectorUnitary : QubitOp N)
+    set Q : QubitOp N := (hρt.eigenvectorUnitary : QubitOp N)
+    set P : QubitOp N := (hρ.eigenvectorUnitary : QubitOp N)
+    have hPP : P * Pᴴ = 1 := eigU_mul_star_dec hρ
+    have hQHQ : Qᴴ * Q = 1 := eigU_star_mul_dec hρt
+    have hUU' : U * Uᴴ = 1 := Matrix.mul_eq_one_comm.mp hU_unit
     let W : QubitOp N := Qᴴ * U * P
     have hrow : ∑ j : QubitIdx N, ‖W i j‖ ^ 2 = 1 := by
       have hW1 : W * Wᴴ = 1 := by
         simp only [W, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
         calc Qᴴ * U * P * (Pᴴ * Uᴴ * Q)
             = Qᴴ * U * (P * Pᴴ) * Uᴴ * Q := by simp only [Matrix.mul_assoc]
-          _ = Qᴴ * (U * Uᴴ) * Q := by rw [eigU_mul_star_dec hρ, Matrix.mul_one]; simp only [Matrix.mul_assoc]
-          _ = Qᴴ * Q := by rw [Matrix.mul_eq_one_comm.mp hU_unit, Matrix.mul_one]
-          _ = 1 := eigU_star_mul_dec hρt
+          _ = Qᴴ * (U * Uᴴ) * Q := by rw [hPP, Matrix.mul_one]; simp only [Matrix.mul_assoc]
+          _ = Qᴴ * Q := by rw [hUU', Matrix.mul_one]
+          _ = 1 := hQHQ
       have h1 := congrFun (congrFun hW1 i) i
       simp only [Matrix.mul_apply, Matrix.conjTranspose_apply, Matrix.one_apply_eq] at h1
       have hre := congrArg Complex.re h1
@@ -760,7 +763,7 @@ theorem prop_6_4_2_concrete_entropic_decoupling {N : ℕ} {ρ H X : QubitOp N}
         have h1 := hermFunc_id hρt; unfold hermFunc at h1
         calc Qᴴ * ρt * Q = Qᴴ * (Q * Matrix.diagonal (fun a ↦ (hρt.eigenvalues a : ℂ)) * Qᴴ) * Q := by rw [h1]
           _ = (Qᴴ * Q) * Matrix.diagonal (fun a ↦ (hρt.eigenvalues a : ℂ)) * (Qᴴ * Q) := by simp only [Matrix.mul_assoc]
-          _ = Matrix.diagonal (fun a ↦ (hρt.eigenvalues a : ℂ)) := by rw [eigU_star_mul_dec hρt, Matrix.one_mul, Matrix.mul_one]
+          _ = Matrix.diagonal (fun a ↦ (hρt.eigenvalues a : ℂ)) := by rw [hQHQ, Matrix.one_mul, Matrix.mul_one]
       have hW_eq : Qᴴ * ρt * Q = W * Matrix.diagonal (fun j ↦ (hρ.eigenvalues j : ℂ)) * Wᴴ := by
         have h1 := hermFunc_id hρ; unfold hermFunc at h1
         dsimp only [ρt, W]
@@ -1052,7 +1055,7 @@ theorem lieb_robinson_concrete_opNorm {N r R_int : ℕ} (hr : 1 ≤ r)
             mul_le_mul_of_nonneg_left hfwd_le (by positivity)
         _ = ((k + p).choose p : ℝ) * q ^ k := by
             dsimp only [q]; simp only [mul_pow]
-            field_simp [hkf.ne']; ring
+            field_simp [hkf.ne']
     -- `((k + p).choose p : ℝ) * q ^ k ≤ ((k + p + 1) : ℝ) ^ p * q ^ k`, summable since `0 ≤ q < 1`
     have hsumm_poly : Summable (fun k : ℕ ↦ ((k + p).choose p : ℝ) * q ^ k) := by
       -- Since `q < 1`, choose `s = (q + 1) / 2 ∈ (q, 1)` and bound `choose (k+p) p ≤ (k+p)^p ≤ C * (s/q)^k`
