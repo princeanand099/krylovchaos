@@ -551,6 +551,104 @@ theorem pauli_expansion_concrete {N : ℕ} (A : QubitOp N) :
   have h2N : ((2 : ℂ) ^ N) ≠ 0 := pow_ne_zero N (by norm_num)
   field_simp [h2N]
 
+/-- `partialTraceSite x` is self-adjoint in the Hilbert–Schmidt inner product. -/
+lemma partialTraceSite_self_adj {N : ℕ} (x : Fin N) (A B : QubitOp N) :
+    hsInner (partialTraceSite x A) B = hsInner A (partialTraceSite x B) := by
+  have hPh : ∀ c : Fin 4, (pauliSite x c)ᴴ = pauliSite x c := fun c ↦ by
+    unfold pauliSite pauliString; rw [kronOp_conjTranspose]; congr 1; funext y
+    by_cases hy : y = x
+    · subst hy; simp only [↓reduceIte]; exact pauliMat_herm c
+    · simp only [hy, ↓reduceIte]; exact pauliMat_herm 0
+  unfold partialTraceSite hsInner
+  rw [Matrix.conjTranspose_smul, Matrix.conjTranspose_sum, Matrix.smul_mul, Matrix.mul_smul,
+    Matrix.sum_mul, Matrix.mul_sum, Matrix.trace_smul, Matrix.trace_smul,
+    Matrix.trace_sum, Matrix.trace_sum]
+  have hstar : star (1 / 4 : ℂ) = (1 / 4 : ℂ) := by simp
+  rw [hstar]
+  congr 1
+  apply Finset.sum_congr rfl; intro c _
+  rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hPh c]
+  calc (pauliSite x c * (Aᴴ * pauliSite x c) * B).trace
+      = (pauliSite x c * (Aᴴ * pauliSite x c * B)).trace := by simp only [Matrix.mul_assoc]
+    _ = ((Aᴴ * pauliSite x c * B) * pauliSite x c).trace := Matrix.trace_mul_comm _ _
+    _ = (Aᴴ * (pauliSite x c * B * pauliSite x c)).trace := by simp only [Matrix.mul_assoc]
+
+/-- `siteSizeOp x` is self-adjoint in the Hilbert–Schmidt inner product. -/
+lemma siteSizeOp_self_adj {N : ℕ} (x : Fin N) (A B : QubitOp N) :
+    hsInner (siteSizeOp x A) B = hsInner A (siteSizeOp x B) := by
+  unfold siteSizeOp hsInner at *
+  rw [Matrix.conjTranspose_sub, Matrix.sub_mul, Matrix.mul_sub, Matrix.trace_sub, Matrix.trace_sub]
+  congr 1
+  exact partialTraceSite_self_adj x A B
+
+/-- `partialTraceSite x` is idempotent on `QubitOp N`. -/
+lemma partialTraceSite_idem {N : ℕ} (x : Fin N) (A : QubitOp N) :
+    partialTraceSite x (partialTraceSite x A) = partialTraceSite x A := by
+  have hpt_lin : ∀ (f : (Fin N → Fin 4) → ℂ) (g : (Fin N → Fin 4) → QubitOp N),
+      partialTraceSite x (∑ a : Fin N → Fin 4, f a • g a) =
+        ∑ a : Fin N → Fin 4, f a • partialTraceSite x (g a) := by
+    intro f g
+    unfold partialTraceSite
+    simp only [Matrix.mul_sum, Matrix.sum_mul, Matrix.mul_smul, Matrix.smul_mul, Finset.smul_sum]
+    rw [Finset.sum_comm]
+    apply Finset.sum_congr rfl; intro a _
+    apply Finset.sum_congr rfl; intro c _; rw [smul_comm]
+  have hpt_pauli : ∀ a : Fin N → Fin 4,
+      partialTraceSite x (pauliString a) = if a x = 0 then pauliString a else 0 := by
+    intro a
+    unfold partialTraceSite pauliString
+    have hp0 : pauliMat 0 = (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
+      ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat]
+    have hconj : ∀ c : Fin 4,
+        pauliSite x c * kronOp (fun y ↦ pauliMat (a y)) * pauliSite x c =
+        kronOp (fun y ↦ if y = x then pauliMat c * pauliMat (a x) * pauliMat c else pauliMat (a y)) := by
+      intro c; unfold pauliSite pauliString; rw [kronOp_mul, kronOp_mul]
+      congr 1; funext y
+      by_cases hy : y = x
+      · subst hy; simp
+      · simp [hy, hp0]
+    simp_rw [hconj]
+    ext p q
+    simp only [Matrix.smul_apply, Matrix.sum_apply, kronOp, Matrix.of_apply, smul_eq_mul]
+    have hsplit : ∀ c : Fin 4,
+        (∏ y : Fin N, (if y = x then pauliMat c * pauliMat (a x) * pauliMat c else pauliMat (a y)) (p y) (q y)) =
+        (pauliMat c * pauliMat (a x) * pauliMat c) (p x) (q x) *
+          ∏ y ∈ Finset.univ.erase x, pauliMat (a y) (p y) (q y) := by
+      intro c; rw [← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ x)]
+      congr 1; · simp
+      · apply Finset.prod_congr rfl; intro y hy; simp [(Finset.mem_erase.mp hy).1]
+    simp_rw [hsplit, ← Finset.sum_mul, ← mul_assoc]
+    have htw : (1 / 4 : ℂ) * (∑ c : Fin 4, (pauliMat c * pauliMat (a x) * pauliMat c) (p x) (q x)) =
+        if a x = 0 then pauliMat 0 (p x) (q x) else 0 := by
+      generalize a x = u; generalize p x = i1; generalize q x = j1
+      fin_cases u <;> fin_cases i1 <;> fin_cases j1 <;>
+        (simp [Fin.sum_univ_four, pauliMat, Matrix.mul_apply, Fin.sum_univ_two]; try norm_num)
+    rw [htw]
+    by_cases hax : a x = 0
+    · rw [if_pos hax, if_pos hax]
+      simp only [kronOp, Matrix.of_apply]
+      rw [← Finset.mul_prod_erase Finset.univ (fun y ↦ pauliMat (a y) (p y) (q y)) (Finset.mem_univ x), hax]
+    · rw [if_neg hax, if_neg hax, zero_mul, Matrix.zero_apply]
+  conv_lhs => rw [pauli_expansion_concrete A]
+  conv_rhs => rw [pauli_expansion_concrete A]
+  rw [hpt_lin, hpt_lin, hpt_lin]
+  apply Finset.sum_congr rfl; intro a _
+  congr 1
+  rw [hpt_pauli a]
+  by_cases hax : a x = 0
+  · rw [if_pos hax, hpt_pauli a, if_pos hax]
+  · rw [if_neg hax]; unfold partialTraceSite; simp
+
+/-- `siteSizeOp x` is idempotent on `QubitOp N`. -/
+lemma siteSizeOp_idem {N : ℕ} (x : Fin N) (A : QubitOp N) :
+    siteSizeOp x (siteSizeOp x A) = siteSizeOp x A := by
+  have hpt_sub : partialTraceSite x (A - partialTraceSite x A) =
+      partialTraceSite x A - partialTraceSite x (partialTraceSite x A) := by
+    unfold partialTraceSite
+    simp only [Matrix.mul_sub, Matrix.sub_mul, Finset.sum_sub_distrib, smul_sub]
+  unfold siteSizeOp
+  rw [hpt_sub, partialTraceSite_idem, sub_self, sub_zero]
+
 section OperatorConditioningAndTheorem13
 
 /-- Exact PSD decomposition `P̃_s = (1/4) I + (1/8) (I + σ_s)²`. -/
@@ -761,15 +859,16 @@ private lemma siteSizeOp_comm_LR {N : ℕ} (x : Fin N) (L R Y : QubitOp N)
     (hcommR : ∀ c : Fin 4, pauliSite x c * R = R * pauliSite x c)
     (hcommL : ∀ c : Fin 4, pauliSite x c * L = L * pauliSite x c) :
     R * siteSizeOp x Y * L = siteSizeOp x (R * Y * L) := by
+  have hsum : R * (∑ c : Fin 4, pauliSite x c * Y * pauliSite x c) * L =
+      ∑ c : Fin 4, pauliSite x c * (R * Y * L) * pauliSite x c := by
+    rw [Finset.mul_sum, Finset.sum_mul]
+    apply Finset.sum_congr rfl; intro c _
+    calc R * (pauliSite x c * Y * pauliSite x c) * L
+        = (R * pauliSite x c) * Y * (pauliSite x c * L) := by simp only [Matrix.mul_assoc]
+      _ = (pauliSite x c * R) * Y * (L * pauliSite x c) := by rw [← hcommR c, hcommL c]
+      _ = pauliSite x c * (R * Y * L) * pauliSite x c := by simp only [Matrix.mul_assoc]
   unfold siteSizeOp partialTraceSite
-  rw [Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_smul, Matrix.smul_mul,
-    Matrix.mul_sum, Matrix.sum_mul]
-  congr 1; congr 1
-  apply Finset.sum_congr rfl; intro c _
-  calc R * (pauliSite x c * Y * pauliSite x c) * L
-      = (R * pauliSite x c) * Y * (pauliSite x c * L) := by simp only [Matrix.mul_assoc]
-    _ = (pauliSite x c * R) * Y * (L * pauliSite x c) := by rw [← hcommR c, hcommL c]
-    _ = pauliSite x c * (R * Y * L) * pauliSite x c := by simp only [Matrix.mul_assoc]
+  rw [mul_sub, sub_mul, mul_smul_comm, smul_mul_assoc, hsum]
 
 private lemma hsNormSq_siteSizeOp_le {N : ℕ} (x : Fin N) (M : QubitOp N) :
     hsNormSq (siteSizeOp x M) ≤ hsNormSq M := by
@@ -862,7 +961,7 @@ private lemma siteSizeOp_eq_zero_of_mem_trivial {N : ℕ} (x : Fin N)
         · simp [hy, hp0]
       simp_rw [hconj, Finset.sum_const, Finset.card_univ, Fintype.card_fin]
       ext p q
-      simp only [Matrix.smul_apply, smul_eq_mul, nsmul_eq_mul, Nat.cast_ofNat]
+      simp only [Matrix.smul_apply, smul_eq_mul, Matrix.nsmul_apply, nsmul_eq_mul, Nat.cast_ofNat]
       ring
     rw [hpt, sub_self]
   · unfold siteSizeOp partialTraceSite; simp
@@ -898,7 +997,7 @@ theorem lemma_7_3_operator_best_approx {N : ℕ} (s s' : Fin N → Fin 6) (x : F
     rw [← hsame]
     have h1 := (lemma_7_3_operator_conditioning s s' x (siteSizeOp x (A - B))).2
     have h2 := globalDepolPReplace_siteSizeOp_le s s' x (A - B)
-    have h3 := (lemma_7_3_operator_conditioning s s' x (A - B)).1
+    have h3 := (lemma_7_3_operator_conditioning s s' x (siteSizeOp x (A - B))).1
     linarith
   have hdiv : (1 / 9 : ℝ) * prodDepolNormSq s s' (siteSizeOp x A) ≤
       prodDepolDistSq s s' (singleSiteTrivialSubmodule N x) A := by

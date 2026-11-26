@@ -44,9 +44,9 @@ lemma heisenbergEvol_eigen_entry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
       Complex.exp (Complex.I * z * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ)) *
         (Uᴴ * O * U) a b := by
   intro U
-  unfold heisenbergEvol hermFunc
+  unfold heisenbergEvol complexPropagator hermFunc
   set D1 : QubitOp N := Matrix.diagonal (fun i ↦ Complex.exp (Complex.I * z * (hH.eigenvalues i : ℂ)))
-  set D2 : QubitOp N := Matrix.diagonal (fun i ↦ Complex.exp (-(Complex.I * z) * (hH.eigenvalues i : ℂ)))
+  set D2 : QubitOp N := Matrix.diagonal (fun i ↦ Complex.exp (Complex.I * (-z) * (hH.eigenvalues i : ℂ)))
   have hconj : Uᴴ * (U * D1 * Uᴴ * O * (U * D2 * Uᴴ)) * U = D1 * (Uᴴ * O * U) * D2 := by
     calc Uᴴ * (U * D1 * Uᴴ * O * (U * D2 * Uᴴ)) * U
         = (Uᴴ * U) * D1 * (Uᴴ * O * U) * D2 * (Uᴴ * U) := by simp only [Matrix.mul_assoc]
