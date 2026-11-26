@@ -140,10 +140,10 @@ theorem heisenbergEvol_concrete_norm_bound {N r : ℕ} (hr : 1 ≤ r)
     have had_le : opNorm (adPowMat (∑ X ∈ E, h X) k O) ≤
         (2 : ℝ) ^ k * fwdCausalSum E (fun X ↦ opNorm (h X)) k U₀ * opNorm O := by
       rw [adPowMat_eq_sum_causal E h hsupp hO k]
-      calc opNorm (∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀), iterComm h f O)
-          ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀), opNorm (iterComm h f O) :=
+      calc opNorm (∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp U₀), iterComm h f O)
+          ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp U₀), opNorm (iterComm h f O) :=
             opNorm_sum_le _ _
-        _ ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀),
+        _ ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp U₀),
               (2 : ℝ) ^ k * (∏ j : Fin k, opNorm (h (f j))) * opNorm O :=
             Finset.sum_le_sum fun f _ ↦ opNorm_iterComm_le h O f
         _ = (2 : ℝ) ^ k * fwdCausalSum E (fun X ↦ opNorm (h X)) k U₀ * opNorm O := by

@@ -159,35 +159,35 @@ def iterComm {N : ℕ} (h : Finset (Fin N) → QubitOp N) :
   | _ + 1, f, B => matComm (h (f 0)) (iterComm h (Fin.tail f) B)
 
 /-- Union of `U₀` with all hyperedges in `f : Fin k → Finset (Fin N)`. -/
-def causalUnion {N : ℕ} (U₀ : Finset (Fin N)) :
+def causalUnionOp {N : ℕ} (U₀ : Finset (Fin N)) :
     ∀ {k : ℕ}, (Fin k → Finset (Fin N)) → Finset (Fin N)
   | 0, _ => U₀
-  | _ + 1, f => f 0 ∪ causalUnion U₀ (Fin.tail f)
+  | _ + 1, f => f 0 ∪ causalUnionOp U₀ (Fin.tail f)
 
 /-- Causality predicate: at each step (from inner to outer), the new hyperedge intersects
 the accumulated support. -/
-def isCausalSeq {N : ℕ} (U₀ : Finset (Fin N)) :
+def isCausalSeqOp {N : ℕ} (U₀ : Finset (Fin N)) :
     ∀ {k : ℕ}, (Fin k → Finset (Fin N)) → Prop
   | 0, _ => True
-  | _ + 1, f => (f 0 ∩ causalUnion U₀ (Fin.tail f)).Nonempty ∧ isCausalSeq U₀ (Fin.tail f)
+  | _ + 1, f => (f 0 ∩ causalUnionOp U₀ (Fin.tail f)).Nonempty ∧ isCausalSeqOp U₀ (Fin.tail f)
 
-instance instDecidablePredIsCausalSeq {N : ℕ} (U₀ : Finset (Fin N)) :
-    ∀ {k : ℕ}, DecidablePred (isCausalSeq U₀ (k := k))
+instance instDecidablePredIsCausalSeqOp {N : ℕ} (U₀ : Finset (Fin N)) :
+    ∀ {k : ℕ}, DecidablePred (isCausalSeqOp U₀ (k := k))
   | 0 => fun _ ↦ isTrue trivial
   | _ + 1 => fun f ↦ @instDecidableAnd _ _ inferInstance
-      (instDecidablePredIsCausalSeq U₀ (Fin.tail f))
+      (instDecidablePredIsCausalSeqOp U₀ (Fin.tail f))
 
 lemma iterComm_mem_supportedOn {N : ℕ} (h : Finset (Fin N) → QubitOp N)
     (hsupp : ∀ X, h X ∈ supportedOn X) {U₀ : Finset (Fin N)} {B : QubitOp N}
     (hB : B ∈ supportedOn U₀) :
     ∀ {k : ℕ} (f : Fin k → Finset (Fin N)),
-      iterComm h f B ∈ supportedOn (causalUnion U₀ f)
+      iterComm h f B ∈ supportedOn (causalUnionOp U₀ f)
   | 0, _ => hB
   | _ + 1, f => by
-    rw [iterComm, causalUnion]
-    have h1 : h (f 0) ∈ supportedOn (f 0 ∪ causalUnion U₀ (Fin.tail f)) :=
+    rw [iterComm, causalUnionOp]
+    have h1 : h (f 0) ∈ supportedOn (f 0 ∪ causalUnionOp U₀ (Fin.tail f)) :=
       supportedOn_mono Finset.subset_union_left (hsupp (f 0))
-    have h2 : iterComm h (Fin.tail f) B ∈ supportedOn (f 0 ∪ causalUnion U₀ (Fin.tail f)) :=
+    have h2 : iterComm h (Fin.tail f) B ∈ supportedOn (f 0 ∪ causalUnionOp U₀ (Fin.tail f)) :=
       supportedOn_mono Finset.subset_union_right (iterComm_mem_supportedOn h hsupp hB (Fin.tail f))
     unfold matComm
     exact Submodule.sub_mem _ (supportedOn_mul_mem h1 h2) (supportedOn_mul_mem h2 h1)
@@ -196,11 +196,11 @@ lemma iterComm_eq_zero_of_not_causal {N : ℕ} (h : Finset (Fin N) → QubitOp N
     (hsupp : ∀ X, h X ∈ supportedOn X) {U₀ : Finset (Fin N)} {B : QubitOp N}
     (hB : B ∈ supportedOn U₀) :
     ∀ {k : ℕ} (f : Fin k → Finset (Fin N)),
-      ¬ isCausalSeq U₀ f → iterComm h f B = 0
+      ¬ isCausalSeqOp U₀ f → iterComm h f B = 0
   | 0, _, hnc => absurd trivial hnc
   | _ + 1, f, hnc => by
     rw [iterComm]
-    rw [isCausalSeq, not_and_or] at hnc
+    rw [isCausalSeqOp, not_and_or] at hnc
     rcases hnc with hdisj | htail
     · rw [Finset.not_nonempty_iff_eq_empty, ← Finset.disjoint_iff_inter_eq_empty] at hdisj
       unfold matComm
@@ -238,16 +238,16 @@ lemma opNorm_iterComm_le {N : ℕ} (h : Finset (Fin N) → QubitOp N) (B : Qubit
 lemma card_causalUnion_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
     (hcard : ∀ X ∈ E, X.card ≤ r) (U₀ : Finset (Fin N)) :
     ∀ {k : ℕ} (f : Fin k → Finset (Fin N)),
-      (∀ j, f j ∈ E) → isCausalSeq U₀ f →
-      (causalUnion U₀ f).card ≤ U₀.card + k * (r - 1)
-  | 0, _, _, _ => by simp [causalUnion]
+      (∀ j, f j ∈ E) → isCausalSeqOp U₀ f →
+      (causalUnionOp U₀ f).card ≤ U₀.card + k * (r - 1)
+  | 0, _, _, _ => by simp [causalUnionOp]
   | k + 1, f, hfE, hcs => by
-    rw [causalUnion]
+    rw [causalUnionOp]
     have hih := card_causalUnion_le hr E hcard U₀ (Fin.tail f) (fun j ↦ hfE j.succ) hcs.2
-    have hinter : 1 ≤ (f 0 ∩ causalUnion U₀ (Fin.tail f)).card := Finset.card_pos.mpr hcs.1
-    have hu := Finset.card_union_add_card_inter (f 0) (causalUnion U₀ (Fin.tail f))
+    have hinter : 1 ≤ (f 0 ∩ causalUnionOp U₀ (Fin.tail f)).card := Finset.card_pos.mpr hcs.1
+    have hu := Finset.card_union_add_card_inter (f 0) (causalUnionOp U₀ (Fin.tail f))
     have hf0 : (f 0).card ≤ r := hcard (f 0) (hfE 0)
-    have : (f 0 ∪ causalUnion U₀ (Fin.tail f)).card ≤ (f 0).card + (causalUnion U₀ (Fin.tail f)).card - 1 := by
+    have : (f 0 ∪ causalUnionOp U₀ (Fin.tail f)).card ≤ (f 0).card + (causalUnionOp U₀ (Fin.tail f)).card - 1 := by
       omega
     have hmul : (k + 1) * (r - 1) = k * (r - 1) + (r - 1) := by ring
     omega
@@ -256,7 +256,7 @@ lemma adPowMat_eq_sum_causal {N : ℕ} (E : Finset (Finset (Fin N)))
     (h : Finset (Fin N) → QubitOp N) (hsupp : ∀ X, h X ∈ supportedOn X)
     {U₀ : Finset (Fin N)} {B : QubitOp N} (hB : B ∈ supportedOn U₀) :
     ∀ k : ℕ, adPowMat (∑ X ∈ E, h X) k B =
-      ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀), iterComm h f B := by
+      ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp U₀), iterComm h f B := by
   intro k
   have hall : adPowMat (∑ X ∈ E, h X) k B =
       ∑ f ∈ Fintype.piFinset (fun _ : Fin k ↦ E), iterComm h f B := by
@@ -294,14 +294,14 @@ lemma adPowMat_eq_sum_causal {N : ℕ} (E : Finset (Finset (Fin N)))
   symm
   rw [Finset.sum_filter]
   apply Finset.sum_congr rfl; intro f _
-  by_cases hcs : isCausalSeq U₀ f
+  by_cases hcs : isCausalSeqOp U₀ f
   · simp [hcs]
   · simp [hcs, iterComm_eq_zero_of_not_causal h hsupp hB f hcs]
 
 /-- Forward causal sequence weight sum starting from `U₀`. -/
 noncomputable def fwdCausalSum {N : ℕ} (E : Finset (Finset (Fin N)))
     (w : Finset (Fin N) → ℝ) (k : ℕ) (U₀ : Finset (Fin N)) : ℝ :=
-  ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀), ∏ j : Fin k, w (f j)
+  ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp U₀), ∏ j : Fin k, w (f j)
 
 lemma fwdCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
     (hcard : ∀ X ∈ E, X.card ≤ r) (w : Finset (Fin N) → ℝ)
@@ -312,7 +312,7 @@ lemma fwdCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
   induction k with
   | zero =>
     unfold fwdCausalSum
-    have hsing : (Fintype.piFinset fun _ : Fin 0 ↦ E).filter (isCausalSeq {x₀}) = {Fin.elim0} := by
+    have hsing : (Fintype.piFinset fun _ : Fin 0 ↦ E).filter (isCausalSeqOp {x₀}) = {Fin.elim0} := by
       ext f; simp only [Finset.mem_filter, Fintype.mem_piFinset, Finset.mem_singleton]
       constructor
       · intro _; funext j; exact Fin.elim0 j
@@ -320,11 +320,11 @@ lemma fwdCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
     rw [hsing, Finset.sum_singleton]; simp
   | succ k ih =>
     unfold fwdCausalSum
-    have hsplit : ∑ f ∈ (Fintype.piFinset fun _ : Fin (k + 1) ↦ E).filter (isCausalSeq {x₀}),
+    have hsplit : ∑ f ∈ (Fintype.piFinset fun _ : Fin (k + 1) ↦ E).filter (isCausalSeqOp {x₀}),
           ∏ j : Fin (k + 1), w (f j) =
-        ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x₀}),
+        ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x₀}),
           (∏ j : Fin k, w (g j)) *
-            ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion {x₀} g).Nonempty), w X := by
+            ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnionOp {x₀} g).Nonempty), w X := by
       simp_rw [Finset.mul_sum]
       rw [← Finset.sum_sigma (f := fun p : (Σ _ : Fin k → Finset (Fin N), Finset (Fin N)) ↦ (∏ j : Fin k, w (p.1 j)) * w p.2)]
       refine Finset.sum_bij (fun f _ ↦ ⟨Fin.tail f, f 0⟩) ?_ ?_ ?_ ?_
@@ -347,33 +347,33 @@ lemma fwdCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
         rfl
       · intro f _; rw [Fin.prod_univ_succ, mul_comm]; rfl
     rw [hsplit]
-    have hstep : ∀ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x₀}),
-        ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion {x₀} g).Nonempty), w X ≤
+    have hstep : ∀ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x₀}),
+        ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnionOp {x₀} g).Nonempty), w X ≤
           ((k + 1 : ℕ) : ℝ) * ((r : ℝ) * J) := by
       intro g hg
       rcases Finset.mem_filter.mp hg with ⟨hgpi, hgcs⟩
-      have h1 := sum_overlapping_le E w hw_nn hsite (causalUnion {x₀} g)
-      have h1' : ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion {x₀} g).Nonempty), w X =
-          ∑ X ∈ E.filter (fun X ↦ (causalUnion {x₀} g ∩ X).Nonempty), w X := by
+      have h1 := sum_overlapping_le E w hw_nn hsite (causalUnionOp {x₀} g)
+      have h1' : ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnionOp {x₀} g).Nonempty), w X =
+          ∑ X ∈ E.filter (fun X ↦ (causalUnionOp {x₀} g ∩ X).Nonempty), w X := by
         apply Finset.sum_congr _ (fun _ _ ↦ rfl)
         ext X; simp only [Finset.mem_filter, Finset.inter_comm]
       rw [h1']
       have hcard_u := card_causalUnion_le hr E hcard {x₀} g (Fintype.mem_piFinset.mp hgpi) hgcs
-      have hcard_le : ((causalUnion {x₀} g).card : ℝ) ≤ ((k + 1 : ℕ) : ℝ) * (r : ℝ) := by
-        have hnat : (causalUnion {x₀} g).card ≤ (k + 1) * r := by
+      have hcard_le : ((causalUnionOp {x₀} g).card : ℝ) ≤ ((k + 1 : ℕ) : ℝ) * (r : ℝ) := by
+        have hnat : (causalUnionOp {x₀} g).card ≤ (k + 1) * r := by
           have : 1 + k * (r - 1) ≤ (k + 1) * r := by
             have : k * (r - 1) ≤ k * r := Nat.mul_le_mul_left k (Nat.sub_le r 1)
             nlinarith
           simp only [Finset.card_singleton] at hcard_u
           omega
         exact_mod_cast hnat
-      calc ∑ X ∈ E.filter (fun X ↦ (causalUnion {x₀} g ∩ X).Nonempty), w X
-          ≤ ((causalUnion {x₀} g).card : ℝ) * J := h1
+      calc ∑ X ∈ E.filter (fun X ↦ (causalUnionOp {x₀} g ∩ X).Nonempty), w X
+          ≤ ((causalUnionOp {x₀} g).card : ℝ) * J := h1
         _ ≤ (((k + 1 : ℕ) : ℝ) * (r : ℝ)) * J := mul_le_mul_of_nonneg_right hcard_le hJ_nn
         _ = ((k + 1 : ℕ) : ℝ) * ((r : ℝ) * J) := by ring
-    calc ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x₀}),
-            (∏ j : Fin k, w (g j)) * ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion {x₀} g).Nonempty), w X
-        ≤ ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x₀}),
+    calc ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x₀}),
+            (∏ j : Fin k, w (g j)) * ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnionOp {x₀} g).Nonempty), w X
+        ≤ ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x₀}),
             (∏ j : Fin k, w (g j)) * (((k + 1 : ℕ) : ℝ) * ((r : ℝ) * J)) := by
           apply Finset.sum_le_sum; intro g hg
           exact mul_le_mul_of_nonneg_left (hstep g hg)
@@ -388,8 +388,8 @@ lemma fwdCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
 of length `k` starting from `{x}` whose support union contains `y`. -/
 noncomputable def revCausalSum {N : ℕ} (E : Finset (Finset (Fin N)))
     (w : Finset (Fin N) → ℝ) (k : ℕ) (y : Fin N) : ℝ :=
-  ∑ x : Fin N, ∑ f ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-    (fun f ↦ y ∈ causalUnion {x} f), ∏ j : Fin k, w (f j)
+  ∑ x : Fin N, ∑ f ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+    (fun f ↦ y ∈ causalUnionOp {x} f), ∏ j : Fin k, w (f j)
 
 /-- **Inductive Reverse-Causal Sum Bound (Cayley Root Reversal)**:
 `revCausalSum E w k y ≤ (k + 1)! * (r * J) ^ k` for all `k : ℕ` and `y : Fin N`. -/
@@ -404,50 +404,50 @@ lemma revCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
     intro y
     unfold revCausalSum
     rw [Finset.sum_eq_single y]
-    · have hsing : ((Fintype.piFinset fun _ : Fin 0 ↦ E).filter (isCausalSeq {y})).filter
-          (fun f ↦ y ∈ causalUnion {y} f) = {Fin.elim0} := by
+    · have hsing : ((Fintype.piFinset fun _ : Fin 0 ↦ E).filter (isCausalSeqOp {y})).filter
+          (fun f ↦ y ∈ causalUnionOp {y} f) = {Fin.elim0} := by
         ext f; simp only [Finset.mem_filter, Fintype.mem_piFinset, Finset.mem_singleton]
         constructor
         · intro _; funext j; exact Fin.elim0 j
-        · rintro rfl; exact ⟨⟨fun j ↦ Fin.elim0 j, trivial⟩, by simp [causalUnion]⟩
+        · rintro rfl; exact ⟨⟨fun j ↦ Fin.elim0 j, trivial⟩, by simp [causalUnionOp]⟩
       rw [hsing, Finset.sum_singleton]; simp
     · intro x _ hxy
       apply Finset.sum_eq_zero; intro f hf
       have hy := (Finset.mem_filter.mp hf).2
-      simp [causalUnion, Ne.symm hxy] at hy
+      simp [causalUnionOp, Ne.symm hxy] at hy
     · intro hy; exact absurd (Finset.mem_univ y) hy
   | succ k ih =>
     intro y
     unfold revCausalSum
-    -- For each `x` and `f : Fin (k+1) → E` with `y ∈ f 0 ∪ causalUnion {x} (Fin.tail f)`,
-    -- split into `y ∈ causalUnion {x} (Fin.tail f)` (Case 1) or `y ∈ f 0` (Case 2).
+    -- For each `x` and `f : Fin (k+1) → E` with `y ∈ f 0 ∪ causalUnionOp {x} (Fin.tail f)`,
+    -- split into `y ∈ causalUnionOp {x} (Fin.tail f)` (Case 1) or `y ∈ f 0` (Case 2).
     have hsplit_x : ∀ x : Fin N,
-        ∑ f ∈ ((Fintype.piFinset fun _ : Fin (k + 1) ↦ E).filter (isCausalSeq {x})).filter
-            (fun f ↦ y ∈ causalUnion {x} f), ∏ j : Fin (k + 1), w (f j) ≤
-        (∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-            (fun g ↦ y ∈ causalUnion {x} g),
+        ∑ f ∈ ((Fintype.piFinset fun _ : Fin (k + 1) ↦ E).filter (isCausalSeqOp {x})).filter
+            (fun f ↦ y ∈ causalUnionOp {x} f), ∏ j : Fin (k + 1), w (f j) ≤
+        (∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+            (fun g ↦ y ∈ causalUnionOp {x} g),
             (∏ j : Fin k, w (g j)) *
-              ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion {x} g).Nonempty), w X) +
+              ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnionOp {x} g).Nonempty), w X) +
         (∑ X ∈ E.filter (fun X ↦ y ∈ X), w X *
-          ∑ z ∈ X, ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-            (fun g ↦ z ∈ causalUnion {x} g), ∏ j : Fin k, w (g j)) := by
+          ∑ z ∈ X, ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+            (fun g ↦ z ∈ causalUnionOp {x} g), ∏ j : Fin k, w (g j)) := by
       intro x
-      let S := ((Fintype.piFinset fun _ : Fin (k + 1) ↦ E).filter (isCausalSeq {x})).filter
-        (fun f ↦ y ∈ causalUnion {x} f)
-      let S1 := S.filter (fun f ↦ y ∈ causalUnion {x} (Fin.tail f))
-      let S2 := S.filter (fun f ↦ y ∉ causalUnion {x} (Fin.tail f))
+      let S := ((Fintype.piFinset fun _ : Fin (k + 1) ↦ E).filter (isCausalSeqOp {x})).filter
+        (fun f ↦ y ∈ causalUnionOp {x} f)
+      let S1 := S.filter (fun f ↦ y ∈ causalUnionOp {x} (Fin.tail f))
+      let S2 := S.filter (fun f ↦ y ∉ causalUnionOp {x} (Fin.tail f))
       have hS_split : ∑ f ∈ S, ∏ j : Fin (k + 1), w (f j) =
           (∑ f ∈ S1, ∏ j : Fin (k + 1), w (f j)) + ∑ f ∈ S2, ∏ j : Fin (k + 1), w (f j) := by
-        rw [← Finset.sum_filter_add_sum_filter_not S (fun f ↦ y ∈ causalUnion {x} (Fin.tail f))]
+        rw [← Finset.sum_filter_add_sum_filter_not S (fun f ↦ y ∈ causalUnionOp {x} (Fin.tail f))]
       rw [hS_split]
       apply add_le_add
-      · -- Case 1: `y ∈ causalUnion {x} (Fin.tail f)`
+      · -- Case 1: `y ∈ causalUnionOp {x} (Fin.tail f)`
         simp_rw [Finset.mul_sum]
         rw [← Finset.sum_sigma (f := fun p : (Σ _ : Fin k → Finset (Fin N), Finset (Fin N)) ↦ (∏ j : Fin k, w (p.1 j)) * w p.2)]
         have heq1 : ∑ f ∈ S1, ∏ j : Fin (k + 1), w (f j) =
-            ∑ p ∈ (((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-              (fun g ↦ y ∈ causalUnion {x} g)).sigma
-              (fun g ↦ E.filter (fun X ↦ (X ∩ causalUnion {x} g).Nonempty)),
+            ∑ p ∈ (((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+              (fun g ↦ y ∈ causalUnionOp {x} g)).sigma
+              (fun g ↦ E.filter (fun X ↦ (X ∩ causalUnionOp {x} g).Nonempty)),
               (∏ j : Fin k, w (p.1 j)) * w p.2 := by
           refine Finset.sum_bij (fun f _ ↦ ⟨Fin.tail f, f 0⟩) ?_ ?_ ?_ ?_
           · intro f hf
@@ -472,17 +472,17 @@ lemma revCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
                 Finset.mem_union_right _ hy1⟩, hy1⟩, rfl⟩
           · intro f _; rw [Fin.prod_univ_succ, mul_comm]; rfl
         exact heq1.le
-      · -- Case 2: `y ∉ causalUnion {x} (Fin.tail f)`, so `y ∈ f 0`, and `∃ z ∈ f 0 ∩ causalUnion {x} (Fin.tail f)`
+      · -- Case 2: `y ∉ causalUnionOp {x} (Fin.tail f)`, so `y ∈ f 0`, and `∃ z ∈ f 0 ∩ causalUnionOp {x} (Fin.tail f)`
         have hS2_eq : ∑ f ∈ S2, ∏ j : Fin (k + 1), w (f j) ≤
             ∑ X ∈ E.filter (fun X ↦ y ∈ X), w X *
-              ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-                (fun g ↦ (X ∩ causalUnion {x} g).Nonempty), ∏ j : Fin k, w (g j) := by
+              ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+                (fun g ↦ (X ∩ causalUnionOp {x} g).Nonempty), ∏ j : Fin k, w (g j) := by
           simp_rw [Finset.mul_sum]
           rw [← Finset.sum_sigma (f := fun p : (Σ _ : Finset (Fin N), Fin k → Finset (Fin N)) ↦ w p.1 * ∏ j : Fin k, w (p.2 j))]
           have hmap : ∀ f ∈ S2, (⟨f 0, Fin.tail f⟩ : Σ _X : Finset (Fin N), Fin k → Finset (Fin N)) ∈
               (E.filter (fun X ↦ y ∈ X)).sigma (fun X ↦
-                ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-                  (fun g ↦ (X ∩ causalUnion {x} g).Nonempty)) := by
+                ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+                  (fun g ↦ (X ∩ causalUnionOp {x} g).Nonempty)) := by
             intro f hf
             rcases Finset.mem_filter.mp hf with ⟨hfS, hynot⟩
             rcases Finset.mem_filter.mp hfS with ⟨hfcs, hyu⟩
@@ -505,8 +505,8 @@ lemma revCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
                   w p.1 * ∏ j : Fin k, w (p.2 j) := by
                 rw [Finset.sum_image hinj]
             _ ≤ ∑ p ∈ (E.filter (fun X ↦ y ∈ X)).sigma (fun X ↦
-                  ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-                    (fun g ↦ (X ∩ causalUnion {x} g).Nonempty)),
+                  ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+                    (fun g ↦ (X ∩ causalUnionOp {x} g).Nonempty)),
                   w p.1 * ∏ j : Fin k, w (p.2 j) := by
                 refine Finset.sum_le_sum_of_subset_of_nonneg (Finset.image_subset_iff.mpr hmap) ?_
                 intro p hp _
@@ -516,32 +516,32 @@ lemma revCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
                     hw_nn _ (Fintype.mem_piFinset.mp (Finset.mem_filter.mp (Finset.mem_filter.mp hp2).1).1 j))
         refine le_trans hS2_eq (Finset.sum_le_sum fun X hX ↦ ?_)
         apply mul_le_mul_of_nonneg_left _ (hw_nn X (Finset.mem_filter.mp hX).1)
-        have hsub : ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-            (fun g ↦ (X ∩ causalUnion {x} g).Nonempty) ⊆
-            X.biUnion (fun z ↦ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-              (fun g ↦ z ∈ causalUnion {x} g)) := by
+        have hsub : ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+            (fun g ↦ (X ∩ causalUnionOp {x} g).Nonempty) ⊆
+            X.biUnion (fun z ↦ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+              (fun g ↦ z ∈ causalUnionOp {x} g)) := by
           intro g hg
           rcases Finset.mem_filter.mp hg with ⟨hg1, z, hz⟩
           rcases Finset.mem_inter.mp hz with ⟨hzX, hzg⟩
           exact Finset.mem_biUnion.mpr ⟨z, hzX, Finset.mem_filter.mpr ⟨hg1, hzg⟩⟩
-        calc ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-              (fun g ↦ (X ∩ causalUnion {x} g).Nonempty), ∏ j : Fin k, w (g j)
-            ≤ ∑ g ∈ X.biUnion (fun z ↦ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-                (fun g ↦ z ∈ causalUnion {x} g)), ∏ j : Fin k, w (g j) :=
+        calc ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+              (fun g ↦ (X ∩ causalUnionOp {x} g).Nonempty), ∏ j : Fin k, w (g j)
+            ≤ ∑ g ∈ X.biUnion (fun z ↦ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+                (fun g ↦ z ∈ causalUnionOp {x} g)), ∏ j : Fin k, w (g j) :=
               Finset.sum_le_sum_of_subset_of_nonneg hsub fun g hg _ ↦ by
                 rcases Finset.mem_biUnion.mp hg with ⟨_, _, hg'⟩
                 exact Finset.prod_nonneg fun j _ ↦
                   hw_nn _ (Fintype.mem_piFinset.mp (Finset.mem_filter.mp (Finset.mem_filter.mp hg').1).1 j)
-          _ ≤ ∑ z ∈ X, ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-                (fun g ↦ z ∈ causalUnion {x} g), ∏ j : Fin k, w (g j) :=
+          _ ≤ ∑ z ∈ X, ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+                (fun g ↦ z ∈ causalUnionOp {x} g), ∏ j : Fin k, w (g j) :=
               real_sum_biUnion_le _ _ _ fun g hg ↦ by
                 rcases Finset.mem_biUnion.mp hg with ⟨_, _, hg'⟩
                 exact Finset.prod_nonneg fun j _ ↦
                   hw_nn _ (Fintype.mem_piFinset.mp (Finset.mem_filter.mp (Finset.mem_filter.mp hg').1).1 j)
-    -- Bound the Case 1 factor `∑_{X hits causalUnion} w X ≤ (k + 1) * r * J`
-    have hcase1_le : ∑ x : Fin N, ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-          (fun g ↦ y ∈ causalUnion {x} g),
-          (∏ j : Fin k, w (g j)) * ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion {x} g).Nonempty), w X ≤
+    -- Bound the Case 1 factor `∑_{X hits causalUnionOp} w X ≤ (k + 1) * r * J`
+    have hcase1_le : ∑ x : Fin N, ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+          (fun g ↦ y ∈ causalUnionOp {x} g),
+          (∏ j : Fin k, w (g j)) * ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnionOp {x} g).Nonempty), w X ≤
         (((k + 1 : ℕ) : ℝ) * ((r : ℝ) * J)) * revCausalSum E w k y := by
       unfold revCausalSum
       rw [mul_comm, Finset.sum_mul]
@@ -550,37 +550,37 @@ lemma revCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
       apply Finset.sum_le_sum; intro g hg
       have hg1 := (Finset.mem_filter.mp hg).1
       rcases Finset.mem_filter.mp hg1 with ⟨hgpi, hgcs⟩
-      have h1 := sum_overlapping_le E w hw_nn hsite (causalUnion {x} g)
-      have h1' : ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion {x} g).Nonempty), w X =
-          ∑ X ∈ E.filter (fun X ↦ (causalUnion {x} g ∩ X).Nonempty), w X := by
+      have h1 := sum_overlapping_le E w hw_nn hsite (causalUnionOp {x} g)
+      have h1' : ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnionOp {x} g).Nonempty), w X =
+          ∑ X ∈ E.filter (fun X ↦ (causalUnionOp {x} g ∩ X).Nonempty), w X := by
         apply Finset.sum_congr _ (fun _ _ ↦ rfl); ext X; simp [Finset.inter_comm]
       rw [h1']
       have hcard_u := card_causalUnion_le hr E hcard {x} g (Fintype.mem_piFinset.mp hgpi) hgcs
-      have hcard_le : ((causalUnion {x} g).card : ℝ) ≤ ((k + 1 : ℕ) : ℝ) * (r : ℝ) := by
-        have hnat : (causalUnion {x} g).card ≤ (k + 1) * r := by
-          calc (causalUnion {x} g).card
+      have hcard_le : ((causalUnionOp {x} g).card : ℝ) ≤ ((k + 1 : ℕ) : ℝ) * (r : ℝ) := by
+        have hnat : (causalUnionOp {x} g).card ≤ (k + 1) * r := by
+          calc (causalUnionOp {x} g).card
               ≤ 1 + k * (r - 1) := by simpa using hcard_u
             _ ≤ r + k * r := Nat.add_le_add hr (Nat.mul_le_mul_left k (Nat.sub_le r 1))
             _ = (k + 1) * r := by ring
         exact_mod_cast hnat
-      have hbound : ∑ X ∈ E.filter (fun X ↦ (causalUnion {x} g ∩ X).Nonempty), w X ≤
+      have hbound : ∑ X ∈ E.filter (fun X ↦ (causalUnionOp {x} g ∩ X).Nonempty), w X ≤
           ((k + 1 : ℕ) : ℝ) * ((r : ℝ) * J) := by
-        calc ∑ X ∈ E.filter (fun X ↦ (causalUnion {x} g ∩ X).Nonempty), w X
-            ≤ ((causalUnion {x} g).card : ℝ) * J := h1
+        calc ∑ X ∈ E.filter (fun X ↦ (causalUnionOp {x} g ∩ X).Nonempty), w X
+            ≤ ((causalUnionOp {x} g).card : ℝ) * J := h1
           _ ≤ (((k + 1 : ℕ) : ℝ) * (r : ℝ)) * J := mul_le_mul_of_nonneg_right hcard_le hJ_nn
           _ = ((k + 1 : ℕ) : ℝ) * ((r : ℝ) * J) := by ring
       exact mul_le_mul_of_nonneg_left hbound
         (Finset.prod_nonneg fun j _ ↦ hw_nn _ (Fintype.mem_piFinset.mp hgpi j))
     -- Bound the Case 2 sum: swap `∑ x` inside `∑ X, ∑ z`
     have hcase2_le : ∑ x : Fin N, ∑ X ∈ E.filter (fun X ↦ y ∈ X), w X *
-          ∑ z ∈ X, ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-            (fun g ↦ z ∈ causalUnion {x} g), ∏ j : Fin k, w (g j) ≤
+          ∑ z ∈ X, ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+            (fun g ↦ z ∈ causalUnionOp {x} g), ∏ j : Fin k, w (g j) ≤
         ((r : ℝ) * J) * (((k + 1).factorial : ℝ) * ((r : ℝ) * J) ^ k) := by
       rw [Finset.sum_comm]
       have hinner : ∀ X ∈ E.filter (fun X ↦ y ∈ X),
           ∑ x : Fin N, w X * ∑ z ∈ X,
-            ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-              (fun g ↦ z ∈ causalUnion {x} g), ∏ j : Fin k, w (g j) =
+            ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+              (fun g ↦ z ∈ causalUnionOp {x} g), ∏ j : Fin k, w (g j) =
           w X * ∑ z ∈ X, revCausalSum E w k z := by
         intro X _
         rw [← Finset.mul_sum, Finset.sum_comm]
@@ -605,8 +605,8 @@ lemma revCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
     have htot := Finset.sum_le_sum (s := Finset.univ) fun x _ ↦ hsplit_x x
     rw [Finset.sum_add_distrib] at htot
     have h1 := le_trans hcase1_le (mul_le_mul_of_nonneg_left (ih y) (by positivity))
-    calc ∑ x : Fin N, ∑ f ∈ ((Fintype.piFinset fun _ : Fin (k + 1) ↦ E).filter (isCausalSeq {x})).filter
-            (fun f ↦ y ∈ causalUnion {x} f), ∏ j : Fin (k + 1), w (f j)
+    calc ∑ x : Fin N, ∑ f ∈ ((Fintype.piFinset fun _ : Fin (k + 1) ↦ E).filter (isCausalSeqOp {x})).filter
+            (fun f ↦ y ∈ causalUnionOp {x} f), ∏ j : Fin (k + 1), w (f j)
         ≤ (((k + 1 : ℕ) : ℝ) * ((r : ℝ) * J)) * (((k + 1).factorial : ℝ) * ((r : ℝ) * J) ^ k) +
           ((r : ℝ) * J) * (((k + 1).factorial : ℝ) * ((r : ℝ) * J) ^ k) := by linarith
       _ = ((k + 2).factorial : ℝ) * ((r : ℝ) * J) ^ (k + 1) := by
@@ -706,7 +706,7 @@ lemma fwdCausalSum_general_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fi
   induction k with
   | zero =>
     unfold fwdCausalSum
-    have hsing : (Fintype.piFinset fun _ : Fin 0 ↦ E).filter (isCausalSeq U₀) = {Fin.elim0} := by
+    have hsing : (Fintype.piFinset fun _ : Fin 0 ↦ E).filter (isCausalSeqOp U₀) = {Fin.elim0} := by
       ext f; simp only [Finset.mem_filter, Fintype.mem_piFinset, Finset.mem_singleton]
       constructor
       · intro _; funext j; exact Fin.elim0 j
@@ -714,11 +714,11 @@ lemma fwdCausalSum_general_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fi
     rw [hsing, Finset.sum_singleton]; simp
   | succ k ih =>
     unfold fwdCausalSum
-    have hsplit : ∑ f ∈ (Fintype.piFinset fun _ : Fin (k + 1) ↦ E).filter (isCausalSeq U₀),
+    have hsplit : ∑ f ∈ (Fintype.piFinset fun _ : Fin (k + 1) ↦ E).filter (isCausalSeqOp U₀),
           ∏ j : Fin (k + 1), w (f j) =
-        ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀),
+        ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp U₀),
           (∏ j : Fin k, w (g j)) *
-            ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion U₀ g).Nonempty), w X := by
+            ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnionOp U₀ g).Nonempty), w X := by
       simp_rw [Finset.mul_sum]
       rw [← Finset.sum_sigma (f := fun p : (Σ _ : Fin k → Finset (Fin N), Finset (Fin N)) ↦ (∏ j : Fin k, w (p.1 j)) * w p.2)]
       refine Finset.sum_bij (fun f _ ↦ ⟨Fin.tail f, f 0⟩) ?_ ?_ ?_ ?_
@@ -739,25 +739,25 @@ lemma fwdCausalSum_general_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fi
           Fin.cases hX2 (fun l ↦ Fintype.mem_piFinset.mp hpi1 l) j, hinter2, hcs1⟩, rfl⟩
       · intro f _; rw [Fin.prod_univ_succ, mul_comm]; rfl
     rw [hsplit]
-    have hstep : ∀ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀),
-        ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion U₀ g).Nonempty), w X ≤
+    have hstep : ∀ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp U₀),
+        ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnionOp U₀ g).Nonempty), w X ≤
           ((U₀.card : ℝ) + (k : ℝ) * (r : ℝ)) * J := by
       intro g hg
       rcases Finset.mem_filter.mp hg with ⟨hgpi, hgcs⟩
-      have h1 := sum_overlapping_le E w hw_nn hsite (causalUnion U₀ g)
-      have h1' : ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion U₀ g).Nonempty), w X =
-          ∑ X ∈ E.filter (fun X ↦ (causalUnion U₀ g ∩ X).Nonempty), w X := by
+      have h1 := sum_overlapping_le E w hw_nn hsite (causalUnionOp U₀ g)
+      have h1' : ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnionOp U₀ g).Nonempty), w X =
+          ∑ X ∈ E.filter (fun X ↦ (causalUnionOp U₀ g ∩ X).Nonempty), w X := by
         apply Finset.sum_congr _ (fun _ _ ↦ rfl); ext X; simp [Finset.inter_comm]
       rw [h1']
       have hcard_u := card_causalUnion_le hr E hcard U₀ g (Fintype.mem_piFinset.mp hgpi) hgcs
-      have hcard_le : ((causalUnion U₀ g).card : ℝ) ≤ (U₀.card : ℝ) + (k : ℝ) * (r : ℝ) := by
-        have hnat : (causalUnion U₀ g).card ≤ U₀.card + k * r :=
+      have hcard_le : ((causalUnionOp U₀ g).card : ℝ) ≤ (U₀.card : ℝ) + (k : ℝ) * (r : ℝ) := by
+        have hnat : (causalUnionOp U₀ g).card ≤ U₀.card + k * r :=
           le_trans hcard_u (Nat.add_le_add_left (Nat.mul_le_mul_left k (Nat.sub_le r 1)) _)
         exact_mod_cast hnat
       exact le_trans h1 (mul_le_mul_of_nonneg_right hcard_le hJ_nn)
-    calc ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀),
-            (∏ j : Fin k, w (g j)) * ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion U₀ g).Nonempty), w X
-        ≤ ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀),
+    calc ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp U₀),
+            (∏ j : Fin k, w (g j)) * ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnionOp U₀ g).Nonempty), w X
+        ≤ ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp U₀),
             (∏ j : Fin k, w (g j)) * (((U₀.card : ℝ) + (k : ℝ) * (r : ℝ)) * J) := by
           apply Finset.sum_le_sum; intro g hg
           exact mul_le_mul_of_nonneg_left (hstep g hg)

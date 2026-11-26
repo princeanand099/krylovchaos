@@ -833,7 +833,7 @@ section ConcreteLiebRobinson
 
 /-- **Light-Cone Support Growth under `iterComm` (Corollary 6.5)**:
 In any finite metric `(Fin N, dist)` satisfying reflexivity and triangle inequality where every
-interaction `X ∈ E` has diameter `≤ R_int`, every site `y ∈ causalUnion U₀ f` for a causal
+interaction `X ∈ E` has diameter `≤ R_int`, every site `y ∈ causalUnionOp U₀ f` for a causal
 sequence `f : Fin k → Finset (Fin N)` lies within distance `k * R_int` of some `x ∈ U₀`. -/
 lemma causalUnion_dist_le {N R_int : ℕ} (dist : Fin N → Fin N → ℕ)
     (hself : ∀ x : Fin N, dist x x = 0)
@@ -842,18 +842,18 @@ lemma causalUnion_dist_le {N R_int : ℕ} (dist : Fin N → Fin N → ℕ)
     (hdiam : ∀ X ∈ E, ∀ x ∈ X, ∀ y ∈ X, dist x y ≤ R_int)
     (U₀ : Finset (Fin N)) :
     ∀ {k : ℕ} (f : Fin k → Finset (Fin N)),
-      (∀ j : Fin k, f j ∈ E) → isCausalSeq U₀ f →
-      ∀ y ∈ causalUnion U₀ f, ∃ x ∈ U₀, dist x y ≤ k * R_int := by
+      (∀ j : Fin k, f j ∈ E) → isCausalSeqOp U₀ f →
+      ∀ y ∈ causalUnionOp U₀ f, ∃ x ∈ U₀, dist x y ≤ k * R_int := by
   intro k
   induction k with
   | zero =>
     intro f _ _ y hy
-    simp only [causalUnion] at hy
+    simp only [causalUnionOp] at hy
     exact ⟨y, hy, by simp [hself]⟩
   | succ k ih =>
     intro f hf hcs y hy
-    simp only [causalUnion] at hy
-    simp only [isCausalSeq] at hcs
+    simp only [causalUnionOp] at hy
+    simp only [isCausalSeqOp] at hcs
     rcases hcs with ⟨hinter, hcs_tail⟩
     have hf_tail : ∀ j : Fin k, Fin.tail f j ∈ E := fun j ↦ hf j.succ
     rcases Finset.mem_union.mp hy with hy_head | hy_tail
@@ -881,10 +881,10 @@ lemma matComm_iterComm_eq_zero_of_dist {N R_int : ℕ} (dist : Fin N → Fin N �
     {k : ℕ} (f : Fin k → Finset (Fin N)) (hf : ∀ j : Fin k, f j ∈ E)
     (hsep : ∀ x ∈ U₀, ∀ y ∈ V, k * R_int < dist x y) :
     matComm (iterComm h f O) B = 0 := by
-  by_cases hcs : isCausalSeq U₀ f
-  · have hmem : iterComm h f O ∈ supportedOn (causalUnion U₀ f) :=
+  by_cases hcs : isCausalSeqOp U₀ f
+  · have hmem : iterComm h f O ∈ supportedOn (causalUnionOp U₀ f) :=
       iterComm_mem_supportedOn h hsupp hO f
-    have hdisj : Disjoint (causalUnion U₀ f) V := by
+    have hdisj : Disjoint (causalUnionOp U₀ f) V := by
       rw [Finset.disjoint_left]
       intro y hy_c hy_V
       rcases causalUnion_dist_le dist hself htri E hdiam U₀ f hf hcs y hy_c with ⟨x, hxU₀, hle⟩
@@ -992,10 +992,10 @@ theorem lieb_robinson_concrete_opNorm {N r R_int : ℕ} (hr : 1 ≤ r)
       have had_le : opNorm (adPowMat (∑ X ∈ E, h X) k O) ≤
           (2 : ℝ) ^ k * fwdCausalSum E (fun X ↦ opNorm (h X)) k U₀ * opNorm O := by
         rw [adPowMat_eq_sum_causal E h hsupp hO k]
-        calc opNorm (∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀), iterComm h f O)
-            ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀), opNorm (iterComm h f O) :=
+        calc opNorm (∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp U₀), iterComm h f O)
+            ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp U₀), opNorm (iterComm h f O) :=
               opNorm_sum_le _ _
-          _ ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀),
+          _ ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp U₀),
                 (2 : ℝ) ^ k * (∏ j : Fin k, opNorm (h (f j))) * opNorm O :=
               Finset.sum_le_sum fun f _ ↦ opNorm_iterComm_le h O f
           _ = (2 : ℝ) ^ k * fwdCausalSum E (fun X ↦ opNorm (h X)) k U₀ * opNorm O := by

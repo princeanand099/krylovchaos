@@ -90,8 +90,8 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
     have hxa : ∀ (x : Fin N) (α : Fin 3),
         prodDepolNormSq s s' (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ))
           (pauliSite x α.succ))) ≤
-        24 * ∑' k : ℕ, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-          W k f * ∑ y ∈ causalUnion {x} f, D y := by
+        24 * ∑' k : ℕ, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+          W k f * ∑ y ∈ causalUnionOp {x} f, D y := by
       intro x α
       let H := ∑ X ∈ E, h X
       let z : ℂ := -Complex.I * ((β / 4 : ℝ) : ℂ)
@@ -126,34 +126,34 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
       have hterm_le : ∀ k : ℕ,
           Real.sqrt (prodDepolNormSq s s'
             (((Complex.I * z) ^ k / (k.factorial : ℂ)) • matComm A (adPowMat H k (pauliSite x α.succ)))) ≤
-          2 * Real.sqrt 3 * ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-            W k f * Real.sqrt (∑ y ∈ causalUnion {x} f, D y) := by
+          2 * Real.sqrt 3 * ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+            W k f * Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y) := by
         intro k
         rw [sqrt_prodDepolNormSq_smul, hiz, norm_div, norm_pow, Complex.norm_real,
           Real.norm_of_nonneg (by linarith), Complex.norm_natCast]
         have hcomm_sum : matComm A (adPowMat H k (pauliSite x α.succ)) =
-            ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
+            ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
               matComm A (iterComm h f (pauliSite x α.succ)) := by
           rw [adPowMat_eq_sum_causal E h hsupp (pauliSite_mem_supportedOn x α) k]
           unfold matComm; simp [Matrix.mul_sum, Matrix.sum_mul, Finset.sum_sub_distrib]
         rw [hcomm_sum]
         have htri := sqrt_prodDepolNormSq_sum_le s s'
-          ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}))
+          ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}))
           (fun f ↦ matComm A (iterComm h f (pauliSite x α.succ)))
         calc (β / 4) ^ k / (k.factorial : ℝ) *
               Real.sqrt (prodDepolNormSq s s'
-                (∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
+                (∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
                   matComm A (iterComm h f (pauliSite x α.succ))))
             ≤ (β / 4) ^ k / (k.factorial : ℝ) *
-              ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
+              ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
                 Real.sqrt (prodDepolNormSq s s' (matComm A (iterComm h f (pauliSite x α.succ)))) :=
               mul_le_mul_of_nonneg_left htri (div_nonneg (pow_nonneg (by linarith) _) (Nat.cast_nonneg _))
-          _ = ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
+          _ = ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
                 ((β / 4) ^ k / (k.factorial : ℝ)) *
                   Real.sqrt (prodDepolNormSq s s' (matComm A (iterComm h f (pauliSite x α.succ)))) := by
               rw [Finset.mul_sum]
-          _ ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-                2 * Real.sqrt 3 * (W k f * Real.sqrt (∑ y ∈ causalUnion {x} f, D y)) := by
+          _ ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+                2 * Real.sqrt 3 * (W k f * Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y)) := by
               apply Finset.sum_le_sum; intro f hf
               rcases Finset.mem_filter.mp hf with ⟨hfpi, hfcs⟩
               have hmem := iterComm_mem_supportedOn h hsupp (pauliSite_mem_supportedOn x α) f
@@ -168,15 +168,15 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
                 linarith
               have hcard_u := card_causalUnion_le hr E hcard {x} f (Fintype.mem_piFinset.mp hfpi) hfcs
               simp only [Finset.card_singleton] at hcard_u
-              have h3pow : (3 : ℝ) ^ (causalUnion {x} f).card ≤ (3 : ℝ) ^ (1 + k * (r - 1)) :=
+              have h3pow : (3 : ℝ) ^ (causalUnionOp {x} f).card ≤ (3 : ℝ) ^ (1 + k * (r - 1)) :=
                 pow_le_pow_right₀ (by norm_num) hcard_u
               have hsqrt_le : Real.sqrt (prodDepolNormSq s s' (matComm A (iterComm h f (pauliSite x α.succ)))) ≤
                   2 * Real.sqrt 3 * (Real.sqrt 3) ^ (k * (r - 1)) *
                     ((2 : ℝ) ^ k * ∏ j : Fin k, opNorm (h (f j))) *
-                    Real.sqrt (∑ y ∈ causalUnion {x} f, D y) := by
+                    Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y) := by
                 have hRHS_nn : 0 ≤ 2 * Real.sqrt 3 * (Real.sqrt 3) ^ (k * (r - 1)) *
                     ((2 : ℝ) ^ k * ∏ j : Fin k, opNorm (h (f j))) *
-                    Real.sqrt (∑ y ∈ causalUnion {x} f, D y) := by
+                    Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y) := by
                   have hprod_nn : 0 ≤ ∏ j : Fin k, opNorm (h (f j)) :=
                     Finset.prod_nonneg fun j _ ↦ opNorm_nonneg _
                   positivity
@@ -184,14 +184,14 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
                 refine ⟨hRHS_nn, ?_⟩
                 have hsq3 : (Real.sqrt 3 ^ (k * (r - 1))) ^ 2 = (3 : ℝ) ^ (k * (r - 1)) := by
                   rw [← pow_mul, mul_comm, pow_mul, Real.sq_sqrt (by norm_num)]
-                have hsqD : (Real.sqrt (∑ y ∈ causalUnion {x} f, D y)) ^ 2 = ∑ y ∈ causalUnion {x} f, D y :=
+                have hsqD : (Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y)) ^ 2 = ∑ y ∈ causalUnionOp {x} f, D y :=
                   Real.sq_sqrt (Finset.sum_nonneg fun y _ ↦ hD_nn y)
                 have hsqRHS : (2 * Real.sqrt 3 * (Real.sqrt 3) ^ (k * (r - 1)) *
                     ((2 : ℝ) ^ k * ∏ j : Fin k, opNorm (h (f j))) *
-                    Real.sqrt (∑ y ∈ causalUnion {x} f, D y)) ^ 2 =
+                    Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y)) ^ 2 =
                     4 * (3 : ℝ) ^ (1 + k * (r - 1)) *
                       ((2 : ℝ) ^ k * ∏ j : Fin k, opNorm (h (f j))) ^ 2 *
-                      ∑ y ∈ causalUnion {x} f, D y := by
+                      ∑ y ∈ causalUnionOp {x} f, D y := by
                   rw [mul_pow, mul_pow, mul_pow, mul_pow, mul_pow, hsq3, hsqD,
                     Real.sq_sqrt (by norm_num), pow_add, pow_one]
                   ring
@@ -199,15 +199,15 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
                 have hop_sq : (opNorm (iterComm h f (pauliSite x α.succ))) ^ 2 ≤
                     ((2 : ℝ) ^ k * ∏ j : Fin k, opNorm (h (f j))) ^ 2 := by
                   nlinarith [hop1, opNorm_nonneg (iterComm h f (pauliSite x α.succ))]
-                have hsumD_nn : 0 ≤ ∑ y ∈ causalUnion {x} f, D y :=
+                have hsumD_nn : 0 ≤ ∑ y ∈ causalUnionOp {x} f, D y :=
                   Finset.sum_nonneg fun y _ ↦ hD_nn y
                 calc prodDepolNormSq s s' (matComm A (iterComm h f (pauliSite x α.succ)))
-                    ≤ 4 * (3 : ℝ) ^ (causalUnion {x} f).card *
+                    ≤ 4 * (3 : ℝ) ^ (causalUnionOp {x} f).card *
                         (opNorm (iterComm h f (pauliSite x α.succ))) ^ 2 *
-                        ∑ y ∈ causalUnion {x} f, D y := hcond
+                        ∑ y ∈ causalUnionOp {x} f, D y := hcond
                   _ ≤ 4 * (3 : ℝ) ^ (1 + k * (r - 1)) *
                         ((2 : ℝ) ^ k * ∏ j : Fin k, opNorm (h (f j))) ^ 2 *
-                        ∑ y ∈ causalUnion {x} f, D y := by
+                        ∑ y ∈ causalUnionOp {x} f, D y := by
                       apply mul_le_mul_of_nonneg_right _ hsumD_nn
                       apply mul_le_mul
                         (mul_le_mul_of_nonneg_left h3pow (by norm_num))
@@ -215,29 +215,29 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
               have hfac : ((β / 4) ^ k / (k.factorial : ℝ)) *
                   (2 * Real.sqrt 3 * (Real.sqrt 3) ^ (k * (r - 1)) *
                     ((2 : ℝ) ^ k * ∏ j : Fin k, opNorm (h (f j))) *
-                    Real.sqrt (∑ y ∈ causalUnion {x} f, D y)) =
-                  2 * Real.sqrt 3 * (W k f * Real.sqrt (∑ y ∈ causalUnion {x} f, D y)) := by
+                    Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y)) =
+                  2 * Real.sqrt 3 * (W k f * Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y)) := by
                 dsimp only [W]
                 have h2b : (β / 4) ^ k * (2 : ℝ) ^ k = (β / 2) ^ k := by
                   rw [← mul_pow]; congr 1; ring
                 calc ((β / 4) ^ k / (k.factorial : ℝ)) *
                       (2 * Real.sqrt 3 * (Real.sqrt 3) ^ (k * (r - 1)) *
                         ((2 : ℝ) ^ k * ∏ j : Fin k, opNorm (h (f j))) *
-                        Real.sqrt (∑ y ∈ causalUnion {x} f, D y))
+                        Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y))
                     = 2 * Real.sqrt 3 * ((((β / 4) ^ k * (2 : ℝ) ^ k) / (k.factorial : ℝ)) *
                         (Real.sqrt 3) ^ (k * (r - 1)) * (∏ j : Fin k, opNorm (h (f j))) *
-                        Real.sqrt (∑ y ∈ causalUnion {x} f, D y)) := by ring
+                        Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y)) := by ring
                   _ = _ := by rw [h2b]
               rw [← hfac]
               exact mul_le_mul_of_nonneg_left hsqrt_le
                 (div_nonneg (pow_nonneg (by linarith) _) (Nat.cast_nonneg _))
-          _ = 2 * Real.sqrt 3 * ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-                W k f * Real.sqrt (∑ y ∈ causalUnion {x} f, D y) := by rw [← Finset.mul_sum]
+          _ = 2 * Real.sqrt 3 * ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+                W k f * Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y) := by rw [← Finset.mul_sum]
       -- Summability of the geometric majorants `q ^ k`
       have hW_sum_le : ∀ k : ℕ,
-          ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}), W k f ≤ q ^ k := by
+          ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}), W k f ≤ q ^ k := by
         intro k
-        have h1 : ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}), W k f =
+        have h1 : ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}), W k f =
             ((β / 2) ^ k / (k.factorial : ℝ)) * (Real.sqrt 3) ^ (k * (r - 1)) *
               fwdCausalSum E (fun X ↦ opNorm (h X)) k {x} := by
           dsimp only [W, fwdCausalSum]; rw [Finset.mul_sum]
@@ -257,30 +257,30 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
       let Dtot : ℝ := ∑ y : Fin N, D y
       have hDtot_nn : 0 ≤ Dtot := Finset.sum_nonneg fun y _ ↦ hD_nn y
       have hsumm_W : Summable (fun k : ℕ ↦
-          ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}), W k f) :=
+          ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}), W k f) :=
         Summable.of_nonneg_of_le
           (fun k ↦ Finset.sum_nonneg fun f _ ↦ hW_nn k f) hW_sum_le
           (summable_geometric_of_lt_one hq_nn hq_lt1)
       have hsumm_WD : Summable (fun k : ℕ ↦
-          ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-            W k f * ∑ y ∈ causalUnion {x} f, D y) := by
+          ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+            W k f * ∑ y ∈ causalUnionOp {x} f, D y) := by
         refine Summable.of_nonneg_of_le
           (fun k ↦ Finset.sum_nonneg fun f _ ↦ mul_nonneg (hW_nn k f) (Finset.sum_nonneg fun y _ ↦ hD_nn y))
           (fun k ↦ ?_) ((summable_geometric_of_lt_one hq_nn hq_lt1).mul_right Dtot)
-        calc ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-              W k f * ∑ y ∈ causalUnion {x} f, D y
-            ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}), W k f * Dtot := by
+        calc ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+              W k f * ∑ y ∈ causalUnionOp {x} f, D y
+            ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}), W k f * Dtot := by
               apply Finset.sum_le_sum; intro f _
               exact mul_le_mul_of_nonneg_left
                 (Finset.sum_le_sum_of_subset_of_nonneg (Finset.subset_univ _) fun y _ _ ↦ hD_nn y)
                 (hW_nn k f)
-          _ = (∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}), W k f) * Dtot := by
+          _ = (∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}), W k f) * Dtot := by
               rw [← Finset.sum_mul]
           _ ≤ q ^ k * Dtot := mul_le_mul_of_nonneg_right (hW_sum_le k) hDtot_nn
       -- Cauchy–Schwarz on finite partial sums `F : Finset ℕ`
-      let S_W : ℝ := ∑' k : ℕ, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}), W k f
-      let S_WD : ℝ := ∑' k : ℕ, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-        W k f * ∑ y ∈ causalUnion {x} f, D y
+      let S_W : ℝ := ∑' k : ℕ, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}), W k f
+      let S_WD : ℝ := ∑' k : ℕ, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+        W k f * ∑ y ∈ causalUnionOp {x} f, D y
       have hS_W_le : S_W ≤ 2 := by
         calc S_W ≤ ∑' k : ℕ, q ^ k :=
               hsumm_W.tsum_le_tsum hW_sum_le (summable_geometric_of_lt_one hq_nn hq_lt1)
@@ -300,20 +300,20 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
           (fun k ↦ ((Complex.I * z) ^ k / (k.factorial : ℂ)) • matComm A (adPowMat H k (pauliSite x α.succ)))
         have hstep1 : ∑ k ∈ F, Real.sqrt (prodDepolNormSq s s'
             (((Complex.I * z) ^ k / (k.factorial : ℂ)) • matComm A (adPowMat H k (pauliSite x α.succ)))) ≤
-            2 * Real.sqrt 3 * ∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-              W k f * Real.sqrt (∑ y ∈ causalUnion {x} f, D y) := by
+            2 * Real.sqrt 3 * ∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+              W k f * Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y) := by
           rw [Finset.mul_sum]
           exact Finset.sum_le_sum fun k _ ↦ hterm_le k
         -- Cauchy–Schwarz: `(∑_{k ∈ F, f} W k f * √(D_f)) ^ 2 ≤ (∑_{k ∈ F, f} W k f) * (∑_{k ∈ F, f} W k f * D_f)`
-        have hcs : (∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-              W k f * Real.sqrt (∑ y ∈ causalUnion {x} f, D y)) ^ 2 ≤
-            (∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}), W k f) *
-            (∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-              W k f * ∑ y ∈ causalUnion {x} f, D y) := by
-          let idx := F.sigma (fun k ↦ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}))
-          have h1 : ∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-              W k f * Real.sqrt (∑ y ∈ causalUnion {x} f, D y) =
-              ∑ p ∈ idx, Real.sqrt (W p.1 p.2) * (Real.sqrt (W p.1 p.2) * Real.sqrt (∑ y ∈ causalUnion {x} p.2, D y)) := by
+        have hcs : (∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+              W k f * Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y)) ^ 2 ≤
+            (∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}), W k f) *
+            (∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+              W k f * ∑ y ∈ causalUnionOp {x} f, D y) := by
+          let idx := F.sigma (fun k ↦ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}))
+          have h1 : ∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+              W k f * Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y) =
+              ∑ p ∈ idx, Real.sqrt (W p.1 p.2) * (Real.sqrt (W p.1 p.2) * Real.sqrt (∑ y ∈ causalUnionOp {x} p.2, D y)) := by
             rw [Finset.sum_sigma]
             apply Finset.sum_congr rfl; intro k _
             apply Finset.sum_congr rfl; intro f _
@@ -321,28 +321,28 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
           rw [h1]
           have h2 := Finset.sum_mul_sq_le_sq_mul_sq idx
             (fun p ↦ Real.sqrt (W p.1 p.2))
-            (fun p ↦ Real.sqrt (W p.1 p.2) * Real.sqrt (∑ y ∈ causalUnion {x} p.2, D y))
+            (fun p ↦ Real.sqrt (W p.1 p.2) * Real.sqrt (∑ y ∈ causalUnionOp {x} p.2, D y))
           refine le_trans h2 ?_
           have hA : ∑ p ∈ idx, (Real.sqrt (W p.1 p.2)) ^ 2 =
-              ∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}), W k f := by
+              ∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}), W k f := by
             rw [Finset.sum_sigma]; apply Finset.sum_congr rfl; intro k _
             apply Finset.sum_congr rfl; intro f _; exact Real.sq_sqrt (hW_nn k f)
-          have hB : ∑ p ∈ idx, (Real.sqrt (W p.1 p.2) * Real.sqrt (∑ y ∈ causalUnion {x} p.2, D y)) ^ 2 =
-              ∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-                W k f * ∑ y ∈ causalUnion {x} f, D y := by
+          have hB : ∑ p ∈ idx, (Real.sqrt (W p.1 p.2) * Real.sqrt (∑ y ∈ causalUnionOp {x} p.2, D y)) ^ 2 =
+              ∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+                W k f * ∑ y ∈ causalUnionOp {x} f, D y := by
             rw [Finset.sum_sigma]; apply Finset.sum_congr rfl; intro k _
             apply Finset.sum_congr rfl; intro f _
             rw [mul_pow, Real.sq_sqrt (hW_nn k f),
               Real.sq_sqrt (Finset.sum_nonneg fun y _ ↦ hD_nn y)]
           rw [hA, hB]
-        have hF_W : ∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}), W k f ≤ S_W :=
+        have hF_W : ∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}), W k f ≤ S_W :=
           hsumm_W.sum_le_tsum F fun k _ ↦ Finset.sum_nonneg fun f _ ↦ hW_nn k f
-        have hF_WD : ∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-            W k f * ∑ y ∈ causalUnion {x} f, D y ≤ S_WD :=
+        have hF_WD : ∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+            W k f * ∑ y ∈ causalUnionOp {x} f, D y ≤ S_WD :=
           hsumm_WD.sum_le_tsum F fun k _ ↦
             Finset.sum_nonneg fun f _ ↦ mul_nonneg (hW_nn k f) (Finset.sum_nonneg fun y _ ↦ hD_nn y)
-        have hprod_le : (∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-              W k f * Real.sqrt (∑ y ∈ causalUnion {x} f, D y)) ≤ Real.sqrt (S_W * S_WD) := by
+        have hprod_le : (∑ k ∈ F, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+              W k f * Real.sqrt (∑ y ∈ causalUnionOp {x} f, D y)) ≤ Real.sqrt (S_W * S_WD) := by
           rw [Real.le_sqrt (Finset.sum_nonneg fun k _ ↦ Finset.sum_nonneg fun f _ ↦
             mul_nonneg (hW_nn k f) (Real.sqrt_nonneg _)) (mul_nonneg hS_W_nn hS_WD_nn)]
           exact le_trans hcs (mul_le_mul hF_W hF_WD
@@ -365,26 +365,26 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
         _ = 24 * S_WD := by ring
     -- Sum `hxa` over `x : Fin N` and `α : Fin 3`, then apply `revCausalSum_le`
     have hsumm_all : ∀ x : Fin N, Summable (fun k : ℕ ↦
-        ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-          W k f * ∑ y ∈ causalUnion {x} f, D y) := by
+        ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+          W k f * ∑ y ∈ causalUnionOp {x} f, D y) := by
       intro x
       let Dtot : ℝ := ∑ y : Fin N, D y
       have hDtot_nn : 0 ≤ Dtot := Finset.sum_nonneg fun y _ ↦ hD_nn y
       refine Summable.of_nonneg_of_le
         (fun k ↦ Finset.sum_nonneg fun f _ ↦ mul_nonneg (hW_nn k f) (Finset.sum_nonneg fun y _ ↦ hD_nn y))
         (fun k ↦ ?_) ((summable_geometric_of_lt_one hq_nn hq_lt1).mul_right Dtot)
-      calc ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-            W k f * ∑ y ∈ causalUnion {x} f, D y
-          ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}), W k f * Dtot := by
+      calc ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+            W k f * ∑ y ∈ causalUnionOp {x} f, D y
+          ≤ ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}), W k f * Dtot := by
             apply Finset.sum_le_sum; intro f _
             exact mul_le_mul_of_nonneg_left
               (Finset.sum_le_sum_of_subset_of_nonneg (Finset.subset_univ _) fun y _ _ ↦ hD_nn y)
               (hW_nn k f)
-        _ = (∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}), W k f) * Dtot := by
+        _ = (∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}), W k f) * Dtot := by
             rw [← Finset.sum_mul]
         _ ≤ q ^ k * Dtot := by
             apply mul_le_mul_of_nonneg_right _ hDtot_nn
-            have h1 : ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}), W k f =
+            have h1 : ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}), W k f =
                 ((β / 2) ^ k / (k.factorial : ℝ)) * (Real.sqrt 3) ^ (k * (r - 1)) *
                   fwdCausalSum E (fun X ↦ opNorm (h X)) k {x} := by
               dsimp only [W, fwdCausalSum]; rw [Finset.mul_sum]
@@ -403,45 +403,45 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
     have hsum_xa : (1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3,
           prodDepolNormSq s s' (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ))
             (pauliSite x α.succ))) ≤
-        9 * ∑' k : ℕ, ∑ x : Fin N, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-          W k f * ∑ y ∈ causalUnion {x} f, D y := by
+        9 * ∑' k : ℕ, ∑ x : Fin N, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+          W k f * ∑ y ∈ causalUnionOp {x} f, D y := by
       have h1 : ∑ x : Fin N, ∑ α : Fin 3,
             prodDepolNormSq s s' (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ))
               (pauliSite x α.succ))) ≤
-          72 * ∑ x : Fin N, ∑' k : ℕ, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-            W k f * ∑ y ∈ causalUnion {x} f, D y := by
+          72 * ∑ x : Fin N, ∑' k : ℕ, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+            W k f * ∑ y ∈ causalUnionOp {x} f, D y := by
         rw [Finset.mul_sum]
         apply Finset.sum_le_sum; intro x _
         calc ∑ α : Fin 3, prodDepolNormSq s s' (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ))
                 (pauliSite x α.succ)))
-            ≤ ∑ _α : Fin 3, (24 * ∑' k : ℕ, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-                W k f * ∑ y ∈ causalUnion {x} f, D y) := Finset.sum_le_sum fun α _ ↦ hxa x α
-          _ = 72 * ∑' k : ℕ, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-                W k f * ∑ y ∈ causalUnion {x} f, D y := by simp [Finset.sum_const]; ring
+            ≤ ∑ _α : Fin 3, (24 * ∑' k : ℕ, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+                W k f * ∑ y ∈ causalUnionOp {x} f, D y) := Finset.sum_le_sum fun α _ ↦ hxa x α
+          _ = 72 * ∑' k : ℕ, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+                W k f * ∑ y ∈ causalUnionOp {x} f, D y := by simp [Finset.sum_const]; ring
       rw [← Summable.tsum_finsetSum (fun x _ ↦ hsumm_all x)] at h1
       linarith
     -- Swap `∑ x, ∑ f` with `∑ y` at each `k` and apply `revCausalSum_le`
     have hk_bound : ∀ k : ℕ,
-        ∑ x : Fin N, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-          W k f * ∑ y ∈ causalUnion {x} f, D y ≤
+        ∑ x : Fin N, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+          W k f * ∑ y ∈ causalUnionOp {x} f, D y ≤
         (((k + 1 : ℕ) : ℝ) * q ^ k) * ∑ y : Fin N, D y := by
       intro k
-      have hswap : ∑ x : Fin N, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-            W k f * ∑ y ∈ causalUnion {x} f, D y =
+      have hswap : ∑ x : Fin N, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+            W k f * ∑ y ∈ causalUnionOp {x} f, D y =
           ((β / 2) ^ k / (k.factorial : ℝ)) * (Real.sqrt 3) ^ (k * (r - 1)) *
             ∑ y : Fin N, D y * revCausalSum E (fun X ↦ opNorm (h X)) k y := by
         have hstep1 : ∀ x : Fin N,
-            ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-              W k f * ∑ y ∈ causalUnion {x} f, D y =
-            ∑ y : Fin N, D y * ∑ f ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
-              (fun f ↦ y ∈ causalUnion {x} f), W k f := by
+            ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+              W k f * ∑ y ∈ causalUnionOp {x} f, D y =
+            ∑ y : Fin N, D y * ∑ f ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x})).filter
+              (fun f ↦ y ∈ causalUnionOp {x} f), W k f := by
           intro x
-          have h1 : ∀ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-              W k f * ∑ y ∈ causalUnion {x} f, D y =
-              ∑ y : Fin N, if y ∈ causalUnion {x} f then D y * W k f else 0 := by
+          have h1 : ∀ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+              W k f * ∑ y ∈ causalUnionOp {x} f, D y =
+              ∑ y : Fin N, if y ∈ causalUnionOp {x} f then D y * W k f else 0 := by
             intro f _
             rw [Finset.mul_sum, ← Finset.sum_filter]
-            have hfeq : Finset.univ.filter (fun y ↦ y ∈ causalUnion {x} f) = causalUnion {x} f := by
+            have hfeq : Finset.univ.filter (fun y ↦ y ∈ causalUnionOp {x} f) = causalUnionOp {x} f := by
               ext y; simp
             rw [hfeq]; apply Finset.sum_congr rfl; intro y _; ring
           rw [Finset.sum_congr rfl h1, Finset.sum_comm]
@@ -519,15 +519,15 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
       have hsumm_q : Summable (fun k : ℕ ↦ ((k + 1 : ℕ) : ℝ) * q ^ k) :=
         Summable.of_nonneg_of_le (fun _ ↦ by positivity) hq_le_half hsumm_half
       exact ⟨hsumm_q, le_trans (hsumm_q.tsum_le_tsum hq_le_half hsumm_half) hval_half.le⟩
-    have htsum_le : ∑' k : ℕ, ∑ x : Fin N, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-          W k f * ∑ y ∈ causalUnion {x} f, D y ≤
+    have htsum_le : ∑' k : ℕ, ∑ x : Fin N, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+          W k f * ∑ y ∈ causalUnionOp {x} f, D y ≤
         4 * ∑ y : Fin N, D y := by
       have hsumm_lhs : Summable (fun k : ℕ ↦
-          ∑ x : Fin N, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-            W k f * ∑ y ∈ causalUnion {x} f, D y) :=
+          ∑ x : Fin N, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+            W k f * ∑ y ∈ causalUnionOp {x} f, D y) :=
         summable_sum fun x _ ↦ hsumm_all x
-      calc ∑' k : ℕ, ∑ x : Fin N, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x}),
-              W k f * ∑ y ∈ causalUnion {x} f, D y
+      calc ∑' k : ℕ, ∑ x : Fin N, ∑ f ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeqOp {x}),
+              W k f * ∑ y ∈ causalUnionOp {x} f, D y
           ≤ ∑' k : ℕ, (((k + 1 : ℕ) : ℝ) * q ^ k) * ∑ y : Fin N, D y :=
             hsumm_lhs.tsum_le_tsum hk_bound (hsum_k1_q.1.mul_right _)
         _ = (∑' k : ℕ, ((k + 1 : ℕ) : ℝ) * q ^ k) * ∑ y : Fin N, D y := tsum_mul_right
