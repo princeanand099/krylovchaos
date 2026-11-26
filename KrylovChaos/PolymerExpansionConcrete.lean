@@ -6,16 +6,10 @@ Authors: Prince Anand
 import KrylovChaos.SupportAndDualFrame
 import KrylovChaos.ConcreteCombinatorics
 import KrylovChaos.KoteckyPreiss
+import Mathlib.Topology.Order.IntermediateValue
 
 /-!
-# Concrete Non-Commutative Polymer Expansion of `exp(-β' H)`
-
-Constructs the connected-polymer expansion of `exp(-β' H)` for `H = ∑ X ∈ E, h X`
-with `h X ∈ supportedOn X`:
-- `connectedPolymers E`, `reachComponent`, and the bijection `compatible_connectedPolymers_bijection`
-- `polyOp h β' γ`, `polyWeight h s β' γ`, operator-norm bound `opNorm_polyOp_le`,
-  and dual-weight bound `norm_polyWeight_le`
-- Exact partition function identity `depolDualWeight_exp_eq_polymerZ`.
+# Concrete Non-Commutative Polymer Expansion for Lemma 7.2 & Unconditional Theorem 1.3(a)–(b)
 -/
 
 namespace KrylovChaos
@@ -141,9 +135,9 @@ lemma reachComponent_fixpoint {N : ℕ} {S : Polymer N} {X : Finset (Fin N)}
     | zero => simp
     | succ d ih =>
       rw [← Nat.add_assoc, Function.iterate_succ_apply', ih (by omega),
-        ← Function.iterate_succ_apply', heq]
+        ← Function.iterate_succ_apply' (overlapStep S), heq]
   unfold reachComponent
-  rw [← Function.iterate_succ_apply', hconst (S.card + 1) (by omega), hconst S.card hk]
+  rw [← Function.iterate_succ_apply' (overlapStep S), hconst (S.card + 1) (by omega), hconst S.card hk]
 
 lemma reachComponent_disjoint_compl {N : ℕ} {S : Polymer N} {X : Finset (Fin N)}
     (hX : X ∈ S) (hne : ∀ Y ∈ S, Y.Nonempty) :
@@ -236,8 +230,8 @@ lemma compatible_connectedPolymers_bijection {N : ℕ} (E : Finset (Finset (Fin 
         by_contra hnot
         have h1ne : (γ ∩ δ).Nonempty := ⟨X₀, Finset.mem_inter.mpr ⟨hX₀γ, hX₀δ⟩⟩
         have h2ne : (γ \ δ).Nonempty := Finset.sdiff_nonempty.mpr hnot
-        have hunion : (γ ∩ δ) ∪ (γ \ δ) = γ := Finset.inter_union_sdiff γ δ
-        have hdisj : Disjoint (γ ∩ δ) (γ \ δ) := Finset.disjoint_inter_sdiff γ δ
+        have hunion : (γ ∩ δ) ∪ (γ \ δ) = γ := by ext Z; by_cases hZ : Z ∈ δ <;> simp [hZ]
+        have hdisj : Disjoint (γ ∩ δ) (γ \ δ) := Finset.disjoint_left.mpr fun Z h1 h2 ↦ (Finset.mem_sdiff.mp h2).2 (Finset.mem_inter.mp h1).2
         have hsupp_disj : Disjoint (polySupp (γ ∩ δ)) (polySupp (γ \ δ)) := by
           rw [Finset.disjoint_left]
           intro x hx1 hx2
@@ -261,8 +255,8 @@ lemma compatible_connectedPolymers_bijection {N : ℕ} (E : Finset (Finset (Fin 
         by_contra hnot
         have h1ne : (δ ∩ γ).Nonempty := ⟨X₀, Finset.mem_inter.mpr ⟨hX₀δ, hX₀γ⟩⟩
         have h2ne : (δ \ γ).Nonempty := Finset.sdiff_nonempty.mpr hnot
-        have hunion : (δ ∩ γ) ∪ (δ \ γ) = δ := Finset.inter_union_sdiff δ γ
-        have hdisj : Disjoint (δ ∩ γ) (δ \ γ) := Finset.disjoint_inter_sdiff δ γ
+        have hunion : (δ ∩ γ) ∪ (δ \ γ) = δ := by ext Z; by_cases hZ : Z ∈ γ <;> simp [hZ]
+        have hdisj : Disjoint (δ ∩ γ) (δ \ γ) := Finset.disjoint_left.mpr fun Z h1 h2 ↦ (Finset.mem_sdiff.mp h2).2 (Finset.mem_inter.mp h1).2
         have hsupp_disj : Disjoint (polySupp (δ ∩ γ)) (polySupp (δ \ γ)) := by
           rw [Finset.disjoint_left]
           intro x hx1 hx2
@@ -374,7 +368,29 @@ lemma sum_scalarWordSum_powerset {α : Type*} [DecidableEq α]
     (a : α → ℝ) (γ : Finset α) (m : ℕ) :
     ∑ S ∈ γ.powerset, scalarWordSum a S m = (∑ X ∈ γ, a X) ^ m := by
   have hpi : (∑ X ∈ γ, a X) ^ m = ∑ f ∈ Fintype.piFinset (fun _ : Fin m ↦ γ), ∏ j : Fin m, a (f j) := by
-    rw [Fintype.sum_pow]; rfl
+    induction m with
+    | zero =>
+      have hsing : Fintype.piFinset (fun _ : Fin 0 ↦ γ) = {Fin.elim0} := by
+        ext f; simp only [Fintype.mem_piFinset, Finset.mem_singleton]
+        constructor
+        · intro _; funext j; exact Fin.elim0 j
+        · rintro rfl j; exact Fin.elim0 j
+      rw [hsing, Finset.sum_singleton]; simp
+    | succ m ih =>
+      rw [pow_succ', ih, Finset.sum_mul_sum, ← Finset.sum_product']
+      refine Finset.sum_bij (fun p _ ↦ Fin.cons p.1 p.2) ?_ ?_ ?_ ?_
+      · intro p hp; rcases Finset.mem_product.mp hp with ⟨h1, h2⟩
+        rw [Fintype.mem_piFinset]; intro j
+        exact Fin.cases h1 (fun k ↦ Fintype.mem_piFinset.mp h2 k) j
+      · intro p₁ _ p₂ _ heq
+        apply Prod.ext
+        · have := congrFun heq 0; simpa using this
+        · funext k; have := congrFun heq k.succ; simpa using this
+      · intro f hf
+        refine ⟨(f 0, Fin.tail f), Finset.mem_product.mpr ⟨Fintype.mem_piFinset.mp hf 0,
+          Fintype.mem_piFinset.mpr fun k ↦ Fintype.mem_piFinset.mp hf k.succ⟩, ?_⟩
+        funext j; exact Fin.cases rfl (fun _ ↦ rfl) j
+      · intro p _; rw [Fin.prod_univ_succ]; rfl
   rw [hpi]
   symm
   rw [← Finset.sum_fiberwise_of_maps_to (g := fun f : Fin m → α ↦ Finset.univ.image f)
@@ -452,7 +468,7 @@ lemma opNorm_polyTermSum_le {N : ℕ} (h : Finset (Fin N) → QubitOp N)
   unfold polyTermSum scalarWordSum
   refine le_trans (opNorm_sum_le _ _) (Finset.sum_le_sum fun f _ ↦ ?_)
   refine le_trans (opNorm_list_prod_le _) ?_
-  rw [List.map_ofFn, List.prod_ofFn]
+  rw [List.map_ofFn, List.prod_ofFn]; exact le_refl _
 
 lemma opNorm_polyTermSum_scaled_le {N : ℕ} (h : Finset (Fin N) → QubitOp N)
     (β' : ℝ) (γ : Polymer N) (m : ℕ) :
@@ -494,14 +510,11 @@ theorem opNorm_polyOp_le {N : ℕ} (h : Finset (Fin N) → QubitOp N)
   have ha : ∀ X, 0 ≤ a X := fun X ↦ mul_nonneg (abs_nonneg _) (opNorm_nonneg _)
   have hhas_op := hasSum_polyOp h β' γ
   have hhas_real := hasSum_scalarWordSum_exp a ha γ
-  have hclm_cont : Continuous (opToCLM (N := N)) := by
-    have hlin : LinearMap ℂ (QubitOp N) (EuclideanSpace ℂ (QubitIdx N) →L[ℂ] EuclideanSpace ℂ (QubitIdx N)) :=
-      { toFun := opToCLM, map_add' := opToCLM_add, map_smul' := opToCLM_smul }
-    exact hlin.continuous_of_finiteDimensional
   have hhas_clm : HasSum (fun m : ℕ ↦ opToCLM (((-(β' : ℂ)) ^ m / (m.factorial : ℂ)) • polyTermSum h γ m))
       (opToCLM (polyOp h β' γ)) := by
     let L : QubitOp N →L[ℂ] (EuclideanSpace ℂ (QubitIdx N) →L[ℂ] EuclideanSpace ℂ (QubitIdx N)) :=
-      { toFun := opToCLM, map_add' := opToCLM_add, map_smul' := opToCLM_smul, cont := hclm_cont }
+      LinearMap.toContinuousLinearMap
+        { toFun := opToCLM, map_add' := opToCLM_add, map_smul' := fun c A ↦ by simp [opToCLM_smul] }
     exact hhas_op.map L L.continuous
   have hle_partial : ∀ F : Finset ℕ,
       ‖∑ m ∈ F, opToCLM (((-(β' : ℂ)) ^ m / (m.factorial : ℂ)) • polyTermSum h γ m)‖ ≤
@@ -558,9 +571,14 @@ lemma hasSum_hermFunc_exp {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (c : �
     induction m with
     | zero => simpa [pow_zero] using (hermFunc_one hH).symm
     | succ m ih =>
-      rw [pow_succ, ih, hermFunc_id hH, hermFunc_mul]
+      rw [pow_succ, ih]
+      conv_lhs => rw [← hermFunc_id hH]
+      rw [hermFunc_mul]
       congr 1; funext e; rw [pow_succ]
   simp_rw [hpow]
+  change HasSum (fun m : ℕ ↦ fun (i j : QubitIdx N) ↦
+      ((c ^ m / (m.factorial : ℂ)) • hermFunc hH (fun e ↦ (e : ℂ) ^ m)) i j)
+    (fun (i j : QubitIdx N) ↦ hermFunc hH (fun e ↦ Complex.exp (c * (e : ℂ))) i j)
   rw [Pi.hasSum]
   intro i
   rw [Pi.hasSum]
@@ -618,7 +636,7 @@ lemma real_sum_biUnion_le {α β : Type*} [DecidableEq β]
   | insert a u ha ih =>
     rw [Finset.biUnion_insert, Finset.sum_insert ha]
     have hsub : t a ∪ u.biUnion t = t a ∪ (u.biUnion t \ t a) := by
-      ext x; simp [or_and_left]; tauto
+      ext x; by_cases hx : x ∈ t a <;> simp [hx]
     have hdisj : Disjoint (t a) (u.biUnion t \ t a) := Finset.disjoint_sdiff
     rw [hsub, Finset.sum_union hdisj]
     have h1 : ∑ b ∈ u.biUnion t \ t a, f b ≤ ∑ b ∈ u.biUnion t, f b :=
@@ -635,24 +653,37 @@ private lemma hasSum_cauchy_product_complex {a b : ℕ → ℂ} {A B : ℂ}
     (ha : HasSum a A) (hb : HasSum b B)
     (hsa : Summable (fun k ↦ ‖a k‖)) (hsb : Summable (fun k ↦ ‖b k‖)) :
     HasSum (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2) (A * B) := by
-  have hprod_norm : Summable (fun p : ℕ × ℕ ↦ ‖a p.1 * b p.2‖) := by
-    have h1 : Summable (fun p : ℕ × ℕ ↦ ‖a p.1‖ * ‖b p.2‖) :=
-      Summable.mul_of_nonneg hsa hsb (fun _ ↦ norm_nonneg _) (fun _ ↦ norm_nonneg _)
-    exact h1.congr fun p ↦ (norm_mul _ _).symm
   have hanti_norm : Summable (fun m : ℕ ↦ ‖∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2‖) := by
-    have h1 : Summable (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, ‖a p.1 * b p.2‖) := by
-      have hfib : ∀ n : ℕ, ∑ m ∈ Finset.range n, ∑ p ∈ Finset.antidiagonal m, ‖a p.1 * b p.2‖ ≤
-          ∑' p : ℕ × ℕ, ‖a p.1 * b p.2‖ := by
+    have h1 : Summable (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, ‖a p.1‖ * ‖b p.2‖) := by
+      have hfib : ∀ n : ℕ, ∑ m ∈ Finset.range n, ∑ p ∈ Finset.antidiagonal m, ‖a p.1‖ * ‖b p.2‖ ≤
+          (∑' i : ℕ, ‖a i‖) * (∑' j : ℕ, ‖b j‖) := by
         intro n
         have hdisj : (Finset.range n : Set ℕ).PairwiseDisjoint Finset.antidiagonal := by
           intro i _ j _ hij
+          change Disjoint (Finset.antidiagonal i) (Finset.antidiagonal j)
           rw [Finset.disjoint_left]
           intro p hp1 hp2
           exact hij ((Finset.mem_antidiagonal.mp hp1).symm.trans (Finset.mem_antidiagonal.mp hp2))
         rw [← Finset.sum_biUnion hdisj]
-        exact hprod_norm.sum_le_tsum _ fun _ _ ↦ norm_nonneg _
-      exact summable_of_sum_range_le (fun _ ↦ Finset.sum_nonneg fun _ _ ↦ norm_nonneg _) hfib
-    exact Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) (fun _ ↦ norm_sum_le _ _) h1
+        have hsub : (Finset.range n).biUnion Finset.antidiagonal ⊆ Finset.range n ×ˢ Finset.range n := by
+          intro p hp
+          rcases Finset.mem_biUnion.mp hp with ⟨m, hm, hpm⟩
+          rw [Finset.mem_range] at hm
+          rw [Finset.mem_antidiagonal] at hpm
+          rw [Finset.mem_product, Finset.mem_range, Finset.mem_range]; omega
+        calc ∑ p ∈ (Finset.range n).biUnion Finset.antidiagonal, ‖a p.1‖ * ‖b p.2‖
+            ≤ ∑ p ∈ Finset.range n ×ˢ Finset.range n, ‖a p.1‖ * ‖b p.2‖ :=
+              Finset.sum_le_sum_of_subset_of_nonneg hsub fun _ _ _ ↦ mul_nonneg (norm_nonneg _) (norm_nonneg _)
+          _ = (∑ i ∈ Finset.range n, ‖a i‖) * (∑ j ∈ Finset.range n, ‖b j‖) := by
+              rw [Finset.sum_product', Finset.sum_mul_sum]
+          _ ≤ (∑' i : ℕ, ‖a i‖) * (∑' j : ℕ, ‖b j‖) :=
+              mul_le_mul (hsa.sum_le_tsum _ fun _ _ ↦ norm_nonneg _)
+                (hsb.sum_le_tsum _ fun _ _ ↦ norm_nonneg _)
+                (Finset.sum_nonneg fun _ _ ↦ norm_nonneg _)
+                (tsum_nonneg fun _ ↦ norm_nonneg _)
+      exact summable_of_sum_range_le (fun _ ↦ Finset.sum_nonneg fun _ _ ↦ mul_nonneg (norm_nonneg _) (norm_nonneg _)) hfib
+    refine Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) (fun m ↦ ?_) h1
+    exact le_trans (norm_sum_le _ _) (by simp only [norm_mul]; exact le_refl _)
   have hanti_summ : Summable (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2) :=
     hanti_norm.of_norm
   suffices hlim : Filter.Tendsto
@@ -662,8 +693,9 @@ private lemma hasSum_cauchy_product_complex {a b : ℕ → ℂ} {A B : ℂ}
         (fun n : ℕ ↦ ∑ m ∈ Finset.range (2 * n), ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2)
         Filter.atTop (nhds (∑' m : ℕ, ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2)) :=
       hanti_summ.hasSum.tendsto_sum_nat.comp
-        (Filter.tendsto_atTop_mono (fun n ↦ by omega) Filter.tendsto_id)
-    rw [tendsto_nhds_unique hsubseq hlim]
+        (Filter.tendsto_atTop_mono (fun n ↦ Nat.le_mul_of_pos_left n (by norm_num)) Filter.tendsto_id)
+    have heq := tendsto_nhds_unique hsubseq hlim
+    rw [← heq]
     exact hanti_summ.hasSum
   have hsq_lim : Filter.Tendsto
       (fun n : ℕ ↦ (∑ i ∈ Finset.range n, a i) * (∑ j ∈ Finset.range n, b j))
@@ -673,51 +705,91 @@ private lemma hasSum_cauchy_product_complex {a b : ℕ → ℂ} {A B : ℂ}
       (fun n : ℕ ↦ (∑ m ∈ Finset.range (2 * n), ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2) -
         (∑ i ∈ Finset.range n, a i) * (∑ j ∈ Finset.range n, b j))
       Filter.atTop (nhds 0) := by
-    rw [Metric.tendsto_atTop]
-    intro ε hε
-    have htail := hprod_norm.hasSum
-    rw [HasSum, Metric.tendsto_atTop] at htail
-    rcases htail ε hε with ⟨S, hS⟩
-    let N₀ := S.sup (fun p : ℕ × ℕ ↦ max p.1 p.2 + 1)
-    refine ⟨N₀, fun n hn ↦ ?_⟩
-    have hsub_S : S ⊆ Finset.range n ×ˢ Finset.range n := by
-      intro p hp
-      have h1 : max p.1 p.2 + 1 ≤ N₀ := Finset.le_sup (f := fun q : ℕ × ℕ ↦ max q.1 q.2 + 1) hp
-      rw [Finset.mem_product, Finset.mem_range, Finset.mem_range]
-      omega
-    let T := (Finset.range (2 * n)).biUnion Finset.antidiagonal
-    have hdisj : (Finset.range (2 * n) : Set ℕ).PairwiseDisjoint Finset.antidiagonal := by
-      intro i _ j _ hij
-      rw [Finset.disjoint_left]; intro p hp1 hp2
-      exact hij ((Finset.mem_antidiagonal.mp hp1).symm.trans (Finset.mem_antidiagonal.mp hp2))
-    have hT_eq : ∑ m ∈ Finset.range (2 * n), ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2 =
-        ∑ p ∈ T, a p.1 * b p.2 := (Finset.sum_biUnion hdisj).symm
-    have hsq_eq : (∑ i ∈ Finset.range n, a i) * (∑ j ∈ Finset.range n, b j) =
-        ∑ p ∈ Finset.range n ×ˢ Finset.range n, a p.1 * b p.2 := by
-      rw [Finset.sum_mul_sum, ← Finset.sum_product']
-    have hsq_sub_T : Finset.range n ×ˢ Finset.range n ⊆ T := by
-      intro p hp
-      rcases Finset.mem_product.mp hp with ⟨hp1, hp2⟩
-      rw [Finset.mem_range] at hp1 hp2
-      exact Finset.mem_biUnion.mpr ⟨p.1 + p.2, Finset.mem_range.mpr (by omega),
-        Finset.mem_antidiagonal.mpr rfl⟩
-    rw [dist_zero_right, hT_eq, hsq_eq, ← Finset.sum_sdiff hsq_sub_T]
-    have hnorm_le : ‖∑ p ∈ T \ (Finset.range n ×ˢ Finset.range n), a p.1 * b p.2‖ ≤
-        ∑ p ∈ T \ (Finset.range n ×ˢ Finset.range n), ‖a p.1 * b p.2‖ := norm_sum_le _ _
-    have hsdiff_eq : ∑ p ∈ T \ (Finset.range n ×ˢ Finset.range n), ‖a p.1 * b p.2‖ =
-        (∑ p ∈ T, ‖a p.1 * b p.2‖) - ∑ p ∈ Finset.range n ×ˢ Finset.range n, ‖a p.1 * b p.2‖ :=
-      eq_sub_of_add_eq (Finset.sum_sdiff hsq_sub_T)
-    have hle_tsum : ∑ p ∈ T, ‖a p.1 * b p.2‖ ≤ ∑' p : ℕ × ℕ, ‖a p.1 * b p.2‖ :=
-      hprod_norm.sum_le_tsum T fun _ _ ↦ norm_nonneg _
-    have hclose := hS (Finset.range n ×ˢ Finset.range n) hsub_S
-    rw [Real.dist_eq, abs_lt] at hclose
-    linarith
-  have hadd := hdiff_zero.add hsq_lim
-  simp only [zero_add, sub_add_cancel] at hadd
-  exact hadd
+    have hrem_bound : ∀ n : ℕ,
+        ‖(∑ m ∈ Finset.range (2 * n), ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2) -
+          (∑ i ∈ Finset.range n, a i) * (∑ j ∈ Finset.range n, b j)‖ ≤
+        ((∑ i ∈ Finset.range (2 * n), ‖a i‖) - ∑ i ∈ Finset.range n, ‖a i‖) * (∑' j : ℕ, ‖b j‖) +
+        (∑' i : ℕ, ‖a i‖) * ((∑ j ∈ Finset.range (2 * n), ‖b j‖) - ∑ j ∈ Finset.range n, ‖b j‖) := by
+      intro n
+      let T := (Finset.range (2 * n)).biUnion Finset.antidiagonal
+      have hdisj : (Finset.range (2 * n) : Set ℕ).PairwiseDisjoint Finset.antidiagonal := by
+        intro i _ j _ hij
+        change Disjoint (Finset.antidiagonal i) (Finset.antidiagonal j)
+        rw [Finset.disjoint_left]
+        intro p hp1 hp2
+        exact hij ((Finset.mem_antidiagonal.mp hp1).symm.trans (Finset.mem_antidiagonal.mp hp2))
+      have hsq_sub : Finset.range n ×ˢ Finset.range n ⊆ T := by
+        intro p hp
+        rcases Finset.mem_product.mp hp with ⟨h1, h2⟩
+        rw [Finset.mem_range] at h1 h2
+        exact Finset.mem_biUnion.mpr ⟨p.1 + p.2, Finset.mem_range.mpr (by omega),
+          Finset.mem_antidiagonal.mpr rfl⟩
+      have hdiff_eq : (∑ m ∈ Finset.range (2 * n), ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2) -
+            (∑ i ∈ Finset.range n, a i) * (∑ j ∈ Finset.range n, b j) =
+          ∑ p ∈ T \ (Finset.range n ×ˢ Finset.range n), a p.1 * b p.2 := by
+        rw [← Finset.sum_biUnion hdisj, Finset.sum_mul_sum, ← Finset.sum_product']
+        rw [← Finset.sum_sdiff hsq_sub]; ring
+      rw [hdiff_eq]
+      have hsub_u : T \ (Finset.range n ×ˢ Finset.range n) ⊆
+          (Finset.Ico n (2 * n) ×ˢ Finset.range (2 * n)) ∪
+          (Finset.range (2 * n) ×ˢ Finset.Ico n (2 * n)) := by
+        intro p hp
+        rcases Finset.mem_sdiff.mp hp with ⟨hpT, hpnot⟩
+        rcases Finset.mem_biUnion.mp hpT with ⟨m, hm, hpm⟩
+        rw [Finset.mem_range] at hm; rw [Finset.mem_antidiagonal] at hpm
+        rw [Finset.mem_union, Finset.mem_product, Finset.mem_product,
+          Finset.mem_Ico, Finset.mem_Ico, Finset.mem_range, Finset.mem_range]
+        by_cases h1 : p.1 < n
+        · right
+          have h2 : ¬ p.2 < n := fun h2 ↦ hpnot (Finset.mem_product.mpr
+            ⟨Finset.mem_range.mpr h1, Finset.mem_range.mpr h2⟩)
+          omega
+        · left; omega
+      have hIco_a : ∑ i ∈ Finset.Ico n (2 * n), ‖a i‖ =
+          (∑ i ∈ Finset.range (2 * n), ‖a i‖) - ∑ i ∈ Finset.range n, ‖a i‖ := by
+        have h := Finset.sum_range_add_sum_Ico (fun i ↦ ‖a i‖) (Nat.le_mul_of_pos_left n (by norm_num))
+        linarith
+      have hIco_b : ∑ j ∈ Finset.Ico n (2 * n), ‖b j‖ =
+          (∑ j ∈ Finset.range (2 * n), ‖b j‖) - ∑ j ∈ Finset.range n, ‖b j‖ := by
+        have h := Finset.sum_range_add_sum_Ico (fun j ↦ ‖b j‖) (Nat.le_mul_of_pos_left n (by norm_num))
+        linarith
+      calc ‖∑ p ∈ T \ (Finset.range n ×ˢ Finset.range n), a p.1 * b p.2‖
+          ≤ ∑ p ∈ T \ (Finset.range n ×ˢ Finset.range n), ‖a p.1‖ * ‖b p.2‖ :=
+            le_trans (norm_sum_le _ _) (by simp only [norm_mul]; exact le_refl _)
+        _ ≤ ∑ p ∈ (Finset.Ico n (2 * n) ×ˢ Finset.range (2 * n)) ∪
+              (Finset.range (2 * n) ×ˢ Finset.Ico n (2 * n)), ‖a p.1‖ * ‖b p.2‖ :=
+            Finset.sum_le_sum_of_subset_of_nonneg hsub_u fun _ _ _ ↦ mul_nonneg (norm_nonneg _) (norm_nonneg _)
+        _ ≤ (∑ p ∈ Finset.Ico n (2 * n) ×ˢ Finset.range (2 * n), ‖a p.1‖ * ‖b p.2‖) +
+            (∑ p ∈ Finset.range (2 * n) ×ˢ Finset.Ico n (2 * n), ‖a p.1‖ * ‖b p.2‖) :=
+            Finset.sum_union_le (fun _ _ ↦ mul_nonneg (norm_nonneg _) (norm_nonneg _))
+        _ = (∑ i ∈ Finset.Ico n (2 * n), ‖a i‖) * (∑ j ∈ Finset.range (2 * n), ‖b j‖) +
+            (∑ i ∈ Finset.range (2 * n), ‖a i‖) * (∑ j ∈ Finset.Ico n (2 * n), ‖b j‖) := by
+            rw [Finset.sum_product', Finset.sum_product', Finset.sum_mul_sum, Finset.sum_mul_sum]
+        _ ≤ (∑ i ∈ Finset.Ico n (2 * n), ‖a i‖) * (∑' j : ℕ, ‖b j‖) +
+            (∑' i : ℕ, ‖a i‖) * (∑ j ∈ Finset.Ico n (2 * n), ‖b j‖) := by
+            apply add_le_add
+            · exact mul_le_mul_of_nonneg_left (hsb.sum_le_tsum _ fun _ _ ↦ norm_nonneg _)
+                (Finset.sum_nonneg fun _ _ ↦ norm_nonneg _)
+            · exact mul_le_mul_of_nonneg_right (hsa.sum_le_tsum _ fun _ _ ↦ norm_nonneg _)
+                (Finset.sum_nonneg fun _ _ ↦ norm_nonneg _)
+        _ = _ := by rw [hIco_a, hIco_b]
+    have hzero_rhs : Filter.Tendsto (fun n : ℕ ↦
+        ((∑ i ∈ Finset.range (2 * n), ‖a i‖) - ∑ i ∈ Finset.range n, ‖a i‖) * (∑' j : ℕ, ‖b j‖) +
+        (∑' i : ℕ, ‖a i‖) * ((∑ j ∈ Finset.range (2 * n), ‖b j‖) - ∑ j ∈ Finset.range n, ‖b j‖))
+        Filter.atTop (nhds 0) := by
+      have ha1 := hsa.hasSum.tendsto_sum_nat
+      have ha2 := ha1.comp (Filter.tendsto_atTop_mono (fun n ↦ Nat.le_mul_of_pos_left n (by norm_num)) Filter.tendsto_id)
+      have hb1 := hsb.hasSum.tendsto_sum_nat
+      have hb2 := hb1.comp (Filter.tendsto_atTop_mono (fun n ↦ Nat.le_mul_of_pos_left n (by norm_num)) Filter.tendsto_id)
+      have h := ((ha2.sub ha1).mul tendsto_const_nhds).add (tendsto_const_nhds.mul (hb2.sub hb1))
+      simpa using h
+    rw [tendsto_zero_iff_norm_tendsto_zero]
+    exact squeeze_zero (fun _ ↦ norm_nonneg _) hrem_bound hzero_rhs
+  have hadd := hsq_lim.add hdiff_zero
+  simp only [add_zero] at hadd
+  exact hadd.congr fun n ↦ by ring
 
-/-- Key algebraic identity: if `γ₁, γ₂` have disjoint supports and `h X ∈ supportedOn X`,
-then `polyOp h β' (γ₁ ∪ γ₂) = polyOp h β' γ₁ * polyOp h β' γ₂`. -/
+set_option maxHeartbeats 400000 in
 lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
     (hsupp : ∀ X, h X ∈ supportedOn X) (β' : ℝ)
     {γ₁ γ₂ : Polymer N} (hdisj_supp : Disjoint (polySupp γ₁) (polySupp γ₂))
@@ -766,7 +838,6 @@ lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
       rw [← Finset.sum_fiberwise_of_maps_to
         (g := fun f : Fin m → Finset (Fin N) ↦ Finset.univ.filter (fun j ↦ f j ∈ γ₁))
         (t := (Finset.univ : Finset (Fin m)).powerset)]
-      · rfl
       · intro _ _; exact Finset.mem_powerset.mpr (Finset.subset_univ _)
     rw [hsplit_S]
     have hT_eq : ∀ T : Finset (Fin m),
@@ -805,7 +876,7 @@ lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
             have hXU : X ∈ Finset.univ.image f := hfim.symm ▸ Finset.mem_union_left γ₂ hX
             rcases Finset.mem_image.mp hXU with ⟨j, _, rfl⟩
             have hjT : j ∈ T := hfT ▸ Finset.mem_filter.mpr ⟨Finset.mem_univ _, hX⟩
-            exact Finset.mem_image.mpr ⟨e1.symm ⟨j, hjT⟩, Finset.mem_univ _, by simp⟩
+            refine Finset.mem_image.mpr ⟨e1.symm ⟨j, hjT⟩, Finset.mem_univ _, by simp⟩
         · refine Finset.mem_filter.mpr ⟨Fintype.mem_piFinset.mpr hf2, ?_⟩
           apply Finset.Subset.antisymm
           · intro X hX; rcases Finset.mem_image.mp hX with ⟨b, _, rfl⟩; exact hf2 b
@@ -814,10 +885,10 @@ lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
             rcases Finset.mem_image.mp hXU with ⟨j, _, rfl⟩
             have hjnot1 : f j ∉ γ₁ := Finset.disjoint_right.mp hdisj hX
             have hjT2 : j ∈ T2 := Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, fun hjT ↦
-              hjnot1 (Finset.mem_filter.mp (hfT.symm ▸ hjT)).2⟩
-            exact Finset.mem_image.mpr ⟨e2.symm ⟨j, hjT2⟩, Finset.mem_univ _, by simp⟩
+              hjnot1 (Finset.mem_filter.mp (show j ∈ Finset.univ.filter (fun j ↦ f j ∈ γ₁) from hfT.symm ▸ hjT)).2⟩
+            refine Finset.mem_image.mpr ⟨e2.symm ⟨j, hjT2⟩, Finset.mem_univ _, by simp⟩
       · intro f₁ _ f₂ _ heq
-        ext j
+        funext j
         by_cases hj : j ∈ T
         · have := congrFun (Prod.mk.inj heq).1 (e1.symm ⟨j, hj⟩); simpa using this
         · have hj2 : j ∈ T2 := Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, hj⟩
@@ -855,7 +926,7 @@ lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
             · intro h1; by_contra hnotT
               exact Finset.disjoint_left.mp hdisj h1 (hf2 j hnotT)
             · exact hf1 j
-        · ext a <;> simp [f, (e1 _).2, (Finset.mem_sdiff.mp (e2 _).2).2]
+        · apply Prod.ext <;> (funext a; simp [f, (e1 _).2, (Finset.mem_sdiff.mp (e2 _).2).2])
       · intro f hf
         rcases Finset.mem_filter.mp hf with ⟨hfS, hfT⟩
         rcases Finset.mem_filter.mp hfS with ⟨hfpi, _⟩
@@ -865,43 +936,52 @@ lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
           rcases List.mem_ofFn.mp hX with ⟨j, rfl⟩; exact Fintype.mem_piFinset.mp hfpi j)]
         have hfilt1 : (List.ofFn f).filter (· ∈ γ₁) = List.ofFn (fun a : Fin T.card ↦ f (e1 a).1) := by
           have hfin : (List.finRange m).filter (fun j ↦ f j ∈ γ₁) = List.ofFn (fun a : Fin T.card ↦ (e1 a).1) := by
-            have h1 : (List.finRange m).filter (fun j ↦ f j ∈ γ₁) = T.sort (· ≤ ·) := by
-              apply List.Pairwise.eq_of_mem_iff
-              · exact (List.nodup_finRange m).filter _
-              · exact T.sort_nodup (· ≤ ·)
-              · exact (List.pairwise_lt_finRange m).filter _ |>.imp le_of_lt
-              · exact T.pairwise_sort (· ≤ ·)
-              · intro j
-                simp only [List.mem_filter, List.mem_finRange, true_and, decide_eq_true_eq,
-                  Finset.mem_sort]
-                rw [← hfT]; simp
-            rw [h1]
-            apply List.ext_getElem
-            · simp
-            · intro i hi1 hi2; simp [e1, Finset.orderIsoOfFin_apply]
+            have hl1 : ((List.finRange m).filter (fun j ↦ f j ∈ γ₁)).Pairwise (· < ·) :=
+              (List.pairwise_lt_finRange m).filter _
+            have hl2 : (List.ofFn (fun a : Fin T.card ↦ (e1 a).1)).Pairwise (· < ·) :=
+              List.pairwise_ofFn.mpr fun a b hab ↦ e1.strictMono hab
+            have hperm : ((List.finRange m).filter (fun j ↦ f j ∈ γ₁)).Perm
+                (List.ofFn (fun a : Fin T.card ↦ (e1 a).1)) := by
+              rw [List.perm_ext_iff_of_nodup (hl1.imp ne_of_lt) (hl2.imp ne_of_lt)]
+              intro j
+              simp only [List.mem_filter, List.mem_finRange, true_and, decide_eq_true_eq, List.mem_ofFn]
+              constructor
+              · intro hj1
+                have hjT : j ∈ T := by rw [← hfT]; exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, hj1⟩
+                exact ⟨e1.symm ⟨j, hjT⟩, by simp⟩
+              · rintro ⟨a, rfl⟩
+                have haT : (e1 a).1 ∈ T := (e1 a).2
+                rw [← hfT] at haT; exact (Finset.mem_filter.mp haT).2
+            exact hperm.eq_of_pairwise (fun _ _ _ _ h1 h2 ↦ le_antisymm h1 h2)
+              (hl1.imp le_of_lt) (hl2.imp le_of_lt)
           have hmap : (List.ofFn f).filter (· ∈ γ₁) = ((List.finRange m).filter (fun j ↦ f j ∈ γ₁)).map f := by
             simp [← List.ofFn_eq_map, List.filter_map, Function.comp_def]
           rw [hmap, hfin, List.map_ofFn]; rfl
         have hfilt2 : (List.ofFn f).filter (· ∈ γ₂) = List.ofFn (fun b : Fin (m - T.card) ↦ f (e2 b).1) := by
           have hfin : (List.finRange m).filter (fun j ↦ f j ∈ γ₂) = List.ofFn (fun b : Fin (m - T.card) ↦ (e2 b).1) := by
-            have h1 : (List.finRange m).filter (fun j ↦ f j ∈ γ₂) = T2.sort (· ≤ ·) := by
-              apply List.Pairwise.eq_of_mem_iff
-              · exact (List.nodup_finRange m).filter _
-              · exact T2.sort_nodup (· ≤ ·)
-              · exact (List.pairwise_lt_finRange m).filter _ |>.imp le_of_lt
-              · exact T2.pairwise_sort (· ≤ ·)
-              · intro j
-                simp only [List.mem_filter, List.mem_finRange, true_and, decide_eq_true_eq,
-                  Finset.mem_sort, T2, Finset.mem_sdiff, Finset.mem_univ]
-                rw [← hfT]; simp only [Finset.mem_filter, Finset.mem_univ, true_and]
-                constructor
-                · intro h2 h1; exact Finset.disjoint_left.mp hdisj h1 h2
-                · intro hnot1
-                  exact (Finset.mem_union.mp (Fintype.mem_piFinset.mp hfpi j)).resolve_left hnot1
-            rw [h1]
-            apply List.ext_getElem
-            · simp [hT2card]
-            · intro i hi1 hi2; simp [e2, Finset.orderIsoOfFin_apply]
+            have hl1 : ((List.finRange m).filter (fun j ↦ f j ∈ γ₂)).Pairwise (· < ·) :=
+              (List.pairwise_lt_finRange m).filter _
+            have hl2 : (List.ofFn (fun b : Fin (m - T.card) ↦ (e2 b).1)).Pairwise (· < ·) :=
+              List.pairwise_ofFn.mpr fun a b hab ↦ e2.strictMono hab
+            have hperm : ((List.finRange m).filter (fun j ↦ f j ∈ γ₂)).Perm
+                (List.ofFn (fun b : Fin (m - T.card) ↦ (e2 b).1)) := by
+              rw [List.perm_ext_iff_of_nodup (hl1.imp ne_of_lt) (hl2.imp ne_of_lt)]
+              intro j
+              simp only [List.mem_filter, List.mem_finRange, true_and, decide_eq_true_eq, List.mem_ofFn]
+              constructor
+              · intro hj2
+                have hjnot1 : j ∉ T := by
+                  rw [← hfT]; intro h1; exact Finset.disjoint_left.mp hdisj (Finset.mem_filter.mp h1).2 hj2
+                have hjT2 : j ∈ T2 := Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, hjnot1⟩
+                exact ⟨e2.symm ⟨j, hjT2⟩, by simp⟩
+              · rintro ⟨b, rfl⟩
+                have hbT2 : (e2 b).1 ∈ T2 := (e2 b).2
+                have hbnot1 : (e2 b).1 ∉ T := (Finset.mem_sdiff.mp hbT2).2
+                rw [← hfT] at hbnot1
+                have hbnot : f (e2 b).1 ∉ γ₁ := fun h1 ↦ hbnot1 (Finset.mem_filter.mpr ⟨Finset.mem_univ _, h1⟩)
+                exact (Finset.mem_union.mp (Fintype.mem_piFinset.mp hfpi (e2 b).1)).resolve_left hbnot
+            exact hperm.eq_of_pairwise (fun _ _ _ _ h1 h2 ↦ le_antisymm h1 h2)
+              (hl1.imp le_of_lt) (hl2.imp le_of_lt)
           have hmap : (List.ofFn f).filter (· ∈ γ₂) = ((List.finRange m).filter (fun j ↦ f j ∈ γ₂)).map f := by
             simp [← List.ofFn_eq_map, List.filter_map, Function.comp_def]
           rw [hmap, hfin, List.map_ofFn]; rfl
@@ -916,6 +996,7 @@ lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
       rw [Finset.sum_congr rfl (fun T hT ↦ by rw [(Finset.mem_filter.mp hT).2]),
         Finset.sum_const, hcard_eq, ← Nat.cast_smul_eq_nsmul ℂ]
     · intro T _; rw [Finset.mem_range]; exact Nat.lt_succ_of_le (by simpa using Finset.card_le_univ T)
+  -- Entrywise Cauchy product on `ℂ`
   let A : ℕ → QubitOp N := fun k ↦ ((-(β' : ℂ)) ^ k / (k.factorial : ℂ)) • polyTermSum h γ₁ k
   let B : ℕ → QubitOp N := fun k ↦ ((-(β' : ℂ)) ^ k / (k.factorial : ℂ)) • polyTermSum h γ₂ k
   have hA_has : HasSum A (polyOp h β' γ₁) := hasSum_polyOp h β' γ₁
@@ -959,9 +1040,9 @@ lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
     apply hasSum_sum
     intro l _
     have h1l : HasSum (fun k ↦ A k i l) (polyOp h β' γ₁ i l) :=
-      (Pi.hasSum.mp ((Pi.hasSum.mp hA_has) i)) l
+      (Pi.hasSum.mp ((Pi.hasSum.mp (show HasSum (fun k (p q : QubitIdx N) ↦ A k p q) (fun p q ↦ polyOp h β' γ₁ p q) from hA_has)) i)) l
     have h2l : HasSum (fun k ↦ B k l j) (polyOp h β' γ₂ l j) :=
-      (Pi.hasSum.mp ((Pi.hasSum.mp hB_has) l)) j
+      (Pi.hasSum.mp ((Pi.hasSum.mp (show HasSum (fun k (p q : QubitIdx N) ↦ B k p q) (fun p q ↦ polyOp h β' γ₂ p q) from hB_has)) l)) j
     have hs1l : Summable (fun k ↦ ‖A k i l‖) :=
       Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _)
         (fun k ↦ le_trans (norm_entry_le_opNorm _ i l) (opNorm_polyTermSum_scaled_le h β' γ₁ k)) hsr1
@@ -971,7 +1052,7 @@ lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
     exact hasSum_cauchy_product_complex h1l h2l hs1l hs2l
   have hhas_lhs : HasSum (fun m : ℕ ↦ (∑ p ∈ Finset.antidiagonal m, A p.1 * B p.2) i j)
       (polyOp h β' (γ₁ ∪ γ₂) i j) := by
-    have h1 := (Pi.hasSum.mp ((Pi.hasSum.mp (hasSum_polyOp h β' (γ₁ ∪ γ₂))) i)) j
+    have h1 := (Pi.hasSum.mp ((Pi.hasSum.mp (show HasSum (fun m (p q : QubitIdx N) ↦ (((-(β' : ℂ)) ^ m / (m.factorial : ℂ)) • polyTermSum h (γ₁ ∪ γ₂) m) p q) (fun p q ↦ polyOp h β' (γ₁ ∪ γ₂) p q) from hasSum_polyOp h β' (γ₁ ∪ γ₂))) i)) j
     exact h1.congr_fun fun m ↦ by rw [hanti m]
   exact hhas_lhs.unique hhas_ij
 
@@ -1066,7 +1147,7 @@ theorem depolDualWeight_exp_eq_polymerZ {N : ℕ}
           rw [Fintype.mem_piFinset]
           intro j; refine Fin.cases hp1 (fun k ↦ Fintype.mem_piFinset.mp hp2 k) j
         · intro p₁ _ p₂ _ heq
-          ext
+          apply Prod.ext
           · have := congrFun heq 0; simpa using this
           · funext k; have := congrFun heq k.succ; simpa using this
         · intro f hf
