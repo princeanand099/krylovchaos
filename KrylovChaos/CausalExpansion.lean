@@ -757,5 +757,19 @@ lemma fwdCausalSum_general_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fi
       exact le_trans h1 (mul_le_mul_of_nonneg_right hcard_le hJ_nn)
     calc ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀),
             (∏ j : Fin k, w (g j)) * ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion U₀ g).Nonempty), w X
-        ≤ ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {U₀ := U₀} |>.filter _), 0 := by sorry
-      _ = 0 := by sorry
+        ≤ ∑ g ∈ (Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq U₀),
+            (∏ j : Fin k, w (g j)) * (((U₀.card : ℝ) + (k : ℝ) * (r : ℝ)) * J) := by
+          apply Finset.sum_le_sum; intro g hg
+          exact mul_le_mul_of_nonneg_left (hstep g hg)
+            (Finset.prod_nonneg fun j _ ↦ hw_nn _ (Fintype.mem_piFinset.mp (Finset.mem_filter.mp hg).1 j))
+      _ = fwdCausalSum E w k U₀ * (((U₀.card : ℝ) + (k : ℝ) * (r : ℝ)) * J) := by
+          rw [← Finset.sum_mul]; rfl
+      _ ≤ ((∏ j : Fin k, ((U₀.card : ℝ) + (j.val : ℝ) * (r : ℝ))) * J ^ k) *
+            (((U₀.card : ℝ) + (k : ℝ) * (r : ℝ)) * J) :=
+          mul_le_mul_of_nonneg_right ih (by positivity)
+      _ = (∏ j : Fin (k + 1), ((U₀.card : ℝ) + (j.val : ℝ) * (r : ℝ))) * J ^ (k + 1) := by
+          rw [Fin.prod_univ_castSucc, pow_succ]; simp only [Fin.val_castSucc, Fin.val_last]; ring
+
+end CausalExpansionAndThm13bOtocI
+
+end KrylovChaos
