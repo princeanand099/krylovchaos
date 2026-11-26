@@ -25,4 +25,6 @@ import KrylovChaos.MajoranaAlgebra
 import KrylovChaos.ProductStateDerivation
 import KrylovChaos.WightmanProjectors
 import KrylovChaos.LanczosMoments
+import KrylovChaos.CausalNormBounds
+import KrylovChaos.BimodalExact
 import KrylovChaos.SanityChecks
