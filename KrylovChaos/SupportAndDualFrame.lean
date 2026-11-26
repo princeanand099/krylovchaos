@@ -493,31 +493,35 @@ noncomputable def signedPauliU : Fin 6 → Matrix (Fin 2) (Fin 2) ℂ
   | 4 => !![1, 0; 0, 1]
   | 5 => !![0, 1; 1, 0]
 
-private lemma inv_sqrt2_sq_complex : (((1 / Real.sqrt 2 : ℝ) : ℂ)) ^ 2 = (1 / 2 : ℂ) := by
-  rw [← Complex.ofReal_pow]
-  have h : (1 / Real.sqrt 2 : ℝ) ^ 2 = 1 / 2 := by
-    rw [div_pow, one_pow, Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2)]
-  rw [h]; push_cast; rfl
+private lemma inv_sqrt2_sq_complex : ((Real.sqrt 2 : ℂ)⁻¹) ^ 2 = (1 / 2 : ℂ) := by
+  rw [inv_pow, ← Complex.ofReal_pow, Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2)]
+  push_cast; norm_num
 
 lemma signedPauliU_unitary (u : Fin 6) :
     (signedPauliU u)ᴴ * signedPauliU u = 1 := by
   have h2 := inv_sqrt2_sq_complex
   fin_cases u <;> ext i j <;> fin_cases i <;> fin_cases j <;>
-    simp [signedPauliU, Matrix.mul_apply, Matrix.conjTranspose_apply, Fin.sum_univ_two,
-      Complex.star_def] <;>
-    first | ring | (linear_combination 2 * h2)
+    simp only [signedPauliU, Matrix.mul_apply, Matrix.conjTranspose_apply, Fin.sum_univ_two,
+      Matrix.smul_apply, smul_eq_mul, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
+      Matrix.cons_val_one, Matrix.cons_val_fin_one, Matrix.one_apply, Complex.star_def,
+      map_mul, map_neg, map_one, Complex.conj_ofReal, Complex.conj_I, Complex.ofReal_div,
+      Complex.ofReal_one, one_div, Fin.isValue, Fin.reduceEq, ↓reduceIte] <;>
+    (try ring_nf) <;> simp only [h2, Complex.I_sq] <;> ring
 
 lemma signedPauliU_diag_depolDualF (u : Fin 6) :
     depolDualF u =
       signedPauliU u * Matrix.diagonal ![(7 / 2 : ℂ), (-5 / 2 : ℂ)] * (signedPauliU u)ᴴ := by
   have h2 := inv_sqrt2_sq_complex
   fin_cases u <;> ext i j <;> fin_cases i <;> fin_cases j <;>
-    simp [depolDualF, signedPauli, signedPauliU, pauliX, pauliY, pauliZ,
-      Matrix.mul_apply, Matrix.conjTranspose_apply, Fin.sum_univ_two, Complex.star_def] <;>
-    first | ring | (linear_combination 6 * h2) | (linear_combination (-6) * h2) |
-      (linear_combination (6 * Complex.I) * h2) |
-      (linear_combination (-6 * Complex.I) * h2) |
-      (linear_combination 1 * h2) | (linear_combination (-1) * h2)
+    simp only [depolDualF, signedPauli, signedPauliU, pauliX, pauliY, pauliZ,
+      Matrix.add_apply, Matrix.smul_apply, smul_eq_mul, Matrix.mul_apply,
+      Matrix.conjTranspose_apply, Matrix.diagonal_apply, Fin.sum_univ_two,
+      Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero, Matrix.cons_val_one,
+      Matrix.cons_val_fin_one, Matrix.one_apply, Complex.star_def,
+      map_mul, map_neg, map_one, Complex.conj_ofReal, Complex.conj_I, Complex.ofReal_div,
+      Complex.ofReal_one, one_div, Fin.isValue, Fin.reduceEq, ↓reduceIte,
+      mul_zero, zero_mul, add_zero, zero_add] <;>
+    (try ring_nf) <;> simp only [h2, Complex.I_sq] <;> ring
 
 lemma depolDualWeight_eq_restricted {N : ℕ} (s : Fin N → Fin 6) {U : Finset (Fin N)}
     {A : QubitOp N} (hA : A ∈ supportedOn U) :
@@ -532,7 +536,7 @@ lemma depolDualWeight_eq_restricted {N : ℕ} (s : Fin N → Fin 6) {U : Finset 
     by_cases hx : x ∈ U
     · simp [hx]
     · simp only [hx, ↓reduceIte, ha x hx, pauliMat_zero_eq_one, Matrix.one_mul, depolDualF_trace]
-      simp [Matrix.trace, Fin.sum_univ_two]; ring
+      simp [Matrix.trace, Fin.sum_univ_two]
   | zero => simp [depolDualWeight]
   | add X Y _ _ ihX ihY =>
     rw [depolDualWeight_add, Matrix.add_mul, Matrix.trace_add, ihX, ihY]
@@ -568,7 +572,7 @@ theorem norm_depolDualWeight_le {N : ℕ} (s : Fin N → Fin 6) {U : Finset (Fin
         by_contra hall; push Not at hall; exact hij (funext hall)
       rcases hne with ⟨x, hx⟩
       exact Finset.prod_eq_zero (Finset.mem_univ x) (by simp [Matrix.one_apply, hx])
-  have hV_unit' : V * Vᴴ = 1 := Matrix.mul_eq_one_comm.mp hV_unit
+  have hV_unit' : V * Vᴴ = 1 := mul_eq_one_comm.mp hV_unit
   have hF_eq : kronOp (fun x ↦ if x ∈ U then depolDualF (s x) else (1 / 2 : ℂ) • 1) =
       V * D * Vᴴ := by
     dsimp only [V, D]
@@ -632,6 +636,9 @@ theorem norm_depolDualWeight_le {N : ℕ} (s : Fin N → Fin 6) {U : Finset (Fin
       apply Finset.prod_congr rfl; intro x _
       by_cases hx : x ∈ U <;> simp [hx]
     simp_rw [hnorm_D]
+    change ∑ i : Fin N → Fin 2, ∏ x : Fin N,
+        ‖if x ∈ U then (![(7 / 2 : ℂ), (-5 / 2 : ℂ)] (i x))
+          else (![(1 / 2 : ℂ), (1 / 2 : ℂ)] (i x))‖ = (6 : ℝ) ^ U.card
     rw [← Fintype.prod_sum]
     have hsite : ∀ x : Fin N,
         (∑ b : Fin 2, ‖if x ∈ U then (![(7 / 2 : ℂ), (-5 / 2 : ℂ)] b)
