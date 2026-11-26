@@ -50,10 +50,13 @@ lemma opNorm_conjTranspose_le {N : ℕ} (A : QubitOp N) : opNorm Aᴴ ≤ opNorm
       intro M w i; simp [opToCLM, EuclideanSpace.equiv, Matrix.mulVec, dotProduct]
     rw [PiLp.inner_apply, PiLp.inner_apply]
     simp only [RCLike.inner_apply, Complex.star_def]
-    simp_rw [hop, map_sum, map_mul, Finset.sum_mul, Finset.mul_sum]
-    rw [Finset.sum_comm]
-    apply Finset.sum_congr rfl; intro i _
+    simp_rw [hop, map_sum, map_mul]
+    simp_rw [Finset.sum_mul, Finset.mul_sum]
+    conv_rhs => rw [Finset.sum_comm]
     apply Finset.sum_congr rfl; intro j _
+    conv_rhs => rw [Finset.sum_comm]
+    apply Finset.sum_congr rfl; intro i _
+    apply Finset.sum_congr rfl; intro k _
     simp only [Matrix.conjTranspose_apply, Complex.star_def, starRingEnd_self_apply]
     ring
   have hsq : ‖opToCLM Aᴴ v‖ ^ 2 ≤ ‖v‖ * (opNorm A * ‖opToCLM Aᴴ v‖) := by
@@ -168,7 +171,8 @@ lemma opNorm_kron_depolPHalf_mul_inv_le {N : ℕ} (s : Fin N → Fin 6) (U : Fin
           if x ∈ U then Matrix.diagonal ![(a : ℂ), (b : ℂ)] else 1) := by
         ext i j; simp only [Matrix.diagonal_apply, kronOp, Matrix.of_apply]
         by_cases hij : i = j
-        · subst hij; simp [d]
+        · subst hij; dsimp only [d]; simp only [Matrix.diagonal_apply_eq]
+          apply Finset.prod_congr rfl; intro x _; by_cases hx : x ∈ U <;> simp [hx]
         · simp only [hij, ↓reduceIte]
           have hne : ∃ x : Fin N, i x ≠ j x := by
             by_contra hall; push Not at hall; exact hij (funext hall)
@@ -189,12 +193,13 @@ lemma opNorm_kron_depolPHalf_mul_inv_le {N : ℕ} (s : Fin N → Fin 6) (U : Fin
             · intro x _; exact norm_nonneg _
             · intro x _; by_cases hx : x ∈ U
               · simp only [hx, ↓reduceIte]
-                fin_cases (i x) <;>
+                generalize hix : i x = b
+                fin_cases b <;>
                   simp [Complex.norm_real, Real.norm_eq_abs, ha, hb]
               · simp [hx]
         _ = c ^ U.card := by
             rw [Finset.prod_ite, Finset.prod_const_one, mul_one, Finset.prod_const]
-            congr 1; ext x; simp
+            congr 1; congr 1; ext x; simp
     have hDnorm : opNorm (Matrix.diagonal d) ≤ c ^ U.card :=
       opNorm_diagonal_le d (pow_nonneg hc _) hd_le
     calc opNorm (V * Matrix.diagonal d * Vᴴ)
@@ -206,36 +211,29 @@ lemma opNorm_kron_depolPHalf_mul_inv_le {N : ℕ} (s : Fin N → Fin 6) (U : Fin
             (mul_le_mul hV1 hDnorm (opNorm_nonneg _) zero_le_one)
             hVh1 (opNorm_nonneg _) (by positivity)
       _ = c ^ U.card := by ring
+  have hlin_diag : ∀ (u : Fin 6) (α β : ℂ),
+      α • (1 : Matrix (Fin 2) (Fin 2) ℂ) + β • signedPauli u =
+        signedPauliU u * Matrix.diagonal ![α + β, α - β] * (signedPauliU u)ᴴ := by
+    intro u α β
+    have hUU : (1 : Matrix (Fin 2) (Fin 2) ℂ) =
+        signedPauliU u * Matrix.diagonal ![(1 : ℂ), (1 : ℂ)] * (signedPauliU u)ᴴ := by
+      rw [show Matrix.diagonal ![(1 : ℂ), (1 : ℂ)] = 1 from by
+        ext i j; fin_cases i <;> fin_cases j <;> simp, Matrix.mul_one]
+      exact (mul_eq_one_comm.mp (signedPauliU_unitary u)).symm
+    conv_lhs => rw [hUU, signedPauliU_diag_signedPauli u]
+    rw [Matrix.smul_mul, Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_smul,
+      ← Matrix.add_mul, ← Matrix.mul_add]
+    congr 2; ext i j; fin_cases i <;> fin_cases j <;> simp <;> ring
   have hdiag_half : ∀ u : Fin 6, depolPHalf u =
       signedPauliU u * Matrix.diagonal ![(((Real.sqrt 3 / 2 : ℝ) : ℂ)), (((1 / 2 : ℝ) : ℂ))] *
         (signedPauliU u)ᴴ := by
-    intro u
-    unfold depolPHalf
-    conv_lhs => rw [signedPauliU_diag_signedPauli u]
-    have hUU : (1 : Matrix (Fin 2) (Fin 2) ℂ) =
-        signedPauliU u * Matrix.diagonal ![(1 : ℂ), (1 : ℂ)] * (signedPauliU u)ᴴ := by
-      rw [show Matrix.diagonal ![(1 : ℂ), (1 : ℂ)] = 1 from by
-        ext i j; fin_cases i <;> fin_cases j <;> simp, Matrix.mul_one]
-      exact (mul_eq_one_comm.mp (signedPauliU_unitary u)).symm
-    conv_lhs => rw [hUU]
-    simp only [Matrix.smul_mul, Matrix.mul_smul, ← Matrix.add_mul, ← Matrix.mul_add]
-    congr 2
-    ext i j; fin_cases i <;> fin_cases j <;> simp <;> push_cast <;> ring
+    intro u; unfold depolPHalf; rw [hlin_diag]
+    congr 2; ext i j; fin_cases i <;> fin_cases j <;> simp <;> push_cast <;> ring
   have hdiag_inv : ∀ u : Fin 6, depolPHalfInv u =
       signedPauliU u * Matrix.diagonal ![(((2 / Real.sqrt 3 : ℝ) : ℂ)), (((2 : ℝ) : ℂ))] *
         (signedPauliU u)ᴴ := by
-    intro u
-    unfold depolPHalfInv
-    conv_lhs => rw [signedPauliU_diag_signedPauli u]
-    have hUU : (1 : Matrix (Fin 2) (Fin 2) ℂ) =
-        signedPauliU u * Matrix.diagonal ![(1 : ℂ), (1 : ℂ)] * (signedPauliU u)ᴴ := by
-      rw [show Matrix.diagonal ![(1 : ℂ), (1 : ℂ)] = 1 from by
-        ext i j; fin_cases i <;> fin_cases j <;> simp, Matrix.mul_one]
-      exact (mul_eq_one_comm.mp (signedPauliU_unitary u)).symm
-    conv_lhs => rw [hUU]
-    simp only [Matrix.smul_mul, Matrix.mul_smul, ← Matrix.add_mul, ← Matrix.mul_add]
-    congr 2
-    ext i j; fin_cases i <;> fin_cases j <;> simp <;> push_cast <;> ring
+    intro u; unfold depolPHalfInv; rw [hlin_diag]
+    congr 2; ext i j; fin_cases i <;> fin_cases j <;> simp <;> push_cast <;> ring
   have hs3_ge1 : (1 : ℝ) ≤ Real.sqrt 3 := by
     have : (1 : ℝ) = Real.sqrt 1 := by simp
     rw [this]; exact Real.sqrt_le_sqrt (by norm_num)
@@ -262,7 +260,7 @@ private lemma pauliMat_span_all (M : Matrix (Fin 2) (Fin 2) ℂ) :
         ((Complex.I * (M 0 1 - M 1 0)) / 2) • pauliMat 2 +
         ((M 0 0 - M 1 1) / 2) • pauliMat 3 := by
   ext i j; fin_cases i <;> fin_cases j <;>
-    simp [pauliMat, pauliX, pauliY, pauliZ, Complex.I_sq] <;> ring
+    simp [pauliMat, pauliX, pauliY, pauliZ] <;> (try ring_nf) <;> simp [Complex.I_sq] <;> ring
 
 lemma prodDepolBasis_mem_supportedOn_compl {N : ℕ} (s s' : Fin N → Fin 6)
     (U : Finset (Fin N)) (a : Fin N → Fin 4) (ha : ∀ y ∈ U, a y = 0) :
@@ -398,7 +396,7 @@ theorem prodDepolNormSq_matComm_supportedOn_le {N : ℕ} (s s' : Fin N → Fin 6
             globalDepolPHalf N s := by
           unfold globalDepolPHalf; dsimp only [R]; rw [kronOp_mul]
           congr 1; funext x; by_cases hx : x ∈ U <;> simp [hx]
-        calc globalDepolPHalf N s * (L * W * R)
+        symm; calc globalDepolPHalf N s * (L * W * R)
             = (globalDepolPHalf N s * L) * W * R := by simp only [Matrix.mul_assoc]
           _ = (kronOp (fun x ↦ if x ∈ U then 1 else depolPHalf (s x)) * W) * R := by rw [hstep]
           _ = (W * kronOp (fun x ↦ if x ∈ U then 1 else depolPHalf (s x))) * R := by rw [hstep2]
@@ -480,7 +478,7 @@ theorem prodDepolNormSq_matComm_supportedOn_le {N : ℕ} (s s' : Fin N → Fin 6
             globalDepolPHalf N s' := by
           unfold globalDepolPHalf; dsimp only [L]; rw [kronOp_mul]
           congr 1; funext x; by_cases hx : x ∈ U <;> simp [hx]
-        calc (L * W * R) * globalDepolPHalf N s'
+        symm; calc (L * W * R) * globalDepolPHalf N s'
             = L * (W * (R * globalDepolPHalf N s')) := by simp only [Matrix.mul_assoc]
           _ = L * (W * kronOp (fun x ↦ if x ∈ U then 1 else depolPHalf (s' x))) := by rw [hstep]
           _ = L * (kronOp (fun x ↦ if x ∈ U then 1 else depolPHalf (s' x)) * W) := by rw [hstep2]
@@ -514,7 +512,6 @@ theorem prodDepolNormSq_matComm_supportedOn_le {N : ℕ} (s s' : Fin N → Fin 6
         (if ∀ y ∈ U, a y = 0 then (0 : ℂ) else c a) • prodDepolBasis s s' a := by
       dsimp only [Z, B]
       conv_lhs => rw [prodDepolBasis_expand s s' A]
-      rw [← Finset.sum_sub_distrib]
       have hB_full : ∑ a ∈ Finset.univ.filter (fun a : Fin N → Fin 4 ↦ ∀ y ∈ U, a y = 0),
             c a • prodDepolBasis s s' a =
           ∑ a : Fin N → Fin 4,
