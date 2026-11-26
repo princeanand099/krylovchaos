@@ -405,14 +405,15 @@ theorem integral_pow_mul_exp_neg_Ioi {a : ℝ} (ha : 0 < a) (k : ℕ) :
     dsimp only
     rw [mul_pow]; ring
   rw [hpull] at hcomp
-  have hak_ne : a ^ k ≠ 0 := pow_ne_zero k ha.ne'
-  rw [pow_succ, ← div_div]
-  have hdiv : ∫ ω in Set.Ioi (0 : ℝ), ω ^ k * Real.exp (-(a * ω)) =
-      (a⁻¹ * (k.factorial : ℝ)) / a ^ k := by
-    field_simp [hak_ne]
-    linarith [hcomp]
-  rw [hdiv]
-  field_simp [ha.ne', hak_ne]
+  have hak1 : a ^ (k + 1) ≠ 0 := pow_ne_zero (k + 1) ha.ne'
+  have hmul : a ^ (k + 1) * ∫ ω in Set.Ioi (0 : ℝ), ω ^ k * Real.exp (-(a * ω)) =
+      (k.factorial : ℝ) := by
+    calc a ^ (k + 1) * ∫ ω in Set.Ioi (0 : ℝ), ω ^ k * Real.exp (-(a * ω))
+        = a * (a ^ k * ∫ ω in Set.Ioi (0 : ℝ), ω ^ k * Real.exp (-(a * ω))) := by
+            rw [pow_succ]; ring
+      _ = a * (a⁻¹ * (k.factorial : ℝ)) := by rw [hcomp]
+      _ = (k.factorial : ℝ) := by field_simp [ha.ne']
+  exact eq_div_of_mul_eq hak1 (by rw [mul_comm]; exact hmul)
 
 /-- **Ground-Up Meixner `sech` Moment Lower Bound (Eq. 5.5)**:
 For every `α₁ > 0` and `m : ℕ`,
