@@ -6,6 +6,7 @@ Authors: Prince Anand
 import KrylovChaos.LanczosMoments
 import KrylovChaos.KrylovTail
 import Mathlib.Analysis.InnerProductSpace.Adjoint
+import Mathlib.Analysis.InnerProductSpace.Calculus
 import Mathlib.Analysis.InnerProductSpace.PiL2
 import Mathlib.Analysis.Normed.Algebra.Exponential
 import Mathlib.Tactic
@@ -34,6 +35,85 @@ namespace KrylovChaos
 section BanachExpDeriv
 
 variable {E : Type*} [NormedRing E] [NormedAlgebra ℝ E] [CompleteSpace E]
+
+/-- Convert a summable `ℕ × ℕ` series into a Cauchy-product antidiagonal series. -/
+private lemma tsum_prod_eq_tsum_antidiag_real {G : Type*} [NormedAddCommGroup G] [CompleteSpace G]
+    (h : ℕ × ℕ → G) (hh : Summable h) :
+    (∑' p : ℕ × ℕ, h p) = ∑' m : ℕ, ∑ p ∈ Finset.antidiagonal m, h p := by
+  let e : (m : ℕ) × {p : ℕ × ℕ // p.1 + p.2 = m} ≃ ℕ × ℕ :=
+    Equiv.sigmaFiberEquiv (fun p : ℕ × ℕ ↦ p.1 + p.2)
+  have hcomp : Summable (fun q : (m : ℕ) × {p : ℕ × ℕ // p.1 + p.2 = m} ↦ h (e q)) :=
+    hh.comp_injective e.injective
+  have hfib : ∀ m : ℕ, Fintype {p : ℕ × ℕ // p.1 + p.2 = m} := fun m ↦
+    Fintype.ofEquiv (Finset.antidiagonal m)
+      { toFun := fun p ↦ ⟨p.1, Finset.mem_antidiagonal.mp p.2⟩
+        invFun := fun p ↦ ⟨p.1, Finset.mem_antidiagonal.mpr p.2⟩
+        left_inv := fun _ ↦ rfl
+        right_inv := fun _ ↦ rfl }
+  have h1 : (∑' p : ℕ × ℕ, h p) = ∑' q : (m : ℕ) × {p : ℕ × ℕ // p.1 + p.2 = m}, h (e q) :=
+    (e.tsum_eq h).symm
+  rw [h1, hcomp.tsum_sigma' (fun m ↦ (hasSum_fintype _).summable)]
+  refine tsum_congr fun m ↦ ?_
+  haveI := hfib m
+  rw [tsum_fintype]
+  refine Finset.sum_bij (fun p _ ↦ p.1) ?_ ?_ ?_ ?_
+  · intro p _; exact Finset.mem_antidiagonal.mpr p.2
+  · intro p₁ _ p₂ _ hp; exact Subtype.ext hp
+  · intro p hp; exact ⟨⟨p, Finset.mem_antidiagonal.mp hp⟩, Finset.mem_univ _, rfl⟩
+  · intro p _; rfl
+
+/-- Exponential addition formula for commuting elements in any complete normed `ℝ`-algebra
+(requires neither `NormOneClass` nor `NormedAlgebra ℚ`). -/
+private lemma exp_add_of_commute_real {x y : E} (hxy : Commute x y) :
+    NormedSpace.exp (x + y) = NormedSpace.exp x * NormedSpace.exp y := by
+  let f : ℕ → E := fun j ↦ ((j.factorial : ℝ)⁻¹) • x ^ j
+  let g : ℕ → E := fun k ↦ ((k.factorial : ℝ)⁻¹) • y ^ k
+  have hfx : NormedSpace.exp x = ∑' j : ℕ, f j := by
+    rw [NormedSpace.exp_eq_tsum (𝕂 := ℝ) (𝔸 := E)]
+  have hgy : NormedSpace.exp y = ∑' k : ℕ, g k := by
+    rw [NormedSpace.exp_eq_tsum (𝕂 := ℝ) (𝔸 := E)]
+  have hxy_exp : NormedSpace.exp (x + y) = ∑' m : ℕ, ((m.factorial : ℝ)⁻¹) • (x + y) ^ m := by
+    rw [NormedSpace.exp_eq_tsum (𝕂 := ℝ) (𝔸 := E)]
+  have hfn : Summable (fun j : ℕ ↦ ‖f j‖) := by
+    rw [← summable_nat_add_iff 1]
+    refine Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) (fun j ↦ ?_)
+      ((summable_nat_add_iff 1).mpr (Real.summable_pow_div_factorial ‖x‖))
+    calc ‖f (j + 1)‖ = ((j + 1).factorial : ℝ)⁻¹ * ‖x ^ (j + 1)‖ := by
+            rw [norm_smul, Real.norm_of_nonneg (by positivity)]
+      _ ≤ ((j + 1).factorial : ℝ)⁻¹ * ‖x‖ ^ (j + 1) := by
+            gcongr; exact norm_pow_le' _ (Nat.succ_pos j)
+      _ = ‖x‖ ^ (j + 1) / ((j + 1).factorial : ℝ) := by ring
+  have hgn : Summable (fun k : ℕ ↦ ‖g k‖) := by
+    rw [← summable_nat_add_iff 1]
+    refine Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) (fun k ↦ ?_)
+      ((summable_nat_add_iff 1).mpr (Real.summable_pow_div_factorial ‖y‖))
+    calc ‖g (k + 1)‖ = ((k + 1).factorial : ℝ)⁻¹ * ‖y ^ (k + 1)‖ := by
+            rw [norm_smul, Real.norm_of_nonneg (by positivity)]
+      _ ≤ ((k + 1).factorial : ℝ)⁻¹ * ‖y‖ ^ (k + 1) := by
+            gcongr; exact norm_pow_le' _ (Nat.succ_pos k)
+      _ = ‖y‖ ^ (k + 1) / ((k + 1).factorial : ℝ) := by ring
+  have hprod_summ : Summable (fun p : ℕ × ℕ ↦ f p.1 * g p.2) :=
+    summable_mul_of_summable_norm hfn hgn
+  rw [hfx, hgy, tsum_mul_tsum_of_summable_norm hfn hgn,
+    tsum_prod_eq_tsum_antidiag_real _ hprod_summ, hxy_exp]
+  refine tsum_congr fun m ↦ ?_
+  rw [hxy.add_pow m, Finset.smul_sum,
+    Finset.Nat.sum_antidiagonal_eq_sum_range_succ (fun j k ↦ f j * g k) m]
+  apply Finset.sum_congr rfl
+  intro j hj
+  have hjm : j ≤ m := Nat.lt_succ_iff.mp (Finset.mem_range.mp hj)
+  have hfac_ne : (m.factorial : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.factorial_ne_zero m)
+  have hj_ne : (j.factorial : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.factorial_ne_zero j)
+  have hmj_ne : ((m - j).factorial : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.factorial_ne_zero (m - j))
+  have hchoose : ((m.factorial : ℝ)⁻¹) * (Nat.choose m j : ℝ) =
+      ((j.factorial : ℝ)⁻¹) * (((m - j).factorial : ℝ)⁻¹) := by
+    have hnat : (Nat.choose m j : ℝ) * (j.factorial : ℝ) * ((m - j).factorial : ℝ) =
+        (m.factorial : ℝ) := by
+      exact_mod_cast Nat.choose_mul_factorial_mul_factorial hjm
+    field_simp [hfac_ne, hj_ne, hmj_ne]
+    linear_combination hnat
+  simp only [f, g, smul_mul_assoc, mul_smul_comm, smul_smul, ← Nat.cast_smul_eq_nsmul ℝ]
+  rw [mul_comm (((m - j).factorial : ℝ)⁻¹), ← hchoose]
 
 /-- Helper: `‖exp(h • A) - 1 - h • A‖ ≤ |h|^2 * ‖A‖^2 * exp(|h| * ‖A‖)` (no `NormOneClass` needed). -/
 private lemma norm_exp_smul_sub_one_sub_le (A : E) (h : ℝ) :
@@ -111,7 +191,7 @@ theorem hasDerivAt_exp_smul_real (A : E) (t : ℝ) :
     have hadd : NormedSpace.exp ((t + h) • A) =
         NormedSpace.exp (h • A) * NormedSpace.exp (t • A) := by
       rw [add_smul, add_comm (t • A) (h • A)]
-      exact NormedSpace.exp_add_of_commute (𝕂 := ℝ) (hcomm h t)
+      exact exp_add_of_commute_real (hcomm h t)
     have hrew : h⁻¹ • (NormedSpace.exp ((t + h) • A) - NormedSpace.exp (t • A)) -
         A * NormedSpace.exp (t • A) =
         (h⁻¹ • (NormedSpace.exp (h • A) - 1 - h • A)) * NormedSpace.exp (t • A) := by
@@ -119,7 +199,6 @@ theorem hasDerivAt_exp_smul_real (A : E) (t : ℝ) :
       symm
       rw [smul_mul_assoc, sub_mul, sub_mul, one_mul, smul_mul_assoc,
         smul_sub, smul_sub, smul_smul, inv_mul_cancel₀ hh, one_smul]
-      abel
     rw [hrew]
     calc ‖(h⁻¹ • (NormedSpace.exp (h • A) - 1 - h • A)) * NormedSpace.exp (t • A)‖
         ≤ ‖h⁻¹ • (NormedSpace.exp (h • A) - 1 - h • A)‖ * ‖NormedSpace.exp (t • A)‖ :=
@@ -164,7 +243,8 @@ noncomputable def jacobiCLM (D : ℕ) (b : ℕ → ℝ) :
 /-- `jacobiCLM D b` is self-adjoint on `EuclideanSpace ℂ (Fin D)`. -/
 theorem jacobiCLM_isSelfAdjoint (D : ℕ) (b : ℕ → ℝ) :
     ContinuousLinearMap.adjoint (jacobiCLM D b) = jacobiCLM D b := by
-  ext v
+  apply ContinuousLinearMap.ext
+  intro v
   apply ext_inner_left ℂ
   intro u
   rw [ContinuousLinearMap.adjoint_inner_right]
@@ -197,7 +277,7 @@ lemma jacobiUnitary_add (D : ℕ) (b : ℕ → ℝ) (t s : ℝ) :
     jacobiUnitary D b (t + s) = jacobiUnitary D b t * jacobiUnitary D b s := by
   unfold jacobiUnitary
   rw [add_smul]
-  refine NormedSpace.exp_add_of_commute (𝕂 := ℝ) ?_
+  refine exp_add_of_commute_real ?_
   unfold Commute SemiconjBy
   simp only [smul_mul_assoc, mul_smul_comm]
   rw [smul_comm]
@@ -219,7 +299,7 @@ theorem jacobiUnitary_norm_preserve (D : ℕ) (b : ℕ → ℝ) (t : ℝ)
   have hderiv_sq : ∀ s : ℝ,
       HasDerivAt (fun r : ℝ ↦ ‖jacobiUnitary D b r v‖ ^ 2) 0 s := by
     intro s
-    have hinner := (hderiv_vec s).inner ℝ (hderiv_vec s)
+    have hinner := HasDerivAt.inner ℝ (hderiv_vec s) (hderiv_vec s)
     have hfun : (fun r : ℝ ↦ ‖jacobiUnitary D b r v‖ ^ 2) =
         fun r : ℝ ↦ @inner ℝ (EuclideanSpace ℂ (Fin D)) _ (jacobiUnitary D b r v)
           (jacobiUnitary D b r v) := by
