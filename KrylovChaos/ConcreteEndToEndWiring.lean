@@ -56,8 +56,9 @@ theorem theorem_1_1a_infinite_exact_constant {α γ : ℝ}
   have h1 : (1 / 2 + γ / α) * (4 : ℝ) = 2 + 4 * γ / α := by ring
   have h4 : (4 : ℝ) / 4 = 1 := by norm_num
   have hmain := theorem_1_1a_infinite_tail_and_complexity φ hα hγ (by norm_num : (0 : ℝ) < 4) t ht
-    (by simpa [h1] using hfatou)
-  simpa [h1, h4] using hmain
+    (fun M ↦ by rw [h1]; exact hfatou M)
+  rw [h1, h4] at hmain
+  exact hmain
 
 end Flaw12ExactConstant
 
@@ -124,7 +125,7 @@ theorem prop_4_1_concrete_operator {N s : ℕ} (G : GibbsData N) {A : QubitOp N}
     · rw [if_pos hks]; exact wightmanDistSq_le_normSq G _ A
     · rw [if_neg hks]
       have hmem : A ∈ filtrationSubmodule N k :=
-        filtrationSubmodule_mono (by omega) hA
+        filtrationSubmodule_mono N (by omega) hA
       rw [wightmanDistSq_eq_zero_of_mem G _ hmem]
   have hnorm_nn : 0 ≤ gibbsWightmanNormSq G A := by
     unfold gibbsWightmanNormSq gibbsWightmanInner
@@ -173,8 +174,8 @@ private lemma sqrt_wightmanDistSq_add_le {N : ℕ} (G : GibbsData N)
       rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter]
       have h1 : (hsInner (jBeta G.ρQuarter Z) (jBeta G.ρQuarter Z)).re =
           ‖qubitOpToHS N (jBeta G.ρQuarter Z)‖ ^ 2 := by
-        rw [← qubitOpToHS_inner, inner_self_eq_norm_sq_to_K]
-        simp
+        rw [← qubitOpToHS_inner, inner_self_eq_norm_sq_to_K, ← Complex.ofReal_pow, Complex.ofReal_re]
+      change Real.sqrt (hsInner (jBeta G.ρQuarter Z) (jBeta G.ρQuarter Z)).re = _
       rw [h1, Real.sqrt_sq (norm_nonneg _)]
     rw [hnorm_eq, hnorm_eq, hnorm_eq]
     have hj_add : jBeta G.ρQuarter (X + Y) = jBeta G.ρQuarter X + jBeta G.ρQuarter Y := by
@@ -203,7 +204,7 @@ private lemma sqrt_wightmanDistSq_add_le {N : ℕ} (G : GibbsData N)
     intro B₂ hB₂
     by_cases hneg : Real.sqrt (wightmanDistSq G S (A + R)) - Real.sqrt (gibbsWightmanNormSq G (R - B₂)) ≤ 0
     · exact le_trans hneg (Real.sqrt_nonneg _)
-    · push_neg at hneg
+    · push Not at hneg
       have hsq : (Real.sqrt (wightmanDistSq G S (A + R)) - Real.sqrt (gibbsWightmanNormSq G (R - B₂))) ^ 2 ≤
           wightmanDistSq G S A := by
         unfold wightmanDistSq
@@ -222,7 +223,7 @@ private lemma sqrt_wightmanDistSq_add_le {N : ℕ} (G : GibbsData N)
       exact (Real.le_sqrt hneg.le (wightmanDistSq_nonneg G S A)).mpr hsq
   by_cases hneg2 : Real.sqrt (wightmanDistSq G S (A + R)) - Real.sqrt (wightmanDistSq G S A) ≤ 0
   · linarith [Real.sqrt_nonneg (wightmanDistSq G S R)]
-  · push_neg at hneg2
+  · push Not at hneg2
     have hsq2 : (Real.sqrt (wightmanDistSq G S (A + R)) - Real.sqrt (wightmanDistSq G S A)) ^ 2 ≤
         wightmanDistSq G S R := by
       unfold wightmanDistSq
@@ -270,7 +271,7 @@ theorem wightmanQ_add_bound {N : ℕ} (G : GibbsData N) (A R : QubitOp N) :
         2 * (Real.sqrt (wightmanDistSq G (filtrationSubmodule N k) A) *
              Real.sqrt (wightmanDistSq G (filtrationSubmodule N k) R)) +
         wightmanDistSq G (filtrationSubmodule N k) R := by
-      ring_nf; rw [Real.sq_sqrt hnnA, Real.sq_sqrt hnnR]; ring
+      ring_nf; rw [Real.sq_sqrt hnnA, Real.sq_sqrt hnnR]
     linarith
   have hcs : ∑ k ∈ Finset.range N,
         Real.sqrt (wightmanDistSq G (filtrationSubmodule N k) A) *
