@@ -3,16 +3,42 @@ Copyright (c) 2026 Prince Anand. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Prince Anand
 -/
+import Mathlib.Algebra.Order.BigOperators.Group.Finset
+import Mathlib.Analysis.Calculus.Deriv.Basic
+import Mathlib.Analysis.Calculus.Deriv.Comp
+import Mathlib.Analysis.Calculus.Deriv.MeanValue
+import Mathlib.Analysis.Calculus.MeanValue
+import Mathlib.Analysis.Complex.Basic
+import Mathlib.Analysis.InnerProductSpace.Adjoint
+import Mathlib.Analysis.InnerProductSpace.Basic
+import Mathlib.Analysis.InnerProductSpace.Calculus
+import Mathlib.Analysis.InnerProductSpace.PiL2
+import Mathlib.Analysis.InnerProductSpace.Projection.Basic
+import Mathlib.Analysis.Normed.Algebra.Exponential
+import Mathlib.Analysis.PSeries
+import Mathlib.Analysis.SpecialFunctions.ExpDeriv
+import Mathlib.Analysis.SpecialFunctions.Gamma.Basic
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
+import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
+import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+import Mathlib.Analysis.SpecificLimits.Normed
 import Mathlib.Data.Matrix.Basic
+import Mathlib.Data.Nat.Choose.Sum
 import Mathlib.LinearAlgebra.Matrix.Trace
+import Mathlib.MeasureTheory.Integral.Gamma
 import Mathlib.Tactic
+import Mathlib.Topology.Compactness.Compact
+import Mathlib.Topology.MetricSpace.Basic
 
 /-!
 # Locked Challenge Definitions for `KrylovChaos`
 
 Self-contained transparent definitions (using only Lean core and Mathlib)
 referenced by the locked headline theorem signatures in `Challenge.lean`.
+Imports the exact union of Mathlib modules used across `KrylovChaos` so that
+typeclass synthesis produces identical kernel expressions in `Challenge` and `Solution`.
 -/
 
 namespace ChallengeDefs
