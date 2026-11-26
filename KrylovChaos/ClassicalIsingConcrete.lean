@@ -87,7 +87,8 @@ lemma one_sub_tanh_sq_pos (h : ℝ) : 0 < 1 - (Real.tanh h) ^ 2 := by
     have he1 := Real.exp_pos h
     have he2 := Real.exp_pos (-h)
     constructor <;> linarith
-  nlinarith [sq_abs (Real.tanh h)]
+  have hlt := abs_lt.mp h1
+  nlinarith
 
 lemma siteChi_mean (h : ℝ) : ∑ b : Bool, siteBernoulli h b * siteChi h b = 0 := by
   unfold siteChi
@@ -155,9 +156,7 @@ theorem chiBasis_orthonormal {N : ℕ} (h : Fin N → ℝ) (S T : Finset (Fin N)
       by_contra hall
       push Not at hall
       apply hST; ext i
-      constructor
-      · intro hiS; by_contra hiT; exact (hall i).1 hiS hiT
-      · intro hiT; by_contra hiS; exact (hall i).2 hiS hiT
+      exact ⟨fun hiS ↦ (hall i).1 hiS, fun hiT ↦ by by_contra hiS; exact (hall i).2 hiS hiT⟩
     rcases hex with ⟨i₀, ⟨hiS, hiT⟩ | ⟨hiS, hiT⟩⟩
     · apply Finset.prod_eq_zero (Finset.mem_univ i₀)
       simp only [hiS, hiT, ↓reduceIte, mul_one]
@@ -356,12 +355,12 @@ lemma siteChi_flip_diff (h : ℝ) (b : Bool) :
   have hpos := one_sub_tanh_sq_pos h
   unfold siteChi
   cases b <;> simp only [Bool.not_true, Bool.not_false, spinVal, ↓reduceIte, Bool.false_eq_true]
-  · rw [← sub_div, show (1 - Real.tanh h) - (-1 - Real.tanh h) = 2 by ring,
-      div_div, show Real.sqrt (1 - (Real.tanh h) ^ 2) * 2 = 2 * Real.sqrt (1 - (Real.tanh h) ^ 2) by ring,
-      mul_div_mul_left _ _ (by norm_num : (2 : ℝ) ≠ 0), one_div, inv_pow, Real.sq_sqrt hpos.le]
   · rw [← sub_div, show (-1 - Real.tanh h) - (1 - Real.tanh h) = -2 by ring,
       neg_div, neg_sq, div_div,
       show Real.sqrt (1 - (Real.tanh h) ^ 2) * 2 = 2 * Real.sqrt (1 - (Real.tanh h) ^ 2) by ring,
+      mul_div_mul_left _ _ (by norm_num : (2 : ℝ) ≠ 0), one_div, inv_pow, Real.sq_sqrt hpos.le]
+  · rw [← sub_div, show (1 - Real.tanh h) - (-1 - Real.tanh h) = 2 by ring,
+      div_div, show Real.sqrt (1 - (Real.tanh h) ^ 2) * 2 = 2 * Real.sqrt (1 - (Real.tanh h) ^ 2) by ring,
       mul_div_mul_left _ _ (by norm_num : (2 : ℝ) ≠ 0), one_div, inv_pow, Real.sq_sqrt hpos.le]
 
 theorem prodBernoulli_discrete_grad_eq {N : ℕ} (h : Fin N → ℝ)
@@ -568,7 +567,7 @@ theorem distSqDegree_prodBernoulli_eq {N : ℕ} (h : Fin N → ℝ)
       rw [← Finset.mul_sum, chiBasis_orthonormal]
       by_cases hST : S = T
       · subst hST; simp [sq]
-      · rw [if_neg hST, mul_zero]
+      · rw [if_neg hST, if_neg hST, mul_zero]
     rw [Finset.sum_congr rfl hinner]
     simp [hS]
   apply le_antisymm

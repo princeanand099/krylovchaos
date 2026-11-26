@@ -167,14 +167,16 @@ private lemma singleSite_pauli_twirl (M : Matrix (Fin 2) (Fin 2) ℂ) :
       ((1 / 2 : ℂ) * M.trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
   ext i j
   fin_cases i <;> fin_cases j <;>
-    simp [Fin.sum_univ_four, pauliMat, Matrix.mul_apply, Matrix.vecMul, dotProduct,
-      Fin.sum_univ_two, Matrix.trace, Matrix.diag] <;> ring
+    (simp [Fin.sum_univ_four, pauliMat, Matrix.mul_apply, Matrix.vecMul, dotProduct,
+      Fin.sum_univ_two, Matrix.trace, Matrix.diag]; ring_nf; simp [Complex.I_sq]; ring)
 
 private lemma singleSite_kron_partialTrace {N : ℕ} (F : Fin N → Matrix (Fin 2) (Fin 2) ℂ)
     (x : Fin N) :
     partialTraceSite x (kronOp F) =
       kronOp (fun y ↦ if y = x then ((1 / 2 : ℂ) * (F x).trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) else F y) := by
   unfold partialTraceSite
+  have hp0 : pauliMat 0 = (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
+    ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat]
   have hconj : ∀ c : Fin 4,
       pauliSite x c * kronOp F * pauliSite x c =
       kronOp (fun y ↦ if y = x then pauliMat c * F x * pauliMat c else F y) := by
@@ -184,7 +186,7 @@ private lemma singleSite_kron_partialTrace {N : ℕ} (F : Fin N → Matrix (Fin 
     congr 1; funext y
     by_cases hy : y = x
     · subst hy; simp
-    · simp [hy]
+    · simp [hy, hp0]
   simp_rw [hconj]
   ext p q
   simp only [Matrix.smul_apply, Matrix.sum_apply, kronOp, Matrix.of_apply, smul_eq_mul]

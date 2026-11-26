@@ -310,8 +310,8 @@ theorem heisenbergEvol_entry_hasDerivAt {N : ℕ} {H : QubitOp N} (hH : H.IsHerm
   set B : QubitOp N := Uᴴ * A * U
   have hformula : ∀ s : ℝ, heisenbergEvol hH (s : ℂ) A i j =
       ∑ a : QubitIdx N, ∑ b : QubitIdx N,
-        U i a * B a b * Uᴴ b j *
-          Complex.exp (Complex.I * (s : ℂ) * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ)) := by
+        U i b * B b a * Uᴴ a j *
+          Complex.exp (Complex.I * (s : ℂ) * ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ)) := by
     intro s
     unfold heisenbergEvol complexPropagator hermFunc
     have hrew : (U * Matrix.diagonal (fun a ↦ Complex.exp (Complex.I * (s : ℂ) * (hH.eigenvalues a : ℂ))) * Uᴴ) *
@@ -322,40 +322,37 @@ theorem heisenbergEvol_entry_hasDerivAt {N : ℕ} {H : QubitOp N} (hH : H.IsHerm
     rw [hrew]
     simp only [Matrix.mul_apply, Matrix.diagonal_apply, ite_mul, zero_mul, mul_ite, mul_zero,
       Finset.sum_ite_eq, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
-    rw [Finset.sum_comm]
     apply Finset.sum_congr rfl; intro a _
     rw [Finset.sum_mul]
     apply Finset.sum_congr rfl; intro b _
-    rw [← Complex.exp_add]
-    have hexp : Complex.I * (s : ℂ) * (hH.eigenvalues a : ℂ) +
-        Complex.I * (-(s : ℂ)) * (hH.eigenvalues b : ℂ) =
-        Complex.I * (s : ℂ) * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ) := by
-      push_cast; ring
-    rw [← hexp, Complex.exp_add]
-    ring
+    have hexp : Complex.exp (Complex.I * (s : ℂ) * (hH.eigenvalues b : ℂ)) *
+        Complex.exp (Complex.I * (-(s : ℂ)) * (hH.eigenvalues a : ℂ)) =
+        Complex.exp (Complex.I * (s : ℂ) * ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ)) := by
+      rw [← Complex.exp_add]; congr 1; push_cast; ring
+    linear_combination U i b * B b a * Uᴴ a j * hexp
   have hderiv_sum : HasDerivAt (fun s : ℝ ↦
       ∑ a : QubitIdx N, ∑ b : QubitIdx N,
-        U i a * B a b * Uᴴ b j *
-          Complex.exp (Complex.I * (s : ℂ) * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ)))
+        U i b * B b a * Uᴴ a j *
+          Complex.exp (Complex.I * (s : ℂ) * ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ)))
       (∑ a : QubitIdx N, ∑ b : QubitIdx N,
-        U i a * B a b * Uᴴ b j *
-          (Complex.exp (Complex.I * (t : ℂ) * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ)) *
-            (Complex.I * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ)))) t := by
+        U i b * B b a * Uᴴ a j *
+          (Complex.exp (Complex.I * (t : ℂ) * ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ)) *
+            (Complex.I * ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ)))) t := by
     apply HasDerivAt.fun_sum; intro a _
     apply HasDerivAt.fun_sum; intro b _
     have hlin : HasDerivAt (fun s : ℝ ↦
-        Complex.I * (s : ℂ) * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ))
-        (Complex.I * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ)) t := by
+        Complex.I * (s : ℂ) * ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ))
+        (Complex.I * ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ)) t := by
       have h1 : HasDerivAt (fun s : ℝ ↦ (s : ℂ)) 1 t := Complex.ofRealCLM.hasDerivAt
       have h2 := h1.const_mul Complex.I
-      have h3 := h2.mul_const ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ)
+      have h3 := h2.mul_const ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ)
       simpa using h3
-    exact (hlin.cexp).const_mul (U i a * B a b * Uᴴ b j)
+    exact (hlin.cexp).const_mul (U i b * B b a * Uᴴ a j)
   have hrhs : (Complex.I • matComm H (heisenbergEvol hH (t : ℂ) A)) i j =
       ∑ a : QubitIdx N, ∑ b : QubitIdx N,
-        U i a * B a b * Uᴴ b j *
-          (Complex.exp (Complex.I * (t : ℂ) * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ)) *
-            (Complex.I * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ))) := by
+        U i b * B b a * Uᴴ a j *
+          (Complex.exp (Complex.I * (t : ℂ) * ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ)) *
+            (Complex.I * ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ))) := by
     set At := heisenbergEvol hH (t : ℂ) A
     have hH_left : H * At = hermFunc hH (fun E ↦ (E : ℂ)) * At :=
       congrArg (· * At) (hermFunc_id hH).symm
@@ -406,18 +403,19 @@ theorem heisenbergEvol_entry_hasDerivAt {N : ℕ} {H : QubitOp N} (hH : H.IsHerm
     rw [Matrix.smul_apply, smul_eq_mul, hcomm_mat]
     simp only [Matrix.mul_apply, Matrix.sub_apply, Matrix.diagonal_apply, ite_mul, zero_mul,
       mul_ite, mul_zero, Finset.sum_ite_eq, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
-    rw [Finset.mul_sum, Finset.sum_comm]
+    rw [Finset.mul_sum]
     apply Finset.sum_congr rfl; intro a _
     rw [Finset.sum_mul, Finset.mul_sum]
     apply Finset.sum_congr rfl; intro b _
-    have hexp : Complex.exp (Complex.I * (t : ℂ) * (hH.eigenvalues a : ℂ)) *
-        Complex.exp (Complex.I * (-(t : ℂ)) * (hH.eigenvalues b : ℂ)) =
-        Complex.exp (Complex.I * (t : ℂ) * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ)) := by
+    have hexp : Complex.exp (Complex.I * (t : ℂ) * (hH.eigenvalues b : ℂ)) *
+        Complex.exp (Complex.I * (-(t : ℂ)) * (hH.eigenvalues a : ℂ)) =
+        Complex.exp (Complex.I * (t : ℂ) * ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ)) := by
       rw [← Complex.exp_add]; congr 1; push_cast; ring
-    rw [← hexp]
-    push_cast; ring
+    push_cast
+    linear_combination Complex.I * U i b * B b a * Uᴴ a j *
+      ((hH.eigenvalues b : ℂ) - (hH.eigenvalues a : ℂ)) * hexp
   rw [hrhs]
-  exact hderiv_sum.congr (fun s ↦ hformula s) (hformula t)
+  exact hderiv_sum.congr_of_eventuallyEq (Filter.Eventually.of_forall hformula)
 
 end ComplexHeisenberg
 
@@ -611,11 +609,15 @@ theorem wightmanSubspaceProj_complement_nonneg {N : ℕ} (G : GibbsData N)
     exact (Submodule.mem_orthogonal K _).mp hsub _ hmem
   have hsplit : @inner ℂ _ _ v (v - K.starProjection v) =
       @inner ℂ _ _ (v - K.starProjection v) (v - K.starProjection v) := by
-    have h1 : v = (v - K.starProjection v) + K.starProjection v := by abel
-    conv_lhs => rw [h1]
-    rw [inner_add_left, horth, add_zero]
+    calc @inner ℂ _ _ v (v - K.starProjection v)
+        = @inner ℂ _ _ ((v - K.starProjection v) + K.starProjection v) (v - K.starProjection v) := by
+          rw [sub_add_cancel]
+      _ = @inner ℂ _ _ (v - K.starProjection v) (v - K.starProjection v) +
+          @inner ℂ _ _ (K.starProjection v) (v - K.starProjection v) := inner_add_left _ _ _
+      _ = @inner ℂ _ _ (v - K.starProjection v) (v - K.starProjection v) := by
+          rw [horth, add_zero]
   rw [hsplit]
-  exact RCLike.re_inner_self_nonneg (v - K.starProjection v)
+  exact inner_self_nonneg (𝕜 := ℂ) (x := v - K.starProjection v)
 
 /-- Positivity of `𝒬^{(β)}`: `Re (A | 𝒬^{(β)} A)_β^W ≥ 0` for all `A : QubitOp N`. -/
 theorem wightmanQ_nonneg {N : ℕ} (G : GibbsData N) (A : QubitOp N) :
