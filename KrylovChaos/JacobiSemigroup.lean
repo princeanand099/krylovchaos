@@ -33,26 +33,29 @@ namespace KrylovChaos
 
 section BanachExpDeriv
 
-variable {E : Type*} [NormedRing E] [NormOneClass E] [NormedAlgebra ℝ E] [CompleteSpace E]
+variable {E : Type*} [NormedRing E] [NormedAlgebra ℝ E] [CompleteSpace E]
 
-/-- Helper: `‖exp(h • A) - 1 - h • A‖ ≤ |h|^2 * ‖A‖^2 * exp(|h| * ‖A‖)`. -/
+/-- Helper: `‖exp(h • A) - 1 - h • A‖ ≤ |h|^2 * ‖A‖^2 * exp(|h| * ‖A‖)` (no `NormOneClass` needed). -/
 private lemma norm_exp_smul_sub_one_sub_le (A : E) (h : ℝ) :
     ‖NormedSpace.exp (h • A) - 1 - h • A‖ ≤
     |h| ^ 2 * ‖A‖ ^ 2 * Real.exp (|h| * ‖A‖) := by
   have hexp : NormedSpace.exp (h • A) = ∑' n : ℕ, ((n.factorial : ℝ)⁻¹) • (h • A) ^ n := by
     rw [NormedSpace.exp_eq_tsum (𝕂 := ℝ) (𝔸 := E)]
-  have hterm_le : ∀ n : ℕ,
+  have hterm_le : ∀ n : ℕ, 1 ≤ n →
       ‖((n.factorial : ℝ)⁻¹) • (h • A) ^ n‖ ≤ (|h| * ‖A‖) ^ n / (n.factorial : ℝ) := by
-    intro n
+    intro n hn
     calc ‖((n.factorial : ℝ)⁻¹) • (h • A) ^ n‖
         = (n.factorial : ℝ)⁻¹ * ‖(h • A) ^ n‖ := by
             rw [norm_smul, Real.norm_of_nonneg (by positivity)]
-      _ ≤ (n.factorial : ℝ)⁻¹ * ‖h • A‖ ^ n := by gcongr; exact norm_pow_le _ _
+      _ ≤ (n.factorial : ℝ)⁻¹ * ‖h • A‖ ^ n := by
+            gcongr; exact norm_pow_le' _ hn
       _ = (|h| * ‖A‖) ^ n / (n.factorial : ℝ) := by
             rw [norm_smul, Real.norm_eq_abs]; ring
-  have hsumm_norm : Summable (fun n : ℕ ↦ ‖((n.factorial : ℝ)⁻¹) • (h • A) ^ n‖) :=
-    Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) hterm_le
-      (Real.summable_pow_div_factorial (|h| * ‖A‖))
+  have hsumm_norm : Summable (fun n : ℕ ↦ ‖((n.factorial : ℝ)⁻¹) • (h • A) ^ n‖) := by
+    rw [← summable_nat_add_iff 1]
+    refine Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _)
+      (fun n ↦ hterm_le (n + 1) (Nat.succ_pos n))
+      ((summable_nat_add_iff 1).mpr (Real.summable_pow_div_factorial (|h| * ‖A‖)))
   have hsumm : Summable (fun n : ℕ ↦ ((n.factorial : ℝ)⁻¹) • (h • A) ^ n) :=
     hsumm_norm.of_norm
   have hsplit := hsumm.sum_add_tsum_nat_add 2
@@ -69,7 +72,7 @@ private lemma norm_exp_smul_sub_one_sub_le (A : E) (h : ℝ) :
     intro n
     have hfac : (n.factorial : ℝ) ≤ ((n + 2).factorial : ℝ) := by
       exact_mod_cast Nat.factorial_le (by omega : n ≤ n + 2)
-    have h1 := hterm_le (n + 2)
+    have h1 := hterm_le (n + 2) (by omega)
     have hpow : (|h| * ‖A‖) ^ (n + 2) = (|h| ^ 2 * ‖A‖ ^ 2) * (|h| * ‖A‖) ^ n := by
       rw [pow_add, mul_pow]; ring
     calc ‖(((n + 2).factorial : ℝ)⁻¹) • (h • A) ^ (n + 2)‖
@@ -98,7 +101,8 @@ theorem hasDerivAt_exp_smul_real (A : E) (t : ℝ) :
   have hcomm : ∀ s₁ s₂ : ℝ, Commute (s₁ • A) (s₂ • A) := by
     intro s₁ s₂
     unfold Commute SemiconjBy
-    simp [smul_mul_assoc, mul_smul_comm, mul_comm]
+    simp only [smul_mul_assoc, mul_smul_comm]
+    rw [smul_comm]
   have hbound : ∀ h : ℝ, h ≠ 0 →
       ‖h⁻¹ • (NormedSpace.exp ((t + h) • A) - NormedSpace.exp (t • A)) -
         A * NormedSpace.exp (t • A)‖ ≤
@@ -106,12 +110,15 @@ theorem hasDerivAt_exp_smul_real (A : E) (t : ℝ) :
     intro h hh
     have hadd : NormedSpace.exp ((t + h) • A) =
         NormedSpace.exp (h • A) * NormedSpace.exp (t • A) := by
-      rw [add_smul, add_comm (t • A) (h • A), NormedSpace.exp_add_of_commute (hcomm h t)]
+      rw [add_smul, add_comm (t • A) (h • A)]
+      exact NormedSpace.exp_add_of_commute (𝕂 := ℝ) (hcomm h t)
     have hrew : h⁻¹ • (NormedSpace.exp ((t + h) • A) - NormedSpace.exp (t • A)) -
         A * NormedSpace.exp (t • A) =
         (h⁻¹ • (NormedSpace.exp (h • A) - 1 - h • A)) * NormedSpace.exp (t • A) := by
-      rw [hadd, sub_mul, sub_mul, one_mul, smul_sub, smul_sub, smul_smul,
-        inv_mul_cancel₀ hh, one_smul, smul_mul_assoc, sub_mul]
+      rw [hadd]
+      symm
+      rw [smul_mul_assoc, sub_mul, sub_mul, one_mul, smul_mul_assoc,
+        smul_sub, smul_sub, smul_smul, inv_mul_cancel₀ hh, one_smul]
       abel
     rw [hrew]
     calc ‖(h⁻¹ • (NormedSpace.exp (h • A) - 1 - h • A)) * NormedSpace.exp (t • A)‖
@@ -133,7 +140,7 @@ theorem hasDerivAt_exp_smul_real (A : E) (t : ℝ) :
     have h0 := hcont.tendsto (0 : ℝ)
     simp only [abs_zero, zero_mul] at h0
     exact h0.mono_left nhdsWithin_le_nhds
-  rw [tendsto_zero_iff_norm_tendsto_zero]
+  rw [tendsto_iff_norm_sub_tendsto_zero]
   refine squeeze_zero_norm' ?_ htend
   filter_upwards [self_mem_nhdsWithin] with h hh
   rw [Real.norm_of_nonneg (norm_nonneg _)]
@@ -157,8 +164,10 @@ noncomputable def jacobiCLM (D : ℕ) (b : ℕ → ℝ) :
 /-- `jacobiCLM D b` is self-adjoint on `EuclideanSpace ℂ (Fin D)`. -/
 theorem jacobiCLM_isSelfAdjoint (D : ℕ) (b : ℕ → ℝ) :
     ContinuousLinearMap.adjoint (jacobiCLM D b) = jacobiCLM D b := by
-  rw [ContinuousLinearMap.adjoint_eq_iff_inner_left]
-  intro u v
+  ext v
+  apply ext_inner_left ℂ
+  intro u
+  rw [ContinuousLinearMap.adjoint_inner_right]
   simp only [EuclideanSpace.inner_eq_star_dotProduct, dotProduct, Pi.star_apply,
     jacobiCLM, LinearMap.coe_toContinuousLinearMap', LinearMap.coe_mk, AddHom.coe_mk,
     WithLp.ofLp_toLp, Complex.star_def, map_sum, map_mul, Complex.conj_ofReal]
@@ -188,9 +197,10 @@ lemma jacobiUnitary_add (D : ℕ) (b : ℕ → ℝ) (t s : ℝ) :
     jacobiUnitary D b (t + s) = jacobiUnitary D b t * jacobiUnitary D b s := by
   unfold jacobiUnitary
   rw [add_smul]
-  refine NormedSpace.exp_add_of_commute ?_
+  refine NormedSpace.exp_add_of_commute (𝕂 := ℝ) ?_
   unfold Commute SemiconjBy
-  simp [smul_mul_assoc, mul_smul_comm, mul_comm]
+  simp only [smul_mul_assoc, mul_smul_comm]
+  rw [smul_comm]
 
 /-- `U_D(t)` is unitary: `‖U_D(t) v‖ = ‖v‖` for all `t : ℝ` and `v`. -/
 theorem jacobiUnitary_norm_preserve (D : ℕ) (b : ℕ → ℝ) (t : ℝ)
@@ -204,12 +214,17 @@ theorem jacobiUnitary_norm_preserve (D : ℕ) (b : ℕ → ℝ) (t : ℝ)
       HasDerivAt (fun r : ℝ ↦ jacobiUnitary D b r v)
         ((Complex.I • jacobiCLM D b) (jacobiUnitary D b s v)) s := by
     intro s
-    have hclm := (ContinuousLinearMap.apply ℂ (EuclideanSpace ℂ (Fin D)) v).restrictScalars ℝ
-    simpa [hclm] using hclm.hasFDerivAt.comp_hasDerivAt s (hderiv_op s)
+    let hclm := (ContinuousLinearMap.apply ℂ (EuclideanSpace ℂ (Fin D)) v).restrictScalars ℝ
+    exact hclm.hasFDerivAt.comp_hasDerivAt s (hderiv_op s)
   have hderiv_sq : ∀ s : ℝ,
       HasDerivAt (fun r : ℝ ↦ ‖jacobiUnitary D b r v‖ ^ 2) 0 s := by
     intro s
-    have h1 := (hderiv_vec s).norm_sq
+    have hinner := (hderiv_vec s).inner ℝ (hderiv_vec s)
+    have hfun : (fun r : ℝ ↦ ‖jacobiUnitary D b r v‖ ^ 2) =
+        fun r : ℝ ↦ @inner ℝ (EuclideanSpace ℂ (Fin D)) _ (jacobiUnitary D b r v)
+          (jacobiUnitary D b r v) := by
+      ext r; exact (real_inner_self_eq_norm_sq _).symm
+    rw [hfun]
     have hskew :
         @inner ℝ (EuclideanSpace ℂ (Fin D)) _ (jacobiUnitary D b s v)
           ((Complex.I • jacobiCLM D b) (jacobiUnitary D b s v)) = 0 := by
@@ -228,7 +243,12 @@ theorem jacobiUnitary_norm_preserve (D : ℕ) (b : ℕ → ℝ) (t : ℝ)
         simp [Complex.star_def] at this
         linarith
       simp [Complex.mul_re, hreal]
-    simpa [hskew] using h1
+    have hskew2 :
+        @inner ℝ (EuclideanSpace ℂ (Fin D)) _
+          ((Complex.I • jacobiCLM D b) (jacobiUnitary D b s v))
+          (jacobiUnitary D b s v) = 0 := by
+      rw [real_inner_comm]; exact hskew
+    simpa [hskew, hskew2] using hinner
   have hconst := is_const_of_deriv_eq_zero
     (fun s ↦ (hderiv_sq s).differentiableAt) (fun s ↦ (hderiv_sq s).deriv) t 0
   rw [jacobiUnitary_zero] at hconst
@@ -243,8 +263,8 @@ theorem jacobiWavefn_ode {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) (t : ℝ) :
     HasDerivAt (fun r : ℝ ↦ jacobiUnitary D b r e0)
       ((Complex.I • jacobiCLM D b) (jacobiUnitary D b t e0)) t := by
   intro e0
-  have hclm := (ContinuousLinearMap.apply ℂ (EuclideanSpace ℂ (Fin D)) e0).restrictScalars ℝ
-  simpa [hclm] using hclm.hasFDerivAt.comp_hasDerivAt t
+  let hclm := (ContinuousLinearMap.apply ℂ (EuclideanSpace ℂ (Fin D)) e0).restrictScalars ℝ
+  exact hclm.hasFDerivAt.comp_hasDerivAt t
     (hasDerivAt_exp_smul_real (Complex.I • jacobiCLM D b) t)
 
 end FiniteChainUnitary
@@ -303,10 +323,10 @@ theorem theorem_1_1a_infinite_fatou_proved
     (hmgf : ∀ N, ∑ m ∈ Finset.range N, Real.exp (θ * (m : ℝ)) * pN N m ≤
         Real.exp (γ / α * (Real.exp (2 * α * Real.sinh θ * t) - 1))) :
     let A := γ / α * (Real.exp (2 * α * Real.sinh θ * t) - 1)
-    Summable (fun m ↦ Real.exp (θ * (m : ℝ)) * p m) ∧
+    Summable (fun m : ℕ ↦ Real.exp (θ * (m : ℝ)) * p m) ∧
     (∑' m : ℕ, Real.exp (θ * (m : ℝ)) * p m) ≤ Real.exp A ∧
     (∀ M₀ : ℕ, (∑' m : ℕ, if M₀ ≤ m then p m else 0) ≤ Real.exp (-(θ * (M₀ : ℝ)) + A)) ∧
-    Summable (fun m ↦ (m : ℝ) * p m) ∧
+    Summable (fun m : ℕ ↦ (m : ℝ) * p m) ∧
     (∑' m : ℕ, (m : ℝ) * p m) ≤ (1 / θ) * (A + 1) := by
   intro A
   have hsinh_nn : 0 ≤ Real.sinh θ := by
@@ -318,11 +338,11 @@ theorem theorem_1_1a_infinite_fatou_proved
     have : 1 ≤ Real.exp (2 * α * Real.sinh θ * t) := Real.one_le_exp (by positivity)
     linarith
   have hfat_mgf := fatou_tsum_le_of_pointwise_tendsto pN p
-    (fun m ↦ Real.exp (θ * (m : ℝ))) (Real.exp A) hpN_nn
+    (fun m : ℕ ↦ Real.exp (θ * (m : ℝ))) (Real.exp A) hpN_nn
     (fun _ ↦ (Real.exp_pos _).le) hlim hmgf
   have hfat_prob := fatou_tsum_le_of_pointwise_tendsto pN p
-    (fun _ ↦ 1) 1 hpN_nn (fun _ ↦ by norm_num) hlim (by simpa using hunit)
-  have hp_nn : ∀ m, 0 ≤ p m := fun m ↦ ge_of_tendsto' (hlim m) (fun N ↦ hpN_nn N m)
+    (fun _ : ℕ ↦ 1) 1 hpN_nn (fun _ ↦ by norm_num) hlim (by simpa using hunit)
+  have hp_nn : ∀ m : ℕ, 0 ≤ p m := fun m ↦ ge_of_tendsto' (hlim m) (fun N ↦ hpN_nn N m)
   have htail : ∀ M₀ : ℕ,
       (∑' m : ℕ, if M₀ ≤ m then p m else 0) ≤ Real.exp (-(θ * (M₀ : ℝ)) + A) := by
     intro M₀
@@ -331,9 +351,7 @@ theorem theorem_1_1a_infinite_fatou_proved
         Real.exp (-(θ * (M₀ : ℝ))) * (Real.exp (θ * (m : ℝ)) * p m) := by
       intro m
       split_ifs with hm
-      · have hle : Real.exp (θ * (M₀ : ℝ)) ≤ Real.exp (θ * (m : ℝ)) :=
-          Real.exp_le_exp.mpr (mul_le_mul_of_nonneg_left (by exact_mod_cast hm) hθ.le)
-        have h1 : 1 ≤ Real.exp (-(θ * (M₀ : ℝ))) * Real.exp (θ * (m : ℝ)) := by
+      · have h1 : 1 ≤ Real.exp (-(θ * (M₀ : ℝ))) * Real.exp (θ * (m : ℝ)) := by
           rw [← Real.exp_add]
           exact Real.one_le_exp (by
             have : (M₀ : ℝ) ≤ (m : ℝ) := by exact_mod_cast hm
@@ -342,7 +360,7 @@ theorem theorem_1_1a_infinite_fatou_proved
           _ ≤ (Real.exp (-(θ * (M₀ : ℝ))) * Real.exp (θ * (m : ℝ))) * p m :=
                 mul_le_mul_of_nonneg_right h1 (hp_nn m)
           _ = Real.exp (-(θ * (M₀ : ℝ))) * (Real.exp (θ * (m : ℝ)) * p m) := by ring
-      · positivity
+      · exact mul_nonneg (Real.exp_pos _).le (mul_nonneg (Real.exp_pos _).le (hp_nn m))
     have hsumm_t : Summable (fun m : ℕ ↦ if M₀ ≤ m then p m else 0) :=
       Summable.of_nonneg_of_le (fun m ↦ by split_ifs <;> [exact hp_nn m; exact le_refl 0])
         hdom (hfat_mgf.2.1.mul_left _)

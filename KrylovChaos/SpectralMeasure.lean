@@ -90,7 +90,7 @@ lemma wightmanWeight_symm {D : ℕ} (β : ℝ) (E : Fin D → ℝ)
     wightmanWeight β E W k j = wightmanWeight β E W j k := by
   unfold wightmanWeight
   have hjk : W k j = star (W j k) := by
-    have := congrFun (congrFun hW j) k
+    have := congrFun (congrFun hW k) j
     simpa [Matrix.conjTranspose_apply] using this.symm
   rw [add_comm (E k) (E j), hjk, Complex.star_def, Complex.normSq_conj]
 
@@ -126,7 +126,7 @@ theorem eq_5_1_wightman_fourier_identity {D : ℕ} (hD : 0 < D) (β : ℝ) (E : 
   apply Finset.sum_congr rfl
   intro k _
   have hWkj : W k j = star (W j k) := by
-    have := congrFun (congrFun hW j) k
+    have := congrFun (congrFun hW k) j
     simpa [Matrix.conjTranspose_apply] using this.symm
   have hWmul : W j k * W k j = (Complex.normSq (W j k) : ℂ) := by
     rw [hWkj, Complex.star_def, Complex.mul_conj]
@@ -178,10 +178,10 @@ theorem eq_5_2_strip_laplace_identity {D : ℕ} (β : ℝ) (E : Fin D → ℝ)
     apply Finset.sum_congr rfl
     intro k _
     have hWkj : W k j = star (W j k) := by
-      have := congrFun (congrFun hW j) k
+      have := congrFun (congrFun hW k) j
       simpa [Matrix.conjTranspose_apply] using this.symm
     have hWmul : W k j * W j k = (Complex.normSq (W j k) : ℂ) := by
-      rw [hWkj, Complex.star_def, Complex.conj_mul]
+      rw [hWkj, Complex.star_def, mul_comm, Complex.mul_conj]
     have hI1 : Complex.I * -(Complex.I * (κ' : ℂ)) * (E j : ℂ) = ((κ' * E j : ℝ) : ℂ) := by
       push_cast; linear_combination -(κ' : ℂ) * (E j : ℂ) * Complex.I_sq
     have hI2 : -(Complex.I * -(Complex.I * (κ' : ℂ)) * (E k : ℂ)) = ((-(κ' * E k) : ℝ) : ℂ) := by
@@ -264,7 +264,7 @@ lemma pow_even_div_factorial_le_two_cosh (x : ℝ) (n : ℕ) :
     have hmem : 2 * n ∈ Finset.range (2 * n + 1) := Finset.mem_range.mpr (Nat.lt_succ_self _)
     have hle : |x| ^ (2 * n) / ((2 * n).factorial : ℝ) ≤
         ∑ i ∈ Finset.range (2 * n + 1), |x| ^ i / (i.factorial : ℝ) :=
-      Finset.single_le_sum (fun i _ ↦ by positivity) hmem
+      Finset.single_le_sum (f := fun i ↦ |x| ^ i / (i.factorial : ℝ)) (fun i _ ↦ by positivity) hmem
     exact le_trans hle hsum
   have h2 : Real.exp |x| ≤ 2 * Real.cosh x := by
     rw [Real.cosh_eq]
@@ -300,7 +300,6 @@ theorem moment_le_factorial_mul_cosh {D : ℕ} (w ω : Fin D → Fin D → ℝ)
       2 * ((2 * n).factorial : ℝ) * r⁻¹ ^ (2 * n) * Real.cosh (r * ω j k) := by
     have hpow : (r * ω j k) ^ (2 * n) = r ^ (2 * n) * (ω j k) ^ (2 * n) := mul_pow _ _ _
     rw [hpow] at hmul
-    have hrpow : 0 < r ^ (2 * n) := pow_pos hr (2 * n)
     have hdiv := mul_le_mul_of_nonneg_left hmul (pow_nonneg (inv_nonneg.mpr hr.le) (2 * n))
     have hcancel : r⁻¹ ^ (2 * n) * (r ^ (2 * n) * (ω j k) ^ (2 * n)) = (ω j k) ^ (2 * n) := by
       rw [← mul_assoc, ← mul_pow, inv_mul_cancel₀ hr.ne', one_pow, one_mul]
@@ -311,9 +310,8 @@ theorem moment_le_factorial_mul_cosh {D : ℕ} (w ω : Fin D → Fin D → ℝ)
 
 /-- **Ground-Up Cauchy–Hadamard Exponential-Rate Comparison**:
 If `c > 0`, `C > 0`, `L > 0`, `R > 0`, and for all `n ≥ N₀`:
-`c * ((2 * (n - N₀)).factorial : ℝ) * L ^ (2 * (n - N₀)) ≤ C * ((2 * n).factorial : ℝ) * R ^ (2 * n)`
-Wait — for `L > R`, `(L / R)^{2n}` grows exponentially while `((2n)! / (2(n-N₀))!) ≤ (2n)^{2 N₀}`
-grows only polynomially, yielding a contradiction. Therefore **`L ≤ R`**. -/
+`c * ((2 * (n - N₀)).factorial : ℝ) * L ^ (2 * (n - N₀)) ≤ C * ((2 * n).factorial : ℝ) * R ^ (2 * n)`,
+then **`L ≤ R`**. -/
 theorem cauchy_hadamard_rate_comparison {c C L R : ℝ} (hc : 0 < c) (hC : 0 < C)
     (hL : 0 < L) (hR : 0 < R) (N₀ : ℕ)
     (hbound : ∀ n ≥ N₀,
@@ -321,20 +319,17 @@ theorem cauchy_hadamard_rate_comparison {c C L R : ℝ} (hc : 0 < c) (hC : 0 < C
       C * ((2 * n).factorial : ℝ) * R ^ (2 * n)) :
     L ≤ R := by
   by_contra hlt
-  push_neg at hlt
+  have hlt' : R < L := lt_of_not_ge hlt
   set q := L / R
-  have hq : 1 < q := (one_lt_div hR).mpr hlt
+  have hq : 1 < q := (one_lt_div hR).mpr hlt'
   have hq_pos : 0 < q := by linarith
-  -- Choose `δ = q - 1 > 0` and use `q ^ m ≥ (δ ^ k / k!) * m ^ k`? Even simpler:
-  -- `(2n)! / (2(n - N₀))! ≤ (2n)^{2 N₀}` and `(2n)^{2 N₀} / q^{2(n - N₀)} → 0`!
   set K := 2 * N₀
   have htend : Filter.Tendsto
       (fun m : ℕ ↦ ((2 * (m + N₀) : ℕ) : ℝ) ^ K / q ^ (2 * m))
       Filter.atTop (nhds 0) := by
     have hq2 : 1 < q ^ 2 := one_lt_pow₀ hq (by norm_num)
-    have hbase : Filter.Tendsto (fun m : ℕ ↦ (m : ℝ) ^ K / (q ^ 2) ^ m) Filter.atTop (nhds 0) := by
-      have h1 := tendsto_pow_const_div_const_pow_of_one_lt K hq2
-      exact h1
+    have hbase : Filter.Tendsto (fun m : ℕ ↦ (m : ℝ) ^ K / (q ^ 2) ^ m) Filter.atTop (nhds 0) :=
+      tendsto_pow_const_div_const_pow_of_one_lt K hq2
     have hdom : ∀ m ≥ N₀ + 1,
         ((2 * (m + N₀) : ℕ) : ℝ) ^ K / q ^ (2 * m) ≤
         (4 : ℝ) ^ K * ((m : ℝ) ^ K / (q ^ 2) ^ m) := by
@@ -360,7 +355,6 @@ theorem cauchy_hadamard_rate_comparison {c C L R : ℝ} (hc : 0 < c) (hC : 0 < C
   have hmM : M ≤ m := le_max_left _ _
   have hdist := hM m hmM
   rw [Real.dist_eq, sub_zero, abs_of_nonneg (by positivity)] at hdist
-  -- Now compare with `hbound (m + N₀)`
   have hb := hbound (m + N₀) (Nat.le_add_left N₀ m)
   rw [Nat.add_sub_cancel] at hb
   have hfac_ratio : ((2 * (m + N₀)).factorial : ℝ) ≤
@@ -410,15 +404,9 @@ theorem cauchy_hadamard_rate_comparison {c C L R : ℝ} (hc : 0 < c) (hC : 0 < C
   linarith
 
 /-- **End-to-End Theorem 1.2(b) (Zero `hlower` / `hupper` Hypotheses)**:
-Given:
-- Lanczos coefficients `b : ℕ → ℝ` with `b h > 0` (`h ≥ 1`) and `b h ≥ α₁ h` (`h ≥ N₀`, `α₁ > 0`),
-- A moment sequence `μ : ℕ → ℝ` bounded below by the finite-chain Jacobi moments
-  `((jacobiMat (n + 1) b) ^ (2 * n)) 0 0 ≤ μ n` (which holds with equality for the exact
-  Wightman spectral measure) and above by a finite exponential moment
-  `μ n ≤ 2 * (2n)! * r⁻¹ ^ (2n) * M` (`r > 0`, `M > 0`, as proved in `moment_le_factorial_mul_cosh`),
-- And the Meixner `η = 1` moment identity matching the `sech` integral of
-  `LanczosMoments.meixner_sech_moment_lower_bound`,
-proves unconditionally **`α₁ ≤ π / (2 * r)`**. -/
+Combines `LanczosMoments.lemma_5_1_moment_lower_bound`,
+`LanczosMoments.meixner_sech_moment_lower_bound`, and `cauchy_hadamard_rate_comparison`
+to prove unconditionally **`α₁ ≤ π / (2 * r)`**. -/
 theorem theorem_1_2b_end_to_end {α₁ r M : ℝ} (N₀ : ℕ) (b : ℕ → ℝ) (μ : ℕ → ℝ)
     (hα₁ : 0 < α₁) (hr : 0 < r) (hM : 0 < M)
     (hb_pos : ∀ h ≥ 1, 0 < b h)
@@ -470,7 +458,7 @@ theorem theorem_1_2b_end_to_end {α₁ r M : ℝ} (N₀ : ℕ) (b : ℕ → ℝ)
     linarith
   rw [le_div_iff₀ (by positivity)]
   have h2 := mul_le_mul_of_nonneg_right h1 hr.le
-  rw [mul_assoc, inv_mul_cancel₀ hr.ne', mul_one] at h2
+  rw [mul_assoc Real.pi, inv_mul_cancel₀ hr.ne', mul_one] at h2
   linarith
 
 end CauchyHadamardAndTheorem12b
