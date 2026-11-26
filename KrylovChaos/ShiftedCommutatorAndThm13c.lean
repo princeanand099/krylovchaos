@@ -9,7 +9,7 @@ import KrylovChaos.CausalExpansion
 # Unconditional Theorem 1.3(b) (`I(A) ≤ 216 Q(A)`) & End-to-End Theorem 1.3(c)
 
 Combines `lemma_7_2_concrete_positive_frame`, `prodDepolNormSq_matComm_supportedOn_le`,
-`hasSum_heisenbergEvol_adPow`, `revCausalSum_le`, and `lemma_4_2_concrete_operator`
+`hasSum_heisenbergEvol_adPow`, `revCausalSum_le`, and `theorem_1_1b_concrete_operator`
 to prove `theorem_1_3b_otocI_unconditional` and `theorem_1_3c_concrete_end_to_end`
 strictly on top of Mathlib `v4.35.0` with zero custom axioms and zero `sorry`s.
 -/
@@ -161,9 +161,10 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
               have hop := opNorm_iterComm_le h (pauliSite x α.succ) f
               have hop1 : opNorm (iterComm h f (pauliSite x α.succ)) ≤
                   (2 : ℝ) ^ k * ∏ j : Fin k, opNorm (h (f j)) := by
+                have hprod_nn : (0 : ℝ) ≤ ∏ j : Fin k, opNorm (h (f j)) :=
+                  Finset.prod_nonneg fun j _ ↦ opNorm_nonneg _
                 have := mul_le_mul_of_nonneg_left (opNorm_pauliSite_le x α)
-                  (mul_nonneg (pow_nonneg (by norm_num : (0 : ℝ) ≤ 2) k)
-                    (Finset.prod_nonneg fun j _ ↦ opNorm_nonneg _))
+                  (mul_nonneg (pow_nonneg (by norm_num : (0 : ℝ) ≤ 2) k) hprod_nn)
                 linarith
               have hcard_u := card_causalUnion_le hr E hcard {x} f (Fintype.mem_piFinset.mp hfpi) hfcs
               simp only [Finset.card_singleton] at hcard_u
@@ -251,7 +252,7 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
               mul_le_mul_of_nonneg_left hfwd (by positivity)
           _ = ((β / 2) * (Real.sqrt 3) ^ (r - 1) * ((r : ℝ) * J)) ^ k := by
               simp only [mul_pow, ← pow_mul, mul_comm (r - 1) k]
-              field_simp [hfac_ne]; ring
+              field_simp [hfac_ne]
           _ = q ^ k := by dsimp only [q]; congr 1; ring
       let Dtot : ℝ := ∑ y : Fin N, D y
       have hDtot_nn : 0 ≤ Dtot := Finset.sum_nonneg fun y _ ↦ hD_nn y
@@ -398,7 +399,7 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
                   mul_le_mul_of_nonneg_left hfwd (by positivity)
               _ = q ^ k := by
                   dsimp only [q]; simp only [mul_pow, ← pow_mul, mul_comm (r - 1) k]
-                  field_simp [hfac_ne]; ring
+                  field_simp [hfac_ne]
     have hsum_xa : (1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3,
           prodDepolNormSq s s' (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ))
             (pauliSite x α.succ))) ≤
@@ -570,30 +571,31 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
         π s * π s' * ((1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3,
           prodDepolNormSq s s'
             (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)))) := by
-    rw [Finset.mul_sum]
     simp_rw [Finset.mul_sum]
-    rw [Finset.sum_comm]
-    conv_lhs => arg 2; ext s; rw [Finset.sum_comm]
-    have h1 : ∀ s : Fin N → Fin 6,
-        ∑ x : Fin N, ∑ α : Fin 3, ∑ s' : Fin N → Fin 6,
+    have h1 : ∀ x : Fin N,
+        ∑ α : Fin 3, ∑ s : Fin N → Fin 6, ∑ s' : Fin N → Fin 6,
           (1 / 8 : ℝ) * (π s * π s' * prodDepolNormSq s s'
             (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)))) =
-        ∑ s' : Fin N → Fin 6, π s * π s' * ((1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3,
-          prodDepolNormSq s s'
-            (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)))) := by
-      intro s
-      conv_lhs => arg 2; ext x; rw [Finset.sum_comm]
-      rw [Finset.sum_comm]
-      apply Finset.sum_congr rfl; intro s' _
-      simp_rw [Finset.mul_sum]; apply Finset.sum_congr rfl; intro x _
-      apply Finset.sum_congr rfl; intro α _; ring
-    simp_rw [← h1]
-    rw [Finset.sum_comm]
-    apply Finset.sum_congr rfl; intro x _
+        ∑ s : Fin N → Fin 6, ∑ α : Fin 3, ∑ s' : Fin N → Fin 6,
+          (1 / 8 : ℝ) * (π s * π s' * prodDepolNormSq s s'
+            (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)))) :=
+      fun _ ↦ Finset.sum_comm
+    simp_rw [h1]
     rw [Finset.sum_comm]
     apply Finset.sum_congr rfl; intro s _
-    apply Finset.sum_congr rfl; intro α _
-    apply Finset.sum_congr rfl; intro s' _; rfl
+    have h2 : ∀ x : Fin N,
+        ∑ α : Fin 3, ∑ s' : Fin N → Fin 6,
+          (1 / 8 : ℝ) * (π s * π s' * prodDepolNormSq s s'
+            (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)))) =
+        ∑ s' : Fin N → Fin 6, ∑ α : Fin 3,
+          (1 / 8 : ℝ) * (π s * π s' * prodDepolNormSq s s'
+            (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)))) :=
+      fun _ ↦ Finset.sum_comm
+    simp_rw [h2]
+    rw [Finset.sum_comm]
+    apply Finset.sum_congr rfl; intro s' _
+    apply Finset.sum_congr rfl; intro x _
+    apply Finset.sum_congr rfl; intro α _; ring
   rw [hswap_otoc]
   calc ∑ s : Fin N → Fin 6, ∑ s' : Fin N → Fin 6,
           π s * π s' * ((1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3,
@@ -607,19 +609,20 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
           (mul_nonneg (hπ_pos s).le (hπ_pos s').le)
     _ = 216 * ∑ s : Fin N → Fin 6, ∑ s' : Fin N → Fin 6,
           π s * π s' * ∑ y : Fin N, prodDepolDistSq s s' (singleSiteTrivialSubmodule N y) A := by
-        simp_rw [Finset.mul_sum]
+        rw [Finset.mul_sum]
         apply Finset.sum_congr rfl; intro s _
+        rw [Finset.mul_sum]
         apply Finset.sum_congr rfl; intro s' _; ring
     _ ≤ 216 * (gibbsWightmanInner G A (wightmanQ G A)).re :=
         mul_le_mul_of_nonneg_left hQ_expand (by norm_num)
 
 /-- **End-to-End Concrete Dynamical Bound (Theorem 1.3(c) Finite-Volume Core)**:
 Combines unconditional `theorem_1_3b_otocI_unconditional` with concrete Lanczos truncation
-`lemma_4_2_concrete_operator` directly on `heisenbergEvol hH (t : ℂ) O`:
+`theorem_1_1b_concrete_operator` directly on `heisenbergEvol hH (t : ℂ) O`:
 for any `r`-local Hamiltonian `H = ∑ X ∈ E, h X` in the high-temperature regime,
 `otocI hH β (heisenbergEvol hH (t : ℂ) O)` is bounded directly by the static truncation
-filtration size `s_M = s₀ + (M - 1) * (r - 1)` and the concrete Lanczos remainder
-`R_M = O(t) - A_M(t)` with ZERO scalar-wrapper hypotheses. -/
+filtration size `s_M` and the concrete Lanczos remainder `R_M = O(t) - A_M(t)` with ZERO
+scalar-wrapper hypotheses. -/
 theorem theorem_1_3c_concrete_end_to_end {N r : ℕ} (hr : 1 ≤ r)
     (E : Finset (Finset (Fin N))) (hne : ∀ X ∈ E, X.Nonempty)
     (hcard : ∀ X ∈ E, X.card ≤ r)

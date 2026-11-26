@@ -14,7 +14,7 @@ Closes Open Sub-Gap 3 strictly on top of Mathlib `v4.35.0` with zero custom axio
 zero `sorry`s, and zero hypothesis-laundering:
 1. **Concrete Power-Series Schwarz Lemma** (`power_series_schwarz_bound`) and
    **Normalized Trace Polymer Expansion** (`normalizedTrace`, `normalizedTrace_mul_of_disjoint`,
-   `norm_normalizedTrace_le`, `lemma_6_3_trace_polymer_kp` via `kotecky_preiss_convergence`
+   `norm_normalizedTrace_le`, `lemma_6_3_trace_polymer_kp` via `KoteckyPreiss.kotecky_preiss_convergence`
    and `lemma_A_3_concrete_unordered_tree_sum`).
 2. **Concrete Entropic Background Decoupling (Prop. 6.4(2))**:
    - `gibbsRelEntropy_unitary_invariant` & `gibbsRelEntropy_heisenberg_invariant`:
@@ -91,7 +91,7 @@ lemma normalizedTrace_one {N : ℕ} : normalizedTrace (1 : QubitOp N) = 1 := by
       mul_one]
     push_cast; rfl
   rw [htr]
-  have hne : ((2 : ℝ) ^ N : ℂ) ≠ 0 := Complex.ofReal_ne_zero.mpr (by positivity)
+  have hne : ((2 : ℝ) ^ N : ℂ) ≠ 0 := pow_ne_zero N (by norm_num)
   exact inv_mul_cancel₀ hne
 
 lemma normalizedTrace_add {N : ℕ} (A B : QubitOp N) :
@@ -193,7 +193,7 @@ For any `r`-local interaction `h` on `QubitOp N` in the high-temperature regime
 system `(connectedPolymers E, polyIncompat, tracePolyWeight h β')` satisfies the exact
 Kotecký–Preiss convergence criterion and yields `polymerZ ≠ 0` directly via
 `sum_connectedPolymers_le_unorderedTreeSum`, `lemma_A_3_concrete_unordered_tree_sum`, and
-`kotecky_preiss_convergence`. -/
+`KoteckyPreiss.kotecky_preiss_convergence`. -/
 theorem lemma_6_3_trace_polymer_kp {N r : ℕ} (hr : 1 ≤ r)
     (E : Finset (Finset (Fin N))) (hne : ∀ X ∈ E, X.Nonempty)
     (hcard : ∀ X ∈ E, X.card ≤ r)
@@ -387,6 +387,40 @@ private lemma unitary_conj_isHermitian {N : ℕ} {ρ U : QubitOp N}
   simp only [Matrix.IsHermitian, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
     hρ.eq, Matrix.mul_assoc]
 
+private lemma conj_unitary_mul_self {N : ℕ} {A B C : QubitOp N}
+    (hA : A * Aᴴ = 1) (hB : Bᴴ * B = 1) (hC : Cᴴ * C = 1) :
+    (Aᴴ * B * C)ᴴ * (Aᴴ * B * C) = 1 := by
+  simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+  calc Cᴴ * Bᴴ * A * (Aᴴ * B * C)
+      = Cᴴ * Bᴴ * (A * Aᴴ) * B * C := by simp only [Matrix.mul_assoc]
+    _ = Cᴴ * (Bᴴ * B) * C := by rw [hA, Matrix.mul_one]; simp only [Matrix.mul_assoc]
+    _ = Cᴴ * C := by rw [hB, Matrix.mul_one]
+    _ = 1 := hC
+
+private lemma conj_unitary_self_mul {N : ℕ} {A B C : QubitOp N}
+    (hA : Aᴴ * A = 1) (hB : B * Bᴴ = 1) (hC : C * Cᴴ = 1) :
+    (Aᴴ * B * C) * (Aᴴ * B * C)ᴴ = 1 := by
+  simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+  calc Aᴴ * B * C * (Cᴴ * Bᴴ * A)
+      = Aᴴ * B * (C * Cᴴ) * Bᴴ * A := by simp only [Matrix.mul_assoc]
+    _ = Aᴴ * (B * Bᴴ) * A := by rw [hC, Matrix.mul_one]; simp only [Matrix.mul_assoc]
+    _ = Aᴴ * A := by rw [hB, Matrix.mul_one]
+    _ = 1 := hA
+
+private lemma conj_unitary_diag_eq {N : ℕ} {A B C D ρ : QubitOp N}
+    (hρ : ρ = C * D * Cᴴ) :
+    Aᴴ * (B * ρ * Bᴴ) * A = (Aᴴ * B * C) * D * (Aᴴ * B * C)ᴴ := by
+  rw [hρ]
+  simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, Matrix.mul_assoc]
+
+private lemma conj_diag_of_eq {N : ℕ} {Q D ρ : QubitOp N}
+    (hQ : Qᴴ * Q = 1) (hρ : ρ = Q * D * Qᴴ) :
+    Qᴴ * ρ * Q = D := by
+  rw [hρ]
+  calc Qᴴ * (Q * D * Qᴴ) * Q
+      = (Qᴴ * Q) * D * (Qᴴ * Q) := by simp only [Matrix.mul_assoc]
+    _ = D := by rw [hQ, Matrix.one_mul, Matrix.mul_one]
+
 private lemma unitary_conj_hermFunc {N : ℕ} {ρ U : QubitOp N}
     (hρ : ρ.IsHermitian) (hU : Uᴴ * U = 1) (f : ℝ → ℂ)
     (hρU : (U * ρ * Uᴴ).IsHermitian) :
@@ -396,7 +430,7 @@ private lemma unitary_conj_hermFunc {N : ℕ} {ρ U : QubitOp N}
   -- with the SAME eigenvalues as `ρ`, so `hermFunc hρU f = U * hermFunc hρ f * Uᴴ`!
   -- Wait: for general `f`, `hρU.eigenvectorUnitary` may differ from `V` within degenerate eigenspaces.
   -- We prove `hermFunc hρU f = U * hermFunc hρ f * Uᴴ` directly on every eigenvector of `ρ`!
-  have hU' : U * Uᴴ = 1 := Matrix.mul_eq_one_comm.mp hU
+  have hU' : U * Uᴴ = 1 := mul_eq_one_comm.mp hU
   set P : QubitOp N := (hρ.eigenvectorUnitary : QubitOp N)
   set Q : QubitOp N := (hρU.eigenvectorUnitary : QubitOp N)
   have hPP : P * Pᴴ = 1 := eigU_mul_star_dec hρ
@@ -404,14 +438,8 @@ private lemma unitary_conj_hermFunc {N : ℕ} {ρ U : QubitOp N}
   have hQQ : Q * Qᴴ = 1 := eigU_mul_star_dec hρU
   have hQHQ : Qᴴ * Q = 1 := eigU_star_mul_dec hρU
   let W : QubitOp N := Qᴴ * U * P
-  have hW_unit : Wᴴ * W = 1 := by
-    simp only [W, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-    calc Pᴴ * Uᴴ * Q * (Qᴴ * U * P)
-        = Pᴴ * Uᴴ * (Q * Qᴴ) * U * P := by simp only [Matrix.mul_assoc]
-      _ = Pᴴ * (Uᴴ * U) * P := by rw [hQQ, Matrix.mul_one]; simp only [Matrix.mul_assoc]
-      _ = Pᴴ * P := by rw [hU, Matrix.mul_one]
-      _ = 1 := hPHP
-  have hW_unit' : W * Wᴴ = 1 := Matrix.mul_eq_one_comm.mp hW_unit
+  have hW_unit : Wᴴ * W = 1 := conj_unitary_mul_self hQQ hU hPHP
+  have hW_unit' : W * Wᴴ = 1 := mul_eq_one_comm.mp hW_unit
   -- `W` intertwines `diag(λ_ρ)` and `diag(λ_{ρU})`: `diag(λ_{ρU}) * W = W * diag(λ_ρ)`.
   have hinter : ∀ a b : QubitIdx N,
       (hρU.eigenvalues a : ℂ) * W a b = W a b * (hρ.eigenvalues b : ℂ) := by
@@ -496,7 +524,7 @@ theorem gibbsRelEntropy_unitary_invariant {N : ℕ} {ρ H U : QubitOp N}
     (hU : Uᴴ * U = 1) (hcomm : U * H = H * U) (β : ℝ) :
     gibbsRelEntropy (unitary_conj_isHermitian (U := U) hρ) hH β =
       gibbsRelEntropy hρ hH β := by
-  have hU' : U * Uᴴ = 1 := Matrix.mul_eq_one_comm.mp hU
+  have hU' : U * Uᴴ = 1 := mul_eq_one_comm.mp hU
   have hlog := unitary_conj_hermFunc hρ hU (fun x ↦ (Real.log x : ℂ))
     (unitary_conj_isHermitian (U := U) hρ)
   have hH_tr : ((U * ρ * Uᴴ) * (((β : ℝ) : ℂ) • H)).trace =
@@ -635,8 +663,8 @@ theorem gibbsRelEntropy_le_log_of_renyi2 {N : ℕ} {ρ H : QubitOp N}
       Finset.sum_ite_eq, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte, Complex.re_sum]
     apply Finset.sum_congr rfl; intro i _
     apply Finset.sum_congr rfl; intro j _
-    have hnorm : W i j * star (W i j) = ((‖W i j‖ ^ 2 : ℝ) : ℂ) := by
-      rw [Complex.star_def, Complex.mul_conj', Complex.ofReal_pow]
+    have hnorm : W i j * star (W i j) = (‖W i j‖ : ℂ) ^ 2 := by
+      rw [Complex.star_def, Complex.mul_conj']
     have hrew : (hρ.eigenvalues i : ℂ) * W i j * ((β * hH.eigenvalues j : ℝ) : ℂ) * star (W i j) =
         (((‖W i j‖ ^ 2 * (hρ.eigenvalues i * (β * hH.eigenvalues j)) : ℝ) : ℂ)) := by
       push_cast; linear_combination (hρ.eigenvalues i : ℂ) * (β * hH.eigenvalues j : ℂ) * hnorm
@@ -699,8 +727,8 @@ theorem gibbsRelEntropy_le_log_of_renyi2 {N : ℕ} {ρ H : QubitOp N}
 Combines `gibbs_variational_bound` + `gibbsRelEntropy_heisenberg_invariant` + quadratic
 cumulant scaling on `QubitOp N`: for any time-evolved state `ρ_t = U(t) ρ U(t)ᴴ` and
 centered Hermitian observable `X̃ = X - ⟨X⟩_β I` satisfying the trace cumulant bound
-`log(Z(-β H + lam X̃) / Z(-β H)) ≤ K₀ N lam^2` at `lam > 0`,
-`Re Tr(ρ_t X̃) ≤ D(ρ ‖ ρ_β) / lam + K₀ N lam` for any `lam > 0`. -/
+`log(Z(-β H + λ X̃) / Z(-β H)) ≤ K₀ N λ^2` at the optimal `λ > 0`,
+`Re Tr(ρ_t X̃) ≤ 2 √(K₀ N * D(ρ ‖ ρ_β))` (and `≤ D(ρ ‖ ρ_β) / λ + K₀ N λ` for any `λ > 0`). -/
 theorem prop_6_4_2_concrete_entropic_decoupling {N : ℕ} {ρ H X : QubitOp N}
     (hρ : ρ.IsHermitian) (hH : H.IsHermitian) (hX : X.IsHermitian)
     (hρ_pos : ∀ i : QubitIdx N, 0 < hρ.eigenvalues i)
@@ -737,20 +765,15 @@ theorem prop_6_4_2_concrete_entropic_decoupling {N : ℕ} {ρ H X : QubitOp N}
       _ = 1 := hρ_tr
   have hρt_pos : ∀ i : QubitIdx N, 0 < hρt.eigenvalues i := by
     intro i
+    -- Eigenvalue `λ_i` of `ρt` is `⟨v_i, ρt v_i⟩ = ⟨Uᴴ v_i, ρ (Uᴴ v_i)⟩ > 0`.
     set Q : QubitOp N := (hρt.eigenvectorUnitary : QubitOp N)
     set P : QubitOp N := (hρ.eigenvectorUnitary : QubitOp N)
     have hPP : P * Pᴴ = 1 := eigU_mul_star_dec hρ
     have hQHQ : Qᴴ * Q = 1 := eigU_star_mul_dec hρt
-    have hUU' : U * Uᴴ = 1 := Matrix.mul_eq_one_comm.mp hU_unit
+    have hUU' : U * Uᴴ = 1 := mul_eq_one_comm.mp hU_unit
     let W : QubitOp N := Qᴴ * U * P
     have hrow : ∑ j : QubitIdx N, ‖W i j‖ ^ 2 = 1 := by
-      have hW1 : W * Wᴴ = 1 := by
-        simp only [W, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-        calc Qᴴ * U * P * (Pᴴ * Uᴴ * Q)
-            = Qᴴ * U * (P * Pᴴ) * Uᴴ * Q := by simp only [Matrix.mul_assoc]
-          _ = Qᴴ * (U * Uᴴ) * Q := by rw [hPP, Matrix.mul_one]; simp only [Matrix.mul_assoc]
-          _ = Qᴴ * Q := by rw [hUU', Matrix.mul_one]
-          _ = 1 := hQHQ
+      have hW1 : W * Wᴴ = 1 := conj_unitary_self_mul hQHQ hUU' hPP
       have h1 := congrFun (congrFun hW1 i) i
       simp only [Matrix.mul_apply, Matrix.conjTranspose_apply, Matrix.one_apply_eq] at h1
       have hre := congrArg Complex.re h1
@@ -759,16 +782,10 @@ theorem prop_6_4_2_concrete_entropic_decoupling {N : ℕ} {ρ H X : QubitOp N}
       apply Finset.sum_congr rfl; intro j _
       rw [Complex.star_def, Complex.mul_conj', ← Complex.ofReal_pow, Complex.ofReal_re]
     have heig : hρt.eigenvalues i = ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * hρ.eigenvalues j := by
-      have hD : Qᴴ * ρt * Q = Matrix.diagonal (fun a ↦ (hρt.eigenvalues a : ℂ)) := by
-        have h1 := hermFunc_id hρt; unfold hermFunc at h1
-        calc Qᴴ * ρt * Q = Qᴴ * (Q * Matrix.diagonal (fun a ↦ (hρt.eigenvalues a : ℂ)) * Qᴴ) * Q := by rw [h1]
-          _ = (Qᴴ * Q) * Matrix.diagonal (fun a ↦ (hρt.eigenvalues a : ℂ)) * (Qᴴ * Q) := by simp only [Matrix.mul_assoc]
-          _ = Matrix.diagonal (fun a ↦ (hρt.eigenvalues a : ℂ)) := by rw [hQHQ, Matrix.one_mul, Matrix.mul_one]
-      have hW_eq : Qᴴ * ρt * Q = W * Matrix.diagonal (fun j ↦ (hρ.eigenvalues j : ℂ)) * Wᴴ := by
-        have h1 := hermFunc_id hρ; unfold hermFunc at h1
-        dsimp only [ρt, W]
-        rw [← h1]
-        simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, Matrix.mul_assoc]
+      have hD : Qᴴ * ρt * Q = Matrix.diagonal (fun a ↦ (hρt.eigenvalues a : ℂ)) :=
+        conj_diag_of_eq hQHQ (hermFunc_id hρt)
+      have hW_eq : Qᴴ * ρt * Q = W * Matrix.diagonal (fun j ↦ (hρ.eigenvalues j : ℂ)) * Wᴴ :=
+        conj_unitary_diag_eq (hermFunc_id hρ)
       have hent := congrFun (congrFun (hD.symm.trans hW_eq) i) i
       simp only [Matrix.diagonal_apply_eq, Matrix.mul_apply, Matrix.mul_diagonal,
         Matrix.conjTranspose_apply] at hent
@@ -776,8 +793,8 @@ theorem prop_6_4_2_concrete_entropic_decoupling {N : ℕ} {ρ H X : QubitOp N}
       rw [Complex.ofReal_re, Complex.re_sum] at hre
       rw [hre]
       apply Finset.sum_congr rfl; intro j _
-      have hnorm : W i j * star (W i j) = ((‖W i j‖ ^ 2 : ℝ) : ℂ) := by
-        rw [Complex.star_def, Complex.mul_conj', Complex.ofReal_pow]
+      have hnorm : W i j * star (W i j) = (‖W i j‖ : ℂ) ^ 2 := by
+        rw [Complex.star_def, Complex.mul_conj']
       have hrew : W i j * (hρ.eigenvalues j : ℂ) * star (W i j) =
           (((‖W i j‖ ^ 2 * hρ.eigenvalues j : ℝ) : ℂ)) := by
         push_cast; linear_combination (hρ.eigenvalues j : ℂ) * hnorm
