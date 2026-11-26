@@ -294,22 +294,22 @@ theorem totalSizeOp_cauchy_schwarz {N : ℕ} (A B : QubitOp N) :
       rwa [div_mul_cancel₀ _ hc0] at this
     linarith
 
-lemma gibbsWightmanInner_eq_hsInner {N : ℕ} (G : GibbsData N) (A B : QubitOp N) :
+lemma gibbsWightmanInner_eq_hsInner {N : ℕ} (G : GibbsData N)
+    (hQsq : G.ρQuarter * G.ρQuarter = G.ρHalf) (A B : QubitOp N) :
     wightmanInner G.ρHalf A B = hsInner (jBeta G.ρQuarter A) (jBeta G.ρQuarter B) := by
   unfold wightmanInner hsInner jBeta
   rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, G.ρQuarter_herm]
   rw [Matrix.trace_mul_comm (G.ρQuarter * (Aᴴ * G.ρQuarter)) (G.ρQuarter * B * G.ρQuarter)]
-  have h1 : G.ρQuarter * G.ρQuarter = G.ρHalf := G.ρQuarter_sq
   have hstep1 :
       (G.ρQuarter * B * G.ρQuarter * (G.ρQuarter * (Aᴴ * G.ρQuarter))).trace =
       (G.ρQuarter * (B * (G.ρQuarter * G.ρQuarter) * Aᴴ * G.ρQuarter)).trace := by
     simp only [Matrix.mul_assoc]
-  rw [hstep1, Matrix.trace_mul_comm G.ρQuarter, h1]
+  rw [hstep1, Matrix.trace_mul_comm G.ρQuarter, hQsq]
   have hstep2 :
       (B * G.ρHalf * Aᴴ * G.ρQuarter * G.ρQuarter).trace =
       (B * G.ρHalf * Aᴴ * (G.ρQuarter * G.ρQuarter)).trace := by
     simp only [Matrix.mul_assoc]
-  rw [hstep2, h1, Matrix.trace_mul_comm (B * G.ρHalf * Aᴴ) G.ρHalf]
+  rw [hstep2, hQsq, Matrix.trace_mul_comm (B * G.ρHalf * Aᴴ) G.ρHalf]
   have hstep3 :
       (G.ρHalf * (B * G.ρHalf * Aᴴ)).trace =
       ((G.ρHalf * B) * (G.ρHalf * Aᴴ)).trace := by
@@ -318,13 +318,14 @@ lemma gibbsWightmanInner_eq_hsInner {N : ℕ} (G : GibbsData N) (A B : QubitOp N
   simp only [Matrix.mul_assoc]
 
 /-- **Operator-Level Lemma 4.2** (Thermal Size Truncation on `QubitOp N`, Eq. 4.3):
-For any Gibbs state `G : GibbsData N` and any operator decomposition `O = A_M + R_M` in
-`QubitOp N` with `‖A_M‖_W² = 1 - q`, `‖R_M‖_W² = q` (`0 ≤ q ≤ 1`), and leading-part bound
-`mssThermalSize G A_M ≤ (1 - q) * Λ_M` (`0 ≤ Λ_M`), derives directly from `0 ⪯ 𝒮 ⪯ N 1`
-and Cauchy–Schwarz:
+For any Gibbs state `G : GibbsData N` (with `ρQuarter * ρQuarter = ρHalf`) and any operator
+decomposition `O = A_M + R_M` in `QubitOp N` with `‖A_M‖_W² = 1 - q`, `‖R_M‖_W² = q`
+(`0 ≤ q ≤ 1`), and leading-part bound `mssThermalSize G A_M ≤ (1 - q) * Λ_M` (`0 ≤ Λ_M`),
+derives directly from `0 ⪯ 𝒮 ⪯ N 1` and Cauchy–Schwarz:
 `mssThermalSize G O ≤ Λ_M + 2 N √q + N q`. -/
 theorem lemma_4_2_operator_thermal_size_truncation {N : ℕ}
-    (G : GibbsData N) (O A_M R_M : QubitOp N) {q Λ_M : ℝ}
+    (G : GibbsData N) (hQsq : G.ρQuarter * G.ρQuarter = G.ρHalf)
+    (O A_M R_M : QubitOp N) {q Λ_M : ℝ}
     (hdecomp : O = A_M + R_M)
     (hnormA : (wightmanInner G.ρHalf A_M A_M).re = 1 - q)
     (hnormR : (wightmanInner G.ρHalf R_M R_M).re = q)
@@ -335,7 +336,10 @@ theorem lemma_4_2_operator_thermal_size_truncation {N : ℕ}
   set JA := jBeta G.ρQuarter A_M
   set JR := jBeta G.ρQuarter R_M
   have hJO : jBeta G.ρQuarter O = JA + JR := by
-    rw [hdecomp]; unfold jBeta JA JR; simp [Matrix.mul_add, Matrix.add_mul]
+    rw [hdecomp]
+    change G.ρQuarter * (A_M + R_M) * G.ρQuarter =
+      G.ρQuarter * A_M * G.ρQuarter + G.ρQuarter * R_M * G.ρQuarter
+    simp [Matrix.mul_add, Matrix.add_mul]
   have hS_add : totalSizeOp (JA + JR) = totalSizeOp JA + totalSizeOp JR := by
     unfold totalSizeOp siteSizeOp partialTraceSite
     simp only [Matrix.mul_add, Matrix.add_mul, Finset.sum_add_distrib, smul_add,
@@ -351,9 +355,9 @@ theorem lemma_4_2_operator_thermal_size_truncation {N : ℕ}
     unfold hsInner at hsym
     linarith
   have hJA_norm : (hsInner JA JA).re = 1 - q := by
-    rw [← gibbsWightmanInner_eq_hsInner G A_M A_M]; exact hnormA
+    rw [← gibbsWightmanInner_eq_hsInner G hQsq A_M A_M]; exact hnormA
   have hJR_norm : (hsInner JR JR).re = q := by
-    rw [← gibbsWightmanInner_eq_hsInner G R_M R_M]; exact hnormR
+    rw [← gibbsWightmanInner_eq_hsInner G hQsq R_M R_M]; exact hnormR
   have hJA_S_le : (hsInner JA (totalSizeOp JA)).re ≤ (N : ℝ) := by
     have h1 := (totalSizeOp_bounds JA).2
     rw [hJA_norm] at h1

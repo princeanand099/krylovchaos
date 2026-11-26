@@ -148,7 +148,6 @@ private lemma prod_param_identities {m : ℝ} (hm : |m| < 1) :
       _ = 1 - prodSigma m := by ring
   exact ⟨hp, hr, hσ, hp2, hr2, h2pr, hq2⟩
 
-/-- Pure `2 × 2` trace identity for diagonal `D = diag(p, r)` — no `Real.sqrt` unfolding. -/
 private lemma diag_wightman_inner (p r : ℂ) (A B : Matrix (Fin 2) (Fin 2) ℂ) :
     (!![p, 0; 0, r] * Aᴴ * !![p, 0; 0, r] * B).trace =
     p ^ 2 * star (A 0 0) * B 0 0 +
@@ -159,7 +158,6 @@ private lemma diag_wightman_inner (p r : ℂ) (A B : Matrix (Fin 2) (Fin 2) ℂ)
     Matrix.cons_val_one, Matrix.cons_val_fin_one, mul_zero, zero_mul, add_zero, zero_add]
   ring
 
-/-- Pure `2 × 2` trace identity for `singleSiteSizeOp` on `diag(a, b) * A * diag(a, b)`. -/
 private lemma diag_size_form (a b : ℂ) (ha : star a = a) (hb : star b = b)
     (A B : Matrix (Fin 2) (Fin 2) ℂ) :
     ((!![a, 0; 0, b] * A * !![a, 0; 0, b])ᴴ *
@@ -195,9 +193,6 @@ theorem gsBasis_wightman_orthonormal {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
   have h2prC : 2 * p * r = σ := by exact_mod_cast h2pr
   have hp2C : p ^ 2 = (1 + (m : ℂ)) / 2 := by exact_mod_cast hp2
   have hr2C : r ^ 2 = (1 - (m : ℂ)) / 2 := by exact_mod_cast hr2
-  have hstar_sσ : star sσ = sσ := by simp [sσ, Complex.star_def]
-  have hstar_σ : star σ = σ := by simp [σ, Complex.star_def]
-  have hstar_m : star (m : ℂ) = (m : ℂ) := by simp [Complex.star_def]
   have hhalf : singleSiteRhoHalf m = !![p, 0; 0, r] := rfl
   unfold singleSiteWightmanInner
   rw [hhalf, diag_wightman_inner]
@@ -272,43 +267,106 @@ theorem gsBasis_derives_singleSiteM {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
     intro A B
     unfold singleSiteSizeForm singleSiteJ
     rw [hquar, diag_size_form qp qr hstar_qp hstar_qr, hqp2, hqr2]
-  rw [hform, hform]
-  fin_cases a <;> fin_cases b <;>
+  have hII : Complex.I * Complex.I = -1 := Complex.I_mul_I
+  have hsimp_eval : ∀ x y : Fin 4,
+      singleSiteSizeForm m (gsBasis m x) (gsBasis m y) =
+      (1 / 2 : ℂ) * (p * star ((gsBasis m x) 0 0) - r * star ((gsBasis m x) 1 1)) *
+        (p * (gsBasis m y) 0 0 - r * (gsBasis m y) 1 1) +
+      p * r * (star ((gsBasis m x) 1 0) * (gsBasis m y) 1 0 +
+        star ((gsBasis m x) 0 1) * (gsBasis m y) 0 1) := fun x y ↦ hform _ _
+  match a, b with
+  | 0, 0 => simp [singleSiteM]
+  | 0, 1 =>
+    rw [if_neg (by decide), sub_zero, hsimp_eval]
+    simp [gsBasis, singleSiteM]
+  | 0, 2 =>
+    rw [if_neg (by decide), sub_zero, hsimp_eval]
+    simp [gsBasis, singleSiteM]
+  | 0, 3 =>
+    rw [if_neg (by decide), sub_zero, hsimp_eval]
     simp only [gsBasis, singleSiteM, Fin.isValue, Matrix.of_apply, Matrix.cons_val',
       Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_fin_one,
-      star_zero, star_one, star_mul', star_inv₀, star_neg, star_sub,
-      Complex.star_def, Complex.conj_I, Complex.conj_ofReal,
-      mul_zero, zero_mul, add_zero, zero_add, mul_one, one_mul, sub_zero, sub_self,
-      neg_neg, ↓reduceIte, Fin.reduceEq, Complex.ofReal_zero, Complex.ofReal_sub,
-      Complex.ofReal_one, Complex.ofReal_div, Complex.ofReal_pow, Complex.ofReal_ofNat]
-  · -- (0, 3)
+      star_zero, star_one, mul_zero, zero_mul, add_zero, zero_add, mul_one, one_mul,
+      Complex.ofReal_div, Complex.ofReal_ofNat]
     change 1 / 2 * (p - r) * (p * (σ⁻¹ * (1 - (m : ℂ))) - r * (σ⁻¹ * (-1 - (m : ℂ)))) = (m : ℂ) / 2
     field_simp [hσ_ne]
     linear_combination (1 - (m : ℂ)) * hp2C - (1 + (m : ℂ)) * hr2C + (m : ℂ) * h2prC
-  · -- (1, 1)
+  | 1, 0 =>
+    rw [if_neg (by decide), sub_zero, hsimp_eval]
+    simp [gsBasis, singleSiteM]
+  | 1, 1 =>
+    rw [if_pos rfl, hsimp_eval, hsimp_eval]
+    simp only [gsBasis, singleSiteM, Fin.isValue, Matrix.of_apply, Matrix.cons_val',
+      Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_fin_one,
+      star_zero, star_one, star_inv₀, Complex.star_def, Complex.conj_ofReal,
+      mul_zero, zero_mul, add_zero, zero_add, mul_one, one_mul, sub_zero,
+      Complex.ofReal_sub, Complex.ofReal_one, Complex.ofReal_div, Complex.ofReal_pow,
+      Complex.ofReal_ofNat]
     change p * r * (sσ⁻¹ * sσ⁻¹ + sσ⁻¹ * sσ⁻¹) - 1 / 2 * (p - r) * (p - r) =
       1 - ((prodQ m) ^ 2 : ℂ) / 2
     rw [hq2C]
     field_simp [hsσ_ne]; rw [hsσ2]
     linear_combination (2 - σ) * h2prC - σ * hp2C - σ * hr2C
-  · -- (1, 2)
-    change p * r * (sσ⁻¹ * (Complex.I * sσ⁻¹) + sσ⁻¹ * (-Complex.I * sσ⁻¹)) = 0
+  | 1, 2 =>
+    rw [if_neg (by decide), sub_zero, hsimp_eval]
+    simp only [gsBasis, singleSiteM, Fin.isValue, Matrix.of_apply, Matrix.cons_val',
+      Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_fin_one,
+      star_zero, star_inv₀, Complex.star_def, Complex.conj_ofReal,
+      mul_zero, zero_mul, add_zero, zero_add, sub_self, Complex.ofReal_zero]
     ring
-  · -- (2, 1)
-    change p * r * (sσ⁻¹ * -Complex.I * sσ⁻¹ + sσ⁻¹ * Complex.I * sσ⁻¹) = 0
+  | 1, 3 =>
+    rw [if_neg (by decide), sub_zero, hsimp_eval]
+    simp [gsBasis, singleSiteM]
+  | 2, 0 =>
+    rw [if_neg (by decide), sub_zero, hsimp_eval]
+    simp [gsBasis, singleSiteM]
+  | 2, 1 =>
+    rw [if_neg (by decide), sub_zero, hsimp_eval]
+    simp only [gsBasis, singleSiteM, Fin.isValue, Matrix.of_apply, Matrix.cons_val',
+      Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_fin_one,
+      star_zero, star_mul', star_inv₀, star_neg, Complex.star_def, Complex.conj_I,
+      Complex.conj_ofReal, mul_zero, zero_mul, add_zero, zero_add, sub_self, neg_neg,
+      Complex.ofReal_zero]
     ring
-  · -- (2, 2)
-    change p * r * (sσ⁻¹ * -Complex.I * (Complex.I * sσ⁻¹) + sσ⁻¹ * Complex.I * (-Complex.I * sσ⁻¹)) -
-      1 / 2 * (p - r) * (p - r) = 1 - ((prodQ m) ^ 2 : ℂ) / 2
-    have hII : Complex.I * Complex.I = -1 := Complex.I_mul_I
+  | 2, 2 =>
+    rw [if_pos rfl, hsimp_eval, hsimp_eval]
+    simp only [gsBasis, singleSiteM, Fin.isValue, Matrix.of_apply, Matrix.cons_val',
+      Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_fin_one,
+      star_zero, star_one, star_mul', star_inv₀, star_neg, Complex.star_def, Complex.conj_I,
+      Complex.conj_ofReal, mul_zero, zero_mul, add_zero, zero_add, mul_one, one_mul,
+      sub_zero, neg_neg, Complex.ofReal_sub, Complex.ofReal_one, Complex.ofReal_div,
+      Complex.ofReal_pow, Complex.ofReal_ofNat]
+    change p * r * (sσ⁻¹ * -Complex.I * (Complex.I * sσ⁻¹) +
+        sσ⁻¹ * Complex.I * (-Complex.I * sσ⁻¹)) - 1 / 2 * (p - r) * (p - r) =
+      1 - ((prodQ m) ^ 2 : ℂ) / 2
     rw [hq2C]
     field_simp [hsσ_ne]; rw [hsσ2]
     linear_combination -4 * p * r * hII + (2 - σ) * h2prC - σ * hp2C - σ * hr2C
-  · -- (3, 0)
+  | 2, 3 =>
+    rw [if_neg (by decide), sub_zero, hsimp_eval]
+    simp [gsBasis, singleSiteM]
+  | 3, 0 =>
+    rw [if_neg (by decide), sub_zero, hsimp_eval]
+    simp only [gsBasis, singleSiteM, Fin.isValue, Matrix.of_apply, Matrix.cons_val',
+      Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_fin_one,
+      star_zero, star_one, star_mul', star_inv₀, star_sub, star_neg, Complex.star_def,
+      Complex.conj_ofReal, mul_zero, zero_mul, add_zero, zero_add, mul_one, one_mul,
+      Complex.ofReal_div, Complex.ofReal_ofNat]
     change 1 / 2 * (p * ((1 - (m : ℂ)) * σ⁻¹) - r * ((-1 - (m : ℂ)) * σ⁻¹)) * (p - r) = (m : ℂ) / 2
     field_simp [hσ_ne]
     linear_combination (1 - (m : ℂ)) * hp2C - (1 + (m : ℂ)) * hr2C + (m : ℂ) * h2prC
-  · -- (3, 3)
+  | 3, 1 =>
+    rw [if_neg (by decide), sub_zero, hsimp_eval]
+    simp [gsBasis, singleSiteM]
+  | 3, 2 =>
+    rw [if_neg (by decide), sub_zero, hsimp_eval]
+    simp [gsBasis, singleSiteM]
+  | 3, 3 =>
+    rw [if_pos rfl, hsimp_eval, hsimp_eval]
+    simp only [gsBasis, singleSiteM, Fin.isValue, Matrix.of_apply, Matrix.cons_val',
+      Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_fin_one,
+      star_zero, star_one, star_mul', star_inv₀, star_sub, star_neg, Complex.star_def,
+      Complex.conj_ofReal, mul_zero, zero_mul, add_zero, zero_add, mul_one, one_mul]
     change 1 / 2 * (p * ((1 - (m : ℂ)) * σ⁻¹) - r * ((-1 - (m : ℂ)) * σ⁻¹)) *
       (p * (σ⁻¹ * (1 - (m : ℂ))) - r * (σ⁻¹ * (-1 - (m : ℂ)))) -
       1 / 2 * (p - r) * (p - r) = σ
