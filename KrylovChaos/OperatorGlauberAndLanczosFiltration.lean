@@ -100,7 +100,8 @@ private lemma trace_herm_mul_hermFunc_re {N : ℕ} {ρ A : QubitOp N}
     rw [Complex.star_def, Complex.mul_conj', Complex.ofReal_pow]
   have hrew : (hρ.eigenvalues i : ℂ) * W i j * (f (hA.eigenvalues j) : ℂ) * star (W i j) =
       (((‖W i j‖ ^ 2 * (hρ.eigenvalues i * f (hA.eigenvalues j)) : ℝ) : ℂ)) := by
-    push_cast; linear_combination (hρ.eigenvalues i : ℂ) * (f (hA.eigenvalues j) : ℂ) * hnorm
+    simp only [Complex.ofReal_mul]
+    linear_combination (hρ.eigenvalues i : ℂ) * (f (hA.eigenvalues j) : ℂ) * hnorm
   rw [hrew, Complex.ofReal_re]
 
 private lemma unitary_overlap_doubly_stochastic {N : ℕ} {ρ A : QubitOp N}
@@ -191,7 +192,7 @@ theorem quantumRelEntropy_nonneg {N : ℕ} {ρ σ : QubitOp N}
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * (hρ.eigenvalues i * Real.log (hσ.eigenvalues j))) -
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * hρ.eigenvalues i) +
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * hσ.eigenvalues j) := by
-      simp_rw [← Finset.sum_add_distrib, ← Finset.sum_sub_distrib]
+      simp_rw [← Finset.sum_sub_distrib, ← Finset.sum_add_distrib]
       apply Finset.sum_congr rfl; intro i _
       apply Finset.sum_congr rfl; intro j _; ring
     rw [hsplit, ← h1, h2, h3]; ring
