@@ -340,7 +340,8 @@ theorem depol_global_reconstruct {N : ℕ} (A : QubitOp N) :
   conv_lhs => arg 2; ext i; rw [Finset.sum_comm]
   rw [Finset.sum_comm]
   apply Finset.sum_congr rfl; intro s _
-  rw [← Finset.sum_smul]
+  rw [Finset.sum_comm]
+  simp_rw [← Finset.sum_smul]
   congr 1
   conv_rhs => rw [hA]
   rw [depolDualWeight_sum]
@@ -426,7 +427,9 @@ lemma opNorm_sum_le {N : ℕ} {ι : Type*} (s : Finset ι) (f : ι → QubitOp N
   | empty =>
     simp only [Finset.sum_empty]
     unfold opNorm
-    have h0 : opToCLM (0 : QubitOp N) = 0 := by ext v i; change ((0 : QubitOp N) *ᵥ v.ofLp) i = 0; simp
+    have h0 : opToCLM (0 : QubitOp N) = 0 := by
+      apply ContinuousLinearMap.ext; intro v; apply PiLp.ext; intro i
+      change ((0 : QubitOp N) *ᵥ v.ofLp) i = 0; simp
     rw [h0, norm_zero]
   | insert a s ha ih =>
     rw [Finset.sum_insert ha, Finset.sum_insert ha]
