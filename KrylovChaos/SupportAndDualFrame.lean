@@ -521,7 +521,7 @@ lemma signedPauliU_unitary (u : Fin 6) :
   have hI : Complex.I ^ 2 = -1 := Complex.I_sq
   fin_cases u <;> ext i j <;> fin_cases i <;> fin_cases j <;>
     simp [signedPauliU, Matrix.mul_apply, Fin.sum_univ_two] <;>
-    first | ring | (ring_nf; simp only [h2, h2', hI]; ring)
+    (try ring_nf) <;> simp only [h2, h2', hI] <;> ring
 
 lemma signedPauliU_diag_depolDualF (u : Fin 6) :
     depolDualF u =
@@ -531,8 +531,8 @@ lemma signedPauliU_diag_depolDualF (u : Fin 6) :
   have hI : Complex.I ^ 2 = -1 := Complex.I_sq
   fin_cases u <;> ext i j <;> fin_cases i <;> fin_cases j <;>
     simp [depolDualF, signedPauli, signedPauliU, pauliX, pauliY, pauliZ,
-      Matrix.mul_apply, Fin.sum_univ_two] <;>
-    first | ring | (ring_nf; simp only [h2, h2', hI]; ring)
+      Matrix.mul_apply, Matrix.vecMul_diagonal, Fin.sum_univ_two] <;>
+    (try ring_nf) <;> simp only [h2, h2', hI] <;> ring
 
 lemma depolDualWeight_eq_restricted {N : ℕ} (s : Fin N → Fin 6) {U : Finset (Fin N)}
     {A : QubitOp N} (hA : A ∈ supportedOn U) :
