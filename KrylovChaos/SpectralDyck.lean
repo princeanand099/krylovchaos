@@ -5,9 +5,7 @@ Authors: Prince Anand
 -/
 import KrylovChaos.Basic
 import KrylovChaos.WightmanIsometry
-import Mathlib.Analysis.SpecialFunctions.Gamma.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
-import Mathlib.MeasureTheory.Integral.Gamma
 import Mathlib.Tactic
 
 /-!
@@ -131,7 +129,7 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
         ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) := by
       apply prod_le_prod_nonneg (Finset.range m) (fun j _ ↦ by positivity)
       intro j _; push_cast; linarith
-    have hfac_id : ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) * (K.factorial : ℝ) =
+    have hfac_id : (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) * (K.factorial : ℝ) =
         ((m + K).factorial : ℝ) := by
       induction m with
       | zero => simp
@@ -156,8 +154,8 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
       exact_mod_cast hnat
     have hKfac : (1 : ℝ) ≤ (K.factorial : ℝ) := by exact_mod_cast Nat.factorial_pos K
     have hprod_le2 : ∏ j ∈ Finset.range m, (α + (j : ℝ)) ≤ ((m + K).factorial : ℝ) := by
-      have h1 : ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) ≤
-          ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) * (K.factorial : ℝ) := by
+      have h1 : (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) ≤
+          (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) * (K.factorial : ℝ) := by
         have hnn : 0 ≤ ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) :=
           Finset.prod_nonneg fun j _ ↦ Nat.cast_nonneg _
         nlinarith
@@ -191,7 +189,7 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
       filter_upwards [Filter.eventually_ge_atTop 1] with m hm
       have hmK : (0 : ℝ) < ((m + K : ℕ) : ℝ) := by exact_mod_cast (by omega : 0 < m + K)
       rw [Real.norm_of_nonneg (by positivity), Real.norm_of_nonneg (by positivity),
-        pow_succ, ← div_pow]
+        pow_succ, div_pow]
       field_simp [hmK.ne', (pow_pos hu0 m).ne']
     exact summable_of_ratio_test_tendsto_lt_one hu1
       (Filter.eventually_atTop.mpr ⟨1, fun m hm ↦ by positivity⟩) hratio
@@ -233,7 +231,13 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
   · simp [shiftDyckPath]
   · unfold shiftDyckPath
     by_cases h0 : N₀ = 0
-    · subst h0; simp [hγ.2.1]
+    · subst h0
+      by_cases hn0 : n = 0
+      · subst hn0; simp
+      · have h1 : ¬ (2 * n ≤ 0) := by omega
+        have h2 : 2 * n ≤ 2 * n - 0 := by omega
+        simp only [h1, h2, ↓reduceDIte, Nat.zero_add]
+        convert hγ.2.1 using 2; exact Fin.ext (by dsimp; omega)
     · have h1 : ¬ (2 * n ≤ N₀) := by omega
       have h2 : ¬ (2 * n ≤ 2 * n - N₀) := by omega
       simp [h1, h2]
@@ -248,24 +252,27 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
         have h2 : k.1 + 1 ≤ 2 * n - N₀ := by omega
         by_cases heq : k.1 = N₀
         · have ha : k.1 ≤ N₀ := by omega
+          simp only [ha, ↓reduceDIte, h1, h2]
           have hstep := hγ.2.2 ⟨0, by omega⟩
+          dsimp only at hstep
           have h0 : γ ⟨0, by omega⟩ = 0 := hγ.1
-          simp only [ha, ↓reduceDIte, h1, h2, heq, Nat.sub_self]
-          have hidx : k.1 + 1 - N₀ = 1 := by omega
-          have : N₀ + γ ⟨k.1 + 1 - N₀, by omega⟩ = N₀ + 1 ∨
-              N₀ = N₀ + γ ⟨k.1 + 1 - N₀, by omega⟩ + 1 := by
-            rcases hstep with hs | hs
-            · left; simp [hidx, h0] at hs ⊢; omega
-            · right; omega
-          exact this
+          have hγ1 : γ ⟨k.1 + 1 - N₀, by omega⟩ = γ ⟨1, by omega⟩ := by
+            congr 1; exact Fin.ext (by dsimp; omega)
+          rw [hγ1, heq]
+          rcases hstep with hs | hs
+          · left; omega
+          · right; omega
         · have ha1 : ¬ (k.1 ≤ N₀) := by omega
           have ha2 : k.1 ≤ 2 * n - N₀ := by omega
           simp only [ha1, ha2, h1, h2, ↓reduceDIte]
           have hstep := hγ.2.2 ⟨k.1 - N₀, by omega⟩
-          have hidx : k.1 + 1 - N₀ = (k.1 - N₀) + 1 := by omega
+          dsimp only at hstep
+          have hγ1 : γ ⟨k.1 + 1 - N₀, by omega⟩ = γ ⟨k.1 - N₀ + 1, by omega⟩ := by
+            congr 1; exact Fin.ext (by dsimp; omega)
+          rw [hγ1]
           rcases hstep with hs | hs
-          · left; simp only [hidx]; omega
-          · right; simp only [hidx]; omega
+          · left; omega
+          · right; omega
       · by_cases heq2 : k.1 = 2 * n - N₀
         · by_cases hn0 : n = N₀
           · subst hn0
@@ -279,9 +286,8 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
             have hb1 : ¬ (k.1 + 1 ≤ N₀) := by omega
             have hb2 : ¬ (k.1 + 1 ≤ 2 * n - N₀) := by omega
             simp only [ha1, ha2, hb1, hb2, ↓reduceDIte]
-            have hend : k.1 - N₀ = 2 * (n - N₀) := by omega
             have hγend : γ ⟨k.1 - N₀, by omega⟩ = 0 := by
-              convert hγ.2.1 using 2; exact Fin.ext hend
+              convert hγ.2.1 using 2; exact Fin.ext (by dsimp; omega)
             rw [hγend]
             right; omega
         · have ha1 : ¬ (k.1 ≤ N₀) := by omega
@@ -354,9 +360,8 @@ theorem lemma_5_1_path_weight_lower {n N₀ : ℕ} {α₁ : ℝ}
           unfold shiftDyckPath
           by_cases hj0 : j = 0
           · subst hj0
-            have hγ0 : γ ⟨0, by omega⟩ = 0 := hγ.1
-            simp only [Nat.add_zero, le_refl, ↓reduceDIte, self_eq_add_right]
-            exact hγ0
+            simp only [Nat.add_zero, le_refl, ↓reduceDIte]
+            rw [hγ.1, Nat.add_zero]
           · have h1 : ¬ (N₀ + j ≤ N₀) := by omega
             have h2 : N₀ + j ≤ 2 * n - N₀ := by omega
             simp only [h1, h2, ↓reduceDIte, Nat.add_sub_cancel_left]
@@ -366,7 +371,7 @@ theorem lemma_5_1_path_weight_lower {n N₀ : ℕ} {α₁ : ℝ}
           have h1 : ¬ (N₀ + j + 1 ≤ N₀) := by omega
           have h2 : N₀ + j + 1 ≤ 2 * n - N₀ := by omega
           simp only [h1, h2, ↓reduceDIte]
-          congr 2; exact Fin.ext (by omega)
+          congr 2; exact Fin.ext (by dsimp; omega)
         rw [hstep1, hstep2, ← Nat.add_max_add_left]
     · apply Finset.prod_congr rfl
       intro k hk
@@ -377,16 +382,13 @@ theorem lemma_5_1_path_weight_lower {n N₀ : ℕ} {α₁ : ℝ}
         unfold shiftDyckPath
         by_cases hk0 : k = 0
         · subst hk0
-          have h1 : ¬ (N₀ + 2 * (n - N₀) + 0 ≤ N₀) := by
-            by_cases hn0 : n = N₀
-            · subst hn0; simp
-            · omega
           by_cases hn0 : n = N₀
           · subst hn0; simp
-          · have h2 : N₀ + 2 * (n - N₀) + 0 ≤ 2 * n - N₀ := by omega
+          · have h1 : ¬ (N₀ + 2 * (n - N₀) + 0 ≤ N₀) := by omega
+            have h2 : N₀ + 2 * (n - N₀) + 0 ≤ 2 * n - N₀ := by omega
             simp only [h1, h2, ↓reduceDIte]
             have hend : γ ⟨N₀ + 2 * (n - N₀) + 0 - N₀, by omega⟩ = 0 := by
-              convert hγ.2.1 using 2; exact Fin.ext (by omega)
+              convert hγ.2.1 using 2; exact Fin.ext (by dsimp; omega)
             rw [hend]; omega
         · have h1 : ¬ (N₀ + 2 * (n - N₀) + k ≤ N₀) := by omega
           have h2 : ¬ (N₀ + 2 * (n - N₀) + k ≤ 2 * n - N₀) := by omega
@@ -418,7 +420,7 @@ theorem lemma_5_1_path_weight_lower {n N₀ : ℕ} {α₁ : ℝ}
     rw [h1, h2, ← Finset.prod_mul_distrib]
     apply Finset.prod_congr rfl; intro h _; ring
   have hmid :
-      (∏ j : Fin (2 * (n - N₀)), α₁ * (max (γ ⟨j.1, by omega⟩) (γ ⟨j.1 + 1, by omega⟩) : ℝ)) ≤
+      (∏ j : Fin (2 * (n - N₀)), α₁ * ((max (γ ⟨j.1, by omega⟩) (γ ⟨j.1 + 1, by omega⟩) : ℕ) : ℝ)) ≤
       ∏ j : Fin (2 * (n - N₀)), b (N₀ + max (γ ⟨j.1, by omega⟩) (γ ⟨j.1 + 1, by omega⟩)) := by
     apply prod_le_prod_nonneg
     · intro j _; positivity
@@ -454,7 +456,7 @@ theorem theorem_1_2b_lanczos_rate_bound {N₀ : ℕ} {W₀ α₁ rW : ℝ}
     rw [div_mul_cancel₀ _ hrW.ne'] at this
     linarith
   set δ := (2 * α₁ / Real.pi - 1 / rW) / 2
-  have hδ : 0 < δ := by linarith
+  have hδ : 0 < δ := by dsimp only [δ]; linarith
   set c₁ := 2 * W₀ / Real.pi
   set c₂ := 2 * α₁ / Real.pi
   have hc₁ : 0 < c₁ := by positivity
@@ -557,7 +559,9 @@ theorem theorem_1_2b_lanczos_rate_bound {N₀ : ℕ} {W₀ α₁ rW : ℝ}
       Nat.cast_pos.mpr (Nat.factorial_pos _)
     have hinv_le : (2 * (n : ℝ)) ^ (-(2 * N₀ : ℝ)) ≤
         ((2 * n - 2 * N₀).factorial : ℝ) / ((2 * n).factorial : ℝ) := by
-      rw [Real.rpow_neg h2n_pos.le, Real.rpow_natCast]
+      rw [Real.rpow_neg h2n_pos.le,
+        show (2 * (N₀ : ℝ)) = ((2 * N₀ : ℕ) : ℝ) by push_cast; ring,
+        Real.rpow_natCast]
       have hdiv : ((2 * n).factorial : ℝ) / ((2 * n - 2 * N₀).factorial : ℝ) ≤
           (2 * (n : ℝ)) ^ (2 * N₀) := h2
       have h3 := inv_anti₀ (div_pos hfac_pos hfac2_pos) hdiv
@@ -623,7 +627,7 @@ theorem trace_sq_norm_le_hsNormSq {ι : Type*} [Fintype ι] [DecidableEq ι]
       Complex.re_sum]
     apply Finset.sum_congr rfl; intro i _
     apply Finset.sum_congr rfl; intro j _
-    rw [Complex.star_def, Complex.mul_conj', Complex.ofReal_re, Complex.normSq_eq_norm_sq]
+    rw [Complex.star_def, Complex.conj_mul', Complex.ofReal_re, Complex.normSq_eq_norm_sq]
   rw [htr, hhs]
   have hnorm_sum : ‖∑ i : ι, ∑ j : ι, A i j * A j i‖ ≤
       ∑ i : ι, ∑ j : ι, ‖A i j‖ * ‖A j i‖ := by
@@ -660,11 +664,8 @@ theorem theorem_1_2c_otoc_dominance {ι : Type*} [Fintype ι] [DecidableEq ι]
     have hAdj : (B * V)ᴴ = V * Bᴴ := by simp [Matrix.conjTranspose_mul, hV]
     rw [hAdj]
     congr 1
-    calc Matrix.trace (V * Bᴴ * (B * V))
-        = Matrix.trace (Bᴴ * B * V * V) := by
-          rw [Matrix.trace_mul_comm V, ← Matrix.mul_assoc]
-          simp [Matrix.mul_assoc]
-      _ = Matrix.trace (Bᴴ * B * (V * V)) := by simp [Matrix.mul_assoc]
+    rw [Matrix.mul_assoc V, Matrix.trace_mul_comm V]
+    simp [Matrix.mul_assoc]
   rw [hcyc] at h1
   exact ⟨h1, hspec⟩
 
