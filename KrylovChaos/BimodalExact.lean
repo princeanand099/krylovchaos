@@ -160,7 +160,8 @@ private lemma pauliSite_diag_conj {N : ℕ} (x : Fin N) (α : Fin 4)
         have hflx : (flipSite x a) x = 1 - a x := by simp [flipSite]
         rw [hflx]
         generalize a x = w
-        rcases hα12 with rfl | rfl <;> fin_cases w <;> simp [pauliMat, Complex.I_mul_I]
+        rcases hα12 with rfl | rfl <;> fin_cases w <;>
+          (simp [pauliMat]; try linear_combination -(d (flipSite x a) : ℂ) * Complex.I_sq)
       · intro c _ hc; simp [hc]
       · intro h; exact absurd (Finset.mem_univ _) h
     · simp only [hab, ↓reduceIte]
@@ -203,7 +204,8 @@ theorem diag_siteSizeOp_inner {N : ℕ} (x : Fin N) (d : (Fin N → Fin 2) → �
     Complex.re_sum]
   apply Finset.sum_congr rfl
   intro s _
-  simp only [Complex.star_def, Complex.conj_ofReal, ← Complex.ofReal_mul, Complex.ofReal_re]
+  simp only [Pi.star_apply, Complex.star_def, Complex.conj_ofReal, ← Complex.ofReal_mul,
+    Complex.ofReal_re]
   ring
 
 end DiagonalSizeFormula
@@ -280,10 +282,11 @@ theorem bimodal_rhoHalf_size {N : ℕ} (hN : 2 ≤ N) :
       have h2 : flipSite x (bimodalBasis1 hN) x₀ = 1 := by
         simp [flipSite, Function.update_of_ne (Ne.symm hne), h1]
       have h3 : flipSite x (bimodalBasis1 hN) ≠ bimodalBasis1 hN := flipSite_ne_self x _
-      have h1_ne : bimodalBasis1 hN x₀ ≠ 0 := by rw [h1]; decide
-      have h2_ne : flipSite x (bimodalBasis1 hN) x₀ ≠ 0 := by rw [h2]; decide
-      simp only [bimodalRhoHalfDiag, x₀] at *
-      rw [if_neg h1_ne, if_pos rfl, if_neg h2_ne, if_neg h3]
+      have h1_ne : bimodalBasis1 hN ⟨0, by omega⟩ ≠ 0 := by
+        change bimodalBasis1 hN x₀ ≠ 0; rw [h1]; decide
+      have h2_ne : flipSite x (bimodalBasis1 hN) ⟨0, by omega⟩ ≠ 0 := by
+        change flipSite x (bimodalBasis1 hN) x₀ ≠ 0; rw [h2]; decide
+      simp only [bimodalRhoHalfDiag, h1_ne, h2_ne, h3, ↓reduceIte]
       have hsq : (Real.sqrt 2)⁻¹ * (Real.sqrt 2)⁻¹ = (2 : ℝ)⁻¹ := by
         rw [← mul_inv, Real.mul_self_sqrt (by norm_num)]
       linarith [hsq]
