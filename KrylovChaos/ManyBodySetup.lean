@@ -16,7 +16,7 @@ import Mathlib.Tactic
 Provides concrete finite-dimensional `N`-qubit definitions and proofs on `QubitOp N`:
 1. `LocalTerm` and `LocalHamiltonian N r` (`H = ∑_{X ∈ E} h_X`, Hermitian, `H ∈ filtrationSubmodule N r`).
 2. `GibbsData N` (Hermitian `ρ_β, ρ_β^{1/2}, ρ_β^{1/4}, ρ_β^{-1/4}` with `Tr(ρ_β) = 1`) and concrete
-   Wightman inner product, MSS-OTOCs (`otocCW`, `mssThermalSize`, `otocI`).
+   Wightman inner product, MSS-OTOCs (`otocCW`, `mssThermalSize`).
 3. **Proposition 2.2(3)**: Unitary equivalence via `jBeta` preserves inner products and intertwines
    the Liouvillian `[H, ·]`, preserving all Lanczos recursion norms.
 4. **Proposition 2.3 (Full N-Qubit Eq. 2.9)**: Full `N`-qubit thermal-subtracted operator-size
@@ -88,17 +88,17 @@ structure GibbsData (N : ℕ) where
   trace_one : ρβ.trace = 1
 
 /-- Concrete Wightman inner product `(A | B)_β^W = Tr(ρ_β^{1/2} A† ρ_β^{1/2} B)` (Eq. 1.2). -/
-def wightmanInner {N : ℕ} (G : GibbsData N) (A B : QubitOp N) : ℂ :=
-  Matrix.trace (G.ρHalf * Aᴴ * G.ρHalf * B)
+def gibbsWightmanInner {N : ℕ} (G : GibbsData N) (A B : QubitOp N) : ℂ :=
+  wightmanInner G.ρHalf A B
 
 /-- Concrete Wightman norm squared `‖A‖_{β,W}² = Re (A | A)_β^W`. -/
-def wightmanNormSq {N : ℕ} (G : GibbsData N) (A : QubitOp N) : ℝ :=
-  (wightmanInner G A A).re
+def gibbsWightmanNormSq {N : ℕ} (G : GibbsData N) (A : QubitOp N) : ℝ :=
+  (gibbsWightmanInner G A A).re
 
 /-- Concrete summed Wightman squared commutator `C_W(A) = (1/8) ∑_{x,α} ‖[A, σ_x^α]‖_{β,W}²` (Eq. 1.8). -/
 noncomputable def otocCW {N : ℕ} (G : GibbsData N) (A : QubitOp N) : ℝ :=
   (1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3,
-    wightmanNormSq G (matComm A (pauliSite x α.succ))
+    gibbsWightmanNormSq G (matComm A (pauliSite x α.succ))
 
 /-- Concrete thermal-subtracted Hilbert–Schmidt operator size (Eq. 1.9):
 `S_β(A) = Re ⟨𝒥_β(A), S 𝒥_β(A)⟩_HS - Re ⟨ρ_β^{1/2}, S ρ_β^{1/2}⟩_HS`. -/
@@ -113,10 +113,10 @@ Lanczos coefficient `b_n` computed in `(H_op, (·|·)_β^W)` equals the correspo
 quantity for the image sequence `𝒥_β(O_n)`. -/
 theorem prop_2_2_lanczos_invariance {N : ℕ} (G : GibbsData N) (H : QubitOp N)
     (hcomm : H * G.ρQuarter = G.ρQuarter * H) :
-    (∀ A B : QubitOp N, wightmanInner G A B = hsInner (jBeta G.ρQuarter A) (jBeta G.ρQuarter B)) ∧
+    (∀ A B : QubitOp N, gibbsWightmanInner G A B = hsInner (jBeta G.ρQuarter A) (jBeta G.ρQuarter B)) ∧
     (∀ A : QubitOp N, jBeta G.ρQuarter (matComm H A) = matComm H (jBeta G.ρQuarter A)) := by
   refine ⟨fun A B ↦ ?_, fun A ↦ ?_⟩
-  · unfold wightmanInner
+  · unfold gibbsWightmanInner
     have h := prop_2_2_isometry G.ρQuarter G.ρHalf G.ρQuarter_herm G.sq_quarter A B
     exact h.symm
   · exact prop_2_2_intertwining G.ρQuarter H hcomm A
@@ -130,8 +130,8 @@ theorem prop_2_3_full_qubit_thermal_size {N : ℕ} (G : GibbsData N) (A : QubitO
         (hsNormSq (matComm (jBeta G.ρQuarter A) (pauliSite x α.succ)) -
          hsNormSq (matComm G.ρHalf (pauliSite x α.succ))) := by
   unfold mssThermalSize
-  rw [eq_2_8_hs_commutator_size_identity (jBeta G.ρQuarter A),
-      eq_2_8_hs_commutator_size_identity G.ρHalf]
+  rw [← eq_2_8_hs_commutator_size_identity (jBeta G.ρQuarter A),
+      ← eq_2_8_hs_commutator_size_identity G.ρHalf]
   rw [← mul_sub]
   congr 1
   rw [← Finset.sum_sub_distrib]
@@ -143,17 +143,17 @@ end GibbsAndOTOCs
 section ConcreteCounterexamples
 
 /-- Single-qubit projector `|0⟩⟨0|`. -/
-def proj0 : Mat2 := !![1, 0; 0, 0]
+def proj0 : Matrix (Fin 2) (Fin 2) ℂ := !![1, 0; 0, 0]
 
 /-- Single-qubit projector `|1⟩⟨1|`. -/
-def proj1 : Mat2 := !![0, 0; 0, 1]
+def proj1 : Matrix (Fin 2) (Fin 2) ℂ := !![0, 0; 0, 1]
 
 /-- **Section 9 Concrete Bimodal Density Matrix (Eq. 9.1)**:
 For `N ≥ 1`, `ρ = (1/2) |0⟩⟨0|_1 ⊗ (I/2)^{⊗(N-1)} + (1/2) |1⟩⟨1|_1 ⊗ |0…0⟩⟨0…0|_{2…N}`
 on `QubitOp N`. -/
 noncomputable def bimodalState (N : ℕ) (hN : 0 < N) : QubitOp N :=
   (1 / 2 : ℂ) • kronOp (fun x : Fin N ↦
-      if x.1 = 0 then proj0 else (1 / 2 : ℂ) • (1 : Mat2)) +
+      if x.1 = 0 then proj0 else (1 / 2 : ℂ) • (1 : Matrix (Fin 2) (Fin 2) ℂ)) +
   (1 / 2 : ℂ) • kronOp (fun x : Fin N ↦
       if x.1 = 0 then proj1 else proj0)
 
@@ -163,7 +163,8 @@ theorem bimodalState_herm (N : ℕ) (hN : 0 < N) :
   unfold bimodalState
   have hp0 : proj0ᴴ = proj0 := by ext i j; fin_cases i <;> fin_cases j <;> simp [proj0]
   have hp1 : proj1ᴴ = proj1 := by ext i j; fin_cases i <;> fin_cases j <;> simp [proj1]
-  have hhalf : ((1 / 2 : ℂ) • (1 : Mat2))ᴴ = (1 / 2 : ℂ) • (1 : Mat2) := by
+  have hhalf : ((1 / 2 : ℂ) • (1 : Matrix (Fin 2) (Fin 2) ℂ))ᴴ =
+      (1 / 2 : ℂ) • (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
     ext i j; fin_cases i <;> fin_cases j <;> simp
   simp only [Matrix.conjTranspose_add, Matrix.conjTranspose_smul, kronOp_conjTranspose]
   have hs : star (1 / 2 : ℂ) = (1 / 2 : ℂ) := by simp
@@ -177,10 +178,10 @@ theorem bimodalState_trace (N : ℕ) (hN : 0 < N) :
   simp only [Matrix.trace_add, Matrix.trace_smul, smul_eq_mul, kronOp_trace]
   have ht0 : proj0.trace = 1 := by simp [proj0, Matrix.trace, Matrix.diag]
   have ht1 : proj1.trace = 1 := by simp [proj1, Matrix.trace, Matrix.diag]
-  have hth : ((1 / 2 : ℂ) • (1 : Mat2)).trace = 1 := by
+  have hth : ((1 / 2 : ℂ) • (1 : Matrix (Fin 2) (Fin 2) ℂ)).trace = 1 := by
     simp [Matrix.trace, Matrix.diag]; norm_num
   have hprod1 : (∏ x : Fin N,
-      (if x.1 = 0 then proj0 else (1 / 2 : ℂ) • (1 : Mat2)).trace) = 1 := by
+      (if x.1 = 0 then proj0 else (1 / 2 : ℂ) • (1 : Matrix (Fin 2) (Fin 2) ℂ)).trace) = 1 := by
     apply Finset.prod_eq_one; intro x _
     split_ifs <;> [exact ht0; exact hth]
   have hprod2 : (∏ x : Fin N, (if x.1 = 0 then proj1 else proj0).trace) = 1 := by

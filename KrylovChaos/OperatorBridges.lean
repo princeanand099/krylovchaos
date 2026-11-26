@@ -223,13 +223,14 @@ theorem globalDepolP_avg (N : ℕ) :
     smul_eq_mul]
   rw [← Fintype.prod_sum (fun (x : Fin N) (sx : Fin 6) ↦ depolP sx (i x) (j x))]
   have hsingle : ∀ x : Fin N,
-      (∑ sx : Fin 6, depolP sx (i x) (j x)) = (3 : ℂ) * (1 : Mat2) (i x) (j x) := by
+      (∑ sx : Fin 6, depolP sx (i x) (j x)) =
+        (3 : ℂ) * (1 : Matrix (Fin 2) (Fin 2) ℂ) (i x) (j x) := by
     intro x
     have havg := congrFun (congrFun lemma_7_1_herm_trace_avg.2.2 (i x)) (j x)
     simp only [Matrix.smul_apply, Matrix.sum_apply, smul_eq_mul] at havg
     linear_combination 6 * havg
   simp_rw [hsingle, Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ, Fintype.card_fin]
-  have h1 : (∏ x : Fin N, (1 : Mat2) (i x) (j x)) = (1 : QubitOp N) i j := by
+  have h1 : (∏ x : Fin N, (1 : Matrix (Fin 2) (Fin 2) ℂ) (i x) (j x)) = (1 : QubitOp N) i j := by
     have := congrFun (congrFun (kronOp_one N) i) j
     simpa [kronOp] using this
   rw [h1]
@@ -238,9 +239,9 @@ theorem globalDepolP_avg (N : ℕ) :
   rw [← mul_assoc, hpow]
 
 /-- **Lemma 7.1(3b)** (Dual Frame Trace Bound):
-For every `B : Mat2` and every `s : Fin 6`,
+For every `B : Matrix (Fin 2) (Fin 2) ℂ` and every `s : Fin 6`,
 `‖(1 / 2) Tr(B F̃_s)‖ ≤ (7 / 2) (‖B 0 0‖ + ‖B 0 1‖ + ‖B 1 0‖ + ‖B 1 1‖)`. -/
-theorem lemma_7_1_dual_trace_bound (s : Fin 6) (B : Mat2) :
+theorem lemma_7_1_dual_trace_bound (s : Fin 6) (B : Matrix (Fin 2) (Fin 2) ℂ) :
     ‖(1 / 2 : ℂ) * Matrix.trace (B * depolF s)‖ ≤
       (7 / 2 : ℝ) * (‖B 0 0‖ + ‖B 0 1‖ + ‖B 1 0‖ + ‖B 1 1‖) := by
   have hhalf : ‖(1 / 2 : ℂ)‖ = (1 / 2 : ℝ) := by norm_num
