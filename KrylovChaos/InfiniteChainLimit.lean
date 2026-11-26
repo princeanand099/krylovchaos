@@ -47,10 +47,10 @@ private lemma jacobiMat_symm_local (D : ℕ) (b : ℕ → ℝ) (i j : Fin D) :
   unfold jacobiMat
   by_cases h1 : j.1 = i.1 + 1
   · have h2 : i.1 ≠ j.1 + 1 := by omega
-    simp [h1, h2]
+    rw [if_pos h1, if_neg h2, if_pos h1]
   · by_cases h2 : i.1 = j.1 + 1
-    · simp [h1, h2]
-    · simp [h1, h2]
+    · rw [if_neg h1, if_pos h2, if_pos h2]
+    · rw [if_neg h1, if_neg h2, if_neg h2, if_neg h1]
 
 private lemma jacobiCLM_apply_tridiag (D : ℕ) (b : ℕ → ℝ)
     (v : EuclideanSpace ℂ (Fin D)) (n : Fin D) :
@@ -67,14 +67,15 @@ private lemma jacobiCLM_apply_tridiag (D : ℕ) (b : ℕ → ℝ)
     · have h2 : j.1 ≠ n.1 + 1 := by omega
       have h1' : j.1 + 1 = n.1 := h1.symm
       have h2' : ¬ (n.1 + 1 = j.1) := fun h ↦ h2 h.symm
-      simp [h1, h2, h1', h2']
+      rw [if_neg h2, if_pos h1, if_pos h1', if_neg h2', add_zero, h1]
     · by_cases h2 : j.1 = n.1 + 1
       · have h1' : ¬ (j.1 + 1 = n.1) := fun h ↦ h1 h.symm
         have h2' : n.1 + 1 = j.1 := h2.symm
-        simp [h1, h2, h1', h2']
+        rw [if_pos h2, if_neg h1', if_pos h2', zero_add]
       · have h1' : ¬ (j.1 + 1 = n.1) := fun h ↦ h1 h.symm
         have h2' : ¬ (n.1 + 1 = j.1) := fun h ↦ h2 h.symm
-        simp [h1, h2, h1', h2']
+        rw [if_neg h2, if_neg h1, if_neg h1', if_neg h2']
+        simp
   simp_rw [hsplit, Finset.sum_add_distrib]
   congr 1
   · by_cases h0 : 0 < n.1
@@ -235,7 +236,6 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
       simpa [mul_comm, mul_assoc] using (hθd.mul_const (n.1 : ℝ)).exp
     have hsq := coord_normSq_hasDerivAt hD b u n
     convert hexp.fun_mul hsq using 1
-    ring
   have hdiff_ineq : ∀ u ≥ 0, G' u ≤ 2 * (α + 2 * γ) * Real.sinh (charTheta α θ₀ u / 2) * G u := by
     intro u hu
     simp only [G']
