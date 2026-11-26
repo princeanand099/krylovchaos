@@ -96,8 +96,8 @@ theorem singleSiteRho_roots {m : ℝ} (hm : |m| < 1) :
   · rw [hhalf, hrho]
     ext i j; fin_cases i <;> fin_cases j <;>
       simp [Matrix.mul_apply, Fin.sum_univ_two]
-    · exact_mod_cast Real.mul_self_sqrt hp
-    · exact_mod_cast Real.mul_self_sqrt hr
+    · rw [show p * p = (1 + m) / 2 from Real.mul_self_sqrt hp]; push_cast; rfl
+    · rw [show r * r = (1 - m) / 2 from Real.mul_self_sqrt hr]; push_cast; rfl
   · rw [hquar, hhalf]
     ext i j; fin_cases i <;> fin_cases j <;>
       simp [Matrix.mul_apply, Fin.sum_univ_two]

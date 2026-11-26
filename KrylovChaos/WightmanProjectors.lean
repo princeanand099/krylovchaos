@@ -22,7 +22,7 @@ Constructs concrete finite-dimensional Hilbert–Schmidt / Wightman orthogonal p
    on `QubitOp N` via Cauchy–Schwarz for the positive-semidefinite superoperator `totalSizeOp`.
 3. **Concrete Wightman Orthogonal Projectors `Π_s^{(β)}` & Loewner Dominance**:
    Uses the Frobenius EuclideanSpace equivalence `toHSOp : QubitOp N ≃ₗ[ℂ] HSOp N` and Mathlib's
-   `Submodule.orthogonalProjection` to define `wightmanProj` and prove the exact Loewner ordering
+   `Submodule.starProjection` to define `wightmanProj` and prove the exact Loewner ordering
    `‖P_{W₁} v‖² ≤ ‖P_{W₂} v‖²` whenever `W₁ ≤ W₂`, instantiated on `P_{K_k} ⪯ Π_{s₀ + (r-1)k}^{(β)}`.
 -/
 
@@ -32,16 +32,30 @@ open Matrix
 
 section OperatorSizeBounds
 
+private lemma hsNormSq_nn {N : ℕ} (M : QubitOp N) : 0 ≤ hsNormSq M := by
+  unfold hsNormSq hsInner
+  simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply,
+    Complex.re_sum]
+  apply Finset.sum_nonneg; intro i _
+  apply Finset.sum_nonneg; intro j _
+  rw [Complex.star_def, Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
+  exact sq_nonneg _
+
 /-- `partialTraceSite x` is self-adjoint in the Hilbert–Schmidt inner product:
 `⟨A, E_x(B)⟩_HS = ⟨E_x(A), B⟩_HS`. -/
 theorem partialTraceSite_selfAdjoint {N : ℕ} (x : Fin N) (A B : QubitOp N) :
     hsInner A (partialTraceSite x B) = hsInner (partialTraceSite x A) B := by
   unfold partialTraceSite hsInner
-  rw [Matrix.mul_smul, Matrix.mul_sum, Matrix.trace_smul, Matrix.trace_sum,
-      Matrix.conjTranspose_smul, Matrix.conjTranspose_sum,
-      Matrix.smul_mul, Matrix.sum_mul, Matrix.trace_smul, Matrix.trace_sum]
-  have hstar : star (1 / 4 : ℂ) = (1 / 4 : ℂ) := by simp
-  rw [hstar]
+  have hL : Matrix.trace (Aᴴ * ((1 / 4 : ℂ) • ∑ α : Fin 4, pauliSite x α * B * pauliSite x α)) =
+      (1 / 4 : ℂ) * ∑ α : Fin 4, Matrix.trace (Aᴴ * (pauliSite x α * B * pauliSite x α)) := by
+    rw [Matrix.mul_smul, Matrix.trace_smul, Matrix.mul_sum, Matrix.trace_sum]; rfl
+  have hR : Matrix.trace (((1 / 4 : ℂ) • ∑ α : Fin 4, pauliSite x α * A * pauliSite x α)ᴴ * B) =
+      (1 / 4 : ℂ) * ∑ α : Fin 4, Matrix.trace ((pauliSite x α * A * pauliSite x α)ᴴ * B) := by
+    rw [Matrix.conjTranspose_smul, Matrix.conjTranspose_sum, Matrix.smul_mul, Matrix.trace_smul,
+        Matrix.sum_mul, Matrix.trace_sum]
+    have hstar : star (1 / 4 : ℂ) = (1 / 4 : ℂ) := by simp
+    rw [hstar]; rfl
+  rw [hL, hR]
   congr 1
   apply Finset.sum_congr rfl; intro α _
   have hph : (pauliSite x α)ᴴ = pauliSite x α := pauliSite_herm x α
@@ -93,7 +107,6 @@ theorem partialTraceSite_idempotent {N : ℕ} (x : Fin N) (A : QubitOp N) :
   simp only [Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_sum, Matrix.sum_mul, Finset.smul_sum,
     smul_smul]
   simp_rw [hconj]
-  -- For each α : Fin 4, β ↦ pauliMulIdx α β is a bijection on Fin 4
   have hbij : ∀ α : Fin 4,
       (∑ β : Fin 4, pauliSite x (pauliMulIdx α β) * A * pauliSite x (pauliMulIdx α β)) =
       ∑ γ : Fin 4, pauliSite x γ * A * pauliSite x γ := by
@@ -104,8 +117,8 @@ theorem partialTraceSite_idempotent {N : ℕ} (x : Fin N) (A : QubitOp N) :
     · intro γ _
       refine ⟨pauliMulIdx α γ, Finset.mem_univ _, ?_⟩
       fin_cases α <;> fin_cases γ <;> simp [pauliMulIdx]
-  simp_rw [hbij, Finset.sum_const, Finset.card_univ, Fintype.card_fin]
-  simp only [nsmul_eq_mul, Nat.cast_ofNat, smul_smul]
+  simp_rw [hbij]
+  rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, ← Nat.cast_smul_eq_nsmul ℂ, smul_smul]
   congr 1; norm_num
 
 /-- **Exact Operator Bounds `0 ⪯ S ⪯ N • 1`** on concrete `QubitOp N`:
@@ -118,7 +131,7 @@ theorem totalSizeOp_bounds {N : ℕ} (M : QubitOp N) :
     apply mul_nonneg (by norm_num)
     apply Finset.sum_nonneg; intro x _
     apply Finset.sum_nonneg; intro α _
-    exact hsNormSq_nonneg _
+    exact hsNormSq_nn _
   · unfold totalSizeOp hsInner
     rw [Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum]
     have hsite : ∀ x : Fin N, (Matrix.trace (Mᴴ * siteSizeOp x M)).re ≤ hsNormSq M := by
@@ -135,7 +148,7 @@ theorem totalSizeOp_bounds {N : ℕ} (M : QubitOp N) :
                 partialTraceSite_selfAdjoint x M _
         change (hsInner M (partialTraceSite x M)).re ≥ 0
         rw [h1]
-        exact hsNormSq_nonneg _
+        exact hsNormSq_nn _
       have hM : (Matrix.trace (Mᴴ * M)).re = hsNormSq M := rfl
       linarith
     calc ∑ x : Fin N, (Matrix.trace (Mᴴ * siteSizeOp x M)).re
@@ -176,8 +189,11 @@ theorem totalSizeOp_cauchy_schwarz {N : ℕ} (A B : QubitOp N) :
     have hnn := (totalSizeOp_bounds ((t : ℂ) • A + B)).1
     have hlin : totalSizeOp ((t : ℂ) • A + B) = (t : ℂ) • totalSizeOp A + totalSizeOp B := by
       unfold totalSizeOp siteSizeOp partialTraceSite
+      rw [Finset.smul_sum, ← Finset.sum_add_distrib]
+      apply Finset.sum_congr rfl; intro x _
       simp only [Matrix.mul_add, Matrix.add_mul, Matrix.mul_smul, Matrix.smul_mul,
-        Finset.sum_add_distrib, ← Finset.smul_sum, smul_add, smul_sub, add_sub_add_comm]
+        Finset.sum_add_distrib, ← Finset.smul_sum, smul_add, smul_sub, smul_comm (1 / 4 : ℂ) (t : ℂ)]
+      abel
     rw [hlin] at hnn
     have hexp : (hsInner ((t : ℂ) • A + B) ((t : ℂ) • totalSizeOp A + totalSizeOp B)).re =
         a * t ^ 2 + 2 * b * t + c := by
@@ -196,15 +212,14 @@ theorem totalSizeOp_cauchy_schwarz {N : ℕ} (A B : QubitOp N) :
     linarith
   have ha : 0 ≤ a := (totalSizeOp_bounds A).1
   by_cases ha0 : a = 0
-  · subst ha0
-    have hb0 : b = 0 := by
+  · have hb0 : b = 0 := by
       by_contra hne
       have h := hquad (-(c + 1) / (2 * b))
-      have h2b : 2 * b ≠ 0 := by positivity |> fun _ ↦ mul_ne_zero two_ne_zero hne
-      have hsimp : 0 * (-(c + 1) / (2 * b)) ^ 2 + 2 * b * (-(c + 1) / (2 * b)) + c = -1 := by
-        field_simp [h2b]; ring
+      have h2b : 2 * b ≠ 0 := mul_ne_zero two_ne_zero hne
+      have hsimp : a * (-(c + 1) / (2 * b)) ^ 2 + 2 * b * (-(c + 1) / (2 * b)) + c = -1 := by
+        rw [ha0]; field_simp [h2b]; ring
       linarith
-    simp [hb0]
+    rw [ha0, hb0]; norm_num
   · have hapos : 0 < a := lt_of_le_of_ne ha (Ne.symm ha0)
     have h := hquad (-b / a)
     have hsimp : a * (-b / a) ^ 2 + 2 * b * (-b / a) + c = c - b ^ 2 / a := by
@@ -233,7 +248,7 @@ theorem lemma_4_2_operator_thermal_size_truncation {N : ℕ} (G : GibbsData N)
   set MA := jBeta G.ρQuarter A_M
   set MR := jBeta G.ρQuarter R_M
   have hJO : jBeta G.ρQuarter O = MA + MR := by
-    unfold jBeta; rw [hsplit, Matrix.mul_add, Matrix.add_mul]
+    simp only [MA, MR, jBeta, hsplit, Matrix.mul_add, Matrix.add_mul]
   have hSadd : totalSizeOp (MA + MR) = totalSizeOp MA + totalSizeOp MR := by
     unfold totalSizeOp siteSizeOp partialTraceSite
     simp only [Matrix.mul_add, Matrix.add_mul, Finset.sum_add_distrib, smul_add, add_sub_add_comm]
@@ -241,14 +256,12 @@ theorem lemma_4_2_operator_thermal_size_truncation {N : ℕ} (G : GibbsData N)
       (hsInner MA (totalSizeOp MA)).re + 2 * (hsInner MA (totalSizeOp MR)).re +
       (hsInner MR (totalSizeOp MR)).re := by
     rw [hJO, hSadd]
-    unfold hsInner
+    have hsym := totalSizeOp_symm_re MA MR
+    unfold hsInner at hsym ⊢
     rw [Matrix.conjTranspose_add, Matrix.add_mul, Matrix.mul_add, Matrix.mul_add,
         Matrix.trace_add, Matrix.trace_add, Matrix.trace_add]
     simp only [Complex.add_re]
-    have hsym := totalSizeOp_symm_re MA MR
-    change (hsInner MA (totalSizeOp MA)).re + (hsInner MA (totalSizeOp MR)).re +
-      ((hsInner MR (totalSizeOp MA)).re + (hsInner MR (totalSizeOp MR)).re) = _
-    rw [← hsym]; ring
+    linarith
   have hA_le : (hsInner MA (totalSizeOp MA)).re ≤ Λ_M + Bbg := by
     have : Λ_M * hsNormSq MA ≤ Λ_M * 1 := mul_le_mul_of_nonneg_left hA_norm hΛ
     linarith
@@ -309,47 +322,39 @@ noncomputable def wightmanFiltrationSubspace {N : ℕ} (G : GibbsData N) (s : �
 /-- Concrete Wightman orthogonal projector `Π_s^{(β)}` onto `W_s^{(β)}` in `HSOp N`. -/
 noncomputable def wightmanProj {N : ℕ} (G : GibbsData N) (s : ℕ) :
     HSOp N →L[ℂ] HSOp N :=
-  (wightmanFiltrationSubspace G s).subtypeL.comp
-    (wightmanFiltrationSubspace G s).orthogonalProjection
+  (wightmanFiltrationSubspace G s).starProjection
 
 /-- **Exact Loewner Ordering of Orthogonal Projectors**:
 Whenever `W₁ ≤ W₂` are subspaces of `HSOp N`, for every `v : HSOp N`,
 `‖P_{W₁} v‖² ≤ ‖P_{W₂} v‖²`. -/
 theorem loewner_proj_mono {N : ℕ} {W₁ W₂ : Submodule ℂ (HSOp N)} (hle : W₁ ≤ W₂)
     (v : HSOp N) :
-    ‖(W₁.orthogonalProjection v : HSOp N)‖ ^ 2 ≤ ‖(W₂.orthogonalProjection v : HSOp N)‖ ^ 2 := by
-  have h1 : ‖(W₁.orthogonalProjection v : HSOp N)‖ ≤ ‖(W₂.orthogonalProjection v : HSOp N)‖ := by
-    have hpyth : ‖(W₂.orthogonalProjection v : HSOp N)‖ ^ 2 =
-        ‖(W₁.orthogonalProjection v : HSOp N)‖ ^ 2 +
-        ‖(W₂.orthogonalProjection v : HSOp N) - (W₁.orthogonalProjection v : HSOp N)‖ ^ 2 := by
-      have horth : @inner ℂ (HSOp N) _
-          ((W₁.orthogonalProjection v : HSOp N))
-          ((W₂.orthogonalProjection v : HSOp N) - (W₁.orthogonalProjection v : HSOp N)) = 0 := by
-        have hmem1 : (W₁.orthogonalProjection v : HSOp N) ∈ W₁ := (W₁.orthogonalProjection v).2
-        have hsub : (W₂.orthogonalProjection v : HSOp N) - (W₁.orthogonalProjection v : HSOp N) =
-            (v - (W₁.orthogonalProjection v : HSOp N)) - (v - (W₂.orthogonalProjection v : HSOp N)) := by
-          abel
-        rw [hsub, inner_sub_right]
-        have h_o1 : v - (W₁.orthogonalProjection v : HSOp N) ∈ W₁ᗮ :=
-          Submodule.sub_orthogonalProjection_mem_orthogonal v
-        have h_o2 : v - (W₂.orthogonalProjection v : HSOp N) ∈ W₂ᗮ :=
-          Submodule.sub_orthogonalProjection_mem_orthogonal v
-        have h1z : @inner ℂ (HSOp N) _ (W₁.orthogonalProjection v : HSOp N)
-            (v - (W₁.orthogonalProjection v : HSOp N)) = 0 := by
-          rw [← inner_conj_symm, (Submodule.mem_orthogonal W₁ _).mp h_o1 _ hmem1, map_zero]
-        have h2z : @inner ℂ (HSOp N) _ (W₁.orthogonalProjection v : HSOp N)
-            (v - (W₂.orthogonalProjection v : HSOp N)) = 0 := by
-          rw [← inner_conj_symm, (Submodule.mem_orthogonal W₂ _).mp h_o2 _ (hle hmem1), map_zero]
-        rw [h1z, h2z, sub_self]
-      have hdecomp : (W₂.orthogonalProjection v : HSOp N) =
-          (W₁.orthogonalProjection v : HSOp N) +
-          ((W₂.orthogonalProjection v : HSOp N) - (W₁.orthogonalProjection v : HSOp N)) := by abel
-      conv_lhs => rw [hdecomp]
-      exact norm_add_sq_eq_norm_sq_add_norm_sq_of_inner_eq_zero _ _ horth
-    nlinarith [sq_nonneg ‖(W₂.orthogonalProjection v : HSOp N) - (W₁.orthogonalProjection v : HSOp N)‖,
-      norm_nonneg (W₁.orthogonalProjection v : HSOp N),
-      norm_nonneg (W₂.orthogonalProjection v : HSOp N)]
-  exact pow_le_pow_left₀ (norm_nonneg _) h1 2
+    ‖W₁.starProjection v‖ ^ 2 ≤ ‖W₂.starProjection v‖ ^ 2 := by
+  have horth : @inner ℂ (HSOp N) _
+      (W₁.starProjection v) (W₂.starProjection v - W₁.starProjection v) = 0 := by
+    have hmem1 : W₁.starProjection v ∈ W₁ := Submodule.starProjection_apply_mem W₁ v
+    have hsub : W₂.starProjection v - W₁.starProjection v =
+        (v - W₁.starProjection v) - (v - W₂.starProjection v) := by abel
+    rw [hsub, inner_sub_right]
+    have h_o1 : v - W₁.starProjection v ∈ W₁ᗮ :=
+      Submodule.sub_starProjection_mem_orthogonal v
+    have h_o2 : v - W₂.starProjection v ∈ W₂ᗮ :=
+      Submodule.sub_starProjection_mem_orthogonal v
+    have h1z : @inner ℂ (HSOp N) _ (W₁.starProjection v) (v - W₁.starProjection v) = 0 :=
+      (Submodule.mem_orthogonal W₁ _).mp h_o1 _ hmem1
+    have h2z : @inner ℂ (HSOp N) _ (W₁.starProjection v) (v - W₂.starProjection v) = 0 :=
+      (Submodule.mem_orthogonal W₂ _).mp h_o2 _ (hle hmem1)
+    rw [h1z, h2z, sub_self]
+  have hpyth : ‖W₂.starProjection v‖ ^ 2 =
+      ‖W₁.starProjection v‖ ^ 2 + ‖W₂.starProjection v - W₁.starProjection v‖ ^ 2 := by
+    have hdecomp : W₂.starProjection v =
+        W₁.starProjection v + (W₂.starProjection v - W₁.starProjection v) := by abel
+    have hmul := norm_add_sq_eq_norm_sq_add_norm_sq_of_inner_eq_zero
+      (W₁.starProjection v) (W₂.starProjection v - W₁.starProjection v) horth
+    rw [← hdecomp] at hmul
+    simp only [sq]
+    exact hmul
+  nlinarith [sq_nonneg ‖W₂.starProjection v - W₁.starProjection v‖]
 
 /-- **Concrete Proposition 4.1 (Loewner Dominance `P_{K_k} ⪯ Π_{s₀ + (r-1)k}^{(β)}`)**:
 For any `r`-local Hamiltonian `ham : LocalHamiltonian N r` (`r ≥ 1`), any `s₀`-local seed
@@ -361,8 +366,8 @@ theorem prop_4_1_loewner_dominance {N r s₀ : ℕ} (hr : 1 ≤ r)
     (hA : A ∈ filtrationSubmodule N s₀) (k : ℕ) (v : HSOp N) :
     let Kk : Submodule ℂ (HSOp N) :=
       Submodule.span ℂ {w | ∃ j ≤ k, w = wightmanEmbed G (iterMatCommQubit ham.totalOp j A)}
-    ‖(Kk.orthogonalProjection v : HSOp N)‖ ^ 2 ≤
-      ‖((wightmanFiltrationSubspace G (s₀ + (r - 1) * k)).orthogonalProjection v : HSOp N)‖ ^ 2 := by
+    ‖Kk.starProjection v‖ ^ 2 ≤
+      ‖wightmanProj G (s₀ + (r - 1) * k) v‖ ^ 2 := by
   intro Kk
   apply loewner_proj_mono
   apply Submodule.span_le.mpr
