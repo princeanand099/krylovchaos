@@ -59,8 +59,6 @@ lemma catalanRec_succ (n : ℕ) :
   conv_lhs => rw [catalanRec]
   rw [Fin.sum_univ_eq_sum_range (fun j ↦ catalanRec j * catalanRec (n - j))]
 
-/-- Elementary generating-function partial sum bound `∑_{n=0}^N C_n (1/4)^n ≤ 2`,
-proved directly from the Segner recurrence without external Catalan libraries. -/
 private lemma catalanRec_partial_sum_le_two :
     ∀ N : ℕ, ∑ n ∈ Finset.range (N + 1), (catalanRec n : ℝ) * (1 / 4 : ℝ) ^ n ≤ 2 := by
   intro N
@@ -141,14 +139,11 @@ lemma catalanRec_le_four_pow (n : ℕ) : (catalanRec n : ℝ) ≤ (4 : ℝ) ^ n 
     have hle : ∑ k ∈ ({0, n + 1} : Finset ℕ), (catalanRec k : ℝ) * (1 / 4 : ℝ) ^ k ≤
         ∑ k ∈ Finset.range (n + 2), (catalanRec k : ℝ) * (1 / 4 : ℝ) ^ k :=
       Finset.sum_le_sum_of_subset_of_nonneg hsub fun k _ _ ↦ by positivity
-    rw [Finset.sum_pair (Nat.succ_ne_zero n).symm] at hle
+    rw [Finset.sum_pair (by omega : (0 : ℕ) ≠ n + 1)] at hle
     have h0 : (catalanRec 0 : ℝ) * (1 / 4 : ℝ) ^ 0 = 1 := by simp [catalanRec_zero]
     rw [h0] at hle
-    have hle' : 1 + (catalanRec (n + 1) : ℝ) * (1 / 4 : ℝ) ^ (n + 1) ≤
-        ∑ k ∈ Finset.range (n + 2), (catalanRec k : ℝ) * (1 / 4 : ℝ) ^ k := hle
-    have hsum' : ∑ k ∈ Finset.range (n + 2), (catalanRec k : ℝ) * (1 / 4 : ℝ) ^ k ≤ 2 := hsum
-    have htrans : 1 + (catalanRec (n + 1) : ℝ) * (1 / 4 : ℝ) ^ (n + 1) ≤ 2 := le_trans hle' hsum'
-    have h1 : (catalanRec (n + 1) : ℝ) * (1 / 4 : ℝ) ^ (n + 1) ≤ 1 := by linarith
+    have htrans : 1 + (catalanRec (n + 1) : ℝ) * (1 / 4 : ℝ) ^ (n + 1) ≤ 2 := le_trans hle hsum
+    have h1 : (catalanRec (n + 1) : ℝ) * (1 / 4 : ℝ) ^ (n + 1) ≤ 1 := by linarith [htrans]
     have hpow : (0 : ℝ) < (4 : ℝ) ^ (n + 1) := by positivity
     have hmul := mul_le_mul_of_nonneg_right h1 hpow.le
     rw [mul_assoc, ← mul_pow] at hmul
@@ -338,7 +333,6 @@ lemma causalSeqSum_nonneg {N : ℕ} (E : Finset (Finset (Fin N)))
     exact Finset.sum_nonneg fun X hX ↦
       mul_nonneg (hw_nn X (Finset.mem_filter.mp hX).1) (ih (U ∪ X))
 
-/-- Union bound over overlapping hyperedges: `∑_{X ∈ E, U ∩ X ≠ ∅} w X ≤ |U| * Jsite`. -/
 lemma sum_overlapping_le {N : ℕ} (E : Finset (Finset (Fin N)))
     (w : Finset (Fin N) → ℝ) (hw_nn : ∀ X ∈ E, 0 ≤ w X)
     {Jsite : ℝ} (hsite : ∀ x : Fin N, ∑ X ∈ E.filter (fun X ↦ x ∈ X), w X ≤ Jsite)
