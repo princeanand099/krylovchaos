@@ -310,8 +310,14 @@ theorem jacobiUnitary_norm_preserve (D : ℕ) (b : ℕ → ℝ) (t : ℝ)
         @inner ℝ (EuclideanSpace ℂ (Fin D)) _ (jacobiUnitary D b s v)
           (Complex.I • jacobiCLM D b (jacobiUnitary D b s v)) = 0 := by
       set w := jacobiUnitary D b s v
-      change (inner ℂ w (Complex.I • jacobiCLM D b w)).re = 0
-      rw [inner_smul_right]
+      have hre_inner : @inner ℝ (EuclideanSpace ℂ (Fin D)) _ w (Complex.I • jacobiCLM D b w) =
+          (inner ℂ w (Complex.I • jacobiCLM D b w)).re := by
+        rw [PiLp.inner_apply, PiLp.inner_apply, Complex.re_sum]
+        apply Finset.sum_congr rfl
+        intro i _
+        simp [Complex.inner, RCLike.inner_apply, Complex.mul_re]
+        ring
+      rw [hre_inner, inner_smul_right]
       have hreal : (inner ℂ w (jacobiCLM D b w)).im = 0 := by
         have hsa := jacobiCLM_isSelfAdjoint D b
         have hconj : star (inner ℂ w (jacobiCLM D b w)) = inner ℂ w (jacobiCLM D b w) := by
