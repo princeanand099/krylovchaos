@@ -656,7 +656,7 @@ private lemma hasSum_cauchy_product_complex (a b : ℕ → ℂ) {A B : ℂ}
     (hsa : Summable (fun k ↦ ‖a k‖)) (hsb : Summable (fun k ↦ ‖b k‖)) :
     HasSum (fun m : ℕ ↦ ∑ k ∈ Finset.range (m + 1), a k * b (m - k)) (A * B) := by
   suffices h : HasSum (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2) (A * B) by
-    exact h.congr_fun fun m ↦ Finset.Nat.sum_antidiagonal_eq_sum_range_succ (fun x y ↦ a x * b y)
+    exact h.congr_fun fun m ↦ (Finset.Nat.sum_antidiagonal_eq_sum_range_succ (fun x y ↦ a x * b y) m).symm
   have hanti_norm : Summable (fun m : ℕ ↦ ‖∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2‖) := by
     have h1 : Summable (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, ‖a p.1‖ * ‖b p.2‖) := by
       have hfib : ∀ n : ℕ, ∑ m ∈ Finset.range n, ∑ p ∈ Finset.antidiagonal m, ‖a p.1‖ * ‖b p.2‖ ≤
