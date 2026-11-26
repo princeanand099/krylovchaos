@@ -237,7 +237,7 @@ theorem bimodal_jA_size {N : ℕ} (hN : 2 ≤ N) :
   ring
 
 /-- Exact Hilbert–Schmidt operator size of `ρ_N^{1/2}`:
-`⟨ρ_N^{1/2}, 𝒮 ρ_N^{1/2}⟩_HS = (N + 1) / 4 - (2 : ℝ) ^ (-(((N + 1 : ℕ) : ℝ) / 2))`. -/
+`⟨ρ_N^{1/2}, 𝒮 ρ_N^{1/2}⟩_HS = (N + 1) / 4 - (√(2^{N+1}))⁻¹`. -/
 theorem bimodal_rhoHalf_size {N : ℕ} (hN : 2 ≤ N) :
     (hsInner (Matrix.diagonal (fun s ↦ (bimodalRhoHalfDiag hN s : ℂ)))
       (totalSizeOp (Matrix.diagonal (fun s ↦ (bimodalRhoHalfDiag hN s : ℂ))))).re =
@@ -252,7 +252,6 @@ theorem bimodal_rhoHalf_size {N : ℕ} (hN : 2 ≤ N) :
   rw [hsum]
   let x₀ : Fin N := ⟨0, by omega⟩
   rw [← Finset.add_sum_erase Finset.univ _ (Finset.mem_univ x₀)]
-  -- Part 1: sites `x ≠ x₀` each contribute `1 / 4`
   have hother : ∀ x ∈ Finset.univ.erase x₀,
       (hsInner (Matrix.diagonal (fun s ↦ (bimodalRhoHalfDiag hN s : ℂ)))
         (siteSizeOp x (Matrix.diagonal (fun s ↦ (bimodalRhoHalfDiag hN s : ℂ))))).re = 1 / 4 := by
@@ -285,7 +284,6 @@ theorem bimodal_rhoHalf_size {N : ℕ} (hN : 2 ≤ N) :
       Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
     rw [Nat.cast_sub (by omega : 1 ≤ N), Nat.cast_one]
     ring
-  -- Part 2: site `x₀` contributes `1 / 2 - (√(2^{N+1}))⁻¹`
   have hfirst :
       (hsInner (Matrix.diagonal (fun s ↦ (bimodalRhoHalfDiag hN s : ℂ)))
         (siteSizeOp x₀ (Matrix.diagonal (fun s ↦ (bimodalRhoHalfDiag hN s : ℂ))))).re =
@@ -360,7 +358,7 @@ theorem bimodal_rhoHalf_size {N : ℕ} (hN : 2 ≤ N) :
       rw [hfl_s0]
       have h1 : bimodalBasis1 hN x₀ = 1 := by simp [bimodalBasis1, x₀]
       simp only [bimodalRhoHalfDiag, x₀, s₀, ↓reduceIte, c₀, c₁]
-      rw [if_neg (by rw [h1]; decide), if_pos rfl]
+      rw [if_neg (by rw [h1]; decide)]
     have hs1_val :
         bimodalRhoHalfDiag hN (bimodalBasis1 hN) *
           (bimodalRhoHalfDiag hN (bimodalBasis1 hN) -
@@ -369,7 +367,7 @@ theorem bimodal_rhoHalf_size {N : ℕ} (hN : 2 ≤ N) :
       rw [hfl_s1]
       have h1 : bimodalBasis1 hN x₀ = 1 := by simp [bimodalBasis1, x₀]
       simp only [bimodalRhoHalfDiag, x₀, s₀, ↓reduceIte, c₀, c₁]
-      rw [if_neg (by rw [h1]; decide), if_pos rfl]
+      rw [if_neg (by rw [h1]; decide)]
     rw [hs0_val, hs1_val]
     have hc0_sq : c₀ ^ 2 = ((2 : ℝ) ^ N)⁻¹ := by
       simp only [c₀, inv_pow, Real.sq_sqrt (by positivity : (0 : ℝ) ≤ (2 : ℝ) ^ N)]

@@ -13,14 +13,13 @@ import Mathlib.Tactic
 # Lemma 2.1: Causal-Sequence Commutator Expansion & Complex-Time Operator-Norm Bounds
 
 Formalizes **Lemma 2.1** (Eqs. 2.3–2.5 of `finite_temp_krylov_chaos.tex`) at the full
-operator-algebraic level on any complete normed `ℂ`-algebra `E` (including `QubitOp N`
-equipped with any submultiplicative matrix norm):
+operator-algebraic level on any complete normed `ℂ`-algebra `E` (with `[NormOneClass E]`):
 1. Iterated adjoint commutator `adPow H O m` and its exact binomial expansion
    `adPow H O m = ∑_{j=0}^m (-1)^{m-j} C(m, j) H^j O H^{m-j}` (`adPow_eq_binomial_sum`).
 2. **Exact Hadamard / BCH Complex-Time Expansion** (`exp_conj_eq_tsum_adPow`):
-   `NormedSpace.exp ℂ (z • H) * O * NormedSpace.exp ℂ (-(z • H)) =
+   `NormedSpace.exp (z • H) * O * NormedSpace.exp (-(z • H)) =
      ∑' m : ℕ, (z ^ m / (m.factorial : ℂ)) • adPow H O m`.
-3. **Causal-Sequence Expansion & Support Growth** (`causal_expansion_norm_bound`, Eq. 2.3):
+3. **Causal-Sequence Expansion & Support Growth** (`lemma_2_1_causal_norm_sum`, Eq. 2.3):
    for an `r`-local Hamiltonian `H = ∑_{i ∈ I} h_i` (`r ≥ 2`, `|supp h_i| ≤ r`, per-site
    bound `J_site`), proves by induction on `m` that `adPow H O m` expands over causal
    sequences with support size `≤ s + m (r - 1)` and satisfies
@@ -33,9 +32,43 @@ equipped with any submultiplicative matrix norm):
 
 namespace KrylovChaos
 
+private lemma prod_le_prod_nn {ι : Type*} (s : Finset ι) (f g : ι → ℝ)
+    (hf : ∀ i ∈ s, 0 ≤ f i) (hfg : ∀ i ∈ s, f i ≤ g i) :
+    ∏ i ∈ s, f i ≤ ∏ i ∈ s, g i := by
+  classical
+  induction s using Finset.induction_on with
+  | empty => simp
+  | insert a s ha ih =>
+      rw [Finset.prod_insert ha, Finset.prod_insert ha]
+      have h1 : 0 ≤ f a := hf a (Finset.mem_insert_self a s)
+      have h2 : f a ≤ g a := hfg a (Finset.mem_insert_self a s)
+      have h3 : 0 ≤ ∏ i ∈ s, f i :=
+        Finset.prod_nonneg fun i hi ↦ hf i (Finset.mem_insert_of_mem hi)
+      have h4 : ∏ i ∈ s, f i ≤ ∏ i ∈ s, g i :=
+        ih (fun i hi ↦ hf i (Finset.mem_insert_of_mem hi))
+           (fun i hi ↦ hfg i (Finset.mem_insert_of_mem hi))
+      exact mul_le_mul h2 h4 h3 (le_trans h1 h2)
+
+private lemma prod_range_one_add (m : ℕ) :
+    ∏ j ∈ Finset.range m, (1 + (j : ℝ)) = (m.factorial : ℝ) := by
+  induction m with
+  | zero => simp
+  | succ k ih =>
+      rw [Finset.prod_range_succ, ih, Nat.factorial_succ, Nat.cast_mul, Nat.cast_add, Nat.cast_one]
+      ring
+
+private lemma prod_range_two_add (m : ℕ) :
+    ∏ j ∈ Finset.range m, (2 + (j : ℝ)) = ((m + 1).factorial : ℝ) := by
+  induction m with
+  | zero => simp
+  | succ k ih =>
+      rw [Finset.prod_range_succ, ih, Nat.factorial_succ (k + 1), Nat.cast_mul, Nat.cast_add,
+        Nat.cast_add, Nat.cast_one]
+      ring
+
 section HadamardExpansion
 
-variable {E : Type*} [NormedRing E] [NormedAlgebra ℂ E] [CompleteSpace E]
+variable {E : Type*} [NormedRing E] [NormOneClass E] [NormedAlgebra ℂ E] [CompleteSpace E]
 
 /-- Iterated adjoint commutator `ad_H^m(O)` in an associative algebra. -/
 def adPow (H O : E) : ℕ → E
@@ -81,7 +114,6 @@ theorem adPow_eq_binomial_sum (H O : E) :
       congr 1
       ring
     rw [hL, hR]
-    -- Combine both sums over `Finset.range (m + 2)`
     have hL_ext :
         (∑ k ∈ Finset.Ico 1 (m + 2),
           ((-1 : ℂ) ^ (m + 1 - k) * (Nat.choose m (k - 1) : ℂ)) • (H ^ k * O * H ^ (m + 1 - k))) =
@@ -98,7 +130,8 @@ theorem adPow_eq_binomial_sum (H O : E) :
       · intro k hk
         rw [Finset.mem_Ico] at hk
         have h1 : k - 1 + 1 = k := by omega
-        simp only [h1]
+        have h2 : k - 1 + 1 - 1 = k - 1 := by omega
+        rw [h1, h2]
     have hR_ext :
         (∑ k ∈ Finset.range (m + 1),
           (-((-1 : ℂ) ^ (m + 1 - k) * (Nat.choose m k : ℂ))) • (H ^ k * O * H ^ (m + 1 - k))) =
@@ -137,17 +170,17 @@ theorem adPow_eq_binomial_sum (H O : E) :
 In any complete normed `ℂ`-algebra `E`,
 `exp(z H) * O * exp(-z H) = ∑' m : ℕ, (z ^ m / m!) • ad_H^m(O)`. -/
 theorem exp_conj_eq_tsum_adPow (H O : E) (z : ℂ) :
-    NormedSpace.exp ℂ (z • H) * O * NormedSpace.exp ℂ (-(z • H)) =
+    NormedSpace.exp (z • H) * O * NormedSpace.exp (-(z • H)) =
     ∑' m : ℕ, (z ^ m / (m.factorial : ℂ)) • adPow H O m := by
   let f : ℕ → E := fun j ↦ (((j.factorial : ℂ)⁻¹) • (z • H) ^ j) * O
   let g : ℕ → E := fun k ↦ ((k.factorial : ℂ)⁻¹) • (-(z • H)) ^ k
-  have hf_sum : HasSum f (NormedSpace.exp ℂ (z • H) * O) := by
-    have h0 := NormedSpace.expSeries_div_hasSum_exp ℂ (z • H)
-    have h1 : HasSum (fun j ↦ ((j.factorial : ℂ)⁻¹ • (z • H) ^ j)) (NormedSpace.exp ℂ (z • H)) := by
+  have hf_sum : HasSum f (NormedSpace.exp (z • H) * O) := by
+    have h0 := NormedSpace.expSeries_div_hasSum_exp (𝕂 := ℂ) (z • H)
+    have h1 : HasSum (fun j ↦ ((j.factorial : ℂ)⁻¹ • (z • H) ^ j)) (NormedSpace.exp (z • H)) := by
       simpa [NormedSpace.expSeries_apply_eq, div_eq_inv_mul] using h0
     exact h1.mul_right O
-  have hg_sum : HasSum g (NormedSpace.exp ℂ (-(z • H))) := by
-    have h0 := NormedSpace.expSeries_div_hasSum_exp ℂ (-(z • H))
+  have hg_sum : HasSum g (NormedSpace.exp (-(z • H))) := by
+    have h0 := NormedSpace.expSeries_div_hasSum_exp (𝕂 := ℂ) (-(z • H))
     simpa [g, NormedSpace.expSeries_apply_eq, div_eq_inv_mul] using h0
   have hf_norm : Summable (fun j ↦ ‖f j‖) := by
     refine Summable.of_nonneg_of_le (fun j ↦ norm_nonneg _) (fun j ↦ ?_)
@@ -156,7 +189,7 @@ theorem exp_conj_eq_tsum_adPow (H O : E) (z : ℂ) :
       _ = (j.factorial : ℝ)⁻¹ * ‖(z • H) ^ j‖ * ‖O‖ := by
             rw [norm_smul, norm_inv, Complex.norm_natCast]
       _ ≤ (j.factorial : ℝ)⁻¹ * ‖z • H‖ ^ j * ‖O‖ := by
-            gcongr; exact norm_pow_le' _ (Nat.zero_le _)
+            gcongr; exact norm_pow_le _ _
       _ = ‖z • H‖ ^ j / (j.factorial : ℝ) * ‖O‖ := by ring
   have hg_norm : Summable (fun k ↦ ‖g k‖) := by
     refine Summable.of_nonneg_of_le (fun k ↦ norm_nonneg _) (fun k ↦ ?_)
@@ -164,13 +197,12 @@ theorem exp_conj_eq_tsum_adPow (H O : E) (z : ℂ) :
     calc ‖g k‖ = (k.factorial : ℝ)⁻¹ * ‖(-(z • H)) ^ k‖ := by
             rw [norm_smul, norm_inv, Complex.norm_natCast]
       _ ≤ (k.factorial : ℝ)⁻¹ * ‖-(z • H)‖ ^ k := by
-            gcongr; exact norm_pow_le' _ (Nat.zero_le _)
+            gcongr; exact norm_pow_le _ _
       _ = ‖-(z • H)‖ ^ k / (k.factorial : ℝ) := by ring
   have hprod := hf_sum.tsum_eq.symm ▸ hg_sum.tsum_eq.symm ▸
     tsum_mul_tsum_of_summable_norm hf_norm hg_norm
   rw [hprod]
-  congr 1
-  ext m
+  refine tsum_congr fun m ↦ ?_
   rw [adPow_eq_binomial_sum, Finset.smul_sum, Finset.Nat.sum_antidiagonal_eq_sum_range_succ]
   apply Finset.sum_congr rfl
   intro j hj
@@ -185,8 +217,6 @@ theorem exp_conj_eq_tsum_adPow (H O : E) (z : ℂ) :
       exact_mod_cast Nat.choose_mul_factorial_mul_factorial hjm
     field_simp [hfac_ne, hj_ne, hmj_ne]
     linear_combination hnat
-  simp only [f, g, smul_pow, neg_eq_neg_one_mul (z • H), mul_pow, ← smul_eq_mul,
-    smul_mul_assoc, mul_smul_comm, smul_smul]
   have hneg : (-(z • H)) ^ (m - j) = ((-1 : ℂ) ^ (m - j) * z ^ (m - j)) • H ^ (m - j) := by
     rw [show -(z • H) = (-z) • H by simp [neg_smul], smul_pow,
       show (-z) ^ (m - j) = (-1 : ℂ) ^ (m - j) * z ^ (m - j) by
@@ -205,7 +235,7 @@ end HadamardExpansion
 
 section CausalSequenceBounds
 
-variable {E : Type*} [NormedRing E] [NormedAlgebra ℂ E] [CompleteSpace E]
+variable {E : Type*} [NormedRing E] [NormOneClass E] [NormedAlgebra ℂ E] [CompleteSpace E]
 
 /-- Abstract `r`-local interaction decomposition `H = ∑_{i ∈ I} h_i` in a Banach algebra `E`,
 with each interaction term supported on a subset `supp i ⊆ Fin N` of size `≤ r` and
@@ -229,8 +259,7 @@ attribute [instance] LocalInteractionDecomp.fintype_ι
 def LocalInteractionDecomp.totalH {N r : ℕ} (D : LocalInteractionDecomp E N r) : E :=
   ∑ i : D.ι, D.term i
 
-/-- Causal-sequence operator `T_Γ = [h_{i_{m-1}}, [..., [h_{i_0}, O]...]]` for a length-`m`
-sequence `Γ : Fin m → D.ι`. -/
+/-- Causal-sequence operator `T_Γ = [h_{i_{m-1}}, [..., [h_{i_0}, O]...]]`. -/
 def causalOp {N r : ℕ} (D : LocalInteractionDecomp E N r) (O : E) :
     ∀ {m : ℕ}, (Fin m → D.ι) → E
   | 0, _ => O
@@ -329,7 +358,10 @@ theorem adPow_eq_causal_sum {N r : ℕ} (D : LocalInteractionDecomp E N r)
           ∑ p ∈ (Finset.univ.filter (isCausalSeq D U (m := m))).sigma
               (fun Γ ↦ Finset.univ.filter (fun i : D.ι ↦ ¬ Disjoint (D.supp i) (causalSupp D U Γ))),
             (D.term p.2 * causalOp D O p.1 - causalOp D O p.1 * D.term p.2) :=
-        (Finset.sum_sigma _ _ _).symm
+        (Finset.sum_sigma (Finset.univ.filter (isCausalSeq D U (m := m)))
+          (fun Γ ↦ Finset.univ.filter (fun i : D.ι ↦ ¬ Disjoint (D.supp i) (causalSupp D U Γ)))
+          (fun p : (_ : Fin m → D.ι) × D.ι ↦
+            D.term p.2 * causalOp D O p.1 - causalOp D O p.1 * D.term p.2)).symm
       rw [hsig]
       refine Finset.sum_bij (fun p _ ↦ Fin.snoc p.1 p.2) ?_ ?_ ?_ ?_
       · intro p hp
@@ -381,9 +413,7 @@ theorem lemma_2_1_causal_norm_sum {N r : ℕ} (D : LocalInteractionDecomp E N r)
       simp [causalOp, isCausalSeq]
   | m + 1 => by
       have hr1_pos : (0 : ℝ) < ((r - 1 : ℕ) : ℝ) := by
-        have : 1 ≤ r - 1 := by omega
         exact_mod_cast (by omega : 0 < r - 1)
-      -- Reindex length-(m+1) causal sequences as pairs `(Γ, i)`
       have hreidx :
           (∑ Γ' ∈ Finset.univ.filter (isCausalSeq D U (m := m + 1)), ‖causalOp D O Γ'‖) =
           ∑ Γ ∈ Finset.univ.filter (isCausalSeq D U (m := m)),
@@ -396,7 +426,10 @@ theorem lemma_2_1_causal_norm_sum {N r : ℕ} (D : LocalInteractionDecomp E N r)
             ∑ p ∈ (Finset.univ.filter (isCausalSeq D U (m := m))).sigma
                 (fun Γ ↦ Finset.univ.filter (fun i : D.ι ↦ ¬ Disjoint (D.supp i) (causalSupp D U Γ))),
               ‖D.term p.2 * causalOp D O p.1 - causalOp D O p.1 * D.term p.2‖ :=
-          (Finset.sum_sigma _ _ _).symm
+          (Finset.sum_sigma (Finset.univ.filter (isCausalSeq D U (m := m)))
+            (fun Γ ↦ Finset.univ.filter (fun i : D.ι ↦ ¬ Disjoint (D.supp i) (causalSupp D U Γ)))
+            (fun p : (_ : Fin m → D.ι) × D.ι ↦
+              ‖D.term p.2 * causalOp D O p.1 - causalOp D O p.1 * D.term p.2‖)).symm
         rw [hsig]
         symm
         refine Finset.sum_bij (fun p _ ↦ Fin.snoc p.1 p.2) ?_ ?_ ?_ ?_
@@ -466,8 +499,10 @@ theorem lemma_2_1_causal_norm_sum {N r : ℕ} (D : LocalInteractionDecomp E N r)
           rw [hswap2, Finset.sum_filter]
           apply Finset.sum_le_sum
           intro i _
-          by_cases hnd : ¬ Disjoint (D.supp i) (causalSupp D U Γ)
-          · simp only [hnd, ↓reduceIte]
+          by_cases hnd : Disjoint (D.supp i) (causalSupp D U Γ)
+          · simp only [hnd, not_true_eq_false, ↓reduceIte]
+            positivity
+          · simp only [hnd, not_false_eq_true, ↓reduceIte]
             have hge1 : (1 : ℝ) ≤ ((causalSupp D U Γ ∩ D.supp i).card : ℝ) := by
               rw [Finset.not_disjoint_iff] at hnd
               rcases hnd with ⟨x, hx1, hx2⟩
@@ -475,8 +510,6 @@ theorem lemma_2_1_causal_norm_sum {N r : ℕ} (D : LocalInteractionDecomp E N r)
                 Finset.one_le_card.mpr ⟨x, Finset.mem_inter.mpr ⟨hx2, hx1⟩⟩
               exact_mod_cast this
             nlinarith [norm_nonneg (D.term i)]
-          · simp only [hnd, ↓reduceIte]
-            positivity
         have h3 :
             (∑ x ∈ causalSupp D U Γ,
               ∑ i ∈ Finset.univ.filter (fun i : D.ι ↦ x ∈ D.supp i), ‖D.term i‖) ≤
@@ -537,8 +570,7 @@ private lemma tsum_succ_mul_geometric {q : ℝ} (hq0 : 0 ≤ q) (hq1 : q < 1) :
   have hprod := tsum_mul_tsum_of_summable_norm hsumm hsumm
   rw [tsum_geometric_of_lt_one hq0 hq1, ← sq] at hprod
   rw [hprod]
-  congr 1
-  ext m
+  refine tsum_congr fun m ↦ ?_
   rw [Finset.Nat.sum_antidiagonal_eq_sum_range_succ]
   have hterm : ∀ j ∈ Finset.range (m + 1), q ^ j * q ^ (m - j) = q ^ m := by
     intro j hj
@@ -556,7 +588,7 @@ theorem lemma_2_1_single_site_exp_bound {N r : ℕ} (D : LocalInteractionDecomp 
     (U : Finset (Fin N)) (hU : U.card ≤ 1) (V : E) (hV_supp : D.SupportedOn U V)
     (hV_norm : ‖V‖ ≤ 1) (z : ℂ) (hz : ‖z‖ = |τ| / 4)
     (hτ : |τ| < 4 * (2 * ((r - 1 : ℕ) : ℝ) * Jsite)⁻¹) :
-    ‖NormedSpace.exp ℂ (z • D.totalH) * V * NormedSpace.exp ℂ (-(z • D.totalH))‖ ≤
+    ‖NormedSpace.exp (z • D.totalH) * V * NormedSpace.exp (-(z • D.totalH))‖ ≤
     (1 - |τ| / (4 * (2 * ((r - 1 : ℕ) : ℝ) * Jsite)⁻¹))⁻¹ := by
   set κ := (2 * ((r - 1 : ℕ) : ℝ) * Jsite)⁻¹
   have hr1_ge1 : (1 : ℝ) ≤ ((r - 1 : ℕ) : ℝ) := by exact_mod_cast (by omega : 1 ≤ r - 1)
@@ -575,18 +607,8 @@ theorem lemma_2_1_single_site_exp_bound {N r : ℕ} (D : LocalInteractionDecomp 
       have hU_div : (U.card : ℝ) / ((r - 1 : ℕ) : ℝ) ≤ 1 := by
         rw [div_le_one (by positivity)]
         exact le_trans (by exact_mod_cast hU) hr1_ge1
-      calc ∏ j ∈ Finset.range m, ((U.card : ℝ) / ((r - 1 : ℕ) : ℝ) + (j : ℝ))
-          ≤ ∏ j ∈ Finset.range m, (1 + (j : ℝ)) := by
-            apply Finset.prod_le_prod
-            · intro j _; positivity
-            · intro j _; linarith
-        _ = (m.factorial : ℝ) := by
-            induction m with
-            | zero => simp
-            | succ k ih =>
-                rw [Finset.prod_range_succ, ih, Nat.factorial_succ, Nat.cast_mul, Nat.cast_add,
-                  Nat.cast_one]
-                ring
+      rw [← prod_range_one_add m]
+      exact prod_le_prod_nn _ _ _ (fun j _ ↦ by positivity) (fun j _ ↦ by linarith)
     have hfac_pos : (0 : ℝ) < (m.factorial : ℝ) := Nat.cast_pos.mpr (Nat.factorial_pos m)
     calc ‖(z ^ m / (m.factorial : ℂ)) • adPow D.totalH V m‖
         = (‖z‖ ^ m / (m.factorial : ℝ)) * ‖adPow D.totalH V m‖ := by
@@ -597,7 +619,7 @@ theorem lemma_2_1_single_site_exp_bound {N r : ℕ} (D : LocalInteractionDecomp 
             exact le_trans had (mul_le_mul (mul_le_mul_of_nonneg_right hV_norm (by positivity))
               hprod_le (Finset.prod_nonneg fun _ _ ↦ by positivity) (by positivity))
       _ = (‖z‖ * (2 * ((r - 1 : ℕ) : ℝ) * Jsite)) ^ m := by
-            rw [mul_pow]; field_simp [hfac_pos.ne']
+            rw [mul_pow]; field_simp [hfac_pos.ne']; ring
       _ = q ^ m := by rw [hq_eq]
   have hsumm_norm : Summable (fun m : ℕ ↦ ‖(z ^ m / (m.factorial : ℂ)) • adPow D.totalH V m‖) :=
     Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) hterm_le (summable_geometric_of_lt_one hq0 hq1)
@@ -618,7 +640,7 @@ theorem lemma_2_1_r_local_exp_bound {N r : ℕ} (D : LocalInteractionDecomp E N 
     (X : Finset (Fin N)) (hX : X.card ≤ r) (hOp : E) (hOp_supp : D.SupportedOn X hOp)
     (z : ℂ) (hz : ‖z‖ = |τ| / 4)
     (hτ : |τ| < 4 * (2 * ((r - 1 : ℕ) : ℝ) * Jsite)⁻¹) :
-    ‖NormedSpace.exp ℂ (z • D.totalH) * hOp * NormedSpace.exp ℂ (-(z • D.totalH))‖ ≤
+    ‖NormedSpace.exp (z • D.totalH) * hOp * NormedSpace.exp (-(z • D.totalH))‖ ≤
     ‖hOp‖ * (1 - |τ| / (4 * (2 * ((r - 1 : ℕ) : ℝ) * Jsite)⁻¹))⁻¹ ^ 2 := by
   set κ := (2 * ((r - 1 : ℕ) : ℝ) * Jsite)⁻¹
   have hr1_pos : (0 : ℝ) < ((r - 1 : ℕ) : ℝ) := by exact_mod_cast (by omega : 0 < r - 1)
@@ -640,18 +662,8 @@ theorem lemma_2_1_r_local_exp_bound {N r : ℕ} (D : LocalInteractionDecomp E N 
         rw [div_le_iff₀ hr1_pos]
         have hnat : X.card ≤ 2 * (r - 1) := by omega
         exact_mod_cast hnat
-      calc ∏ j ∈ Finset.range m, ((X.card : ℝ) / ((r - 1 : ℕ) : ℝ) + (j : ℝ))
-          ≤ ∏ j ∈ Finset.range m, (2 + (j : ℝ)) := by
-            apply Finset.prod_le_prod
-            · intro j _; positivity
-            · intro j _; linarith
-        _ = ((m + 1).factorial : ℝ) := by
-            induction m with
-            | zero => simp
-            | succ k ih =>
-                rw [Finset.prod_range_succ, ih, Nat.factorial_succ (k + 1), Nat.cast_mul,
-                  Nat.cast_add, Nat.cast_add, Nat.cast_one]
-                ring
+      rw [← prod_range_two_add m]
+      exact prod_le_prod_nn _ _ _ (fun j _ ↦ by positivity) (fun j _ ↦ by linarith)
     have hfac_pos : (0 : ℝ) < (m.factorial : ℝ) := Nat.cast_pos.mpr (Nat.factorial_pos m)
     calc ‖(z ^ m / (m.factorial : ℂ)) • adPow D.totalH hOp m‖
         = (‖z‖ ^ m / (m.factorial : ℝ)) * ‖adPow D.totalH hOp m‖ := by
@@ -662,7 +674,7 @@ theorem lemma_2_1_r_local_exp_bound {N r : ℕ} (D : LocalInteractionDecomp E N 
             exact le_trans had (mul_le_mul_of_nonneg_left hprod_le (by positivity))
       _ = ‖hOp‖ * (((m + 1 : ℕ) : ℝ) * (‖z‖ * (2 * ((r - 1 : ℕ) : ℝ) * Jsite)) ^ m) := by
             rw [Nat.factorial_succ, Nat.cast_mul, mul_pow]
-            field_simp [hfac_pos.ne']
+            field_simp [hfac_pos.ne']; ring
       _ = ‖hOp‖ * (((m + 1 : ℕ) : ℝ) * q ^ m) := by rw [hq_eq]
   have hsumm_rhs : Summable (fun m : ℕ ↦ ((m + 1 : ℕ) : ℝ) * q ^ m) := by
     have hsumm : Summable (fun j : ℕ ↦ ‖q ^ j‖) := by
