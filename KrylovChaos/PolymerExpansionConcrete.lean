@@ -787,7 +787,11 @@ private lemma hasSum_cauchy_product_complex {a b : ℕ → ℂ} {A B : ℂ}
       have ha2 := ha1.comp (Filter.tendsto_atTop_mono (fun n ↦ (by omega : n ≤ 2 * n)) Filter.tendsto_id)
       have hb1 := hsb.hasSum.tendsto_sum_nat
       have hb2 := hb1.comp (Filter.tendsto_atTop_mono (fun n ↦ (by omega : n ≤ 2 * n)) Filter.tendsto_id)
-      have h := ((ha2.sub ha1).mul tendsto_const_nhds).add (tendsto_const_nhds.mul (hb2.sub hb1))
+      have hc1 : Filter.Tendsto (fun _ : ℕ ↦ ∑' j : ℕ, ‖b j‖) Filter.atTop (nhds (∑' j : ℕ, ‖b j‖)) :=
+        tendsto_const_nhds
+      have hc2 : Filter.Tendsto (fun _ : ℕ ↦ ∑' i : ℕ, ‖a i‖) Filter.atTop (nhds (∑' i : ℕ, ‖a i‖)) :=
+        tendsto_const_nhds
+      have h := ((ha2.sub ha1).mul hc1).add (hc2.mul (hb2.sub hb1))
       simpa using h
     rw [tendsto_zero_iff_norm_tendsto_zero]
     exact squeeze_zero (fun _ ↦ norm_nonneg _) hrem_bound hzero_rhs
@@ -872,12 +876,13 @@ lemma polyTermSum_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
         rcases Finset.mem_filter.mp hfS with ⟨hfpi, hfim⟩
         rw [Finset.mem_product]
         have hf1 : ∀ a : Fin T.card, f (e1 a).1 ∈ γ₁ := fun a ↦ by
-          have : (e1 a).1 ∈ Finset.univ.filter (fun j ↦ f j ∈ γ₁) := hfT.symm ▸ (e1 a).2
+          have : (e1 a).1 ∈ Finset.univ.filter (fun j ↦ f j ∈ γ₁) :=
+            Eq.mpr (congrArg (fun S ↦ (e1 a).1 ∈ S) hfT) (e1 a).2
           exact (Finset.mem_filter.mp this).2
         have hf2 : ∀ b : Fin (m - T.card), f (e2 b).1 ∈ γ₂ := fun b ↦ by
           have hnotT : (e2 b).1 ∉ T := (Finset.mem_sdiff.mp (e2 b).2).2
           have hnot1 : f (e2 b).1 ∉ γ₁ := fun h1 ↦
-            hnotT (hfT ▸ Finset.mem_filter.mpr ⟨Finset.mem_univ _, h1⟩)
+            hnotT (Eq.mp (congrArg (fun S ↦ (e2 b).1 ∈ S) hfT) (Finset.mem_filter.mpr ⟨Finset.mem_univ _, h1⟩))
           exact (Finset.mem_union.mp (Fintype.mem_piFinset.mp hfpi (e2 b).1)).resolve_left hnot1
         constructor
         · refine Finset.mem_filter.mpr ⟨Fintype.mem_piFinset.mpr hf1, ?_⟩
@@ -886,7 +891,7 @@ lemma polyTermSum_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
           · intro X hX
             have hXU : X ∈ Finset.univ.image f := hfim.symm ▸ Finset.mem_union_left γ₂ hX
             rcases Finset.mem_image.mp hXU with ⟨j, _, rfl⟩
-            have hjT : j ∈ T := hfT ▸ Finset.mem_filter.mpr ⟨Finset.mem_univ _, hX⟩
+            have hjT : j ∈ T := Eq.mp (congrArg (fun S ↦ j ∈ S) hfT) (Finset.mem_filter.mpr ⟨Finset.mem_univ _, hX⟩)
             refine Finset.mem_image.mpr ⟨e1.symm ⟨j, hjT⟩, Finset.mem_univ _, by simp⟩
         · refine Finset.mem_filter.mpr ⟨Fintype.mem_piFinset.mpr hf2, ?_⟩
           apply Finset.Subset.antisymm
@@ -896,7 +901,7 @@ lemma polyTermSum_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
             rcases Finset.mem_image.mp hXU with ⟨j, _, rfl⟩
             have hjnot1 : f j ∉ γ₁ := Finset.disjoint_right.mp hdisj hX
             have hjT2 : j ∈ T2 := Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, fun hjT ↦
-              hjnot1 (Finset.mem_filter.mp (show j ∈ Finset.univ.filter (fun j ↦ f j ∈ γ₁) from hfT.symm ▸ hjT)).2⟩
+              hjnot1 (Finset.mem_filter.mp (Eq.mpr (congrArg (fun S ↦ j ∈ S) hfT) hjT)).2⟩
             refine Finset.mem_image.mpr ⟨e2.symm ⟨j, hjT2⟩, Finset.mem_univ _, by simp⟩
       · intro f₁ _ f₂ _ heq
         funext j
@@ -958,10 +963,11 @@ lemma polyTermSum_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
               simp only [List.mem_filter, List.mem_finRange, true_and, decide_eq_true_eq, List.mem_ofFn]
               constructor
               · intro hj1
-                have hjT : j ∈ T := by rw [← hfT]; exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, hj1⟩
+                have hjT : j ∈ T := Eq.mp (congrArg (fun S ↦ j ∈ S) hfT) (Finset.mem_filter.mpr ⟨Finset.mem_univ _, hj1⟩)
                 exact ⟨e1.symm ⟨j, hjT⟩, by simp⟩
               · rintro ⟨a, rfl⟩
-                have haT : (e1 a).1 ∈ Finset.univ.filter (fun j : Fin m ↦ f j ∈ γ₁) := hfT.symm ▸ (e1 a).2
+                have haT : (e1 a).1 ∈ Finset.univ.filter (fun j : Fin m ↦ f j ∈ γ₁) :=
+                  Eq.mpr (congrArg (fun S ↦ (e1 a).1 ∈ S) hfT) (e1 a).2
                 exact (Finset.mem_filter.mp haT).2
             exact hperm.eq_of_pairwise (fun _ _ _ _ h1 h2 ↦ le_antisymm h1 h2)
               (hl1.imp le_of_lt) (hl2.imp le_of_lt)
@@ -981,14 +987,14 @@ lemma polyTermSum_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
               simp only [List.mem_filter, List.mem_finRange, true_and, decide_eq_true_eq, List.mem_ofFn]
               constructor
               · intro hj2
-                have hjnot1 : j ∉ T := by
-                  rw [← hfT]; intro h1; exact Finset.disjoint_left.mp hdisj (Finset.mem_filter.mp h1).2 hj2
+                have hjnot1 : j ∉ T := fun hjT ↦
+                  Finset.disjoint_left.mp hdisj
+                    (Finset.mem_filter.mp (Eq.mpr (congrArg (fun S ↦ j ∈ S) hfT) hjT)).2 hj2
                 have hjT2 : j ∈ T2 := Finset.mem_sdiff.mpr ⟨Finset.mem_univ _, hjnot1⟩
                 exact ⟨e2.symm ⟨j, hjT2⟩, by simp⟩
               · rintro ⟨b, rfl⟩
-                have hbT2 : (e2 b).1 ∈ T2 := (e2 b).2
                 have hbnot1 : (e2 b).1 ∉ Finset.univ.filter (fun j : Fin m ↦ f j ∈ γ₁) :=
-                  fun h1 ↦ (Finset.mem_sdiff.mp hbT2).2 (hfT ▸ h1)
+                  fun h1 ↦ (Finset.mem_sdiff.mp (e2 b).2).2 (Eq.mp (congrArg (fun S ↦ (e2 b).1 ∈ S) hfT) h1)
                 have hbnot : f (e2 b).1 ∉ γ₁ := fun h1 ↦ hbnot1 (Finset.mem_filter.mpr ⟨Finset.mem_univ _, h1⟩)
                 exact (Finset.mem_union.mp (Fintype.mem_piFinset.mp hfpi (e2 b).1)).resolve_left hbnot
             exact hperm.eq_of_pairwise (fun _ _ _ _ h1 h2 ↦ le_antisymm h1 h2)
@@ -1009,6 +1015,7 @@ lemma polyTermSum_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
     · intro T _; rw [Finset.mem_range]; exact Nat.lt_succ_of_le (by simpa using Finset.card_le_univ T)
   exact hconv
 
+set_option maxHeartbeats 400000 in
 private lemma hasSum_matrix_cauchy_product {N : ℕ}
     {A B : ℕ → QubitOp N} {P1 P2 : QubitOp N} {r1 r2 : ℕ → ℝ}
     (hA : HasSum A P1) (hB : HasSum B P2)
@@ -1019,18 +1026,17 @@ private lemma hasSum_matrix_cauchy_product {N : ℕ}
   have hterm : ∀ m : ℕ, (∑ p ∈ Finset.antidiagonal m, A p.1 * B p.2) i j =
       ∑ l : QubitIdx N, ∑ p ∈ Finset.antidiagonal m, A p.1 i l * B p.2 l j := by
     intro m; simp only [Matrix.sum_apply, Matrix.mul_apply]; rw [Finset.sum_comm]
-  simp_rw [hterm]
-  change HasSum (fun m : ℕ ↦ ∑ l : QubitIdx N, ∑ p ∈ Finset.antidiagonal m, A p.1 i l * B p.2 l j)
-    (∑ l : QubitIdx N, P1 i l * P2 l j)
-  apply hasSum_sum
-  intro l _
-  have h1l : HasSum (fun k ↦ A k i l) (P1 i l) := hasSum_entry hA i l
-  have h2l : HasSum (fun k ↦ B k l j) (P2 l j) := hasSum_entry hB l j
-  have hs1l : Summable (fun k ↦ ‖A k i l‖) :=
-    Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) (fun k ↦ le_trans (norm_entry_le_opNorm (A k) i l) (hb1 k)) hs1
-  have hs2l : Summable (fun k ↦ ‖B k l j‖) :=
-    Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) (fun k ↦ le_trans (norm_entry_le_opNorm (B k) l j) (hb2 k)) hs2
-  exact hasSum_cauchy_product_complex h1l h2l hs1l hs2l
+  have hsum : HasSum (fun m : ℕ ↦ ∑ l : QubitIdx N, ∑ p ∈ Finset.antidiagonal m, A p.1 i l * B p.2 l j)
+      (∑ l : QubitIdx N, P1 i l * P2 l j) := by
+    refine hasSum_sum (s := (Finset.univ : Finset (QubitIdx N)))
+      (f := fun l m ↦ ∑ p ∈ Finset.antidiagonal m, A p.1 i l * B p.2 l j)
+      (a := fun l ↦ P1 i l * P2 l j) fun l _ ↦ ?_
+    exact hasSum_cauchy_product_complex (hasSum_entry hA i l) (hasSum_entry hB l j)
+      (Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _)
+        (fun k ↦ le_trans (norm_entry_le_opNorm (A k) i l) (hb1 k)) hs1)
+      (Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _)
+        (fun k ↦ le_trans (norm_entry_le_opNorm (B k) l j) (hb2 k)) hs2)
+  exact hsum.congr_fun fun m ↦ (hterm m).symm
 
 lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
     (hsupp : ∀ X, h X ∈ supportedOn X) (β' : ℝ)
