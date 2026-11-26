@@ -27,4 +27,5 @@ import KrylovChaos.SpectralMeasure
 import KrylovChaos.JacobiSemigroup
 import KrylovChaos.EndToEndTheorems
 import KrylovChaos.InfiniteChainLimit
+import KrylovChaos.ThermodynamicKMS
 import KrylovChaos.SanityChecks
