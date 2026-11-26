@@ -112,6 +112,11 @@ theorem gsBasis_three_eq (m : ℝ) :
     gsBasis m 3 = (((prodSigma m)⁻¹ : ℝ) : ℂ) • (pauliZ - (m : ℂ) • (1 : Matrix (Fin 2) (Fin 2) ℂ)) := by
   ext i j; fin_cases i <;> fin_cases j <;> simp [gsBasis, pauliZ] <;> ring
 
+/-- Every Gram–Schmidt basis element `E_a` is Hermitian. -/
+theorem gsBasis_herm (m : ℝ) (a : Fin 4) : (gsBasis m a)ᴴ = gsBasis m a := by
+  fin_cases a <;> ext i j <;> fin_cases i <;> fin_cases j <;>
+    simp [gsBasis, pauliX, pauliY]
+
 /-- Exact Wightman orthonormality `(E_a | E_b)_{ρ_x}^W = δ_{ab}` for all `|m| < 1`. -/
 theorem gsBasis_wightman_orthonormal {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
     wightmanInner (singleSiteRhoHalf m) (gsBasis m a) (gsBasis m b) =
@@ -135,7 +140,7 @@ theorem gsBasis_wightman_orthonormal {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
     Real.mul_self_sqrt hsig.le
   have hhalf_eq : singleSiteRhoHalf m = !![(p : ℂ), 0; 0, (r : ℂ)] := rfl
   unfold wightmanInner
-  rw [hhalf_eq]
+  rw [gsBasis_herm, hhalf_eq]
   fin_cases a <;> fin_cases b <;>
     simp [gsBasis, pauliX, pauliY, Matrix.trace, Matrix.diag, Matrix.mul_apply, Fin.sum_univ_two]
   · exact_mod_cast (by linarith [hpsq, hrsq] : p * p + r * r = 1)
@@ -288,11 +293,11 @@ theorem gsBasis_derives_singleSiteM {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
     simp [Matrix.trace_conjTranspose, htr2]
   have hq_def : prodQ m = p - r := rfl
   rw [hinner_S, hiso, hbg]
-  fin_cases a <;> fin_cases b <;> dsimp only
-  · rw [htr0h, htr0, hq_def]; simp [singleSiteM]; nlinarith [hp_sq, hr_sq]
+  fin_cases a <;> fin_cases b
+  · simp [singleSiteM, htr0h, htr0, hq_def]; nlinarith [hp_sq, hr_sq]
   · simp [singleSiteM, htr1]
   · simp [singleSiteM, htr2]
-  · rw [htr0h, htr3]; simp [singleSiteM]; nlinarith [hp_sq, hr_sq]
+  · simp [singleSiteM, htr0h, htr3]; nlinarith [hp_sq, hr_sq]
   · simp [singleSiteM, htr1h]
   · simp [singleSiteM, htr1]
   · simp [singleSiteM, htr2]
@@ -301,10 +306,10 @@ theorem gsBasis_derives_singleSiteM {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
   · simp [singleSiteM, htr1]
   · simp [singleSiteM, htr2]
   · simp [singleSiteM, htr2h]
-  · rw [htr3h, htr0]; simp [singleSiteM]; nlinarith [hp_sq, hr_sq]
+  · simp [singleSiteM, htr3h, htr0]; nlinarith [hp_sq, hr_sq]
   · simp [singleSiteM, htr1]
   · simp [singleSiteM, htr2]
-  · rw [htr3h, htr3, hq_def]; simp [singleSiteM]; nlinarith [hp_sq, hr_sq, hpr]
+  · simp [singleSiteM, htr3h, htr3, hq_def]; nlinarith [hp_sq, hr_sq, hpr]
 
 end SingleSiteGramSchmidt
 

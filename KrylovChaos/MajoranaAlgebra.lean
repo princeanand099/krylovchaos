@@ -74,7 +74,7 @@ private lemma pauliMat_comm_sign (α β : Fin 4) :
     pauliMat β * pauliMat α =
       (if α = 0 ∨ β = 0 ∨ α = β then (1 : ℂ) else (-1 : ℂ)) • (pauliMat α * pauliMat β) := by
   fin_cases α <;> fin_cases β <;> ext i j <;> fin_cases i <;> fin_cases j <;>
-    simp [pauliMat] <;> ring
+    simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two] <;> ring
 
 /-- Distinct Majorana probes `V_i, V_j` (`i ≠ j`) anticommute: `V_j * V_i = -(V_i * V_j)`. -/
 theorem majoranaProbe_anticomm {n : ℕ} {i j : Fin (2 * n)} (hij : i ≠ j) :
@@ -169,12 +169,10 @@ theorem majoranaGen_clifford (n : ℕ) (i j : Fin (2 * n)) :
   have hsq : ((Real.sqrt 2 : ℂ)⁻¹ * (Real.sqrt 2 : ℂ)⁻¹) * (2 : ℂ) = 1 := by
     have h2 : (Real.sqrt 2 : ℂ) * (Real.sqrt 2 : ℂ) = 2 := by
       exact_mod_cast Real.mul_self_sqrt (by norm_num : (0 : ℝ) ≤ 2)
-    have hne : (Real.sqrt 2 : ℂ) ≠ 0 := by
-      intro hz
-      have := congrArg (· * (Real.sqrt 2 : ℂ)) hz
-      simp [h2] at this
-    field_simp [hne]
-    rw [h2]
+    calc ((Real.sqrt 2 : ℂ)⁻¹ * (Real.sqrt 2 : ℂ)⁻¹) * (2 : ℂ)
+        = ((Real.sqrt 2 : ℂ) * (Real.sqrt 2 : ℂ))⁻¹ * (2 : ℂ) := by rw [mul_inv]
+      _ = (2 : ℂ)⁻¹ * (2 : ℂ) := by rw [h2]
+      _ = 1 := by norm_num
   split_ifs with h
   · rw [hsq]
   · simp
