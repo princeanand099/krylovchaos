@@ -87,13 +87,20 @@ theorem singleSiteRho_roots {m : ℝ} (hm : |m| < 1) :
     singleSiteRhoQuarter m * singleSiteRhoQuarter m = singleSiteRhoHalf m := by
   have hp : 0 ≤ (1 + m) / 2 := by linarith [abs_lt.mp hm]
   have hr : 0 ≤ (1 - m) / 2 := by linarith [abs_lt.mp hm]
+  set p := Real.sqrt ((1 + m) / 2)
+  set r := Real.sqrt ((1 - m) / 2)
+  have hhalf : singleSiteRhoHalf m = !![(p : ℂ), 0; 0, (r : ℂ)] := rfl
+  have hquar : singleSiteRhoQuarter m = !![(Real.sqrt p : ℂ), 0; 0, (Real.sqrt r : ℂ)] := rfl
+  have hrho : singleSiteRho m = !![(((1 + m) / 2 : ℝ) : ℂ), 0; 0, (((1 - m) / 2 : ℝ) : ℂ)] := rfl
   refine ⟨?_, ?_⟩
-  · ext i j; fin_cases i <;> fin_cases j <;>
-      simp [singleSiteRhoHalf, singleSiteRho, Matrix.mul_apply, Fin.sum_univ_two]
+  · rw [hhalf, hrho]
+    ext i j; fin_cases i <;> fin_cases j <;>
+      simp [Matrix.mul_apply, Fin.sum_univ_two]
     · exact_mod_cast Real.mul_self_sqrt hp
     · exact_mod_cast Real.mul_self_sqrt hr
-  · ext i j; fin_cases i <;> fin_cases j <;>
-      simp [singleSiteRhoQuarter, singleSiteRhoHalf, Matrix.mul_apply, Fin.sum_univ_two]
+  · rw [hquar, hhalf]
+    ext i j; fin_cases i <;> fin_cases j <;>
+      simp [Matrix.mul_apply, Fin.sum_univ_two]
     · exact_mod_cast Real.mul_self_sqrt (Real.sqrt_nonneg _)
     · exact_mod_cast Real.mul_self_sqrt (Real.sqrt_nonneg _)
 
@@ -145,10 +152,10 @@ theorem gsBasis_wightman_orthonormal {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
     simp [gsBasis, pauliX, pauliY, Matrix.trace, Matrix.diag, Matrix.mul_apply, Fin.sum_univ_two]
   · exact_mod_cast (by linarith [hpsq, hrsq] : p * p + r * r = 1)
   · exact_mod_cast (by
-      have h : p * (p * ((prodSigma m)⁻¹ * (1 - m))) + r * (r * ((prodSigma m)⁻¹ * (-1 - m))) =
+      have h : p * p * ((prodSigma m)⁻¹ * (1 - m)) + r * r * ((prodSigma m)⁻¹ * (-1 - m)) =
           (p * p * (1 - m) + r * r * (-1 - m)) * (prodSigma m)⁻¹ := by ring
       rw [h, hpsq, hrsq]; ring :
-      p * (p * ((prodSigma m)⁻¹ * (1 - m))) + r * (r * ((prodSigma m)⁻¹ * (-1 - m))) = 0)
+      p * p * ((prodSigma m)⁻¹ * (1 - m)) + r * r * ((prodSigma m)⁻¹ * (-1 - m)) = 0)
   · have hcalc : p * (Real.sqrt (prodSigma m))⁻¹ * r * (Real.sqrt (prodSigma m))⁻¹ +
         r * (Real.sqrt (prodSigma m))⁻¹ * p * (Real.sqrt (prodSigma m))⁻¹ = 1 := by
       have h1 : p * (Real.sqrt (prodSigma m))⁻¹ * r * (Real.sqrt (prodSigma m))⁻¹ +
@@ -183,10 +190,10 @@ theorem gsBasis_wightman_orthonormal {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
           (p * p * (1 - m) + r * r * (-1 - m)) * (prodSigma m)⁻¹ := by ring
       rw [h, hpsq, hrsq]; ring :
       p * ((prodSigma m)⁻¹ * (1 - m)) * p + r * ((prodSigma m)⁻¹ * (-1 - m)) * r = 0)
-  · have hcalc : p * ((prodSigma m)⁻¹ * (1 - m)) * (p * ((prodSigma m)⁻¹ * (1 - m))) +
-        r * ((prodSigma m)⁻¹ * (-1 - m)) * (r * ((prodSigma m)⁻¹ * (-1 - m))) = 1 := by
-      have h1 : p * ((prodSigma m)⁻¹ * (1 - m)) * (p * ((prodSigma m)⁻¹ * (1 - m))) +
-          r * ((prodSigma m)⁻¹ * (-1 - m)) * (r * ((prodSigma m)⁻¹ * (-1 - m))) =
+  · have hcalc : p * ((prodSigma m)⁻¹ * (1 - m)) * p * ((prodSigma m)⁻¹ * (1 - m)) +
+        r * ((prodSigma m)⁻¹ * (-1 - m)) * r * ((prodSigma m)⁻¹ * (-1 - m)) = 1 := by
+      have h1 : p * ((prodSigma m)⁻¹ * (1 - m)) * p * ((prodSigma m)⁻¹ * (1 - m)) +
+          r * ((prodSigma m)⁻¹ * (-1 - m)) * r * ((prodSigma m)⁻¹ * (-1 - m)) =
           (p * p * (1 - m) ^ 2 + r * r * (-1 - m) ^ 2) * ((prodSigma m)⁻¹ * (prodSigma m)⁻¹) := by ring
       rw [h1, hpsq, hrsq]
       field_simp [hsig.ne']

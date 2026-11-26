@@ -23,4 +23,5 @@ import KrylovChaos.KoteckyPreiss
 import KrylovChaos.VitaliAnalytic
 import KrylovChaos.ArakiOneDim
 import KrylovChaos.OperatorBridges
+import KrylovChaos.WightmanProjectors
 import KrylovChaos.SanityChecks

@@ -232,7 +232,7 @@ theorem majorana_hs_commutator_size_identity {n : ℕ} (M : QubitOp n) :
       rw [ht1, ht2, ht3]
       ring
     rw [hcomm_norm]
-    unfold majoranaModeSizeOp hsInner hsNormSq
+    unfold majoranaModeSizeOp hsNormSq hsInner
     simp only [Matrix.mul_smul, Matrix.mul_sub, Matrix.trace_smul, Matrix.trace_sub, smul_eq_mul]
     have hhalf : ((1 / 2 : ℂ) * (Matrix.trace (Mᴴ * M) - Matrix.trace (Mᴴ * (V * M * V)))).re =
         (1 / 2 : ℝ) * ((Matrix.trace (Mᴴ * M)).re - (Matrix.trace (Mᴴ * (V * M * V))).re) := by
