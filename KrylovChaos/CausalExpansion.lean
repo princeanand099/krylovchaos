@@ -610,7 +610,7 @@ lemma revCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
         ≤ (((k + 1 : ℕ) : ℝ) * ((r : ℝ) * J)) * (((k + 1).factorial : ℝ) * ((r : ℝ) * J) ^ k) +
           ((r : ℝ) * J) * (((k + 1).factorial : ℝ) * ((r : ℝ) * J) ^ k) := by linarith
       _ = ((k + 2).factorial : ℝ) * ((r : ℝ) * J) ^ (k + 1) := by
-          rw [Nat.factorial_succ, pow_succ]; push_cast; ring
+          rw [Nat.factorial_succ (k + 1), pow_succ]; push_cast; ring
 
 lemma sqrt_prodDepolNormSq_add_le {N : ℕ} (s s' : Fin N → Fin 6) (X Y : QubitOp N) :
     Real.sqrt (prodDepolNormSq s s' (X + Y)) ≤
