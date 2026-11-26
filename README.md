@@ -1,14 +1,14 @@
 # KrylovChaos — Lean 4 Formalization
 
-Ground-up Lean 4 (`v4.35.0`) formalization of **Prince Anand**, *Finite-Temperature Bounds on Operator Growth and Quantum Chaos* (November 2026), built strictly on standard Mathlib (`v4.35.0`) with **zero custom axioms**, **zero `sorry`s**, and **zero external literature hypotheses** across all 23 library modules.
+Ground-up Lean 4 (`v4.35.0`) formalization of **Prince Anand**, *Finite-Temperature Bounds on Operator Growth and Quantum Chaos* (November 2026), built strictly on standard Mathlib (`v4.35.0`) with **zero custom axioms**, **zero `sorry`s**, and **zero external literature hypotheses** across all 25 library modules.
 
 ## Verification Status
 
 - **Toolchain**: Lean `v4.35.0` / Mathlib `v4.35.0` / `comparator` `v4.35.0`
-- **Build**: `lake build` — **23 library modules**, **0 `sorry`s**, **0 custom axioms**, **0 orphan modules** (`Build completed successfully (3577 jobs). LAKE_BUILD_EXIT=0`)
+- **Build**: `lake build` — **25 library modules**, **0 `sorry`s**, **0 custom axioms**, **0 orphan modules** (`Build completed successfully (3579 jobs). LAKE_BUILD_EXIT=0` on `bce669072b507216fbcf7f40e2a050a4f29106c2`, `ci-logs` `091b1bceb7cc636ed91e3878207523068226aad4`)
 - **Axiom Footprint**: Strictly standard Lean/Mathlib core axioms (`propext`, `Classical.choice`, `Quot.sound`).
 
-## Module Architecture (23 Modules)
+## Module Architecture (25 Modules)
 
 | Module | Manuscript Scope | Key Verified Results |
 |---|---|---|
@@ -16,6 +16,7 @@ Ground-up Lean 4 (`v4.35.0`) formalization of **Prince Anand**, *Finite-Temperat
 | `KrylovChaos.QubitAlgebra` | Section 2.1, Eq. (2.8) | Concrete `QubitOp N`, Pauli string algebra, partial trace `ℰ_x`, `siteSizeOp`, `totalSizeOp`, **Eq. (2.8)** `eq_2_8_hs_commutator_size_identity`, concrete $r$-local commutator step `filtration_comm_step` |
 | `KrylovChaos.MajoranaAlgebra` | Section 2.1, Eq. (2.10) | Concrete Jordan–Wigner $2n$-mode Majorana probes & generators, exact Clifford anticommutation `majoranaProbe_clifford` / `majoranaGen_clifford`, Majorana size identity, **full $2n$-Majorana Proposition 2.3 (Eq. 2.10)** `prop_2_3_full_majorana_thermal_size` |
 | `KrylovChaos.WightmanIsometry` | Section 2.1–2.3 | Wightman inner product, isometry `jBeta`, causal-sequence scalar induction, Taylor majorant bounds |
+| `KrylovChaos.CausalNormBounds` | Section 2.2, Lemma 2.1 (Eqs. 2.3–2.5) | Iterated commutator `adPow` & binomial expansion `adPow_eq_binomial_sum`, **exact Hadamard/BCH complex-time expansion** `exp_conj_eq_tsum_adPow`, causal-sequence expansion `adPow_eq_causal_sum`, support growth `causalSupp_card_le`, **Eq. (2.3)** `lemma_2_1_causal_norm_sum`, **Eq. (2.4)** `lemma_2_1_single_site_exp_bound`, **Eq. (2.5)** `lemma_2_1_r_local_exp_bound` |
 | `KrylovChaos.ManyBodySetup` | Section 1–2, 9 | Concrete `LocalTerm` / `LocalHamiltonian N r`, `GibbsData N`, `otocCW`, `mssThermalSize`, **Prop 2.2(3)** `prop_2_2_lanczos_invariance`, **full $N$-qubit Prop 2.3 (Eq. 2.9)** `prop_2_3_full_qubit_thermal_size`, concrete `bimodalState` (Eq. 9.1), concrete `doubleWellMatrix` |
 | `KrylovChaos.KrylovTail` | Section 3, Theorem 1.1(a) | Differential inequality, finite-chain and infinite-chain Krylov tail and complexity bounds |
 | `KrylovChaos.Filtration` | Section 4.1–4.2, Theorem 1.1(b) | Krylov–filtration inclusion, static-to-dynamical reduction |
@@ -29,6 +30,7 @@ Ground-up Lean 4 (`v4.35.0`) formalization of **Prince Anand**, *Finite-Temperat
 | `KrylovChaos.PolymerTrees` | Section 7, Lemma 7.2–7.3 | Connected polymer-tree bounds and cluster-expansion decay |
 | `KrylovChaos.ClassicalIsing` | Section 8, Theorem 1.4 | Classical Ising model thermal-size and Krylov complexity bounds |
 | `KrylovChaos.StructuralNecessity` | Section 9, Prop 9.1–9.2 | Bimodal counterexample and double-well optimality bounds |
+| `KrylovChaos.BimodalExact` | Section 9, Prop 9.1(2) (Eq. 9.2) | Exact computational-basis diagonal formula `diag_siteSizeOp_inner`, exact `bimodal_jA_size` (`= N / 2`), exact `bimodal_rhoHalf_size` (`= (N + 1)/4 - (√(2^{N+1}))⁻¹`), and **exact Eq. (9.2) on `QubitOp N`** `prop_9_1_bimodal_operator_exact_size` |
 | `KrylovChaos.CarlemanJacobi` | Literature (Ground-Up) | Carleman divergence criterion & deficiency-index zero for Jacobi operators |
 | `KrylovChaos.KoteckyPreiss` | Literature (Ground-Up) | Kotecký–Preiss cluster-expansion convergence |
 | `KrylovChaos.VitaliAnalytic` | Literature (Ground-Up) | Vitali–Montel analytic continuation & normal-family convergence |
@@ -38,4 +40,4 @@ Ground-up Lean 4 (`v4.35.0`) formalization of **Prince Anand**, *Finite-Temperat
 
 ## Honest Scope Notes
 
-All finite-dimensional many-body operator-algebraic constructions (`QubitOp N`, Pauli strings, $2n$-Majorana Clifford algebra, partial trace, `0 ⪯ 𝒮 ⪯ N 1`, Wightman orthogonal projectors `Π_s^{(β)}`, Gram–Schmidt derivation of Eq. 4.6, operator-level Lemma 4.2, exact Dyck-path expansion of `jacobiMat ^ (2n)`, and the Gamma-integral Meixner `sech` lower bound Eq. 5.5) are formally verified from Mathlib `v4.35.0` with zero custom axioms. Infinite-dimensional operator-semigroup machinery (unbounded Trotter–Kato strong resolvent convergence on $\ell^2(\mathbb{N})$ and full $C^*$-algebraic KMS spectral measures in the $N \to \infty$ thermodynamic limit) remains represented at the level of its finite-dimensional Jacobi/Wightman reductions and Carleman/Vitali analytic criteria.
+All finite-dimensional many-body operator-algebraic constructions (`QubitOp N`, Pauli strings, $2n$-Majorana Clifford algebra, partial trace, `0 ⪯ 𝒮 ⪯ N 1`, Wightman orthogonal projectors `Π_s^{(β)}`, Gram–Schmidt derivation of Eq. 4.6, operator-level Lemma 4.2, exact Dyck-path expansion of `jacobiMat ^ (2n)`, Gamma-integral Meixner `sech` lower bound Eq. 5.5, Banach-algebra Hadamard/BCH & causal-sequence norm bounds Lemma 2.1 Eqs. 2.3–2.5, and exact `QubitOp N` bimodal thermal size Eq. 9.2) are formally verified from Mathlib `v4.35.0` with zero custom axioms. Infinite-dimensional operator-semigroup machinery (unbounded Trotter–Kato strong resolvent convergence on $\ell^2(\mathbb{N})$ and full $C^*$-algebraic KMS spectral measures in the $N \to \infty$ thermodynamic limit) remains represented at the level of its finite-dimensional Jacobi/Wightman reductions and Carleman/Vitali analytic criteria.
