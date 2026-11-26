@@ -114,7 +114,7 @@ theorem prop_9_1_wightman_norm_eq_spectral_sum {N : ℕ} {H : QubitOp N} (hH : H
     rw [← mul_assoc, hsc, trace_conj_diag_pair U D O]
   unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner concreteGibbsData
   dsimp only
-  rw [htr, Complex.re_ofReal_mul]
+  rw [htr, ← Complex.ofReal_inv, Complex.re_ofReal_mul]
   have hDB : (D * Bᴴ * D * B).trace =
       ∑ a : QubitIdx N, ∑ b : QubitIdx N,
         ((Real.exp (-(β / 2) * (hH.eigenvalues a + hH.eigenvalues b)) : ℝ) : ℂ) *
@@ -254,7 +254,8 @@ theorem doubleWell_even_odd_eigenpairs {n : ℕ} (H_L V : Matrix (Fin n) (Fin n)
   · rw [Matrix.fromBlocks_mulVec]
     simp only [Sum.elim_comp_inl, Sum.elim_comp_inr]
     have h1 : H_L *ᵥ u + V *ᵥ u = E_plus • u := by rw [← Matrix.add_mulVec]; exact hplus
-    rw [h1]
+    have h1' : V *ᵥ u + H_L *ᵥ u = E_plus • u := by rw [add_comm]; exact h1
+    rw [h1, h1']
     ext x; cases x <;> simp
   · rw [Matrix.fromBlocks_mulVec]
     simp only [Sum.elim_comp_inl, Sum.elim_comp_inr]

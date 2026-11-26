@@ -30,13 +30,6 @@ genuine operator-level proofs directly on `QubitOp N`:
    For any `G : GibbsData N` with positive depolarized frame expansion `G.ρHalf = ∑ s, π(s) P̃_s`
    (`π s ≥ 0`) and EVERY `A : QubitOp N`:
    `Re (A | 𝒬̃^{(β)} A)_β^W ≤ ∑ x, ‖𝒮_x(A)‖_{β,W}² ≤ 9 * Re (A | 𝒬^{(β)} A)_β^W`.
-4. **Lemma 7.2 (Concrete Kotecký–Preiss Polymer Non-Vanishing & Positivity)**:
-   Directly invokes `KoteckyPreiss.kotecky_preiss_convergence` on the concrete high-temperature
-   polymer gas for `exp(-β H / 2)` (`β ≤ β_wc`) to prove `polymerZ ≠ 0` and positivity of real
-   polymer weights.
-5. **Theorem 1.3(b) (Operator-Level `C_W(A) ≤ 54 (A | 𝒬^{(β)} A)_β^W`)**:
-   Derives `otocCW G A ≤ 54 * Re (A | 𝒬^{(β)} A)_β^W` directly on `QubitOp N` from Theorem 1.3(a)
-   and the concrete commutator identity `[A, σ_x^α] = [𝒮_x(A), σ_x^α]`.
 -/
 
 namespace KrylovChaos
@@ -769,7 +762,7 @@ private lemma siteSizeOp_comm_LR {N : ℕ} (x : Fin N) (L R Y : QubitOp N)
     (hcommL : ∀ c : Fin 4, pauliSite x c * L = L * pauliSite x c) :
     R * siteSizeOp x Y * L = siteSizeOp x (R * Y * L) := by
   unfold siteSizeOp partialTraceSite
-  simp only [Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_smul, Matrix.smul_mul,
+  rw [Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_smul, Matrix.smul_mul,
     Matrix.mul_sum, Matrix.sum_mul]
   congr 1; congr 1
   apply Finset.sum_congr rfl; intro c _
@@ -777,6 +770,21 @@ private lemma siteSizeOp_comm_LR {N : ℕ} (x : Fin N) (L R Y : QubitOp N)
       = (R * pauliSite x c) * Y * (pauliSite x c * L) := by simp only [Matrix.mul_assoc]
     _ = (pauliSite x c * R) * Y * (L * pauliSite x c) := by rw [← hcommR c, hcommL c]
     _ = pauliSite x c * (R * Y * L) * pauliSite x c := by simp only [Matrix.mul_assoc]
+
+private lemma hsNormSq_siteSizeOp_le {N : ℕ} (x : Fin N) (M : QubitOp N) :
+    hsNormSq (siteSizeOp x M) ≤ hsNormSq M := by
+  have hdiff_nn : 0 ≤ hsNormSq (M - siteSizeOp x M) := hsNormSq_nonneg _
+  have hidem := siteSizeOp_idem x M
+  have hsa1 := siteSizeOp_self_adj x (siteSizeOp x M) M
+  have hsa2 := siteSizeOp_self_adj x M (siteSizeOp x M)
+  have heq : hsNormSq (M - siteSizeOp x M) = hsNormSq M - hsNormSq (siteSizeOp x M) := by
+    unfold hsNormSq hsInner at hsa1 hsa2 ⊢
+    rw [Matrix.conjTranspose_sub, Matrix.sub_mul, Matrix.mul_sub, Matrix.mul_sub,
+      Matrix.trace_sub, Matrix.trace_sub, Matrix.trace_sub,
+      Complex.sub_re, Complex.sub_re, Complex.sub_re]
+    rw [hsa1, hsa2, hidem]
+    ring
+  linarith
 
 private lemma globalDepolPReplace_siteSizeOp_le {N : ℕ} (s s' : Fin N → Fin 6) (x : Fin N)
     (Y : QubitOp N) :
@@ -823,15 +831,16 @@ private lemma globalDepolPReplace_siteSizeOp_le {N : ℕ} (s s' : Fin N → Fin 
       hsNormSq (R * Z * L) := by
     intro Z
     unfold hsNormSq hsInner
-    rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hL_herm, hR_herm]
-    have h1 : (L * (Zᴴ * R) * (R * Z * L)).trace = ((L * Zᴴ * (R * R) * Z) * L).trace := by
-      simp only [Matrix.mul_assoc]
-    rw [h1, Matrix.trace_mul_comm]
-    have h2 : (L * (L * Zᴴ * (R * R) * Z)).trace = ((L * L) * Zᴴ * (R * R) * Z).trace := by
-      simp only [Matrix.mul_assoc]
-    rw [h2, hL_sq, hR_sq]
+    congr 1
+    calc Matrix.trace (globalDepolPReplace s x 1 * Zᴴ * globalDepolPReplace s' x 1 * Z)
+        = Matrix.trace ((L * L) * Zᴴ * (R * R) * Z) := by rw [← hL_sq, ← hR_sq]
+      _ = Matrix.trace (L * (L * Zᴴ * (R * R) * Z)) := by simp only [Matrix.mul_assoc]
+      _ = Matrix.trace ((L * Zᴴ * (R * R) * Z) * L) := Matrix.trace_mul_comm _ _
+      _ = Matrix.trace ((R * Z * L)ᴴ * (R * Z * L)) := by
+          rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hL_herm, hR_herm]
+          simp only [Matrix.mul_assoc]
   rw [htr_hs (siteSizeOp x Y), htr_hs Y, hcomm_site]
-  exact siteSizeOp_le_hsNormSq x (R * Y * L)
+  exact hsNormSq_siteSizeOp_le x (R * Y * L)
 
 private lemma siteSizeOp_eq_zero_of_mem_trivial {N : ℕ} (x : Fin N)
     {B : QubitOp N} (hB : B ∈ singleSiteTrivialSubmodule N x) :
@@ -852,7 +861,9 @@ private lemma siteSizeOp_eq_zero_of_mem_trivial {N : ℕ} (x : Fin N)
         · subst hy; simp [hax, hp0, pauliMat_sq]
         · simp [hy, hp0]
       simp_rw [hconj, Finset.sum_const, Finset.card_univ, Fintype.card_fin]
-      rw [nsmul_eq_smul_cast ℂ, smul_smul]; norm_num
+      ext p q
+      simp only [Matrix.smul_apply, smul_eq_mul, nsmul_eq_mul, Nat.cast_ofNat]
+      ring
     rw [hpt, sub_self]
   · unfold siteSizeOp partialTraceSite; simp
   · intro X Y _ _ hX hY
