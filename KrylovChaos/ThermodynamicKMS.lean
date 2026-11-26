@@ -7,6 +7,7 @@ import KrylovChaos.VitaliAnalytic
 import KrylovChaos.SpectralMeasure
 import Mathlib.Data.Finsupp.Defs
 import Mathlib.Data.Finsupp.Basic
+import Mathlib.Data.Finsupp.Encodable
 import Mathlib.Topology.Compactness.Compact
 import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.Tactic
@@ -80,8 +81,6 @@ theorem finiteKMS_boundary_identity {ι : Type*} [Fintype ι] [Nonempty ι]
   rw [Finset.sum_comm]
   apply Finset.sum_congr rfl; intro b _
   apply Finset.sum_congr rfl; intro a _
-  have hZ_ne : (kmsPartitionFn E β : ℂ) ≠ 0 :=
-    Complex.ofReal_ne_zero.mpr (kmsPartitionFn_pos E β).ne'
   have hexp_split :
       Complex.exp (Complex.I * ((t : ℂ) + Complex.I * (β : ℂ)) * ((E b - E a : ℝ) : ℂ)) =
       Complex.exp ((-(β * (E b - E a)) : ℝ)) *
@@ -144,9 +143,8 @@ abbrev PauliWord := ℕ →₀ Fin 4
 
 /-- **Thermodynamic-Limit State Existence (Banach–Alaoglu / Tychonoff Compactness)**:
 Every sequence of finite-volume states `ω : ℕ → PauliWord → ℂ` uniformly bounded by `1`
-(`∀ N w, ‖ω N w‖ ≤ 1`), normalized (`∀ N, ω N 0 = 1`), and positive on a family of
-local observables `P : α → (PauliWord → ℂ)` admits a strictly increasing subsequence
-`φ : ℕ → ℕ` and a thermodynamic-limit state `ω_∞ : PauliWord → ℂ` such that:
+(`∀ N w, ‖ω N w‖ ≤ 1`) and normalized (`∀ N, ω N 0 = 1`) admits a strictly increasing
+subsequence `φ : ℕ → ℕ` and a thermodynamic-limit state `ω_∞ : PauliWord → ℂ` such that:
 1. Pointwise weak-* convergence on every local Pauli word `w : PauliWord`,
 2. Normalization `ω_∞ 0 = 1`,
 3. Uniform bound `∀ w, ‖ω_∞ w‖ ≤ 1`,

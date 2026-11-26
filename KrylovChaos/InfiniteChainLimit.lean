@@ -19,14 +19,13 @@ from first principles on Mathlib `v4.35.0`:
    complex Krylov wavefunction `jacobiWavefn hD b s = exp(i s T_D) e_0` when
    `0 ≤ b n ≤ α n + γ`.
 2. **Finite-Truncation Difference Bound (`jacobiWavefn_trunc_diff_bound`)**:
-   For `1 ≤ D ≤ M`, proves via the exact Lanczos ODE, self-adjointness of `jacobiCLM M b`,
+   For `0 < D ≤ M`, proves via the exact Lanczos ODE, self-adjointness of `jacobiCLM M b`,
    Cauchy–Schwarz, and `ε`-regularized square-root MVT:
    `‖jacobiWavefn hM b t - embJacobi D M hDM (jacobiWavefn hD b t)‖ ≤ t * |b D| * sup_{s∈[0,t]} |φ^{(D)}_{D-1}(s)|`.
 3. **Exponential Cauchy Convergence & Existence of Infinite-Chain Wavefunction**:
    Combines (1) and (2) to prove `D ↦ (jacobiWavefn hD b t) m` is Cauchy in `ℂ`, defines
    `infiniteKrylovWavefn b t m : ℂ`, proves `infiniteKrylovWavefn_tendsto` (zero `hlim`),
-   `infiniteKrylovWavefn_norm_one` (`∑' m, ‖φ_m(t)‖² = 1`), and
-   `theorem_1_1a_infinite_unconditional` (zero `hlim`, zero `hfatou`).
+   and proves `theorem_1_1a_infinite_unconditional` (zero `hlim`, zero `hfatou`).
 -/
 
 namespace KrylovChaos
@@ -37,6 +36,11 @@ section Helpers
 noncomputable def jacobiWavefn {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) (t : ℝ) :
     EuclideanSpace ℂ (Fin D) :=
   jacobiUnitary D b t (EuclideanSpace.single ⟨0, hD⟩ (1 : ℂ))
+
+private lemma fin_sum_eq_range {D : ℕ} (f : Fin D → ℝ) :
+    ∑ n : Fin D, f n = ∑ k ∈ Finset.range D, if hk : k < D then f ⟨k, hk⟩ else 0 := by
+  rw [← Fin.sum_univ_eq_sum_range (fun k ↦ if hk : k < D then f ⟨k, hk⟩ else 0)]
+  apply Finset.sum_congr rfl; intro n _; simp [n.2]
 
 private lemma jacobiCLM_apply_tridiag (D : ℕ) (b : ℕ → ℝ)
     (v : EuclideanSpace ℂ (Fin D)) (n : Fin D) :
@@ -68,11 +72,9 @@ private lemma jacobiCLM_apply_tridiag (D : ℕ) (b : ℕ → ℝ)
         · have hne : j.1 + 1 ≠ n.1 := by
             intro heq; apply hj; ext; dsimp; omega
           rw [if_neg hne, if_neg hj]
-      simp_rw [hsub]
-      simp
+      simp_rw [hsub]; simp
     · rw [dif_neg h0]
-      apply Finset.sum_eq_zero; intro j _
-      rw [if_neg (by omega)]
+      apply Finset.sum_eq_zero; intro j _; rw [if_neg (by omega)]
   · by_cases h1 : n.1 + 1 < D
     · rw [dif_pos h1]
       have hsub : ∀ j : Fin D,
@@ -84,11 +86,33 @@ private lemma jacobiCLM_apply_tridiag (D : ℕ) (b : ℕ → ℝ)
         · have hne : n.1 + 1 ≠ j.1 := by
             intro heq; apply hj; ext; dsimp; omega
           rw [if_neg hne, if_neg hj]
-      simp_rw [hsub]
-      simp
+      simp_rw [hsub]; simp
     · rw [dif_neg h1]
-      apply Finset.sum_eq_zero; intro j _
-      rw [if_neg (by omega)]
+      apply Finset.sum_eq_zero; intro j _; rw [if_neg (by omega)]
+
+private lemma jacobiCLM_symm_inner (D : ℕ) (b : ℕ → ℝ)
+    (u v : EuclideanSpace ℂ (Fin D)) :
+    inner ℂ u (jacobiCLM D b v) = inner ℂ (jacobiCLM D b u) v := by
+  simp only [PiLp.inner_apply, Complex.inner, RCLike.inner_apply]
+  have hL : ∀ i : Fin D,
+      (jacobiCLM D b v) i * (starRingEnd ℂ) (u i) =
+      ∑ j : Fin D, (jacobiMat D b i j : ℂ) * v j * (starRingEnd ℂ) (u i) := by
+    intro i
+    change (∑ j : Fin D, (jacobiMat D b i j : ℂ) * v j) * (starRingEnd ℂ) (u i) = _
+    rw [Finset.sum_mul]
+  have hR : ∀ j : Fin D,
+      v j * (starRingEnd ℂ) ((jacobiCLM D b u) j) =
+      ∑ i : Fin D, (jacobiMat D b j i : ℂ) * v j * (starRingEnd ℂ) (u i) := by
+    intro j
+    change v j * (starRingEnd ℂ) (∑ i : Fin D, (jacobiMat D b j i : ℂ) * u i) = _
+    rw [map_sum, Finset.mul_sum]
+    apply Finset.sum_congr rfl; intro i _
+    rw [map_mul, Complex.conj_ofReal]; ring
+  simp_rw [hL, hR]
+  rw [Finset.sum_comm]
+  apply Finset.sum_congr rfl; intro j _
+  apply Finset.sum_congr rfl; intro i _
+  rw [jacobiMat_symm D b i j]
 
 private lemma single_apply_eq {D : ℕ} (i j : Fin D) (c : ℂ) :
     (EuclideanSpace.single i c : EuclideanSpace ℂ (Fin D)) j = if j = i then c else 0 := by
@@ -101,8 +125,7 @@ private lemma norm_single_one {D : ℕ} (i : Fin D) :
     have : ∀ j : Fin D, ‖(EuclideanSpace.single i (1 : ℂ) : EuclideanSpace ℂ (Fin D)) j‖ ^ 2 =
         if j = i then (1 : ℝ) else 0 := by
       intro j; rw [single_apply_eq]; split_ifs <;> simp
-    simp_rw [this]
-    simp
+    simp_rw [this]; simp
   have hnn : 0 ≤ ‖(EuclideanSpace.single i (1 : ℂ) : EuclideanSpace ℂ (Fin D))‖ := norm_nonneg _
   nlinarith
 
@@ -120,7 +143,7 @@ private lemma coord_hasDerivAt_wavefn {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) (
   have hode := jacobiWavefn_ode hD b t
   let L : EuclideanSpace ℂ (Fin D) →L[ℝ] ℂ :=
     (EuclideanSpace.proj n : EuclideanSpace ℂ (Fin D) →L[ℂ] ℂ).restrictScalars ℝ
-  exact L.hasDerivAt.comp t hode
+  exact L.hasFDerivAt.comp_hasDerivAt t hode
 
 private lemma coord_normSq_hasDerivAt {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) (t : ℝ) (n : Fin D) :
     HasDerivAt (fun s : ℝ ↦ ‖jacobiWavefn hD b s n‖ ^ 2)
@@ -130,10 +153,10 @@ private lemma coord_normSq_hasDerivAt {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) (
   have hz := coord_hasDerivAt_wavefn hD b t n
   have hre : HasDerivAt (fun s : ℝ ↦ (jacobiWavefn hD b s n).re)
       (((Complex.I • jacobiCLM D b) (jacobiWavefn hD b t) n).re) t :=
-    (Complex.reCLM.hasDerivAt).comp t hz
+    Complex.reCLM.hasFDerivAt.comp_hasDerivAt t hz
   have him : HasDerivAt (fun s : ℝ ↦ (jacobiWavefn hD b s n).im)
       (((Complex.I • jacobiCLM D b) (jacobiWavefn hD b t) n).im) t :=
-    (Complex.imCLM.hasDerivAt).comp t hz
+    Complex.imCLM.hasFDerivAt.comp_hasDerivAt t hz
   have hnorm : (fun s : ℝ ↦ ‖jacobiWavefn hD b s n‖ ^ 2) =
       (fun s : ℝ ↦ (jacobiWavefn hD b s n).re ^ 2 + (jacobiWavefn hD b s n).im ^ 2) := by
     ext s; rw [Complex.sq_norm, Complex.normSq_apply]; ring
@@ -157,9 +180,7 @@ private lemma jacobi_coord_normSq_deriv_formula (D : ℕ) (b : ℕ → ℝ)
   rw [hclm]
   have hre_im : ∀ (z w : ℂ),
       2 * (z.re * (Complex.I * w).re + z.im * (Complex.I * w).im) = -2 * (star z * w).im := by
-    intro z w
-    simp [Complex.star_def]
-    ring
+    intro z w; simp [Complex.star_def]; ring
   rw [hre_im, mul_add, Complex.add_im]
   have hterm : ∀ (r : ℝ) (u : ℂ),
       -2 * (star (v n) * ((r : ℂ) * u)).im = -2 * r * (star (v n) * u).im := by
@@ -222,8 +243,10 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
             (2 * ((jacobiWavefn hD b u n).re * (((Complex.I • jacobiCLM (D' + 1) b) (jacobiWavefn hD b u)) n).re +
                   (jacobiWavefn hD b u n).im * (((Complex.I • jacobiCLM (D' + 1) b) (jacobiWavefn hD b u)) n).im)) =
         ∑ k ∈ Finset.range D',
-          2 * b (k + 1) * (Real.exp (θ * ((k + 1 : ℕ) : ℝ)) - Real.exp (θ * (k : ℝ))) *
-            (-(star (jacobiWavefn hD b u ⟨k + 1, by omega⟩) * jacobiWavefn hD b u ⟨k, by omega⟩).im) := by
+          if hk : k < D' then
+            2 * b (k + 1) * (Real.exp (θ * ((k + 1 : ℕ) : ℝ)) - Real.exp (θ * (k : ℝ))) *
+              (-(star (jacobiWavefn hD b u ⟨k + 1, by omega⟩) * jacobiWavefn hD b u ⟨k, by omega⟩).im)
+          else 0 := by
       have hsub : ∀ n : Fin (D' + 1),
           2 * ((jacobiWavefn hD b u n).re * (((Complex.I • jacobiCLM (D' + 1) b) (jacobiWavefn hD b u)) n).re +
                (jacobiWavefn hD b u n).im * (((Complex.I • jacobiCLM (D' + 1) b) (jacobiWavefn hD b u)) n).im) =
@@ -235,7 +258,7 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
            else 0) :=
         fun n ↦ jacobi_coord_normSq_deriv_formula (D' + 1) b (jacobiWavefn hD b u) n
       simp_rw [hsub, mul_add, Finset.sum_add_distrib]
-      rw [Fin.sum_univ_eq_sum_range, Fin.sum_univ_eq_sum_range]
+      rw [fin_sum_eq_range, fin_sum_eq_range]
       have hpart1 :
           ∑ n ∈ Finset.range (D' + 1),
             (if hn : n < D' + 1 then
@@ -246,15 +269,17 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
                 else 0
              else 0) =
           ∑ k ∈ Finset.range D',
-            Real.exp (θ * ((k + 1 : ℕ) : ℝ)) *
-              (-2 * b (k + 1) * (star (jacobiWavefn hD b u ⟨k + 1, by omega⟩) *
-                jacobiWavefn hD b u ⟨k, by omega⟩).im) := by
+            if hk : k < D' then
+              Real.exp (θ * ((k + 1 : ℕ) : ℝ)) *
+                (-2 * b (k + 1) * (star (jacobiWavefn hD b u ⟨k + 1, by omega⟩) *
+                  jacobiWavefn hD b u ⟨k, by omega⟩).im)
+            else 0 := by
         rw [Finset.sum_range_succ']
         simp only [Nat.not_lt_zero, ↓reduceDIte, zero_lt_one, mul_zero, add_zero]
         apply Finset.sum_congr rfl
         intro k hk
         have hk' : k < D' := Finset.mem_range.mp hk
-        rw [dif_pos (by omega), dif_pos (Nat.succ_pos k)]
+        rw [dif_pos (by omega), dif_pos (Nat.succ_pos k), dif_pos hk']
         rfl
       have hpart2 :
           ∑ n ∈ Finset.range (D' + 1),
@@ -266,15 +291,17 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
                 else 0
              else 0) =
           ∑ k ∈ Finset.range D',
-            Real.exp (θ * (k : ℝ)) *
-              (2 * b (k + 1) * (star (jacobiWavefn hD b u ⟨k + 1, by omega⟩) *
-                jacobiWavefn hD b u ⟨k, by omega⟩).im) := by
+            if hk : k < D' then
+              Real.exp (θ * (k : ℝ)) *
+                (2 * b (k + 1) * (star (jacobiWavefn hD b u ⟨k + 1, by omega⟩) *
+                  jacobiWavefn hD b u ⟨k, by omega⟩).im)
+            else 0 := by
         rw [Finset.sum_range_succ]
         simp only [lt_self_iff_false, ↓reduceDIte, mul_zero, add_zero]
         apply Finset.sum_congr rfl
         intro k hk
         have hk' : k < D' := Finset.mem_range.mp hk
-        rw [dif_pos (by omega), dif_pos (by omega)]
+        rw [dif_pos (by omega), dif_pos (by omega), dif_pos hk']
         have him_conj : (star (jacobiWavefn hD b u ⟨k, by omega⟩) *
             jacobiWavefn hD b u ⟨k + 1, by omega⟩).im =
             -(star (jacobiWavefn hD b u ⟨k + 1, by omega⟩) *
@@ -282,17 +309,26 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
           simp [Complex.star_def]; ring
         rw [him_conj]; ring
       rw [hpart1, hpart2, ← Finset.sum_add_distrib]
-      apply Finset.sum_congr rfl; intro k _; ring
+      apply Finset.sum_congr rfl; intro k hk
+      have hk' : k < D' := Finset.mem_range.mp hk
+      rw [dif_pos hk', dif_pos hk', dif_pos hk']
+      ring
     rw [h2_eq_range]
     have hterm_le : ∀ k ∈ Finset.range D',
-        2 * b (k + 1) * (Real.exp (θ * ((k + 1 : ℕ) : ℝ)) - Real.exp (θ * (k : ℝ))) *
-          (-(star (jacobiWavefn hD b u ⟨k + 1, by omega⟩) *
-            jacobiWavefn hD b u ⟨k, by omega⟩).im) ≤
-        2 * Real.sinh (θ / 2) * (α * ((k + 1 : ℕ) : ℝ) + γ) *
-          (Real.exp (θ * ((k + 1 : ℕ) : ℝ)) * ‖jacobiWavefn hD b u ⟨k + 1, by omega⟩‖ ^ 2 +
-           Real.exp (θ * (k : ℝ)) * ‖jacobiWavefn hD b u ⟨k, by omega⟩‖ ^ 2) := by
+        (if hk : k < D' then
+          2 * b (k + 1) * (Real.exp (θ * ((k + 1 : ℕ) : ℝ)) - Real.exp (θ * (k : ℝ))) *
+            (-(star (jacobiWavefn hD b u ⟨k + 1, by omega⟩) *
+              jacobiWavefn hD b u ⟨k, by omega⟩).im)
+         else 0) ≤
+        (if hk : k < D' then
+          2 * Real.sinh (θ / 2) * (α * ((k + 1 : ℕ) : ℝ) + γ) *
+            (Real.exp (θ * ((k + 1 : ℕ) : ℝ)) * ‖jacobiWavefn hD b u ⟨k + 1, by omega⟩‖ ^ 2 +
+             Real.exp (θ * (k : ℝ)) * ‖jacobiWavefn hD b u ⟨k, by omega⟩‖ ^ 2)
+         else 0) := by
       intro k hk
-      have hkD : k + 1 < D' + 1 := by have := Finset.mem_range.mp hk; omega
+      have hk' : k < D' := Finset.mem_range.mp hk
+      rw [dif_pos hk', dif_pos hk']
+      have hkD : k + 1 < D' + 1 := by omega
       have hdiff_exp :
           Real.exp (θ * ((k + 1 : ℕ) : ℝ)) - Real.exp (θ * (k : ℝ)) =
           2 * Real.sinh (θ / 2) * Real.exp (θ * ((k : ℝ) + 1 / 2)) := by
@@ -342,9 +378,9 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
         set U := Real.exp (θ * ((k + 1 : ℕ) : ℝ) / 2) * ‖z1‖
         set V := Real.exp (θ * (k : ℝ) / 2) * ‖z0‖
         have hU2 : U ^ 2 = Real.exp (θ * ((k + 1 : ℕ) : ℝ)) * ‖z1‖ ^ 2 := by
-          dsimp [U]; rw [mul_pow, ← Real.exp_add]; congr 1; ring_nf
+          dsimp [U]; rw [mul_pow, ← Real.exp_nat_mul]; congr 1; push_cast; ring_nf
         have hV2 : V ^ 2 = Real.exp (θ * (k : ℝ)) * ‖z0‖ ^ 2 := by
-          dsimp [V]; rw [mul_pow, ← Real.exp_add]; congr 1; ring_nf
+          dsimp [V]; rw [mul_pow, ← Real.exp_nat_mul]; congr 1; push_cast; ring_nf
         have hsq : 0 ≤ (U - V) ^ 2 := sq_nonneg _
         have hUV : 2 * U * V ≤ U ^ 2 + V ^ 2 := by linarith
         rw [hU2, hV2] at hUV
@@ -371,132 +407,60 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
     have hsum_le := Finset.sum_le_sum hterm_le
     have hGs_eq : G u = ∑ n : Fin (D' + 1), Real.exp (θ * (n.1 : ℝ)) * ‖jacobiWavefn hD b u n‖ ^ 2 := by
       simp only [G, ← hθ_def]
-    have hterm_re : ∀ k ∈ Finset.range D',
-        2 * Real.sinh (θ / 2) * (α * ((k + 1 : ℕ) : ℝ) + γ) *
-          (Real.exp (θ * ((k + 1 : ℕ) : ℝ)) *
-            ‖jacobiWavefn hD b u ⟨k + 1, by omega⟩‖ ^ 2 +
-           Real.exp (θ * (k : ℝ)) *
-            ‖jacobiWavefn hD b u ⟨k, by omega⟩‖ ^ 2) =
-        (2 * α * Real.sinh (θ / 2) * ((k + 1 : ℕ) : ℝ) *
-          Real.exp (θ * ((k + 1 : ℕ) : ℝ)) *
-          ‖jacobiWavefn hD b u ⟨k + 1, by omega⟩‖ ^ 2 +
-         2 * α * Real.sinh (θ / 2) * (k : ℝ) *
-          Real.exp (θ * (k : ℝ)) *
-          ‖jacobiWavefn hD b u ⟨k, by omega⟩‖ ^ 2) +
-        (2 * γ * Real.sinh (θ / 2) *
-          Real.exp (θ * ((k + 1 : ℕ) : ℝ)) *
-          ‖jacobiWavefn hD b u ⟨k + 1, by omega⟩‖ ^ 2 +
-         2 * (α + γ) * Real.sinh (θ / 2) *
-          Real.exp (θ * (k : ℝ)) *
-          ‖jacobiWavefn hD b u ⟨k, by omega⟩‖ ^ 2) := by
-      intro k _; push_cast; ring
-    have hGu_range :
-        G u = ∑ k ∈ Finset.range (D' + 1),
-          (if hk : k < D' + 1 then
-            Real.exp (θ * (k : ℝ)) * ‖jacobiWavefn hD b u ⟨k, hk⟩‖ ^ 2 else 0) := by
-      rw [hGs_eq, Fin.sum_univ_eq_sum_range]
+    let pW : ℕ → ℝ := fun k ↦
+      if hk : k < D' + 1 then Real.exp (θ * (k : ℝ)) * ‖jacobiWavefn hD b u ⟨k, hk⟩‖ ^ 2 else 0
+    have hpW_nn : ∀ k, 0 ≤ pW k := fun k ↦ by dsimp [pW]; split_ifs <;> positivity
+    have hGu_range : G u = ∑ k ∈ Finset.range (D' + 1), pW k := by
+      rw [hGs_eq, fin_sum_eq_range]
     have hWu_range :
         ∑ n : Fin (D' + 1), (n.1 : ℝ) * Real.exp (θ * (n.1 : ℝ)) *
             ‖jacobiWavefn hD b u n‖ ^ 2 =
-        ∑ k ∈ Finset.range (D' + 1),
-          (if hk : k < D' + 1 then
-            (k : ℝ) * Real.exp (θ * (k : ℝ)) * ‖jacobiWavefn hD b u ⟨k, hk⟩‖ ^ 2
-           else 0) := by
-      rw [Fin.sum_univ_eq_sum_range]
-    have ha1 :
-        ∑ k ∈ Finset.range D',
-          2 * α * Real.sinh (θ / 2) * ((k + 1 : ℕ) : ℝ) *
-            Real.exp (θ * ((k + 1 : ℕ) : ℝ)) *
-            ‖jacobiWavefn hD b u ⟨k + 1, by omega⟩‖ ^ 2 ≤
-        2 * α * Real.sinh (θ / 2) *
-          ∑ n : Fin (D' + 1), (n.1 : ℝ) * Real.exp (θ * (n.1 : ℝ)) *
-            ‖jacobiWavefn hD b u n‖ ^ 2 := by
-      rw [hWu_range, Finset.sum_range_succ', Finset.mul_sum]
-      simp only [Nat.cast_zero, zero_mul, dite_eq_ite, ite_self, add_zero]
-      apply Finset.sum_le_sum; intro k hk
+        ∑ k ∈ Finset.range (D' + 1), (k : ℝ) * pW k := by
+      rw [fin_sum_eq_range]
+      apply Finset.sum_congr rfl; intro k hk
+      have hk' : k < D' + 1 := Finset.mem_range.mp hk
+      simp [pW, hk', mul_assoc]
+    have hterm_re : ∀ k ∈ Finset.range D',
+        (if hk : k < D' then
+          2 * Real.sinh (θ / 2) * (α * ((k + 1 : ℕ) : ℝ) + γ) *
+            (Real.exp (θ * ((k + 1 : ℕ) : ℝ)) * ‖jacobiWavefn hD b u ⟨k + 1, by omega⟩‖ ^ 2 +
+             Real.exp (θ * (k : ℝ)) * ‖jacobiWavefn hD b u ⟨k, by omega⟩‖ ^ 2)
+         else 0) =
+        (2 * α * Real.sinh (θ / 2) * (((k + 1 : ℕ) : ℝ) * pW (k + 1)) +
+         2 * α * Real.sinh (θ / 2) * ((k : ℝ) * pW k)) +
+        (2 * γ * Real.sinh (θ / 2) * pW (k + 1) +
+         2 * (α + γ) * Real.sinh (θ / 2) * pW k) := by
+      intro k hk
       have hk' : k < D' := Finset.mem_range.mp hk
-      rw [if_pos (by omega)]; ring_nf; exact le_refl _
+      rw [dif_pos hk']
+      simp only [pW, dif_pos (by omega : k + 1 < D' + 1), dif_pos (by omega : k < D' + 1)]
+      push_cast; ring
+    have ha1 :
+        ∑ k ∈ Finset.range D', 2 * α * Real.sinh (θ / 2) * (((k + 1 : ℕ) : ℝ) * pW (k + 1)) ≤
+        2 * α * Real.sinh (θ / 2) * ∑ k ∈ Finset.range (D' + 1), (k : ℝ) * pW k := by
+      rw [Finset.sum_range_succ', Finset.mul_sum]; simp
     have ha2 :
-        ∑ k ∈ Finset.range D',
-          2 * α * Real.sinh (θ / 2) * (k : ℝ) *
-            Real.exp (θ * (k : ℝ)) *
-            ‖jacobiWavefn hD b u ⟨k, by omega⟩‖ ^ 2 ≤
-        2 * α * Real.sinh (θ / 2) *
-          ∑ n : Fin (D' + 1), (n.1 : ℝ) * Real.exp (θ * (n.1 : ℝ)) *
-            ‖jacobiWavefn hD b u n‖ ^ 2 := by
-      rw [hWu_range, Finset.sum_range_succ, Finset.mul_sum]
-      have hlast : 0 ≤ (if h : D' < D' + 1 then
-          (D' : ℝ) * Real.exp (θ * (D' : ℝ)) * ‖jacobiWavefn hD b u ⟨D', h⟩‖ ^ 2
-        else 0) := by split_ifs <;> positivity
-      have hle1 : ∑ k ∈ Finset.range D',
-          2 * α * Real.sinh (θ / 2) * (k : ℝ) *
-            Real.exp (θ * (k : ℝ)) *
-            ‖jacobiWavefn hD b u ⟨k, by omega⟩‖ ^ 2 =
-          ∑ k ∈ Finset.range D',
-            2 * α * Real.sinh (θ / 2) *
-              (if hk : k < D' + 1 then
-                (k : ℝ) * Real.exp (θ * (k : ℝ)) *
-                  ‖jacobiWavefn hD b u ⟨k, hk⟩‖ ^ 2 else 0) := by
-        apply Finset.sum_congr rfl; intro k hk
-        have hk' : k < D' := Finset.mem_range.mp hk
-        rw [if_pos (by omega)]; ring
-      rw [mul_add, hle1]
-      have : 0 ≤ 2 * α * Real.sinh (θ / 2) * (if h : D' < D' + 1 then
-          (D' : ℝ) * Real.exp (θ * (D' : ℝ)) * ‖jacobiWavefn hD b u ⟨D', h⟩‖ ^ 2 else 0) := by
-        apply mul_nonneg (by positivity) hlast
+        ∑ k ∈ Finset.range D', 2 * α * Real.sinh (θ / 2) * ((k : ℝ) * pW k) ≤
+        2 * α * Real.sinh (θ / 2) * ∑ k ∈ Finset.range (D' + 1), (k : ℝ) * pW k := by
+      rw [Finset.sum_range_succ, mul_add, Finset.mul_sum]
+      have : 0 ≤ 2 * α * Real.sinh (θ / 2) * ((D' : ℝ) * pW D') :=
+        mul_nonneg (by positivity) (mul_nonneg (Nat.cast_nonneg _) (hpW_nn D'))
       linarith
     have hg1 :
-        ∑ k ∈ Finset.range D',
-          2 * γ * Real.sinh (θ / 2) *
-            Real.exp (θ * ((k + 1 : ℕ) : ℝ)) *
-            ‖jacobiWavefn hD b u ⟨k + 1, by omega⟩‖ ^ 2 ≤
-        2 * γ * Real.sinh (θ / 2) * G u := by
-      rw [hGu_range, Finset.sum_range_succ', Finset.mul_sum]
-      have h0nn : 0 ≤ 2 * γ * Real.sinh (θ / 2) *
-          (if h : 0 < D' + 1 then
-            Real.exp (θ * (0 : ℝ)) * ‖jacobiWavefn hD b u ⟨0, h⟩‖ ^ 2 else 0) := by
-        split_ifs <;> positivity
-      have hsum_eq :
-          ∑ k ∈ Finset.range D',
-            2 * γ * Real.sinh (θ / 2) *
-              Real.exp (θ * ((k + 1 : ℕ) : ℝ)) *
-              ‖jacobiWavefn hD b u ⟨k + 1, by omega⟩‖ ^ 2 =
-          ∑ k ∈ Finset.range D',
-            2 * γ * Real.sinh (θ / 2) *
-              (if hk : k + 1 < D' + 1 then
-                Real.exp (θ * ((k + 1 : ℕ) : ℝ)) *
-                  ‖jacobiWavefn hD b u ⟨k + 1, hk⟩‖ ^ 2 else 0) := by
-        apply Finset.sum_congr rfl; intro k hk
-        have hk' : k < D' := Finset.mem_range.mp hk
-        rw [if_pos (by omega)]; ring
-      rw [mul_add, hsum_eq]; linarith
+        ∑ k ∈ Finset.range D', 2 * γ * Real.sinh (θ / 2) * pW (k + 1) ≤
+        2 * γ * Real.sinh (θ / 2) * ∑ k ∈ Finset.range (D' + 1), pW k := by
+      rw [Finset.sum_range_succ', mul_add, Finset.mul_sum]
+      have : 0 ≤ 2 * γ * Real.sinh (θ / 2) * pW 0 := mul_nonneg (by positivity) (hpW_nn 0)
+      linarith
     have hg2 :
-        ∑ k ∈ Finset.range D',
-          2 * (α + γ) * Real.sinh (θ / 2) *
-            Real.exp (θ * (k : ℝ)) *
-            ‖jacobiWavefn hD b u ⟨k, by omega⟩‖ ^ 2 ≤
-        2 * (α + γ) * Real.sinh (θ / 2) * G u := by
-      rw [hGu_range, Finset.sum_range_succ, Finset.mul_sum]
-      have hlnn : 0 ≤ 2 * (α + γ) * Real.sinh (θ / 2) *
-          (if h : D' < D' + 1 then
-            Real.exp (θ * (D' : ℝ)) * ‖jacobiWavefn hD b u ⟨D', h⟩‖ ^ 2 else 0) := by
-        split_ifs <;> positivity
-      have hsum_eq :
-          ∑ k ∈ Finset.range D',
-            2 * (α + γ) * Real.sinh (θ / 2) *
-              Real.exp (θ * (k : ℝ)) *
-              ‖jacobiWavefn hD b u ⟨k, by omega⟩‖ ^ 2 =
-          ∑ k ∈ Finset.range D',
-            2 * (α + γ) * Real.sinh (θ / 2) *
-              (if hk : k < D' + 1 then
-                Real.exp (θ * (k : ℝ)) *
-                  ‖jacobiWavefn hD b u ⟨k, hk⟩‖ ^ 2 else 0) := by
-        apply Finset.sum_congr rfl; intro k hk
-        have hk' : k < D' := Finset.mem_range.mp hk
-        rw [if_pos (by omega)]; ring
-      rw [mul_add, hsum_eq]; linarith
+        ∑ k ∈ Finset.range D', 2 * (α + γ) * Real.sinh (θ / 2) * pW k ≤
+        2 * (α + γ) * Real.sinh (θ / 2) * ∑ k ∈ Finset.range (D' + 1), pW k := by
+      rw [Finset.sum_range_succ, mul_add, Finset.mul_sum]
+      have : 0 ≤ 2 * (α + γ) * Real.sinh (θ / 2) * pW D' := mul_nonneg (by positivity) (hpW_nn D')
+      linarith
     rw [Finset.sum_congr rfl hterm_re, Finset.sum_add_distrib, Finset.sum_add_distrib,
       Finset.sum_add_distrib] at hsum_le
+    rw [hWu_range, hGu_range]
     linarith
   set c : ℝ := 1 / 2 + γ / α
   let H : ℝ → ℝ := fun u ↦ G u * Real.exp (c * charTheta α θ₀ u)
@@ -506,8 +470,8 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
     have hθu := hasDerivAt_charTheta hα hθ₀ hu
     have hexpu : HasDerivAt (fun r ↦ Real.exp (c * charTheta α θ₀ r))
         ((c * (-4 * α * Real.sinh (charTheta α θ₀ u / 2))) *
-          Real.exp (c * charTheta α θ₀ u)) u :=
-      (hθu.const_mul c).exp
+          Real.exp (c * charTheta α θ₀ u)) u := by
+      simpa [mul_comm, mul_assoc] using (hθu.const_mul c).exp
     refine ⟨G' u * Real.exp (c * charTheta α θ₀ u) +
         G u * (c * (-4 * α * Real.sinh (charTheta α θ₀ u / 2)) *
           Real.exp (c * charTheta α θ₀ u)), ?_, hGu.mul hexpu⟩
@@ -546,7 +510,7 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
       · linarith
   have hH0 : H 0 = G 0 * Real.exp (c * θ₀) := by
     dsimp [H]; rw [charTheta_zero hθ₀]
-  have hG0 : G 0 ≤ 1 := by
+  have hG0 : G 0 = 1 := by
     dsimp [G]
     rw [charTheta_zero hθ₀]
     calc ∑ n : Fin D, Real.exp (θ₀ * (n.1 : ℝ)) * ‖jacobiWavefn hD b 0 n‖ ^ 2
@@ -560,8 +524,7 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
             · subst hn; simp
             · simp [hn]
       _ = 1 := by simp
-  have hH0_le : H 0 ≤ Real.exp (c * θ₀) := by
-    rw [hH0]; exact mul_le_of_le_one_left (Real.exp_pos _).le hG0
+  have hH0_le : H 0 ≤ Real.exp (c * θ₀) := by rw [hH0, hG0, one_mul]
   have hθs_pos : 0 < charTheta α θ₀ s := charTheta_pos hα hθ₀ hs
   have hc_nn : 0 ≤ c := by dsimp [c]; positivity
   have h1_le_exp : 1 ≤ Real.exp (c * charTheta α θ₀ s) :=
@@ -633,14 +596,14 @@ lemma jacobiCLM_emb_defect {D M : ℕ} (b : ℕ → ℝ) (hD : 0 < D) (hDM : D �
           (if h0 : 0 < k.1 then (b k.1 : ℂ) * embJacobi D M hDM v ⟨k.1 - 1, by omega⟩ else 0) =
           (if h0 : 0 < k.1 then (b k.1 : ℂ) * v ⟨k.1 - 1, by omega⟩ else 0) := by
         split_ifs with h0
-        · rw [embJacobi_apply, dif_pos (by omega)]
+        · rw [embJacobi_apply]; dsimp only; rw [dif_pos (by omega)]
         · rfl
       have hright :
           (if h1 : k.1 + 1 < M then (b (k.1 + 1) : ℂ) * embJacobi D M hDM v ⟨k.1 + 1, h1⟩ else 0) =
           (if h1 : k.1 + 1 < D then (b (k.1 + 1) : ℂ) * v ⟨k.1 + 1, h1⟩ else 0) := by
         by_cases hk1 : k.1 + 1 < D
-        · rw [dif_pos (by omega), dif_pos hk1, embJacobi_apply, dif_pos hk1]
-        · rw [dif_pos (by omega), dif_neg hk1, embJacobi_apply, dif_neg hk1, mul_zero]
+        · rw [dif_pos (by omega), dif_pos hk1, embJacobi_apply]; dsimp only; rw [dif_pos hk1]
+        · rw [dif_pos (by omega), dif_neg hk1, embJacobi_apply]; dsimp only; rw [dif_neg hk1, mul_zero]
       rw [hleft, hright, sub_self]
     · rw [dif_neg hkD, sub_zero]
       by_cases hkeq : k.1 = D
@@ -649,12 +612,13 @@ lemma jacobiCLM_emb_defect {D M : ℕ} (b : ℕ → ℝ) (hD : 0 < D) (hDM : D �
         have hleft :
             (if h0 : 0 < k.1 then (b k.1 : ℂ) * embJacobi D M hDM v ⟨k.1 - 1, by omega⟩ else 0) =
             (b D : ℂ) * v ⟨D - 1, by omega⟩ := by
-          rw [dif_pos (by omega), embJacobi_apply, dif_pos (by omega)]
+          rw [dif_pos (by omega), embJacobi_apply]; dsimp only
+          rw [dif_pos (by omega)]
           simp [hkeq]
         have hright :
             (if h1 : k.1 + 1 < M then (b (k.1 + 1) : ℂ) * embJacobi D M hDM v ⟨k.1 + 1, h1⟩ else 0) = 0 := by
           split_ifs with h1
-          · rw [embJacobi_apply, dif_neg (by omega), mul_zero]
+          · rw [embJacobi_apply]; dsimp only; rw [dif_neg (by omega), mul_zero]
           · rfl
         rw [hleft, hright, add_zero]
       · have hkne : k ≠ ⟨D, hlt⟩ := fun heq ↦ hkeq (congrArg Fin.val heq)
@@ -662,12 +626,12 @@ lemma jacobiCLM_emb_defect {D M : ℕ} (b : ℕ → ℝ) (hD : 0 < D) (hDM : D �
         have hleft :
             (if h0 : 0 < k.1 then (b k.1 : ℂ) * embJacobi D M hDM v ⟨k.1 - 1, by omega⟩ else 0) = 0 := by
           split_ifs with h0
-          · rw [embJacobi_apply, dif_neg (by omega), mul_zero]
+          · rw [embJacobi_apply]; dsimp only; rw [dif_neg (by omega), mul_zero]
           · rfl
         have hright :
             (if h1 : k.1 + 1 < M then (b (k.1 + 1) : ℂ) * embJacobi D M hDM v ⟨k.1 + 1, h1⟩ else 0) = 0 := by
           split_ifs with h1
-          · rw [embJacobi_apply, dif_neg (by omega), mul_zero]
+          · rw [embJacobi_apply]; dsimp only; rw [dif_neg (by omega), mul_zero]
           · rfl
         rw [hleft, hright, add_zero]
   · have hDM_eq : D = M := by omega
@@ -677,13 +641,13 @@ lemma jacobiCLM_emb_defect {D M : ℕ} (b : ℕ → ℝ) (hD : 0 < D) (hDM : D �
         (if h0 : 0 < k.1 then (b k.1 : ℂ) * embJacobi D D (le_refl D) v ⟨k.1 - 1, by omega⟩ else 0) =
         (if h0 : 0 < k.1 then (b k.1 : ℂ) * v ⟨k.1 - 1, by omega⟩ else 0) := by
       split_ifs with h0
-      · rw [embJacobi_apply, dif_pos (by omega)]
+      · rw [embJacobi_apply]; dsimp only; rw [dif_pos (by omega)]
       · rfl
     have hright :
         (if h1 : k.1 + 1 < D then (b (k.1 + 1) : ℂ) * embJacobi D D (le_refl D) v ⟨k.1 + 1, h1⟩ else 0) =
         (if h1 : k.1 + 1 < D then (b (k.1 + 1) : ℂ) * v ⟨k.1 + 1, h1⟩ else 0) := by
       split_ifs with h1
-      · rw [embJacobi_apply, dif_pos h1]
+      · rw [embJacobi_apply]; dsimp only; rw [dif_pos h1]
       · rfl
     rw [hleft, hright, sub_self]
 
@@ -710,11 +674,13 @@ theorem jacobiWavefn_trunc_diff_bound {D M : ℕ} (b : ℕ → ℝ) (hD : 0 < D)
   have hw_deriv : ∀ s : ℝ,
       HasDerivAt w ((Complex.I • jacobiCLM M b) (w s) + defect s) s := by
     intro s
-    have hM_ode := jacobiWavefn_ode hM b s
-    have hD_ode := jacobiWavefn_ode hD b s
+    have hM_ode : HasDerivAt (fun r ↦ jacobiWavefn hM b r)
+        ((Complex.I • jacobiCLM M b) (jacobiWavefn hM b s)) s := jacobiWavefn_ode hM b s
+    have hD_ode : HasDerivAt (fun r ↦ jacobiWavefn hD b r)
+        ((Complex.I • jacobiCLM D b) (jacobiWavefn hD b s)) s := jacobiWavefn_ode hD b s
     have hD_emb : HasDerivAt (fun r ↦ embJacobi D M hDM (jacobiWavefn hD b r))
         (embJacobi D M hDM ((Complex.I • jacobiCLM D b) (jacobiWavefn hD b s))) s :=
-      ((embJacobi D M hDM).restrictScalars ℝ).hasDerivAt.comp s hD_ode
+      ((embJacobi D M hDM).restrictScalars ℝ).hasFDerivAt.comp_hasDerivAt s hD_ode
     convert hM_ode.sub hD_emb using 1
     dsimp [w, defect]
     simp only [map_sub, ContinuousLinearMap.smul_apply, ContinuousLinearMap.sub_apply,
@@ -743,14 +709,15 @@ theorem jacobiWavefn_trunc_diff_bound {D M : ℕ} (b : ℕ → ℝ) (hD : 0 < D)
       rw [real_inner_eq_re_complex, ContinuousLinearMap.smul_apply, inner_smul_right,
         Complex.mul_re, Complex.I_re, Complex.I_im, zero_mul, one_mul, zero_sub]
       have hreal : (inner ℂ (w s) (jacobiCLM M b (w s))).im = 0 := by
-        have hsa := jacobiCLM_selfAdjoint M b (w s) (w s)
+        have hsa := jacobiCLM_symm_inner M b (w s) (w s)
         have hconj := congrArg Complex.im (inner_conj_symm (jacobiCLM M b (w s)) (w s))
         rw [hsa, Complex.conj_im] at hconj
         linarith
       linarith
     convert hinner using 1
-    rw [real_inner_comm ((Complex.I • jacobiCLM M b) (w s) + defect s) (w s),
-      inner_add_right, hskew, zero_add]
+    rw [inner_add_right, inner_add_left,
+      real_inner_comm ((Complex.I • jacobiCLM M b) (w s)) (w s),
+      real_inner_comm (defect s) (w s), hskew]
     ring
   have heps : ∀ ε : ℝ, 0 < ε → ‖w t‖ ≤ B * t + ε := by
     intro ε hε
@@ -841,7 +808,9 @@ theorem jacobiWavefn_coord_cauchy (b : ℕ → ℝ) {α γ t : ℝ}
         exact Real.exp_le_exp.mpr (by nlinarith [hs.2])
       have hU_s1 : charU α 4 s < 1 := charU_lt_one hα (by norm_num) hs.1
       have hU_t1 : charU α 4 t < 1 := charU_lt_one hα (by norm_num) ht
-      have hU_tnn : 0 ≤ charU α 4 t := (charU_pos hα (by norm_num) ht).le
+      have hU_tnn : 0 ≤ charU α 4 t := by
+        unfold charU
+        exact mul_nonneg (tanh_pos_of_pos (by norm_num)).le (Real.exp_pos _).le
       unfold charTheta
       apply mul_le_mul_of_nonneg_left _ (by norm_num)
       apply Real.log_le_log
@@ -860,7 +829,7 @@ theorem jacobiWavefn_coord_cauchy (b : ℕ → ℝ) {α γ t : ℝ}
         C0 * Real.exp (-(θt * ((D : ℝ) - 1))) := by
       have h1 : Real.exp (θt * ((D : ℝ) - 1)) * ‖jacobiWavefn hD b s ⟨D - 1, by omega⟩‖ ^ 2 ≤ C0 :=
         le_trans (mul_le_mul_of_nonneg_right hexp_ge (sq_nonneg _)) hsingle
-      rw [← Real.exp_neg]
+      rw [Real.exp_neg]
       calc ‖jacobiWavefn hD b s ⟨D - 1, by omega⟩‖ ^ 2
           = (Real.exp (θt * ((D : ℝ) - 1)))⁻¹ *
               (Real.exp (θt * ((D : ℝ) - 1)) * ‖jacobiWavefn hD b s ⟨D - 1, by omega⟩‖ ^ 2) := by
@@ -876,7 +845,8 @@ theorem jacobiWavefn_coord_cauchy (b : ℕ → ℝ) {α γ t : ℝ}
           Real.exp (θt / 2) * Real.exp (-(θt / 2) * (D : ℝ)) := by
         have hsq' : (Real.exp (θt / 2) * Real.exp (-(θt / 2) * (D : ℝ))) ^ 2 =
             Real.exp (-(θt * ((D : ℝ) - 1))) := by
-          rw [mul_pow, ← Real.exp_add, ← Real.exp_add]; congr 1; ring
+          rw [mul_pow, ← Real.exp_nat_mul, ← Real.exp_nat_mul, ← Real.exp_add]
+          congr 1; push_cast; ring
         rw [← hsq', Real.sqrt_sq (by positivity)]
       rw [hsqrt_exp] at hsqrt
       calc ‖jacobiWavefn hD b s ⟨D - 1, by omega⟩‖
@@ -902,7 +872,6 @@ theorem jacobiWavefn_coord_cauchy (b : ℕ → ℝ) {α γ t : ℝ}
       simp only [Function.comp_apply, pow_one]
       have hne : θt / 2 ≠ 0 := by positivity
       field_simp [hne]
-      congr 1; ring
     have hpow0 : Filter.Tendsto (fun D : ℕ ↦ Real.exp (-(θt / 2) * (D : ℝ)))
         Filter.atTop (nhds 0) :=
       (Real.tendsto_exp_neg_atTop_nhds_zero.comp
@@ -928,7 +897,9 @@ theorem jacobiWavefn_coord_cauchy (b : ℕ → ℝ) {α γ t : ℝ}
           (jacobiWavefn (lt_of_lt_of_le hA1 hAB) b t - embJacobi A B hAB (jacobiWavefn hA1 b t)) ⟨m, hBm⟩ := by
         simp [embJacobi_apply, hAm]
       rw [heq]
-      exact PiLp.norm_apply_le _ ⟨m, hBm⟩
+      exact PiLp.norm_apply_le
+        (jacobiWavefn (lt_of_lt_of_le hA1 hAB) b t - embJacobi A B hAB (jacobiWavefn hA1 b t))
+        ⟨m, hBm⟩
     have hdiff := jacobiWavefn_trunc_diff_bound b hA1 hAB ht (by positivity) (hbdry_bound A hA1)
     have hltε : (α * (A : ℝ) + γ) * C_t * Real.exp (-(θt / 2) * (A : ℝ)) * t < ε := by
       have hAN : N₀ ≤ A := le_trans (le_max_left _ _) hA
@@ -997,7 +968,7 @@ theorem theorem_1_1a_infinite_unconditional (b : ℕ → ℝ) {α γ t θ₀ : �
   have hunit_eq : ∀ D (hD : 0 < D), ∑ m ∈ Finset.range D, pN D m = 1 := by
     intro D hD
     have h1 : ∑ m ∈ Finset.range D, pN D m = ∑ m : Fin D, ‖jacobiWavefn hD b t m‖ ^ 2 := by
-      rw [Fin.sum_univ_eq_sum_range]
+      rw [fin_sum_eq_range]
       apply Finset.sum_congr rfl; intro m hm
       have hm' : m < D := Finset.mem_range.mp hm
       simp [pN, hm']
@@ -1019,7 +990,7 @@ theorem theorem_1_1a_infinite_unconditional (b : ℕ → ℝ) {α γ t θ₀ : �
       have hD : 0 < D' + 1 := Nat.succ_pos D'
       have h1 : ∑ m ∈ Finset.range (D' + 1), Real.exp (θ * (m : ℝ)) * pN (D' + 1) m =
           ∑ m : Fin (D' + 1), Real.exp (θ * (m.1 : ℝ)) * ‖jacobiWavefn hD b t m‖ ^ 2 := by
-        rw [Fin.sum_univ_eq_sum_range]
+        rw [fin_sum_eq_range]
         apply Finset.sum_congr rfl; intro m hm
         have hm' : m < D' + 1 := Finset.mem_range.mp hm
         simp [pN, hm']
@@ -1075,8 +1046,8 @@ theorem theorem_1_1a_infinite_unconditional (b : ℕ → ℝ) {α γ t θ₀ : �
       have hsplit : ∑ m ∈ Finset.range D, pN D m =
           ∑ m ∈ Finset.range M₀, pN D m +
           ∑ m ∈ Finset.Ico M₀ D, pN D m := by
-        rw [← Finset.sum_Ico_consecutive pN (Nat.zero_le M₀) hDM]
-        simp [Finset.Ico_zero_eq_range]
+        have hcon := Finset.sum_Ico_consecutive (pN D) (Nat.zero_le M₀) hDM
+        simpa [Nat.Ico_zero_eq_range] using hcon.symm
       have htailD : ∑ m ∈ Finset.Ico M₀ D, pN D m ≤ Real.exp (-(θ * (M₀ : ℝ)) + A) := by
         have hdomD : ∑ m ∈ Finset.Ico M₀ D, pN D m ≤
             Real.exp (-(θ * (M₀ : ℝ))) * ∑ m ∈ Finset.Ico M₀ D, Real.exp (θ * (m : ℝ)) * pN D m := by
@@ -1095,7 +1066,8 @@ theorem theorem_1_1a_infinite_unconditional (b : ℕ → ℝ) {α γ t θ₀ : �
         have hsubD : ∑ m ∈ Finset.Ico M₀ D, Real.exp (θ * (m : ℝ)) * pN D m ≤ Real.exp A := by
           calc ∑ m ∈ Finset.Ico M₀ D, Real.exp (θ * (m : ℝ)) * pN D m
               ≤ ∑ m ∈ Finset.range D, Real.exp (θ * (m : ℝ)) * pN D m :=
-                Finset.sum_le_sum_of_subset_of_nonneg (Finset.Ico_subset_range _ _)
+                Finset.sum_le_sum_of_subset_of_nonneg
+                  (fun m hm ↦ Finset.mem_range.mpr (Finset.mem_Ico.mp hm).2)
                   fun m _ _ ↦ mul_nonneg (Real.exp_pos _).le (hpN_nn D m)
             _ ≤ Real.exp A := hmgf_bound D
         calc ∑ m ∈ Finset.Ico M₀ D, pN D m
@@ -1117,7 +1089,7 @@ theorem theorem_1_1a_infinite_unconditional (b : ℕ → ℝ) {α γ t θ₀ : �
     have htsum_ge : ∀ M₀ : ℕ, 1 ≤ M₀ →
         1 - Real.exp (-(θ * (M₀ : ℝ)) + A) ≤ ∑' m : ℕ, p m := fun M₀ hM₀ ↦
       le_trans (hpartial_ge M₀ hM₀) (hp_summ.sum_le_tsum _ fun m _ ↦ hp_nn m)
-    exact ge_of_tendsto htend_rhs
+    exact le_of_tendsto htend_rhs
       (Filter.eventually_atTop.mpr ⟨1, fun M₀ hM₀ ↦ htsum_ge M₀ hM₀⟩)
   have hcomp_partial : ∀ M : ℕ, ∑ m ∈ Finset.range M, (m : ℝ) * p m ≤ (1 / θ) * (A + 1) := by
     intro M
