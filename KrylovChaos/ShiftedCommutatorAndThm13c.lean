@@ -52,7 +52,7 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
   let G := concreteGibbsData hH β
   let q : ℝ := (β / 2) * (Real.sqrt 3) ^ (r - 1) * (r : ℝ) * J
   have hq_nn : 0 ≤ q := by positivity
-  have hq_lt1 : q < 1 := by linarith
+  have hq_lt1 : q < 1 := by dsimp only [q]; linarith
   -- Expand `gibbsWightmanNormSq G X` into `∑ s, ∑ s', π s * π s' * prodDepolNormSq s s' X`
   have hnorm_expand : ∀ X : QubitOp N,
       gibbsWightmanNormSq G X =
@@ -103,14 +103,13 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
         LinearMap.toContinuousLinearMap
           { toFun := fun X ↦ matComm A X
             map_add' := fun X Y ↦ by unfold matComm; simp [Matrix.mul_add, Matrix.add_mul]; abel
-            map_smul' := fun c X ↦ by unfold matComm; simp [Matrix.mul_smul, Matrix.smul_mul] }
+            map_smul' := fun c X ↦ by unfold matComm; simp [Matrix.mul_smul, Matrix.smul_mul, smul_sub] }
       have hhas_comm : HasSum (fun k : ℕ ↦
           ((Complex.I * z) ^ k / (k.factorial : ℂ)) • matComm A (adPowMat H k (pauliSite x α.succ)))
           (matComm A (heisenbergEvol hH z (pauliSite x α.succ))) := by
         have h1 := hhas.map commCLM commCLM.continuous
         refine h1.congr_fun fun k ↦ ?_
-        change matComm A (((Complex.I * z) ^ k / (k.factorial : ℂ)) • adPowMat H k (pauliSite x α.succ)) = _
-        unfold matComm; simp [Matrix.mul_smul, Matrix.smul_mul]
+        exact (commCLM.map_smul _ _).symm
       -- Continuity of `X ↦ Real.sqrt (prodDepolNormSq s s' X)`
       have hcont_norm : Continuous (fun X : QubitOp N ↦ Real.sqrt (prodDepolNormSq s s' X)) := by
         have htr : Continuous (Matrix.trace : QubitOp N → ℂ) := by
@@ -163,7 +162,7 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
               have hop1 : opNorm (iterComm h f (pauliSite x α.succ)) ≤
                   (2 : ℝ) ^ k * ∏ j : Fin k, opNorm (h (f j)) := by
                 have := mul_le_mul_of_nonneg_left (opNorm_pauliSite_le x α)
-                  (mul_nonneg (pow_nonneg (by norm_num) k)
+                  (mul_nonneg (pow_nonneg (by norm_num : (0 : ℝ) ≤ 2) k)
                     (Finset.prod_nonneg fun j _ ↦ opNorm_nonneg _))
                 linarith
               have hcard_u := card_causalUnion_le hr E hcard {x} f (Fintype.mem_piFinset.mp hfpi) hfcs
@@ -251,8 +250,8 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
               ((k.factorial : ℝ) * ((r : ℝ) * J) ^ k) :=
               mul_le_mul_of_nonneg_left hfwd (by positivity)
           _ = ((β / 2) * (Real.sqrt 3) ^ (r - 1) * ((r : ℝ) * J)) ^ k := by
-              rw [mul_pow, mul_pow, ← pow_mul, mul_comm (r - 1) k]
-              field_simp [hfac_ne]
+              simp only [mul_pow, ← pow_mul, mul_comm (r - 1) k]
+              field_simp [hfac_ne]; ring
           _ = q ^ k := by dsimp only [q]; congr 1; ring
       let Dtot : ℝ := ∑ y : Fin N, D y
       have hDtot_nn : 0 ≤ Dtot := Finset.sum_nonneg fun y _ ↦ hD_nn y
@@ -287,7 +286,7 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
           _ = (1 - q)⁻¹ := tsum_geometric_of_lt_one hq_nn hq_lt1
           _ ≤ 2 := by
               rw [inv_le_iff_one_le_mul₀ (by linarith)]
-              linarith
+              dsimp only [q]; linarith
       have hS_W_nn : 0 ≤ S_W := tsum_nonneg fun k ↦ Finset.sum_nonneg fun f _ ↦ hW_nn k f
       have hS_WD_nn : 0 ≤ S_WD := tsum_nonneg fun k ↦
         Finset.sum_nonneg fun f _ ↦ mul_nonneg (hW_nn k f) (Finset.sum_nonneg fun y _ ↦ hD_nn y)
@@ -398,8 +397,8 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
                   ((k.factorial : ℝ) * ((r : ℝ) * J) ^ k) :=
                   mul_le_mul_of_nonneg_left hfwd (by positivity)
               _ = q ^ k := by
-                  dsimp only [q]; rw [mul_pow, mul_pow, mul_pow, ← pow_mul, mul_comm (r - 1) k]
-                  field_simp [hfac_ne]
+                  dsimp only [q]; simp only [mul_pow, ← pow_mul, mul_comm (r - 1) k]
+                  field_simp [hfac_ne]; ring
     have hsum_xa : (1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3,
           prodDepolNormSq s s' (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ))
             (pauliSite x α.succ))) ≤
@@ -446,7 +445,7 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
             rw [hfeq]; apply Finset.sum_congr rfl; intro y _; ring
           rw [Finset.sum_congr rfl h1, Finset.sum_comm]
           apply Finset.sum_congr rfl; intro y _
-          rw [Finset.mul_sum, Finset.sum_filter]
+          rw [Finset.mul_sum, ← Finset.sum_filter]
         simp_rw [hstep1]
         rw [Finset.sum_comm, Finset.mul_sum]
         apply Finset.sum_congr rfl; intro y _
@@ -459,7 +458,7 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
         rw [Finset.mul_sum]
         apply Finset.sum_le_sum; intro y _
         rw [mul_comm]
-        exact mul_le_mul_of_nonneg_left
+        exact mul_le_mul_of_nonneg_right
           (revCausalSum_le hr E hcard (fun X ↦ opNorm (h X)) (fun _ _ ↦ opNorm_nonneg _) hJ hsite_J k y)
           (hD_nn y)
       have hfac_ne : (k.factorial : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.factorial_ne_zero k)
@@ -471,7 +470,7 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
         _ = (((k + 1 : ℕ) : ℝ) * q ^ k) * ∑ y : Fin N, D y := by
             dsimp only [q]
             rw [Nat.factorial_succ, mul_pow, mul_pow, mul_pow, mul_pow, ← pow_mul, mul_comm (r - 1) k]
-            push_cast; field_simp [hfac_ne]; ring
+            push_cast; field_simp [hfac_ne]
     -- Bound `∑' k, (k + 1) * q^k ≤ 4` for `q ≤ 1/2` (since `(k + 1) * (1/2)^k ≤ 4` total sum = 4!)
     have hsum_k1_q : Summable (fun k : ℕ ↦ ((k + 1 : ℕ) : ℝ) * q ^ k) ∧
         ∑' k : ℕ, ((k + 1 : ℕ) : ℝ) * q ^ k ≤ 4 := by
@@ -543,16 +542,25 @@ theorem theorem_1_3b_otocI_unconditional {N r : ℕ} (hr : 1 ≤ r)
         ∑ y : Fin N, prodDepolDistSq s s' (singleSiteTrivialSubmodule N y) A =
         ∑ k ∈ Finset.range N, prodDepolDistSq s s' (filtrationSubmodule N k) A :=
       fun s s' ↦ lemma_7_3_operator_filtration_identity s s' A
-    simp_rw [hfilt_eq, Finset.mul_sum]
-    rw [Finset.sum_comm]
-    conv_lhs => arg 2; ext s'; rw [Finset.sum_comm]
-    rw [Finset.sum_comm]
-    rw [wightmanQ_eq_sum_distSq]
+    simp_rw [hfilt_eq]
+    have hswap_k : ∑ s : Fin N → Fin 6, ∑ s' : Fin N → Fin 6,
+          π s * π s' * ∑ k ∈ Finset.range N, prodDepolDistSq s s' (filtrationSubmodule N k) A =
+        ∑ k ∈ Finset.range N, ∑ s : Fin N → Fin 6, ∑ s' : Fin N → Fin 6,
+          π s * π s' * prodDepolDistSq s s' (filtrationSubmodule N k) A := by
+      have h2 : ∀ s : Fin N → Fin 6,
+          (∑ s' : Fin N → Fin 6, π s * π s' *
+            ∑ k ∈ Finset.range N, prodDepolDistSq s s' (filtrationSubmodule N k) A) =
+          ∑ k ∈ Finset.range N, ∑ s' : Fin N → Fin 6,
+            π s * π s' * prodDepolDistSq s s' (filtrationSubmodule N k) A := fun s ↦ by
+        simp_rw [Finset.mul_sum]; exact Finset.sum_comm
+      simp_rw [h2]; exact Finset.sum_comm
+    rw [hswap_k, wightmanQ_eq_sum_distSq]
     apply Finset.sum_le_sum; intro k _
     have h1 := wightmanProj_convex_mixture_ge G π (fun s ↦ (hπ_pos s).le) hρHalf (filtrationSubmodule N k) A
     rw [wightmanSubspaceProj_eq_distSq] at h1
     exact h1
   unfold otocI
+  dsimp only [G] at hnorm_expand
   simp_rw [hnorm_expand]
   have hswap_otoc : (1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3,
         ∑ s : Fin N → Fin 6, ∑ s' : Fin N → Fin 6,
