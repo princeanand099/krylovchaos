@@ -510,33 +510,29 @@ private lemma inv_sqrt2_sq_complex : ((Real.sqrt 2 : ℂ)⁻¹) ^ 2 = (1 / 2 : �
   rw [inv_pow, ← Complex.ofReal_pow, Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2)]
   push_cast; norm_num
 
+private lemma inv_sqrt2_sq_complex' : ((((Real.sqrt 2)⁻¹ : ℝ) : ℂ)) ^ 2 = (1 / 2 : ℂ) := by
+  rw [← Complex.ofReal_pow, inv_pow, Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2)]
+  push_cast; norm_num
+
 lemma signedPauliU_unitary (u : Fin 6) :
     (signedPauliU u)ᴴ * signedPauliU u = 1 := by
   have h2 := inv_sqrt2_sq_complex
+  have h2' := inv_sqrt2_sq_complex'
   have hI : Complex.I ^ 2 = -1 := Complex.I_sq
   fin_cases u <;> ext i j <;> fin_cases i <;> fin_cases j <;>
-    simp only [signedPauliU, Matrix.mul_apply, Matrix.conjTranspose_apply, Fin.sum_univ_two,
-      Matrix.smul_apply, smul_eq_mul, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
-      Matrix.cons_val_one, Matrix.cons_val_fin_one, Matrix.one_apply, Matrix.neg_apply,
-      Complex.star_def, map_mul, map_neg, map_one, Complex.conj_ofReal, Complex.conj_I,
-      Complex.ofReal_div, Complex.ofReal_one, one_div, Fin.isValue, Fin.reduceEq, ↓reduceIte] <;>
-    first | ring | (ring_nf; simp only [h2, hI]; ring)
+    simp [signedPauliU, Matrix.mul_apply, Fin.sum_univ_two] <;>
+    first | ring | (ring_nf; simp only [h2, h2', hI]; ring)
 
 lemma signedPauliU_diag_depolDualF (u : Fin 6) :
     depolDualF u =
       signedPauliU u * Matrix.diagonal ![(7 / 2 : ℂ), (-5 / 2 : ℂ)] * (signedPauliU u)ᴴ := by
   have h2 := inv_sqrt2_sq_complex
+  have h2' := inv_sqrt2_sq_complex'
   have hI : Complex.I ^ 2 = -1 := Complex.I_sq
   fin_cases u <;> ext i j <;> fin_cases i <;> fin_cases j <;>
-    simp only [depolDualF, signedPauli, signedPauliU, pauliX, pauliY, pauliZ,
-      Matrix.add_apply, Matrix.neg_apply, Matrix.smul_apply, smul_eq_mul, Matrix.mul_apply,
-      Matrix.conjTranspose_apply, Matrix.diagonal_apply, Fin.sum_univ_two,
-      Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero, Matrix.cons_val_one,
-      Matrix.cons_val_fin_one, Matrix.one_apply, Complex.star_def,
-      map_mul, map_neg, map_one, Complex.conj_ofReal, Complex.conj_I, Complex.ofReal_div,
-      Complex.ofReal_one, one_div, Fin.isValue, Fin.reduceEq, ↓reduceIte,
-      mul_zero, zero_mul, add_zero, zero_add] <;>
-    first | ring | (ring_nf; simp only [h2, hI]; ring)
+    simp [depolDualF, signedPauli, signedPauliU, pauliX, pauliY, pauliZ,
+      Matrix.mul_apply, Fin.sum_univ_two] <;>
+    first | ring | (ring_nf; simp only [h2, h2', hI]; ring)
 
 lemma depolDualWeight_eq_restricted {N : ℕ} (s : Fin N → Fin 6) {U : Finset (Fin N)}
     {A : QubitOp N} (hA : A ∈ supportedOn U) :
