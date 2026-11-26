@@ -187,6 +187,7 @@ theorem adPow_eq_binomial_sum (H O : E) :
           if k = m + 1 then (0 : E)
           else (-((-1 : ℂ) ^ (m + 1 - k) * (Nat.choose m k : ℂ))) •
             (H ^ k * O * H ^ (m + 1 - k)) := by
+      symm
       rw [Finset.sum_range_succ, if_pos rfl, add_zero]
       apply Finset.sum_congr rfl
       intro k hk
@@ -223,7 +224,7 @@ theorem exp_conj_eq_tsum_adPow (H O : E) (z : ℂ) :
   let g : ℕ → E := fun k ↦ ((k.factorial : ℂ)⁻¹) • (-(z • H)) ^ k
   have hexp_eq : ∀ x : E, NormedSpace.exp x = ∑' n : ℕ, ((n.factorial : ℂ)⁻¹) • x ^ n := by
     intro x
-    exact NormedSpace.exp_eq_tsum (𝕂 := ℂ)
+    rw [NormedSpace.exp_eq_tsum (𝕂 := ℂ) (𝔸 := E)]
   have hf_base_norm : Summable (fun j : ℕ ↦ ‖((j.factorial : ℂ)⁻¹) • (z • H) ^ j‖) := by
     refine Summable.of_nonneg_of_le (fun j ↦ norm_nonneg _) (fun j ↦ ?_)
       (Real.summable_pow_div_factorial ‖z • H‖)
