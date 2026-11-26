@@ -112,8 +112,9 @@ private lemma exp_add_of_commute_real {x y : E} (hxy : Commute x y) :
       exact_mod_cast Nat.choose_mul_factorial_mul_factorial hjm
     field_simp [hfac_ne, hj_ne, hmj_ne]
     linear_combination hnat
-  simp only [f, g, smul_mul_assoc, mul_smul_comm, smul_smul, ← Nat.cast_smul_eq_nsmul ℝ]
-  rw [mul_comm (((m - j).factorial : ℝ)⁻¹), ← hchoose]
+  simp only [f, g, smul_mul_assoc, mul_smul_comm, smul_smul]
+  rw [mul_comm (((m - j).factorial : ℝ)⁻¹), ← hchoose, ← nsmul_eq_mul',
+    ← Nat.cast_smul_eq_nsmul ℝ, smul_smul]
 
 /-- Helper: `‖exp(h • A) - 1 - h • A‖ ≤ |h|^2 * ‖A‖^2 * exp(|h| * ‖A‖)` (no `NormOneClass` needed). -/
 private lemma norm_exp_smul_sub_one_sub_le (A : E) (h : ℝ) :
@@ -280,7 +281,7 @@ lemma jacobiUnitary_add (D : ℕ) (b : ℕ → ℝ) (t s : ℝ) :
   refine exp_add_of_commute_real ?_
   unfold Commute SemiconjBy
   simp only [smul_mul_assoc, mul_smul_comm]
-  rw [smul_comm]
+  rw [smul_comm Complex.I s, smul_comm Complex.I t, smul_comm s t]
 
 /-- `U_D(t)` is unitary: `‖U_D(t) v‖ = ‖v‖` for all `t : ℝ` and `v`. -/
 theorem jacobiUnitary_norm_preserve (D : ℕ) (b : ℕ → ℝ) (t : ℝ)
@@ -292,7 +293,7 @@ theorem jacobiUnitary_norm_preserve (D : ℕ) (b : ℕ → ℝ) (t : ℝ)
     fun s ↦ hasDerivAt_exp_smul_real (Complex.I • jacobiCLM D b) s
   have hderiv_vec : ∀ s : ℝ,
       HasDerivAt (fun r : ℝ ↦ jacobiUnitary D b r v)
-        ((Complex.I • jacobiCLM D b) (jacobiUnitary D b s v)) s := by
+        (Complex.I • jacobiCLM D b (jacobiUnitary D b s v)) s := by
     intro s
     let hclm := (ContinuousLinearMap.apply ℂ (EuclideanSpace ℂ (Fin D)) v).restrictScalars ℝ
     exact hclm.hasFDerivAt.comp_hasDerivAt s (hderiv_op s)
@@ -307,7 +308,7 @@ theorem jacobiUnitary_norm_preserve (D : ℕ) (b : ℕ → ℝ) (t : ℝ)
     rw [hfun]
     have hskew :
         @inner ℝ (EuclideanSpace ℂ (Fin D)) _ (jacobiUnitary D b s v)
-          ((Complex.I • jacobiCLM D b) (jacobiUnitary D b s v)) = 0 := by
+          (Complex.I • jacobiCLM D b (jacobiUnitary D b s v)) = 0 := by
       set w := jacobiUnitary D b s v
       change (inner ℂ w (Complex.I • jacobiCLM D b w)).re = 0
       rw [inner_smul_right]
@@ -325,10 +326,11 @@ theorem jacobiUnitary_norm_preserve (D : ℕ) (b : ℕ → ℝ) (t : ℝ)
       simp [Complex.mul_re, hreal]
     have hskew2 :
         @inner ℝ (EuclideanSpace ℂ (Fin D)) _
-          ((Complex.I • jacobiCLM D b) (jacobiUnitary D b s v))
+          (Complex.I • jacobiCLM D b (jacobiUnitary D b s v))
           (jacobiUnitary D b s v) = 0 := by
       rw [real_inner_comm]; exact hskew
-    simpa [hskew, hskew2] using hinner
+    rw [hskew, hskew2, add_zero] at hinner
+    exact hinner
   have hconst := is_const_of_deriv_eq_zero
     (fun s ↦ (hderiv_sq s).differentiableAt) (fun s ↦ (hderiv_sq s).deriv) t 0
   rw [jacobiUnitary_zero] at hconst
