@@ -9,9 +9,11 @@ import Mathlib.Analysis.InnerProductSpace.Basic
 /-!
 # Locked Headline Theorem Statements for `KrylovChaos` (`comparator` Challenge)
 
-Contains the 23 locked headline theorem signatures corresponding to
+Contains the 25 locked headline theorem signatures corresponding to
 *Finite-Temperature Bounds on Operator Growth and Quantum Chaos* (Prince Anand, 2026),
-including the 4 ground-up literature theorems (Carleman, Kotecký–Preiss, Vitali/Montel, Araki 1D).
+including the concrete `N`-qubit operator algebra (`eq_2_8_hs_commutator_size_identity`,
+`filtration_comm_step`), genuine `theorem_1_2c_otoc_dominance` (from `V² ⪯ vNormSq • 1`),
+and the 4 ground-up literature theorems (Carleman, Kotecký–Preiss, Vitali/Montel, Araki 1D).
 -/
 
 open ChallengeDefs Matrix
@@ -127,7 +129,9 @@ theorem theorem_1_2b_rate_chain {α β κ rW : ℝ}
 
 theorem theorem_1_2c_otoc_dominance {ι : Type*} [Fintype ι] [DecidableEq ι]
     (B V : Matrix ι ι ℂ) (hV : Vᴴ = V) (vNormSq : ℝ)
-    (hspec : (Matrix.trace (Bᴴ * B * (V * V))).re ≤ vNormSq * hsNormSq B) :
+    (hV_bound : ∀ x : ι → ℂ,
+      (∑ i : ι, ∑ j : ι, star (x i) * (V * V) i j * x j).re ≤
+        vNormSq * ∑ i : ι, ‖x i‖ ^ 2) :
     ‖Matrix.trace ((B * V) * (B * V))‖ ≤ (Matrix.trace (Bᴴ * B * (V * V))).re ∧
     (Matrix.trace (Bᴴ * B * (V * V))).re ≤ vNormSq * hsNormSq B := by
   sorry

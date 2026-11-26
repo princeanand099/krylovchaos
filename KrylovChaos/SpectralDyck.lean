@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Prince Anand
 -/
 import KrylovChaos.Basic
+import KrylovChaos.VitaliAnalytic
 import KrylovChaos.WightmanIsometry
 import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
 import Mathlib.Tactic
@@ -14,9 +15,10 @@ import Mathlib.Tactic
 Formalizes:
 - **Theorem 1.2(a)**: Bilateral Laplace transform identity (5.2), even-measure exponential
   moment bound (5.3), and convergence of the generalized binomial series (5.4).
-- **Lemma 5.1**: Dyck-path monotonicity and shifted `η = 1` Meixner lower bound (5.5).
+- **Lemma 5.1**: Dyck-path shifting injectivity, monotonicity, and shifted `η = 1` Meixner lower bound (5.5).
 - **Theorem 1.2(b)**: Smoothness-free upper bound `2 α_* ≤ π / r_W ≤ 2π / (β + 2κ) < 2π / β` (1.16).
-- **Theorem 1.2(c)**: Finite-volume Cauchy–Schwarz and operator-norm dominance inequality (1.17).
+- **Theorem 1.2(c)**: Genuine operator-level finite-volume OTOC dominance inequality (1.17)
+  proved directly from `V² ⪯ vNormSq • 1` without assuming the spectral trace bound.
 -/
 
 namespace KrylovChaos
@@ -224,6 +226,26 @@ def shiftDyckPath {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
     if h1 : i.1 ≤ N₀ then i.1
     else if h2 : i.1 ≤ 2 * n - N₀ then N₀ + γ ⟨i.1 - N₀, by omega⟩
     else 2 * n - i.1
+
+/-- `shiftDyckPath` is injective on Dyck paths of length `2 (n - N₀)`. -/
+theorem shiftDyckPath_injective {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
+    {γ₁ γ₂ : Fin (2 * (n - N₀) + 1) → ℕ}
+    (hγ₁ : isDyckPath (n - N₀) γ₁) (hγ₂ : isDyckPath (n - N₀) γ₂)
+    (heq : shiftDyckPath hN₀ γ₁ = shiftDyckPath hN₀ γ₂) :
+    γ₁ = γ₂ := by
+  funext j
+  by_cases hj0 : j.1 = 0
+  · have hj : j = ⟨0, by omega⟩ := Fin.ext hj0
+    rw [hj, hγ₁.1, hγ₂.1]
+  · have h := congrFun heq ⟨N₀ + j.1, by omega⟩
+    unfold shiftDyckPath at h
+    have h1 : ¬ (N₀ + j.1 ≤ N₀) := by omega
+    have h2 : N₀ + j.1 ≤ 2 * n - N₀ := by omega
+    simp only [h1, h2, ↓reduceDIte] at h
+    have hidx : (⟨N₀ + j.1 - N₀, by omega⟩ : Fin (2 * (n - N₀) + 1)) = j :=
+      Fin.ext (by dsimp; omega)
+    rw [hidx] at h
+    omega
 
 theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
     {γ : Fin (2 * (n - N₀) + 1) → ℕ} (hγ : isDyckPath (n - N₀) γ) :
@@ -651,12 +673,16 @@ theorem trace_sq_norm_le_hsNormSq {ι : Type*} [Fintype ι] [DecidableEq ι]
     ring
   linarith
 
-/-- **Theorem 1.2(c)** (Finite-Volume OTOC Dominance Inequality, Eq. 1.17):
-For `A = B * V`, `|Tr(A²)| ≤ Re Tr(A† A) = Re Tr(B† B V²)`; and if `B† B` and `V` satisfy
-the spectral bound `Re Tr(B† B V²) ≤ vNormSq * Re Tr(B† B)`, then `|Tr(A²)| ≤ vNormSq * Re Tr(B† B)`. -/
+/-- **Theorem 1.2(c)** (Genuine Finite-Volume OTOC Dominance Inequality, Eq. 1.17):
+For any finite matrices `B, V` with `Vᴴ = V` and quadratic-form operator-norm bound
+`V² ⪯ vNormSq • 1` (i.e., `∀ x, Re ⟨x, V² x⟩ ≤ vNormSq ‖x‖²`),
+`|Tr((B V)²)| ≤ Re Tr(B† B V²) ≤ vNormSq · Re Tr(B† B)`.
+Proved directly from `V² ⪯ vNormSq • 1` via row-vector decomposition of `B† B`. -/
 theorem theorem_1_2c_otoc_dominance {ι : Type*} [Fintype ι] [DecidableEq ι]
     (B V : Matrix ι ι ℂ) (hV : Vᴴ = V) (vNormSq : ℝ)
-    (hspec : (Matrix.trace (Bᴴ * B * (V * V))).re ≤ vNormSq * hsNormSq B) :
+    (hV_bound : ∀ x : ι → ℂ,
+      (∑ i : ι, ∑ j : ι, star (x i) * (V * V) i j * x j).re ≤
+        vNormSq * ∑ i : ι, ‖x i‖ ^ 2) :
     ‖Matrix.trace ((B * V) * (B * V))‖ ≤ (Matrix.trace (Bᴴ * B * (V * V))).re ∧
     (Matrix.trace (Bᴴ * B * (V * V))).re ≤ vNormSq * hsNormSq B := by
   have h1 := trace_sq_norm_le_hsNormSq (B * V)
@@ -668,7 +694,40 @@ theorem theorem_1_2c_otoc_dominance {ι : Type*} [Fintype ι] [DecidableEq ι]
     rw [Matrix.mul_assoc V, Matrix.trace_mul_comm V]
     simp [Matrix.mul_assoc]
   rw [hcyc] at h1
-  exact ⟨h1, hspec⟩
+  refine ⟨h1, ?_⟩
+  -- Decompose Re Tr(B† B V²) = ∑_k Re ⟨x_k, V² x_k⟩ where x_k(j) = star (B k j)
+  have htr_row : (Matrix.trace (Bᴴ * B * (V * V))).re =
+      ∑ k : ι, (∑ i : ι, ∑ j : ι, star (star (B k i)) * (V * V) i j * star (B k j)).re := by
+    have hcomplex : Matrix.trace (Bᴴ * B * (V * V)) =
+        ∑ k : ι, ∑ i : ι, ∑ j : ι, star (star (B k i)) * (V * V) i j * star (B k j) := by
+      simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply,
+        star_star]
+      calc ∑ i : ι, ∑ j : ι, (∑ k : ι, star (B k i) * B k j) * (V * V) j i
+          = ∑ i : ι, ∑ j : ι, ∑ k : ι, star (B k i) * B k j * (V * V) j i := by
+            apply Finset.sum_congr rfl; intro i _
+            apply Finset.sum_congr rfl; intro j _
+            rw [Finset.sum_mul]
+        _ = ∑ k : ι, ∑ i : ι, ∑ j : ι, star (B k i) * B k j * (V * V) j i := by
+            rw [Finset.sum_comm]
+            apply Finset.sum_congr rfl; intro i _
+            exact Finset.sum_comm
+        _ = ∑ k : ι, ∑ j : ι, ∑ i : ι, B k j * (V * V) j i * star (B k i) := by
+            apply Finset.sum_congr rfl; intro k _
+            rw [Finset.sum_comm]
+            apply Finset.sum_congr rfl; intro j _
+            apply Finset.sum_congr rfl; intro i _
+            ring
+    rw [hcomplex, Complex.re_sum]
+  have hhs_row : hsNormSq B = ∑ k : ι, ∑ i : ι, ‖star (B k i)‖ ^ 2 := by
+    unfold hsNormSq hsInner
+    simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply,
+      Complex.re_sum, norm_star]
+    rw [Finset.sum_comm]
+    apply Finset.sum_congr rfl; intro k _
+    apply Finset.sum_congr rfl; intro i _
+    rw [Complex.star_def, Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
+  rw [htr_row, hhs_row, Finset.mul_sum]
+  exact Finset.sum_le_sum fun k _ ↦ hV_bound (fun j ↦ star (B k j))
 
 end OTOCDominance
 

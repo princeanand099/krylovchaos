@@ -126,10 +126,12 @@ theorem theorem_1_2b_rate_chain {α β κ rW : ℝ}
 
 theorem theorem_1_2c_otoc_dominance {ι : Type*} [Fintype ι] [DecidableEq ι]
     (B V : Matrix ι ι ℂ) (hV : Vᴴ = V) (vNormSq : ℝ)
-    (hspec : (Matrix.trace (Bᴴ * B * (V * V))).re ≤ vNormSq * hsNormSq B) :
+    (hV_bound : ∀ x : ι → ℂ,
+      (∑ i : ι, ∑ j : ι, star (x i) * (V * V) i j * x j).re ≤
+        vNormSq * ∑ i : ι, ‖x i‖ ^ 2) :
     ‖Matrix.trace ((B * V) * (B * V))‖ ≤ (Matrix.trace (Bᴴ * B * (V * V))).re ∧
     (Matrix.trace (Bᴴ * B * (V * V))).re ≤ vNormSq * hsNormSq B :=
-  KrylovChaos.theorem_1_2c_otoc_dominance B V hV vNormSq hspec
+  KrylovChaos.theorem_1_2c_otoc_dominance B V hV vNormSq hV_bound
 
 theorem prop_6_4_decoupling_combine {Sβ I II III Bavg C₂ cB N : ℝ}
     (hI : 0 ≤ I) (hN : 0 ≤ N) (hcB : 0 ≤ cB)

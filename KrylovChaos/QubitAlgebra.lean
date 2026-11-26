@@ -62,6 +62,13 @@ def pauliMulPhase : Fin 4 → Fin 4 → ℂ
   | 1, 3 => -Complex.I
   | _, _ => 1
 
+lemma pauliMulIdx_comm (u v : Fin 4) : pauliMulIdx u v = pauliMulIdx v u := by
+  fin_cases u <;> fin_cases v <;> rfl
+
+lemma pauliMulPhase_zero_comm (u v : Fin 4) (h : u = 0 ∨ v = 0) :
+    pauliMulPhase u v = pauliMulPhase v u := by
+  rcases h with rfl | rfl <;> (try fin_cases v) <;> (try fin_cases u) <;> rfl
+
 lemma pauliMat_herm (α : Fin 4) : (pauliMat α)ᴴ = pauliMat α := by
   fin_cases α <;> ext i j <;> fin_cases i <;> fin_cases j <;> simp [pauliMat]
 
@@ -302,30 +309,23 @@ theorem filtration_comm_step {N r s : ℕ} (hr : 1 ≤ r)
     (hH : H ∈ filtrationSubmodule N r)
     (hA : A ∈ filtrationSubmodule N s) :
     matComm H A ∈ filtrationSubmodule N (min N (s + (r - 1))) := by
-  -- Bilinear induction on H ∈ span and A ∈ span
   have hbase : ∀ (a b : Fin N → Fin 4),
       stringWeight a ≤ r → stringWeight b ≤ s →
       matComm (pauliString a) (pauliString b) ∈ filtrationSubmodule N (min N (s + (r - 1))) := by
     intro a b ha hb
     by_cases hdisj : ∀ x : Fin N, a x = 0 ∨ b x = 0
-    · -- Disjoint supports: Pauli strings commute, so commutator = 0
-      have hcomm : matComm (pauliString a) (pauliString b) = 0 := by
+    · have hcomm : matComm (pauliString a) (pauliString b) = 0 := by
         unfold matComm
         rw [pauliString_mul a b, pauliString_mul b a]
-        have hph : ∀ x : Fin N, pauliMulPhase (a x) (b x) = pauliMulPhase (b x) (a x) := by
-          intro x
-          rcases hdisj x with h | h <;> rw [h] <;>
-            (generalize b x = v; try generalize a x = v) <;> fin_cases v <;> rfl
+        have hph : ∀ x : Fin N, pauliMulPhase (a x) (b x) = pauliMulPhase (b x) (a x) :=
+          fun x ↦ pauliMulPhase_zero_comm (a x) (b x) (hdisj x)
         have hidx : (fun x ↦ pauliMulIdx (a x) (b x)) = fun x ↦ pauliMulIdx (b x) (a x) := by
-          funext x
-          rcases hdisj x with h | h <;> rw [h] <;>
-            (generalize b x = v; try generalize a x = v) <;> fin_cases v <;> rfl
+          funext x; exact pauliMulIdx_comm (a x) (b x)
         simp_rw [hph]
         rw [hidx, sub_self]
       rw [hcomm]
       exact Submodule.zero_mem _
-    · -- Overlapping supports: ∃ x₀ with a x₀ ≠ 0 ∧ b x₀ ≠ 0
-      have hex : ∃ x₀ : Fin N, a x₀ ≠ 0 ∧ b x₀ ≠ 0 := by
+    · have hex : ∃ x₀ : Fin N, a x₀ ≠ 0 ∧ b x₀ ≠ 0 := by
         by_contra hno
         apply hdisj; intro x
         by_cases hax : a x = 0
@@ -362,13 +362,10 @@ theorem filtration_comm_step {N r s : ℕ} (hr : 1 ≤ r)
       have hd_mem : pauliString d ∈ filtrationSubmodule N (min N (s + (r - 1))) :=
         Submodule.subset_span ⟨d, le_min hd_le_N hd_le_sum, rfl⟩
       have hidx_comm : (fun x ↦ pauliMulIdx (b x) (a x)) = d := by
-        funext x
-        generalize a x = u; generalize b x = v
-        fin_cases u <;> fin_cases v <;> rfl
+        funext x; exact pauliMulIdx_comm (b x) (a x)
       unfold matComm
       rw [pauliString_mul a b, pauliString_mul b a, hidx_comm, ← sub_smul]
       exact Submodule.smul_mem _ _ hd_mem
-  -- Lift from generators to full span using Submodule.span_induction
   have hgenH : ∀ (a : Fin N → Fin 4), stringWeight a ≤ r →
       matComm (pauliString a) A ∈ filtrationSubmodule N (min N (s + (r - 1))) := by
     intro a ha
