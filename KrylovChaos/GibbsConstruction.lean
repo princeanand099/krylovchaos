@@ -35,6 +35,9 @@ namespace KrylovChaos
 
 open Matrix
 
+/-- Computational basis index type `Fin N → Fin 2` for `N`-qubit Hilbert space `(ℂ²)^{⊗ N}`. -/
+abbrev QubitIdx (N : ℕ) := Fin N → Fin 2
+
 section SpectralGibbs
 
 /-- Spectral functional calculus `f(H) = U diag(f(λ_i)) Uᴴ` for a Hermitian operator `H : QubitOp N`. -/
@@ -163,7 +166,7 @@ noncomputable def concreteGibbsData {N : ℕ} {H : QubitOp N} (hH : H.IsHermitia
         (((gibbsPartitionFn hH β) ^ (-(1 / 4 : ℝ)) : ℝ) : ℂ) =
         ((Real.sqrt (gibbsPartitionFn hH β))⁻¹ : ℂ) := by
       rw [← Complex.ofReal_mul, ← Real.rpow_add hZ, Real.sqrt_eq_rpow,
-        ← Real.rpow_neg hZ.le, Complex.ofReal_inv]
+        ← Complex.ofReal_inv, ← Real.rpow_neg hZ.le]
       congr 1; congr 1; norm_num
     rw [hsc]
     congr 1; congr 1; funext E
@@ -222,8 +225,13 @@ theorem concreteGibbsData_comm_H {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) 
   unfold gibbsRhoQuarter
   rw [Matrix.mul_smul, Matrix.smul_mul]
   congr 1
-  conv_lhs => rw [← hermFunc_id hH]
-  conv_rhs => rw [← hermFunc_id hH]
+  have h1 : H * hermFunc hH (fun E ↦ (Real.exp (-(β / 4) * E) : ℂ)) =
+      hermFunc hH (fun x ↦ (x : ℂ)) * hermFunc hH (fun E ↦ (Real.exp (-(β / 4) * E) : ℂ)) :=
+    congrArg (· * _) (hermFunc_id hH).symm
+  have h2 : hermFunc hH (fun E ↦ (Real.exp (-(β / 4) * E) : ℂ)) * H =
+      hermFunc hH (fun E ↦ (Real.exp (-(β / 4) * E) : ℂ)) * hermFunc hH (fun x ↦ (x : ℂ)) :=
+    congrArg (_ * ·) (hermFunc_id hH).symm
+  rw [h1, h2]
   exact hermFunc_comm hH _ _
 
 /-- Concrete Gibbs state directly from an `r`-local Hamiltonian `ham : LocalHamiltonian N r`. -/
@@ -348,17 +356,21 @@ theorem heisenbergEvol_entry_hasDerivAt {N : ℕ} {H : QubitOp N} (hH : H.IsHerm
         U i a * B a b * Uᴴ b j *
           (Complex.exp (Complex.I * (t : ℂ) * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ)) *
             (Complex.I * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ))) := by
-    have hH_spec : H = hermFunc hH (fun E ↦ (E : ℂ)) := (hermFunc_id hH).symm
-    have hcomm_mat : matComm H (heisenbergEvol hH (t : ℂ) A) =
+    set At := heisenbergEvol hH (t : ℂ) A
+    have hH_left : H * At = hermFunc hH (fun E ↦ (E : ℂ)) * At :=
+      congrArg (· * At) (hermFunc_id hH).symm
+    have hH_right : At * H = At * hermFunc hH (fun E ↦ (E : ℂ)) :=
+      congrArg (At * ·) (hermFunc_id hH).symm
+    have hcomm_mat : matComm H At =
         U * (Matrix.diagonal (fun a ↦ (hH.eigenvalues a : ℂ)) *
           (Matrix.diagonal (fun a ↦ Complex.exp (Complex.I * (t : ℂ) * (hH.eigenvalues a : ℂ))) *
             B * Matrix.diagonal (fun b ↦ Complex.exp (Complex.I * (-(t : ℂ)) * (hH.eigenvalues b : ℂ)))) -
           (Matrix.diagonal (fun a ↦ Complex.exp (Complex.I * (t : ℂ) * (hH.eigenvalues a : ℂ))) *
             B * Matrix.diagonal (fun b ↦ Complex.exp (Complex.I * (-(t : ℂ)) * (hH.eigenvalues b : ℂ)))) *
           Matrix.diagonal (fun b ↦ (hH.eigenvalues b : ℂ))) * Uᴴ := by
-      unfold matComm heisenbergEvol complexPropagator
-      conv_lhs => rw [hH_spec]
-      unfold hermFunc
+      unfold matComm
+      rw [hH_left, hH_right]
+      simp only [At, heisenbergEvol, complexPropagator, hermFunc]
       have hUU : Uᴴ * U = 1 := eigenvectorUnitary_star_mul hH
       have h1 : (U * Matrix.diagonal (fun a ↦ (hH.eigenvalues a : ℂ)) * Uᴴ) *
           (U * Matrix.diagonal (fun a ↦ Complex.exp (Complex.I * (t : ℂ) * (hH.eigenvalues a : ℂ))) * Uᴴ *
@@ -455,9 +467,12 @@ theorem lanczos_three_term {N : ℕ} (G : GibbsData N) (H O : QubitOp N) (n : �
       ((lanczosCoeff G H O (n + 1))⁻¹ : ℂ) •
         (matComm H (lanczosOp G H O n) -
           (lanczosCoeff G H O n : ℂ) • (lanczosState G H O n).2.1) := by
+    have hb' : Real.sqrt (gibbsWightmanNormSq G
+        (matComm H (lanczosState G H O n).1 -
+          ((lanczosState G H O n).2.2 : ℂ) • (lanczosState G H O n).2.1)) ≠ 0 := hb
     unfold lanczosOp lanczosCoeff
     simp only [lanczosState]
-    rw [if_neg hb]
+    rw [if_neg hb']
     simp [Complex.ofReal_inv]
   rw [hdef, smul_smul, mul_inv_cancel₀ hbC, one_smul, sub_add_cancel]
 
@@ -606,7 +621,7 @@ theorem wightmanSubspaceProj_complement_nonneg {N : ℕ} (G : GibbsData N)
 theorem wightmanQ_nonneg {N : ℕ} (G : GibbsData N) (A : QubitOp N) :
     0 ≤ (gibbsWightmanInner G A (wightmanQ G A)).re := by
   unfold wightmanQ
-  simp only [LinearMap.finset_sum_apply, LinearMap.sub_apply, LinearMap.id_apply]
+  simp only [LinearMap.sum_apply, LinearMap.sub_apply, LinearMap.id_apply]
   have hsum : gibbsWightmanInner G A (∑ s ∈ Finset.range N, (A - wightmanFiltrationProj G s A)) =
       ∑ s ∈ Finset.range N, gibbsWightmanInner G A (A - wightmanFiltrationProj G s A) := by
     unfold gibbsWightmanInner wightmanInner
@@ -618,7 +633,7 @@ theorem wightmanQ_nonneg {N : ℕ} (G : GibbsData N) (A : QubitOp N) :
 theorem quantumGlauberGen_nonneg {N : ℕ} (G : GibbsData N) (A : QubitOp N) :
     0 ≤ (gibbsWightmanInner G A (quantumGlauberGen G A)).re := by
   unfold quantumGlauberGen
-  simp only [LinearMap.finset_sum_apply, LinearMap.sub_apply, LinearMap.id_apply]
+  simp only [LinearMap.sum_apply, LinearMap.sub_apply, LinearMap.id_apply]
   have hsum : gibbsWightmanInner G A (∑ x : Fin N, (A - singleSiteWightmanProj G x A)) =
       ∑ x : Fin N, gibbsWightmanInner G A (A - singleSiteWightmanProj G x A) := by
     unfold gibbsWightmanInner wightmanInner

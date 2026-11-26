@@ -150,12 +150,14 @@ theorem prodGSBasis_wightman_normSq {N : ℕ} (m : Fin N → ℝ) (hm : ∀ x, |
         (prodGibbsData m hm).ρHalf * prodGSBasis m b).trace =
       if a = b then 1 else 0 :=
     fun a b ↦ prodGSBasis_wightman_orthonormal m hm a b
-  have hsum : (∑ a : Fin N → Fin 4, ∑ b : Fin N → Fin 4,
-      star (c a) * (c b * ((prodGibbsData m hm).ρHalf * (prodGSBasis m a)ᴴ *
-        (prodGibbsData m hm).ρHalf * prodGSBasis m b).trace)) =
-      ∑ a : Fin N → Fin 4, star (c a) * c a := by
-    apply Finset.sum_congr rfl; intro a _
-    simp_rw [hinner, mul_ite, mul_one, mul_zero, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
+  have hsum : (∑ b : Fin N → Fin 4, c b * ∑ a : Fin N → Fin 4,
+      star (c a) * ((prodGibbsData m hm).ρHalf * (prodGSBasis m a)ᴴ *
+        (prodGibbsData m hm).ρHalf * prodGSBasis m b).trace) =
+      ∑ b : Fin N → Fin 4, star (c b) * c b := by
+    apply Finset.sum_congr rfl; intro b _
+    simp only [hinner, mul_ite, mul_one, mul_zero, Finset.sum_ite_eq', Finset.mem_univ,
+      ↓reduceIte]
+    ring
   rw [hsum, Complex.re_sum]
   apply Finset.sum_congr rfl; intro a _
   rw [Complex.star_def, Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
@@ -165,8 +167,8 @@ private lemma singleSite_pauli_twirl (M : Matrix (Fin 2) (Fin 2) ℂ) :
       ((1 / 2 : ℂ) * M.trace) • (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
   ext i j
   fin_cases i <;> fin_cases j <;>
-    simp [Fin.sum_univ_four, pauliMat, Matrix.mul_apply, Fin.sum_univ_two,
-      Matrix.trace, Matrix.diag] <;> ring
+    simp [Fin.sum_univ_four, pauliMat, Matrix.mul_apply, Matrix.vecMul, dotProduct,
+      Fin.sum_univ_two, Matrix.trace, Matrix.diag] <;> ring
 
 private lemma singleSite_kron_partialTrace {N : ℕ} (F : Fin N → Matrix (Fin 2) (Fin 2) ℂ)
     (x : Fin N) :
@@ -177,7 +179,7 @@ private lemma singleSite_kron_partialTrace {N : ℕ} (F : Fin N → Matrix (Fin 
       pauliSite x c * kronOp F * pauliSite x c =
       kronOp (fun y ↦ if y = x then pauliMat c * F x * pauliMat c else F y) := by
     intro c
-    unfold pauliSite
+    unfold pauliSite pauliString
     rw [kronOp_mul, kronOp_mul]
     congr 1; funext y
     by_cases hy : y = x
@@ -364,7 +366,6 @@ theorem prop_4_3_concrete_product_state_bound {N s : ℕ} {mmax : ℝ}
       congr 1
       rw [Finset.sum_comm]
       apply Finset.sum_congr rfl; intro b _
-      rw [Finset.smul_sum, Finset.smul_sum]
       apply Finset.sum_congr rfl; intro k _
       rw [smul_comm]
     have hsum1 : (hsInner (jBeta G.ρQuarter A) (∑ x : Fin N, siteSizeOp x (jBeta G.ρQuarter A))).re =
@@ -378,10 +379,17 @@ theorem prop_4_3_concrete_product_state_bound {N s : ℕ} {mmax : ℝ}
       simp only [Matrix.conjTranspose_sum, Matrix.conjTranspose_smul, Matrix.sum_mul,
         Matrix.mul_sum, Matrix.smul_mul, Matrix.mul_smul, Matrix.trace_sum, Matrix.trace_smul,
         smul_eq_mul, Complex.re_sum]
-      rw [Finset.sum_comm]
-      apply Finset.sum_congr rfl; intro a _
-      apply Finset.sum_congr rfl; intro b _
-      congr 1; ring
+      have hpull : ∀ b : Fin N → Fin 4,
+          (c b * ∑ a : Fin N → Fin 4, star (c a) *
+            ((jBeta G.ρQuarter (prodGSBasis m a))ᴴ * siteSizeOp x (jBeta G.ρQuarter (prodGSBasis m b))).trace).re =
+          ∑ a : Fin N → Fin 4, (star (c a) * c b *
+            ((jBeta G.ρQuarter (prodGSBasis m a))ᴴ * siteSizeOp x (jBeta G.ρQuarter (prodGSBasis m b))).trace).re := by
+        intro b
+        rw [Finset.mul_sum, Complex.re_sum]
+        apply Finset.sum_congr rfl; intro a _
+        congr 1; ring
+      simp_rw [hpull]
+      exact Finset.sum_comm
     have hsum2 : (hsInner G.ρHalf (∑ x : Fin N, siteSizeOp x G.ρHalf)).re =
         ∑ x : Fin N, ∑ a : Fin N → Fin 4, ∑ b : Fin N → Fin 4,
           (star (c a) * c b * (if a = b then hsInner G.ρHalf (siteSizeOp x G.ρHalf) else 0)).re := by

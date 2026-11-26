@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Prince Anand
 -/
 import KrylovChaos.Basic
+import Mathlib.Combinatorics.Enumerative.Catalan
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Nat.Choose.Sum
 import Mathlib.Tactic
@@ -35,14 +36,14 @@ def catalanRec : ℕ → ℕ
   | 0 => 1
   | n + 1 => ∑ j ∈ Finset.range (n + 1), catalanRec j * catalanRec (n - j)
 
-lemma catalanRec_eq_nat_catalan (n : ℕ) : catalanRec n = Nat.catalan n := by
+lemma catalanRec_eq_nat_catalan (n : ℕ) : catalanRec n = catalan n := by
   induction n using Nat.strong_induction_on with
   | h n ih =>
     cases n with
     | zero => rfl
     | succ n =>
-      rw [catalanRec, Nat.catalan_succ]
-      rw [Finset.Nat.sum_antidiagonal_eq_sum_range_succ (fun i j ↦ Nat.catalan i * Nat.catalan j)]
+      rw [catalanRec, catalan_succ]
+      rw [Finset.Nat.sum_antidiagonal_eq_sum_range_succ (fun i j ↦ catalan i * catalan j)]
       apply Finset.sum_congr rfl
       intro j hj
       have hj' : j < n + 1 := Finset.mem_range.mp hj
@@ -50,7 +51,7 @@ lemma catalanRec_eq_nat_catalan (n : ℕ) : catalanRec n = Nat.catalan n := by
 
 lemma catalanRec_le_four_pow (n : ℕ) : (catalanRec n : ℝ) ≤ (4 : ℝ) ^ n := by
   rw [catalanRec_eq_nat_catalan]
-  have h1 : Nat.catalan n = Nat.centralBinom n / (n + 1) := Nat.catalan_eq_centralBinom_div n
+  have h1 : catalan n = Nat.centralBinom n / (n + 1) := catalan_eq_centralBinom_div n
   have h2 : Nat.centralBinom n / (n + 1) ≤ Nat.centralBinom n := Nat.div_le_self _ _
   have h3 : Nat.centralBinom n ≤ 4 ^ n := by
     rw [Nat.centralBinom]

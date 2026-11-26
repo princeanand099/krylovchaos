@@ -606,13 +606,14 @@ theorem distSqDegree_prodBernoulli_eq {N : ℕ} (h : Fin N → ℝ)
                   (if j ∈ T then spinVal (z j) else 1) := by
             intro z
             unfold prodBernoulli chiBasis
-            rw [← mul_assoc, mul_left_comm (∏ _ : Fin N, _) (fhat S), mul_assoc]
-            congr 1
-            rw [Finset.prod_mul_distrib, Finset.prod_mul_distrib, ← Finset.prod_filter,
-              ← Finset.prod_filter]
-            congr 1
-            · congr 1; congr 1; ext j; simp
-            · congr 1; ext j; simp
+            have hprodS : (∏ i ∈ S, siteChi (h i) (z i)) =
+                ∏ j : Fin N, if j ∈ S then siteChi (h j) (z j) else 1 := by
+              rw [← Finset.prod_filter]; congr 1; ext j; simp
+            have hprodT : (∏ j ∈ T, spinVal (z j)) =
+                ∏ j : Fin N, if j ∈ T then spinVal (z j) else 1 := by
+              rw [← Finset.prod_filter]; congr 1; ext j; simp
+            rw [hprodS, hprodT, Finset.prod_mul_distrib, Finset.prod_mul_distrib]
+            ring
           simp_rw [hfac, ← Finset.mul_sum]
           rw [← Fintype.prod_sum (fun (j : Fin N) (b : Bool) ↦
             siteBernoulli (h j) b *
@@ -666,11 +667,13 @@ theorem prodBernoulli_discrete_grad_le_Q {N : ℕ} {Φmax : ℝ}
       intro z₀
       have hfac : ∑ S : Finset (Fin N), prodBernoulli h z₀ * chiBasis h S z₀ * chiBasis h S z =
           ∏ i : Fin N, siteBernoulli (h i) (z₀ i) * (1 + siteChi (h i) (z₀ i) * siteChi (h i) (z i)) := by
-        rw [Finset.prod_mul_distrib, Finset.prod_add]
-        simp_rw [Finset.prod_const_one, one_mul, Finset.mul_sum]
+        rw [Finset.prod_mul_distrib, Finset.prod_one_add]
+        have hpow : (Finset.univ : Finset (Fin N)).powerset = Finset.univ := by
+          ext S; simp
+        rw [hpow, Finset.mul_sum]
         apply Finset.sum_congr rfl; intro S _
         unfold prodBernoulli chiBasis
-        rw [← Finset.prod_mul_distrib, mul_assoc]
+        rw [Finset.prod_mul_distrib, mul_assoc]
       rw [hfac]
       have hsite : ∀ i : Fin N,
           siteBernoulli (h i) (z₀ i) * (1 + siteChi (h i) (z₀ i) * siteChi (h i) (z i)) =
@@ -732,7 +735,7 @@ theorem prodBernoulli_discrete_grad_le_Q {N : ℕ} {Φmax : ℝ}
       apply Finset.sum_congr rfl; intro S _
       ring
     rw [hsum]
-    simp_rw [hdelta, mul_ite, mul_one, mul_zero, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
+    simp only [hdelta, mul_ite, mul_one, mul_zero, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
   conv_lhs => rw [hf_eq]
   conv_rhs => rw [hf_eq]
   simp_rw [prodBernoulli_discrete_grad_eq h fhat]
