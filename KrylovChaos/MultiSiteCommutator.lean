@@ -54,11 +54,14 @@ lemma opNorm_conjTranspose_le {N : ℕ} (A : QubitOp N) : opNorm Aᴴ ≤ opNorm
     simp_rw [Finset.sum_mul, Finset.mul_sum]
     conv_rhs => rw [Finset.sum_comm]
     apply Finset.sum_congr rfl; intro j _
-    conv_rhs => simp_rw [Finset.sum_mul]; rw [Finset.sum_comm]
-    apply Finset.sum_congr rfl; intro i _
-    apply Finset.sum_congr rfl; intro k _
-    simp only [Matrix.conjTranspose_apply, Complex.star_def, starRingEnd_self_apply]
-    ring
+    trans (∑ i, ∑ k, A k j * (Aᴴ j i * v.ofLp i) * (starRingEnd ℂ) (v.ofLp k))
+    · apply Finset.sum_congr rfl; intro i _
+      apply Finset.sum_congr rfl; intro k _
+      simp only [Matrix.conjTranspose_apply, Complex.star_def, starRingEnd_self_apply]
+      ring
+    · rw [Finset.sum_comm]
+      apply Finset.sum_congr rfl; intro k _
+      rw [← Finset.sum_mul]
   have hsq : ‖opToCLM Aᴴ v‖ ^ 2 ≤ ‖v‖ * (opNorm A * ‖opToCLM Aᴴ v‖) := by
     have h1 : (‖opToCLM Aᴴ v‖ ^ 2 : ℝ) = ‖@inner ℂ _ _ (opToCLM Aᴴ v) (opToCLM Aᴴ v)‖ := by
       rw [inner_self_eq_norm_sq_to_K]
@@ -521,7 +524,9 @@ theorem prodDepolNormSq_matComm_supportedOn_le {N : ℕ} (s s' : Fin N → Fin 6
         split_ifs <;> simp
       rw [hB_full, ← Finset.sum_sub_distrib]
       apply Finset.sum_congr rfl; intro a _
-      by_cases ha : ∀ y ∈ U, a y = 0 <;> simp only [ha, ↓reduceIte, zero_smul, sub_self, sub_zero, c]
+      by_cases ha : ∀ y ∈ U, a y = 0
+      · simp only [if_pos ha, zero_smul, sub_self, c]
+      · simp only [if_neg ha, zero_smul, sub_zero, c]
     rw [hZ_expand, prodDepolNormSq_expand]
     have hfilt : ∑ a : Fin N → Fin 4, ‖if ∀ y ∈ U, a y = 0 then (0 : ℂ) else c a‖ ^ 2 =
         ∑ a ∈ Finset.univ.filter (fun a : Fin N → Fin 4 ↦ ∃ y ∈ U, a y ≠ 0), ‖c a‖ ^ 2 := by
