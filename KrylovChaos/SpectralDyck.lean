@@ -126,16 +126,17 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
       ((m + K : ℕ) : ℝ) ^ K * u ^ m := by
     intro m
     have hprod_le : ∏ j ∈ Finset.range m, (α + (j : ℝ)) ≤
-        ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) := by
+        ∏ j ∈ Finset.range m, ((K + 1 + j : ℕ) : ℝ) := by
       apply prod_le_prod_nonneg (Finset.range m) (fun j _ ↦ by positivity)
       intro j _; push_cast; linarith
-    have hfac_id : (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) * (K.factorial : ℝ) =
-        ((m + K).factorial : ℝ) := by
-      induction m with
+    have hfac_id : ∀ n : ℕ, (∏ j ∈ Finset.range n, ((K + 1 + j : ℕ) : ℝ)) * (K.factorial : ℝ) =
+        ((n + K).factorial : ℝ) := by
+      intro n
+      induction n with
       | zero => simp
-      | succ m ih =>
+      | succ n ih =>
         rw [Finset.prod_range_succ, mul_right_comm, ih]
-        rw [show m + 1 + K = (m + K) + 1 by omega, Nat.factorial_succ, Nat.cast_mul]
+        rw [show n + 1 + K = (n + K) + 1 by omega, Nat.factorial_succ, Nat.cast_mul]
         push_cast; ring
     have hdiv_le : ((m + K).factorial : ℝ) / (m.factorial : ℝ) ≤ ((m + K : ℕ) : ℝ) ^ K := by
       have hnat : (m + K).factorial ≤ (m + K) ^ K * m.factorial := by
@@ -154,12 +155,12 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
       exact_mod_cast hnat
     have hKfac : (1 : ℝ) ≤ (K.factorial : ℝ) := by exact_mod_cast Nat.factorial_pos K
     have hprod_le2 : ∏ j ∈ Finset.range m, (α + (j : ℝ)) ≤ ((m + K).factorial : ℝ) := by
-      have h1 : (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) ≤
-          (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) * (K.factorial : ℝ) := by
-        have hnn : 0 ≤ ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) :=
+      have h1 : (∏ j ∈ Finset.range m, ((K + 1 + j : ℕ) : ℝ)) ≤
+          (∏ j ∈ Finset.range m, ((K + 1 + j : ℕ) : ℝ)) * (K.factorial : ℝ) := by
+        have hnn : 0 ≤ ∏ j ∈ Finset.range m, ((K + 1 + j : ℕ) : ℝ) :=
           Finset.prod_nonneg fun j _ ↦ Nat.cast_nonneg _
         nlinarith
-      linarith [hprod_le, h1, hfac_id]
+      linarith [hprod_le, h1, hfac_id m]
     calc (u ^ m / (m.factorial : ℝ)) * ∏ j ∈ Finset.range m, (α + (j : ℝ))
         ≤ (u ^ m / (m.factorial : ℝ)) * ((m + K).factorial : ℝ) :=
           mul_le_mul_of_nonneg_left hprod_le2 (by positivity)
@@ -237,7 +238,7 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
       · have h1 : ¬ (2 * n ≤ 0) := by omega
         have h2 : 2 * n ≤ 2 * n - 0 := by omega
         simp only [h1, h2, ↓reduceDIte, Nat.zero_add]
-        convert hγ.2.1 using 2; exact Fin.ext (by dsimp; omega)
+        convert hγ.2.1 using 2
     · have h1 : ¬ (2 * n ≤ N₀) := by omega
       have h2 : ¬ (2 * n ≤ 2 * n - N₀) := by omega
       simp [h1, h2]
@@ -260,8 +261,8 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
             congr 1; exact Fin.ext (by dsimp; omega)
           rw [hγ1, heq]
           rcases hstep with hs | hs
-          · left; omega
-          · right; omega
+          · left; rw [h0] at hs; omega
+          · exfalso; rw [h0] at hs; omega
         · have ha1 : ¬ (k.1 ≤ N₀) := by omega
           have ha2 : k.1 ≤ 2 * n - N₀ := by omega
           simp only [ha1, ha2, h1, h2, ↓reduceDIte]
@@ -627,7 +628,7 @@ theorem trace_sq_norm_le_hsNormSq {ι : Type*} [Fintype ι] [DecidableEq ι]
       Complex.re_sum]
     apply Finset.sum_congr rfl; intro i _
     apply Finset.sum_congr rfl; intro j _
-    rw [Complex.star_def, Complex.conj_mul', Complex.ofReal_re, Complex.normSq_eq_norm_sq]
+    rw [Complex.star_def, Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
   rw [htr, hhs]
   have hnorm_sum : ‖∑ i : ι, ∑ j : ι, A i j * A j i‖ ≤
       ∑ i : ι, ∑ j : ι, ‖A i j‖ * ‖A j i‖ := by
