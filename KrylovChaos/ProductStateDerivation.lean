@@ -95,12 +95,7 @@ theorem singleSiteRho_roots {m : ℝ} (hm : |m| < 1) :
     fin_cases i <;> fin_cases j <;>
       simp [singleSiteRhoQuarter, singleSiteRhoHalf, Matrix.mul_apply, Fin.sum_univ_two, hqp, hqr]
 
-/-- Wightman Gram–Schmidt orthonormal basis `{E_0, E_1, E_2, E_3}` for `ρ_x = (I + m Z)/2`:
-- `E_0 = I`
-- `E_1 = σ(m)^{-1/2} X`
-- `E_2 = σ(m)^{-1/2} Y`
-- `E_3 = σ(m)^{-1} (Z - m I)`
-written explicitly in matrix form. -/
+/-- Wightman Gram–Schmidt orthonormal basis `{E_0, E_1, E_2, E_3}` for `ρ_x = (I + m Z)/2`. -/
 noncomputable def gsBasis (m : ℝ) : Fin 4 → Matrix (Fin 2) (Fin 2) ℂ
   | 0 => !![1, 0; 0, 1]
   | 1 => !![0, ((Real.sqrt (prodSigma m))⁻¹ : ℂ); ((Real.sqrt (prodSigma m))⁻¹ : ℂ), 0]
@@ -153,7 +148,6 @@ private lemma prod_param_identities {m : ℝ} (hm : |m| < 1) :
       _ = 1 - prodSigma m := by ring
   exact ⟨hp, hr, hσ, hp2, hr2, h2pr, hq2⟩
 
-/-- Explicit entry formula for `singleSiteWightmanInner m` on two `2 × 2` matrices. -/
 private lemma wightman_inner_formula (m : ℝ) (A B : Matrix (Fin 2) (Fin 2) ℂ) :
     singleSiteWightmanInner m A B =
     (Real.sqrt ((1 + m) / 2) : ℂ) ^ 2 * star (A 0 0) * B 0 0 +
@@ -196,8 +190,6 @@ theorem gsBasis_wightman_orthonormal {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
   · field_simp [hσ_ne]
     linear_combination (1 - (m : ℂ)) ^ 2 * hp2C + (-1 - (m : ℂ)) ^ 2 * hr2C - hσ2
 
-/-- Explicit entry formula for `singleSiteSizeForm m A B` in terms of `p = √((1+m)/2)` and
-`r = √((1-m)/2)`. -/
 private lemma size_form_formula {m : ℝ} (hm : |m| < 1) (A B : Matrix (Fin 2) (Fin 2) ℂ) :
     let p := Real.sqrt ((1 + m) / 2)
     let r := Real.sqrt ((1 - m) / 2)
@@ -221,7 +213,6 @@ private lemma size_form_formula {m : ℝ} (hm : |m| < 1) (A B : Matrix (Fin 2) (
     Matrix.cons_val_one, Matrix.cons_val_fin_one, mul_zero, zero_mul, add_zero, zero_add,
     mul_one, one_mul, star_zero, star_one, Complex.star_def, Complex.conj_ofReal,
     map_mul, map_add, map_sub, ↓reduceIte, Fin.zero_eta, Fin.mk_one, zero_ne_one, one_ne_zero]
-  change _ = _
   have hgoal :
       ((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ)) * (starRingEnd ℂ) (A 0 0) *
         (((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ)) * B 0 0 -
@@ -293,12 +284,11 @@ theorem gsBasis_derives_singleSiteM {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
     linear_combination (1 - (m : ℂ)) * hp2C - (1 + (m : ℂ)) * hr2C + (m : ℂ) * h2prC
   · -- (3, 3)
     field_simp [hσ_ne]
-    linear_combination ((1 - (m : ℂ)) ^ 2 - (prodSigma m : ℂ) ^ 2) * hp2C +
+    linear_combination
+      ((1 - (m : ℂ)) ^ 2 - (prodSigma m : ℂ) ^ 2) * hp2C +
       ((1 + (m : ℂ)) ^ 2 - (prodSigma m : ℂ) ^ 2) * hr2C +
       ((1 - (m : ℂ) ^ 2) + (prodSigma m : ℂ) ^ 2) * h2prC -
-      (2 * (prodSigma m : ℂ) + 1 - (prodSigma m : ℂ) ^ 2) * 0
-    -- Wait: close directly via exact identity!
-    all_goals sorry
+      (1 + (prodSigma m : ℂ)) * hσ2
 
 end SingleSiteProductDerivation
 
