@@ -261,7 +261,7 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
             congr 1; exact Fin.ext (by dsimp; omega)
           rw [hγ1, heq]
           rcases hstep with hs | hs
-          · left; rw [h0] at hs; omega
+          · left; rw [h0] at hs; simp only [Nat.zero_add] at hs; omega
           · exfalso; rw [h0] at hs; omega
         · have ha1 : ¬ (k.1 ≤ N₀) := by omega
           have ha2 : k.1 ≤ 2 * n - N₀ := by omega
