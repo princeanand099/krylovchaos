@@ -316,7 +316,6 @@ theorem jacobiUnitary_norm_preserve (D : ℕ) (b : ℕ → ℝ) (t : ℝ)
         apply Finset.sum_congr rfl
         intro i _
         simp [Complex.inner, RCLike.inner_apply, Complex.mul_re]
-        ring
       rw [hre_inner, inner_smul_right]
       have hreal : (inner ℂ w (jacobiCLM D b w)).im = 0 := by
         have hsa := jacobiCLM_isSelfAdjoint D b
@@ -326,8 +325,8 @@ theorem jacobiUnitary_norm_preserve (D : ℕ) (b : ℕ → ℝ) (t : ℝ)
             _ = inner ℂ w (ContinuousLinearMap.adjoint (jacobiCLM D b) w) :=
                   (ContinuousLinearMap.adjoint_inner_right (jacobiCLM D b) w w).symm
             _ = inner ℂ w (jacobiCLM D b w) := by rw [hsa]
-        have := congrArg Complex.im hconj
-        simp [Complex.star_def] at this
+        have him := congrArg Complex.im hconj
+        rw [Complex.star_def, Complex.conj_im] at him
         linarith
       simp [Complex.mul_re, hreal]
     have hskew2 :
