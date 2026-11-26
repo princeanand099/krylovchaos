@@ -4,15 +4,15 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Prince Anand
 -/
 import ChallengeDefs
+import Mathlib.Analysis.Calculus.Deriv.Basic
 import Mathlib.Analysis.InnerProductSpace.Basic
 
 /-!
 # Locked Headline Theorem Statements for `KrylovChaos` (`comparator` Challenge)
 
-Contains the 25 locked headline theorem signatures corresponding to
+Contains the 23 locked headline theorem signatures corresponding to
 *Finite-Temperature Bounds on Operator Growth and Quantum Chaos* (Prince Anand, 2026),
-including the concrete `N`-qubit operator algebra (`eq_2_8_hs_commutator_size_identity`,
-`filtration_comm_step`), genuine `theorem_1_2c_otoc_dominance` (from `V² ⪯ vNormSq • 1`),
+including genuine `theorem_1_2c_otoc_dominance` (from `V² ⪯ vNormSq • 1`)
 and the 4 ground-up literature theorems (Carleman, Kotecký–Preiss, Vitali/Montel, Araki 1D).
 -/
 
