@@ -22,7 +22,7 @@ proving from ground up on `QubitOp N`:
    (`bimodal_jA_size`).
 3. Exact Hilbert–Schmidt size of `ρ_N^{1/2}`: `(N + 1) / 4 - (√(2^{N+1}))⁻¹`
    (`bimodal_rhoHalf_size`).
-4. **Exact Eq. (9.2)** (`prop_9_1_bimodal_exact_size`):
+4. **Exact Eq. (9.2)** (`prop_9_1_bimodal_operator_exact_size`):
    `⟨J_ρ(A_N), 𝒮 J_ρ(A_N)⟩_HS - ⟨ρ_N^{1/2}, 𝒮 ρ_N^{1/2}⟩_HS = (N - 1) / 4 + (√(2^{N+1}))⁻¹`
    for every `N ≥ 2`.
 -/
@@ -422,7 +422,7 @@ theorem bimodal_rhoHalf_size {N : ℕ} (hN : 2 ≤ N) :
 For every `N ≥ 2`, the thermal size of `A_N = √2 |1⟩⟨1|_0` in the non-clustering bimodal
 state `ρ_N` (Eq. 9.1) satisfies
 `𝒮_{ρ_N}(A_N) = (N - 1) / 4 + (√(2^{N+1}))⁻¹ = (N - 1) / 4 + 2^{-(N + 1) / 2}`. -/
-theorem prop_9_1_bimodal_exact_size {N : ℕ} (hN : 2 ≤ N) :
+theorem prop_9_1_bimodal_operator_exact_size {N : ℕ} (hN : 2 ≤ N) :
     (hsInner (Matrix.diagonal (fun s ↦ (bimodalJADiag hN s : ℂ)))
       (totalSizeOp (Matrix.diagonal (fun s ↦ (bimodalJADiag hN s : ℂ))))).re -
     (hsInner (Matrix.diagonal (fun s ↦ (bimodalRhoHalfDiag hN s : ℂ)))
