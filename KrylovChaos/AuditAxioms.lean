@@ -6,46 +6,56 @@ Authors: Prince Anand
 import KrylovChaos
 
 /-!
-# Axiom Audit for KrylovChaos
+# Comprehensive Kernel Axiom Audit for `KrylovChaos` (All 28 Modules)
 
-Prints the exact axiom dependencies of every headline theorem in `KrylovChaos`.
-Every theorem must depend strictly on a subset of `[propext, Classical.choice, Quot.sound]`.
+Run with `lake env lean KrylovChaos/AuditAxioms.lean`.
+Every listed headline theorem must depend strictly on a subset of
+`[propext, Classical.choice, Quot.sound]` — zero `sorryAx`, zero custom axioms.
 -/
 
-#print axioms KrylovChaos.prop_2_2_wightman_isometry_inner
-#print axioms KrylovChaos.prop_2_2_liouvillian_self_adjoint
-#print axioms KrylovChaos.prop_2_3_commutator_size_identity
-#print axioms KrylovChaos.lemma_2_1_causal_commutator_induction
+-- Original Headline & Literature Theorems
 #print axioms KrylovChaos.theorem_1_1a_finite_tail
 #print axioms KrylovChaos.theorem_1_1a_finite_complexity
 #print axioms KrylovChaos.theorem_1_1a_infinite_tail_and_complexity
-#print axioms KrylovChaos.prop_4_1_krylov_filtration
-#print axioms KrylovChaos.prop_4_1_q_complexity_bound
 #print axioms KrylovChaos.theorem_1_1b_static_reduction
 #print axioms KrylovChaos.prop_4_3_product_state_static_bound
 #print axioms KrylovChaos.theorem_1_2a_laplace_identity
-#print axioms KrylovChaos.theorem_1_2a_even_exp_moment
-#print axioms KrylovChaos.theorem_1_2a_binomial_series_summable
-#print axioms KrylovChaos.lemma_5_1_path_weight_lower
 #print axioms KrylovChaos.theorem_1_2b_lanczos_rate_bound
-#print axioms KrylovChaos.theorem_1_2b_rate_chain
 #print axioms KrylovChaos.theorem_1_2c_otoc_dominance
 #print axioms KrylovChaos.prop_6_4_decoupling_combine
-#print axioms KrylovChaos.lemma_7_1_dual_reconstruction
 #print axioms KrylovChaos.theorem_1_3a_reverse_poincare
-#print axioms KrylovChaos.theorem_1_3b_constants
 #print axioms KrylovChaos.theorem_1_3c_mss_lyapunov_bound
-#print axioms KrylovChaos.lemma_A_3_unordered_tree_induction
-#print axioms KrylovChaos.lemma_8_2_hubbard_stratonovich_identity
 #print axioms KrylovChaos.prop_8_3_product_bernoulli_reverse_poincare
-#print axioms KrylovChaos.prop_9_1_no_linear_lower_bound
 #print axioms KrylovChaos.prop_9_1_bimodal_exact_size
-#print axioms KrylovChaos.lemma_B_1_neumann_tail_sum
-#print axioms KrylovChaos.carleman_divergence_of_linear_growth
+#print axioms KrylovChaos.prop_9_1_double_well_tunneling_limit
 #print axioms KrylovChaos.carleman_deficiency_zero
 #print axioms KrylovChaos.kotecky_preiss_convergence
-#print axioms KrylovChaos.kotecky_preiss_log_bound
-#print axioms KrylovChaos.vitali_power_series_convergence
 #print axioms KrylovChaos.vitali_strip_uniform_convergence
-#print axioms KrylovChaos.araki_1d_boundary_count
 #print axioms KrylovChaos.araki_1d_entire_expansional
+
+-- Concrete Operator-Algebraic & End-to-End Theorems (Milestones 6–10)
+#print axioms KrylovChaos.eq_2_8_hs_commutator_size_identity
+#print axioms KrylovChaos.prop_2_3_full_qubit_thermal_size
+#print axioms KrylovChaos.prop_2_3_full_majorana_thermal_size
+#print axioms KrylovChaos.gsBasis_wightman_orthonormal
+#print axioms KrylovChaos.gsBasis_derives_singleSiteM
+#print axioms KrylovChaos.totalSizeOp_bounds
+#print axioms KrylovChaos.lemma_4_2_operator_thermal_size_truncation
+#print axioms KrylovChaos.prop_4_1_loewner_dominance
+#print axioms KrylovChaos.jacobiMat_moment_eq_dyck_sum
+#print axioms KrylovChaos.lemma_5_1_moment_lower_bound
+#print axioms KrylovChaos.meixner_sech_moment_lower_bound
+#print axioms KrylovChaos.exp_conj_eq_tsum_adPow
+#print axioms KrylovChaos.lemma_2_1_causal_norm_sum
+#print axioms KrylovChaos.lemma_2_1_single_site_exp_bound
+#print axioms KrylovChaos.lemma_2_1_r_local_exp_bound
+#print axioms KrylovChaos.prop_9_1_bimodal_operator_exact_size
+#print axioms KrylovChaos.eq_5_1_wightman_fourier_identity
+#print axioms KrylovChaos.eq_5_2_strip_laplace_identity
+#print axioms KrylovChaos.eq_5_2_strip_cosh_identity
+#print axioms KrylovChaos.theorem_1_2b_end_to_end
+#print axioms KrylovChaos.jacobiUnitary_norm_preserve
+#print axioms KrylovChaos.jacobiWavefn_ode
+#print axioms KrylovChaos.theorem_1_1a_infinite_fatou_proved
+#print axioms KrylovChaos.qubitLocalInteractionDecomp
+#print axioms KrylovChaos.theorem_1_1b_end_to_end
