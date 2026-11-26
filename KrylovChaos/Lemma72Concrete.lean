@@ -268,6 +268,19 @@ lemma sum_connectedPolymers_le_unorderedTreeSum {N : ℕ}
           · intro Y hY
             linarith [ih Y (Finset.mem_filter.mp hY).1]
 
+private lemma hermFunc_exp_real_isHermitian {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (c : ℝ) :
+    (hermFunc hH (fun e ↦ Complex.exp (-(c : ℂ) * (e : ℂ)))).IsHermitian := by
+  have hfn : (fun e : ℝ ↦ Complex.exp (-(c : ℂ) * (e : ℂ))) =
+      fun e ↦ ((Real.exp (-c * e) : ℝ) : ℂ) := by
+    funext e; rw [Complex.ofReal_exp]; congr 1; push_cast; ring
+  rw [hfn]
+  unfold hermFunc Matrix.IsHermitian
+  simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
+    Matrix.diagonal_conjTranspose, Matrix.mul_assoc]
+  congr 2; ext i j
+  simp only [Matrix.diagonal_apply, Pi.star_apply, Complex.star_def, Complex.conj_ofReal]
+  split_ifs <;> rfl
+
 private lemma depolDualWeight_exp_re_pos_of_nonzero {N : ℕ}
     {H : QubitOp N} (hH : H.IsHermitian) (s : Fin N → Fin 6) (β : ℝ)
     (hnonzero : ∀ t ∈ Set.Icc (0 : ℝ) 1,
@@ -305,12 +318,8 @@ private lemma depolDualWeight_exp_re_pos_of_nonzero {N : ℕ}
     have him : (depolDualWeight s
         (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ))))).im = 0 := by
       apply depolDualWeight_im_eq_zero_of_herm s
-      apply hermFunc_herm_of_real
-      intro e
-      have hreal : Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)) =
-          ((Real.exp (-(t * (β / 2)) * e) : ℝ) : ℂ) := by
-        rw [Complex.ofReal_exp]; congr 1; push_cast; ring
-      rw [hreal, Complex.ofReal_im]
+      convert hermFunc_exp_real_isHermitian hH (t * (β / 2)) using 2
+      funext e; push_cast; ring
     have hz : depolDualWeight s
         (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)))) = 0 :=
       Complex.ext hft0 him
@@ -555,8 +564,6 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
       · rintro ⟨hsub, hc⟩; refine ⟨hsub, fun a ha b hb hab ↦ ?_⟩
         rw [hinc_eq a (hsub ha) b (hsub hb)]; exact hc a ha b hb hab
     rw [hZ_eq] at hZ_ne
-    have hcast : (-(t * (β / 2) : ℂ) * ·) = (fun e : ℝ ↦ -((t * (β / 2) : ℝ) : ℂ) * (e : ℂ)) := by
-      funext e; push_cast; ring
     have heq := depolDualWeight_exp_eq_polymerZ E hne h hsupp hH s (t * (β / 2))
     rw [← heq] at hZ_ne
     convert hZ_ne using 2
@@ -576,8 +583,9 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
       ((Zhalf⁻¹ : ℝ) : ℂ) • hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ))) := by
     unfold gibbsRhoHalf
     congr 1
-    congr 1; funext e
-    rw [Complex.ofReal_exp]; congr 1; push_cast; ring
+    · simp only [Zhalf, Complex.ofReal_inv]
+    · congr 1; funext e
+      rw [Complex.ofReal_exp]; congr 1; push_cast; ring
   rw [hM_eq]
   conv_lhs => rw [depol_global_reconstruct (hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ))))]
   rw [smul_smul, Finset.smul_sum]
@@ -587,11 +595,8 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
   have him : (depolDualWeight s
       (hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ))))).im = 0 := by
     apply depolDualWeight_im_eq_zero_of_herm s
-    apply hermFunc_herm_of_real
-    intro e
-    have hreal : Complex.exp (-(β / 2 : ℂ) * (e : ℂ)) = ((Real.exp (-(β / 2) * e) : ℝ) : ℂ) := by
-      rw [Complex.ofReal_exp]; congr 1; push_cast; ring
-    rw [hreal, Complex.ofReal_im]
+    convert hermFunc_exp_real_isHermitian hH (β / 2) using 2
+    funext e; push_cast; ring
   have hre : depolDualWeight s (hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ)))) =
       ((depolDualWeight s (hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ))))).re : ℂ) :=
     Complex.ext rfl (by simp [him])
