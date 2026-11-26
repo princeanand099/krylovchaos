@@ -262,6 +262,7 @@ from:
 - Krylov tail bound `q ≤ exp(-θ M + A)` (from Theorem 1.1(a) / `JacobiSemigroup`), and
 - Static hypothesis `(H1)` `mssThermalSize G A_M ≤ (1 - q) * (C₁ N^δ s_M^η + C₂)`. -/
 theorem theorem_1_1b_end_to_end {N : ℕ} (G : GibbsData N)
+    (hQsq : G.ρQuarter * G.ρQuarter = G.ρHalf)
     (O A_M R_M : QubitOp N) {q θ M A C₁ C₂ δ η s_M : ℝ}
     (hdecomp : O = A_M + R_M)
     (hnormA : (wightmanInner G.ρHalf A_M A_M).re = 1 - q)
@@ -274,7 +275,7 @@ theorem theorem_1_1b_end_to_end {N : ℕ} (G : GibbsData N)
     (C₁ * (N : ℝ) ^ δ * s_M ^ η + C₂) +
       2 * (N : ℝ) * Real.exp ((-(θ * M) + A) / 2) +
       (N : ℝ) * Real.exp (-(θ * M) + A) := by
-  have hlem42 := lemma_4_2_operator_thermal_size_truncation G G.ρQuarter_sq
+  have hlem42 := lemma_4_2_operator_thermal_size_truncation G hQsq O A_M R_M
     hdecomp hnormA hnormR hq_nn hq_le hΛ_nn hH1_static
   have hsqrt_le : Real.sqrt q ≤ Real.exp ((-(θ * M) + A) / 2) := by
     have h1 := Real.sqrt_le_sqrt htail
