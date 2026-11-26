@@ -24,7 +24,7 @@ namespace KrylovChaos
 
 section FiltrationDominance
 
-variable {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℂ E]
+variable {E : Type*} [AddCommGroup E] [Module ℂ E]
 
 /-- **Proposition 4.1(1)**: Under an ascending filtration `V : ℕ → Submodule ℂ E`
 with locality shift `L(V_s) ⊆ V_{min(N, s + r - 1)}`, any Lanczos sequence starting
