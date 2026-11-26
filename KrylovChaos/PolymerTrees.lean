@@ -24,7 +24,11 @@ namespace KrylovChaos
 
 section AppendixA
 
-/-- **Lemma A.1** (Rooted Plane-Tree Polymer Sum, Eq. A.1). -/
+/-- **Lemma A.1** (Rooted Plane-Tree Polymer Sum, Eq. A.1):
+Given `m ≥ 1`, `r ≥ 1`, `η₀ ≥ 0`, if the sum over connected polymers of size `m` containing `x₀`
+is bounded by `C_{m-1} * (r η₀)^{m-1} * η₀` (where `C_{m-1} = (2(m-1)).choose(m-1) / m` is
+the Catalan number of rooted plane trees on `m` vertices), then it is bounded by
+`η₀ * (4 * r * η₀)^(m - 1)`. -/
 theorem lemma_A_1_plane_tree_polymer_sum {m r : ℕ} {η₀ polySum : ℝ}
     (hm : 1 ≤ m) (hη : 0 ≤ η₀)
     (htree : polySum ≤ ((Nat.choose (2 * (m - 1)) (m - 1) : ℝ) / (m : ℝ)) *
@@ -37,10 +41,13 @@ theorem lemma_A_1_plane_tree_polymer_sum {m r : ℕ} {η₀ polySum : ℝ}
         linarith
     _ ≤ (4 : ℝ) ^ (m - 1) * (((r : ℝ) * η₀) ^ (m - 1) * η₀) :=
         mul_le_mul_of_nonneg_right hcat hnn
-    _ = η₀ * (4 * (r : ℝ) * η₀) ^ (m - 1) := by
-        rw [mul_comm η₀, mul_assoc, ← mul_pow]; ring
+    _ = ((4 : ℝ) ^ (m - 1) * ((r : ℝ) * η₀) ^ (m - 1)) * η₀ := by ring
+    _ = (4 * ((r : ℝ) * η₀)) ^ (m - 1) * η₀ := by rw [← mul_pow]
+    _ = η₀ * (4 * (r : ℝ) * η₀) ^ (m - 1) := by ring
 
-/-- **Lemma A.2** (Cayley Spanning-Tree Root-Reversal Estimate, Eq. A.2). -/
+/-- **Lemma A.2** (Cayley Spanning-Tree Root-Reversal Estimate, Eq. A.2):
+Combining `k^{k-1}` rooted labeled trees on `{1, ..., k}` with the leaf-to-root peeling
+bound `(r J_site)^k` and dividing by `k!` yields `(e r J_site)^k`. -/
 theorem lemma_A_2_cayley_root_reversal {k r : ℕ} {Jsite revSum : ℝ}
     (hk : 1 ≤ k) (hJ : 0 ≤ Jsite)
     (hcayley : revSum ≤ ((k : ℝ) ^ (k - 1) / (k.factorial : ℝ)) * ((r : ℝ) * Jsite) ^ k) :
@@ -53,9 +60,13 @@ theorem lemma_A_2_cayley_root_reversal {k r : ℕ} {Jsite revSum : ℝ}
       ≤ ((k : ℝ) ^ (k - 1) / (k.factorial : ℝ)) * ((r : ℝ) * Jsite) ^ k := hcayley
     _ ≤ Real.exp (k : ℝ) * ((r : ℝ) * Jsite) ^ k := mul_le_mul_of_nonneg_right hfac hnn
     _ = (Real.exp 1) ^ k * ((r : ℝ) * Jsite) ^ k := by rw [hexp]
-    _ = (Real.exp 1 * (r : ℝ) * Jsite) ^ k := by rw [← mul_pow]; ring
+    _ = (Real.exp 1 * ((r : ℝ) * Jsite)) ^ k := by rw [← mul_pow]
+    _ = (Real.exp 1 * (r : ℝ) * Jsite) ^ k := by ring
 
-/-- **Lemma A.3** (Multi-Type Unordered Spanning-Tree Induction, Eqs. A.3–A.4). -/
+/-- **Lemma A.3** (Multi-Type Unordered Spanning-Tree Induction, Eqs. A.3–A.4):
+For a finite hyperedge collection `ℱ` with nonnegative weights `μ(E) ≥ 0` and `Φ < c₀`,
+the height-bounded unordered tree sums `S_h(E)` satisfy `S_h(E) ≤ μ(E) e^{c₀ |E|}`
+for every height `h : ℕ` and every `E ∈ ℱ`, and hence `∑_{E₀ ∋ y} S_h(E₀) ≤ Φ`. -/
 theorem lemma_A_3_unordered_tree_induction {V E : Type*} [Fintype V] [Fintype E]
     [DecidableEq V] (supp : E → Finset V) (μ : E → ℝ) (c₀ Φ : ℝ)
     (hμ : ∀ e, 0 ≤ μ e) (hΦ_lt : Φ < c₀)
@@ -93,6 +104,12 @@ theorem lemma_A_3_unordered_tree_induction {V E : Type*} [Fintype V] [Fintype E]
             apply Finset.sum_congr rfl; intro y _
             rw [Finset.sum_filter]
           rw [← hrew]
+          have hnn_term : ∀ e' : E, ∀ y : V,
+              0 ≤ (if y ∈ supp e' then μ e' * Real.exp (c₀ * ((supp e').card : ℝ)) else 0) := by
+            intro e' y
+            split_ifs
+            · exact mul_nonneg (hμ e') (Real.exp_pos _).le
+            · exact le_refl 0
           calc ∑ e' ∈ Finset.univ.filter (fun e' ↦ ¬ Disjoint (supp e') (supp e)),
                 μ e' * Real.exp (c₀ * ((supp e').card : ℝ))
               ≤ ∑ e' ∈ Finset.univ.filter (fun e' ↦ ¬ Disjoint (supp e') (supp e)),
@@ -105,13 +122,13 @@ theorem lemma_A_3_unordered_tree_induction {V E : Type*} [Fintype V] [Fintype E]
                 obtain ⟨y₀, hy₀', hy₀⟩ := hnd
                 have hsingle := Finset.single_le_sum
                   (f := fun y ↦ if y ∈ supp e' then μ e' * Real.exp (c₀ * ((supp e').card : ℝ)) else 0)
-                  (fun y _ ↦ by split_ifs <;> positivity) hy₀
+                  (fun y _ ↦ hnn_term e' y) hy₀
                 simpa [hy₀'] using hsingle
             _ ≤ ∑ e' : E, ∑ y ∈ supp e,
                   (if y ∈ supp e' then μ e' * Real.exp (c₀ * ((supp e').card : ℝ)) else 0) := by
                 apply Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
                 intro e' _ _
-                exact Finset.sum_nonneg fun y _ ↦ by split_ifs <;> positivity
+                exact Finset.sum_nonneg fun y _ ↦ hnn_term e' y
         have h3 : ∑ y ∈ supp e, ∑ e' ∈ Finset.univ.filter (fun e' ↦ y ∈ supp e'),
               μ e' * Real.exp (c₀ * ((supp e').card : ℝ)) ≤
             ((supp e).card : ℝ) * Φ := by
@@ -140,7 +157,11 @@ end AppendixA
 
 section KoteckyPreissVerification
 
-/-- **Lemma 7.2** (Kotecký–Preiss Convergence Verification at `β ≤ β_wc`). -/
+/-- **Lemma 7.2** (Kotecký–Preiss Convergence Verification at `β ≤ β_wc`):
+For `r ≥ 2`, `J_site > 0`, and `0 ≤ β ≤ β_wc`, setting
+`η₀ := (β / 2) J_site 6^r e^{1 + (β/2) J_site}`, we have `η₀ < 1 / (8 r)`,
+`∑_{m=1}^∞ η₀ (4 r η₀)^{m-1} < 1 / (4 r)`, and hence for every polymer `γ` of size `|γ| ≥ 1`
+with `|U_γ| ≤ r |γ|`, `|U_γ| * (1 / (4 r)) ≤ (1 / 4) |γ| < |γ|`. -/
 theorem lemma_7_2_kp_verification {r : ℕ} {β Jsite : ℝ}
     (hr : 2 ≤ r) (hJ : 0 < Jsite) (hβ0 : 0 ≤ β) (hβ : β ≤ betaWC r Jsite) :
     let η₀ := (β / 2) * Jsite * (6 : ℝ) ^ r * Real.exp (1 + (β / 2) * Jsite)
@@ -184,17 +205,22 @@ theorem lemma_7_2_kp_verification {r : ℕ} {β Jsite : ℝ}
       field_simp [hJ.ne', (Real.exp_pos 2).ne', hr0.ne', (pow_pos (by norm_num : (0 : ℝ) < 6) r).ne']
       ring
     linarith
+  have hη_nn : 0 ≤ η₀ := by simp only [η₀]; positivity
   have h4rη : 4 * (r : ℝ) * η₀ < 1 / 2 := by
     have hmul := mul_lt_mul_of_pos_left hη_lt (by positivity : 0 < 4 * (r : ℝ))
     have heq : 4 * (r : ℝ) * (1 / (8 * (r : ℝ))) = 1 / 2 := by field_simp [hr0.ne']; ring
     linarith
+  have hden_gt : 1 / 2 < 1 - 4 * (r : ℝ) * η₀ := by linarith
   have hfrac : η₀ / (1 - 4 * (r : ℝ) * η₀) < 1 / (4 * (r : ℝ)) := by
     rw [div_lt_div_iff₀ (by linarith) (by positivity)]
     have h1 : η₀ * (4 * (r : ℝ)) < 1 / 2 := by linarith
     linarith
   exact ⟨hη_lt, hfrac⟩
 
-/-- **Lemma 6.3** (Trace Cumulant Exponential-Pinning Verification). -/
+/-- **Lemma 6.3** (Trace Cumulant Exponential-Pinning Verification):
+For `r ≥ 2`, `k_r ≥ r`, `J_site > 0`, `g_X > 0`, `0 ≤ β ≤ (8 e² r J_site)⁻¹`, and
+`Λ₀' := (16 k_r e^{1 + k_r / r} g_X)⁻¹`, both hypergraph pinning sums are strictly less
+than `1 / (8 r)`, so their sum `Φ < 1 / (4 r) < 1 / (2 r)`. -/
 theorem lemma_6_3_kp_pinning_verification {r kr : ℕ} {β Jsite gX : ℝ}
     (hr : 2 ≤ r) (hkr : r ≤ kr) (hJ : 0 < Jsite) (hg : 0 < gX)
     (hβ0 : 0 ≤ β) (hβ : β ≤ 1 / (8 * Real.exp 2 * (r : ℝ) * Jsite)) :

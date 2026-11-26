@@ -24,12 +24,12 @@ namespace KrylovChaos
 
 section FiltrationDominance
 
-variable {E : Type*} [AddCommGroup E] [Module ℂ E]
+variable {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℂ E]
 
 /-- **Proposition 4.1(1)**: Under an ascending filtration `V : ℕ → Submodule ℂ E`
 with locality shift `L(V_s) ⊆ V_{min(N, s + r - 1)}`, any Lanczos sequence starting
 in `V_{s₀}` satisfies `O_n ∈ V_{min(N, s₀ + (r - 1) * n)}` for all `n`. -/
-theorem prop_4_1_krylov_filtration {N r s₀ : ℕ}
+theorem prop_4_1_krylov_filtration {N r s₀ : ℕ} (hr : 1 ≤ r)
     (V : ℕ → Submodule ℂ E) (hV_mono : Monotone V)
     (L : E →ₗ[ℂ] E) (hL : ∀ s x, x ∈ V s → L x ∈ V (min N (s + (r - 1))))
     (O : ℕ → E) (hO0 : O 0 ∈ V (min N s₀))
@@ -63,7 +63,11 @@ theorem prop_4_1_krylov_filtration {N r s₀ : ℕ}
           exact Submodule.smul_mem _ b (hV_mono hidx2 hprev)
       exact Submodule.add_mem _ hterm1 hterm2
 
-/-- **Proposition 4.1(2)** (Finite-Temperature `q`-Complexity Bound, Eq. 4.2). -/
+/-- **Proposition 4.1(2)** (Finite-Temperature `q`-Complexity Bound, Eq. 4.2):
+Given tail weights `p : ℕ → ℝ` (`p n = |φ_n(t)|² ≥ 0`) and filtration tail norms
+`q : ℕ → ℝ` (`q s = ‖(1 - Π_s) O(t)‖²`) obeying `q s ≤ 1` and
+`q s ≤ ∑_{n ∈ [k+1, Kmax)} p n` whenever `s₀ + (r - 1) * k ≤ s`, we have
+`∑_{s=0}^{N-1} q s ≤ (r - 1) * (∑_{n=0}^{Kmax-1} n * p n) + s₀`. -/
 theorem prop_4_1_q_complexity_bound {N Kmax r s₀ : ℕ} (hr : 1 ≤ r)
     (p q : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n)
     (hq_le_one : ∀ s, q s ≤ 1)
@@ -92,22 +96,20 @@ theorem prop_4_1_q_complexity_bound {N Kmax r s₀ : ℕ} (hr : 1 ≤ r)
             · exact Finset.sum_nonpos fun s hs ↦ hzero s (Nat.le_of_not_lt (Finset.mem_filter.mp hs).2)
         _ = ∑ _ ∈ Finset.range (min N s₀), (1 : ℝ) := by
             rw [add_zero]
-            congr 1
-            ext s
-            simp [Nat.lt_min]
+            refine Finset.sum_congr ?_ (fun _ _ ↦ rfl)
+            ext s; simp [Nat.lt_min]
     calc ∑ s ∈ Finset.range N, q s
         ≤ ∑ _ ∈ Finset.range (min N s₀), (1 : ℝ) := hsplit
       _ = ((min N s₀ : ℕ) : ℝ) := by simp
       _ ≤ (s₀ : ℝ) := Nat.cast_le.mpr (min_le_right N s₀)
   · have hr1_pos : 0 < r - 1 := by omega
-    have hfilt_eq : (Finset.range N).filter (fun s ↦ ¬ s < s₀) =
-        (Finset.range N).filter (fun s ↦ s₀ ≤ s) := by
-      ext s; simp [Nat.not_lt]
     have hsplit : ∑ s ∈ Finset.range N, q s =
         ∑ s ∈ (Finset.range N).filter (fun s ↦ s < s₀), q s +
         ∑ s ∈ (Finset.range N).filter (fun s ↦ s₀ ≤ s), q s := by
-      rw [← hfilt_eq]
-      exact (Finset.sum_filter_add_sum_filter_not (Finset.range N) (fun s ↦ s < s₀) q).symm
+      rw [← Finset.sum_filter_add_sum_filter_not (Finset.range N) (fun s ↦ s < s₀) q]
+      congr 1
+      refine Finset.sum_congr ?_ (fun _ _ ↦ rfl)
+      ext s; simp [Nat.not_lt]
     rw [hsplit]
     have hpart1 : ∑ s ∈ (Finset.range N).filter (fun s ↦ s < s₀), q s ≤ (s₀ : ℝ) := by
       calc ∑ s ∈ (Finset.range N).filter (fun s ↦ s < s₀), q s
@@ -130,22 +132,23 @@ theorem prop_4_1_q_complexity_bound {N Kmax r s₀ : ℕ} (hr : 1 ≤ r)
           ≤ ∑ s ∈ (Finset.range N).filter (fun s ↦ s₀ ≤ s),
               ∑ n ∈ (Finset.range Kmax).filter (fun n ↦ (s - s₀) / (r - 1) < n), p n :=
             Finset.sum_le_sum hstep
+        _ = ∑ s ∈ Finset.range N, ∑ n ∈ Finset.range Kmax,
+              if s₀ ≤ s ∧ (s - s₀) / (r - 1) < n then p n else 0 := by
+            rw [Finset.sum_filter]
+            apply Finset.sum_congr rfl; intro s _
+            split_ifs with hs0
+            · rw [Finset.sum_filter]
+              apply Finset.sum_congr rfl; intro n _
+              simp [hs0]
+            · simp [hs0]
         _ = ∑ n ∈ Finset.range Kmax,
               (((Finset.range N).filter (fun s ↦ s₀ ≤ s ∧ (s - s₀) / (r - 1) < n)).card : ℝ) *
                 p n := by
-            simp_rw [Finset.sum_filter]
-            have hpull : ∀ a : ℕ,
-                (if s₀ ≤ a then ∑ n ∈ Finset.range Kmax, if (a - s₀) / (r - 1) < n then p n else 0 else 0) =
-                ∑ n ∈ Finset.range Kmax, if s₀ ≤ a ∧ (a - s₀) / (r - 1) < n then p n else 0 := by
-              intro a; split_ifs with ha <;> simp [ha]
-            simp_rw [hpull]
             rw [Finset.sum_comm]
-            apply Finset.sum_congr rfl
-            intro n _
+            apply Finset.sum_congr rfl; intro n _
             rw [← Finset.sum_filter, Finset.sum_const, nsmul_eq_mul]
         _ ≤ ∑ n ∈ Finset.range Kmax, (((r - 1) * n : ℕ) : ℝ) * p n := by
-            apply Finset.sum_le_sum
-            intro n _
+            apply Finset.sum_le_sum; intro n _
             apply mul_le_mul_of_nonneg_right _ (hp n)
             have hsub : (Finset.range N).filter (fun s ↦ s₀ ≤ s ∧ (s - s₀) / (r - 1) < n) ⊆
                 Finset.Ico s₀ (s₀ + (r - 1) * n) := by
@@ -157,23 +160,23 @@ theorem prop_4_1_q_complexity_bound {N Kmax r s₀ : ℕ} (hr : 1 ≤ r)
               rw [mul_comm] at hlt'
               omega
             have hcard := Finset.card_le_card hsub
-            rw [Nat.card_Ico] at hcard
-            have hcard' : s₀ + (r - 1) * n - s₀ = (r - 1) * n := Nat.add_sub_cancel_left _ _
-            rw [hcard'] at hcard
+            rw [Nat.card_Ico, Nat.add_sub_cancel_left] at hcard
             exact_mod_cast hcard
         _ = ((r - 1 : ℕ) : ℝ) * ∑ n ∈ Finset.range Kmax, (n : ℝ) * p n := by
             rw [Finset.mul_sum]
-            apply Finset.sum_congr rfl
-            intro n _
-            push_cast
-            ring
+            apply Finset.sum_congr rfl; intro n _
+            push_cast; ring
     linarith
 
 end FiltrationDominance
 
 section ThermalTruncation
 
-/-- **Lemma 4.2** (Thermal-Size Truncation Inequality, Eq. 4.3). -/
+/-- **Lemma 4.2** (Thermal-Size Truncation Inequality, Eq. 4.3):
+In any inner-product operator space with `0 ≤ S ≤ N · 1`, decomposing
+`J(O) = J(A_M) + J(R_M)` with `‖J(A_M)‖² = 1 - ε²`, `‖J(R_M)‖ = ε`, and
+`qA - bg ≤ (1 - ε²) Λ - ε² bg` (with `bg ≥ 0`, `Λ ≥ 0`) yields
+`(qA + 2 reCross + qR) - bg ≤ Λ + 2 N ε + N ε²`. -/
 theorem lemma_4_2_thermal_size_truncation
     {N : ℕ} {ε Λ bg qA qR reCross : ℝ}
     (hε0 : 0 ≤ ε) (hε1 : ε ≤ 1) (hbg : 0 ≤ bg) (hΛ : 0 ≤ Λ)
@@ -186,9 +189,8 @@ theorem lemma_4_2_thermal_size_truncation
     nlinarith
   have hre : reCross ≤ (N : ℝ) * ε := by
     have h1 : reCross ≤ |reCross| := le_abs_self reCross
-    have hN : (0 : ℝ) ≤ (N : ℝ) := Nat.cast_nonneg N
     have h2 : (N : ℝ) * Real.sqrt (1 - ε ^ 2) * ε ≤ (N : ℝ) * 1 * ε :=
-      mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hsqrt hN) hε0
+      mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hsqrt (Nat.cast_nonneg N)) hε0
     linarith
   have hlead' : qA - bg ≤ Λ := by
     have h1 : (1 - ε ^ 2) * Λ ≤ Λ := by nlinarith
@@ -196,10 +198,22 @@ theorem lemma_4_2_thermal_size_truncation
     linarith
   linarith
 
-/-- **Theorem 1.1(b)** (Static Reduction of `λ_L ≤ 2 α`, Eq. 1.14). -/
+private lemma tanh_one_pos : 0 < Real.tanh 1 := by
+  rw [Real.tanh_eq_sinh_div_cosh]
+  have hsinh : 0 < Real.sinh 1 := by
+    rw [Real.sinh_eq]
+    have h1 : Real.exp (-1 : ℝ) < Real.exp 1 := Real.exp_lt_exp.mpr (by norm_num)
+    linarith
+  exact div_pos hsinh (Real.cosh_pos 1)
+
+/-- **Theorem 1.1(b)** (Static Reduction of `λ_L ≤ 2 α`, Eq. 1.14):
+If for arbitrarily small `ε ∈ (0, 1)` there exists `c > 0` such that along
+`t_N = ((1 - ε)/lamL) ln N`, `c N^{1 - ε}` is bounded above by the static-reduction
+RHS `C₁ s_N + C₂ N^δ s_N^{1-δ} + 2 C₀ N⁻¹ + C₀² N⁻³` with `δ ∈ [0, 1)`, then
+`lamL ≤ 2 α`. -/
 theorem theorem_1_1b_static_reduction
     {α lamL δ C₀ C₁ C₂ : ℝ} {r s₀ : ℕ}
-    (hr : 1 ≤ r) (hα : 0 < α) (hλ : 0 < lamL) (hδ0 : 0 ≤ δ) (hδ1 : δ < 1)
+    (hr : 1 ≤ r) (hα : 0 < α) (hlam : 0 < lamL) (hδ0 : 0 ≤ δ) (hδ1 : δ < 1)
     (hC₀ : 0 ≤ C₀) (hC₁ : 0 ≤ C₁) (hC₂ : 0 ≤ C₂)
     (hH1 : ∀ ε₀ > 0, ∃ ε ∈ Set.Ioo (0 : ℝ) ε₀, ∃ c > 0, ∃ N₁ : ℕ,
       ∀ N ≥ N₁,
@@ -211,10 +225,10 @@ theorem theorem_1_1b_static_reduction
           2 * C₀ * (N : ℝ)⁻¹ + C₀ ^ 2 * (N : ℝ) ^ (-3 : ℝ)) :
     lamL ≤ 2 * α := by
   by_contra hlt
-  push_neg at hlt
+  have hlt' : 2 * α < lamL := lt_of_not_ge hlt
   set ρ := 2 * α / lamL
-  have hρ_pos : 0 < ρ := div_pos (by linarith) hλ
-  have hρ_lt : ρ < 1 := (div_lt_one hλ).mpr hlt
+  have hρ_pos : 0 < ρ := div_pos (by linarith) hlam
+  have hρ_lt : ρ < 1 := (div_lt_one hlam).mpr hlt'
   set gap := (1 - δ) * (1 - ρ)
   have hgap_pos : 0 < gap := mul_pos (by linarith) (by linarith)
   set ε₀ := min (1 / 2) (gap / 2)
@@ -233,16 +247,9 @@ theorem theorem_1_1b_static_reduction
   set diff := (1 - ε) - η
   have hdiff_pos : 0 < diff := by linarith
   have h1mε_pos : 0 < 1 - ε := by linarith
-  have hρ1mε_le_η : ρ * (1 - ε) ≤ η := by
-    simp only [η]; nlinarith
-  have htanh1_pos : 0 < Real.tanh 1 := by
-    rw [Real.tanh_eq_sinh_div_cosh]
-    have hsinh1 : 0 < Real.sinh 1 := by
-      rw [Real.sinh_eq]
-      have : Real.exp (-1) < Real.exp 1 := Real.exp_lt_exp.mpr (by norm_num)
-      linarith
-    exact div_pos hsinh1 (Real.cosh_pos 1)
+  have hρ1mε_le_η : ρ * (1 - ε) ≤ η := by simp only [η]; nlinarith
   set K := (1 / Real.tanh 1) * (max 1 ((r : ℝ) - 1)) + (s₀ : ℝ) + (max 1 ((r : ℝ) - 1))
+  have htanh1_pos : 0 < Real.tanh 1 := tanh_one_pos
   have hK_pos : 0 < K := by
     have : 0 < 1 / Real.tanh 1 := by positivity
     have : (1 : ℝ) ≤ max 1 ((r : ℝ) - 1) := le_max_left _ _
@@ -302,20 +309,20 @@ theorem theorem_1_1b_static_reduction
   have hexp_eq : Real.exp (2 * α * (((1 - ε) / lamL) * Real.log (N : ℝ))) =
       (N : ℝ) ^ (ρ * (1 - ε)) := by
     rw [Real.rpow_def_of_pos hNpos]
-    congr 1
-    simp only [ρ]
-    ring
+    congr 1; simp only [ρ]; ring
   rw [hexp_eq] at hineq
   set sN := (s₀ : ℝ) + ((r : ℝ) - 1) *
     ((1 / Real.tanh 1) * (N : ℝ) ^ (ρ * (1 - ε)) * Real.log (N : ℝ) + 1)
-  have hr1_nn : (0 : ℝ) ≤ (r : ℝ) - 1 := by
-    have : (1 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
-    linarith
+  have hr_ge1 : (1 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
   have hsN_nn : 0 ≤ sN := by
     simp only [sN]
-    have hlog_nn : 0 ≤ Real.log (N : ℝ) := by linarith
-    have hpow_nn : 0 ≤ (N : ℝ) ^ (ρ * (1 - ε)) := Real.rpow_nonneg hNpos.le _
-    positivity
+    have h1 : 0 ≤ (r : ℝ) - 1 := by linarith
+    have h2 : 0 ≤ (1 / Real.tanh 1) * (N : ℝ) ^ (ρ * (1 - ε)) * Real.log (N : ℝ) + 1 := by
+      have : 0 ≤ (N : ℝ) ^ (ρ * (1 - ε)) := Real.rpow_nonneg hNpos.le _
+      have : 0 ≤ Real.log (N : ℝ) := by linarith
+      positivity
+    have h3 : (0 : ℝ) ≤ (s₀ : ℝ) := Nat.cast_nonneg s₀
+    nlinarith
   have hpow_ge1 : (1 : ℝ) ≤ (N : ℝ) ^ (ρ * (1 - ε)) :=
     Real.one_le_rpow hNge1 (mul_nonneg hρ_pos.le h1mε_pos.le)
   have hprod_ge1 : 1 ≤ (N : ℝ) ^ (ρ * (1 - ε)) * Real.log (N : ℝ) := by nlinarith
@@ -343,50 +350,51 @@ theorem theorem_1_1b_static_reduction
           mul_le_mul_of_nonneg_left (Real.rpow_le_rpow_of_exponent_le hNge1 hexp_le) (by positivity)
   have hterm2 : C₂ * (N : ℝ) ^ δ * sN ^ (1 - δ) ≤
       C₂ * K ^ (1 - δ) * (N : ℝ) ^ (1 - ε - diff / 2) := by
-    have h1mδ_nn : 0 ≤ 1 - δ := by linarith
-    have hsN_rpow : sN ^ (1 - δ) ≤ K ^ (1 - δ) * (N : ℝ) ^ ((ρ * (1 - ε) + diff / 2) * (1 - δ)) := by
+    have h1mδ : 0 ≤ 1 - δ := by linarith
+    have hsN_pow : sN ^ (1 - δ) ≤ K ^ (1 - δ) * (N : ℝ) ^ ((ρ * (1 - ε) + diff / 2) * (1 - δ)) := by
       calc sN ^ (1 - δ)
           ≤ (K * (N : ℝ) ^ (ρ * (1 - ε) + diff / 2)) ^ (1 - δ) :=
-            Real.rpow_le_rpow hsN_nn hsN_le2 h1mδ_nn
+            Real.rpow_le_rpow hsN_nn hsN_le2 h1mδ
         _ = K ^ (1 - δ) * ((N : ℝ) ^ (ρ * (1 - ε) + diff / 2)) ^ (1 - δ) :=
             Real.mul_rpow hK_pos.le (Real.rpow_nonneg hNpos.le _)
         _ = K ^ (1 - δ) * (N : ℝ) ^ ((ρ * (1 - ε) + diff / 2) * (1 - δ)) := by
             rw [← Real.rpow_mul hNpos.le]
     have hexp_le2 : δ + (ρ * (1 - ε) + diff / 2) * (1 - δ) ≤ 1 - ε - diff / 2 := by
-      have hrew : δ + (ρ * (1 - ε) + diff / 2) * (1 - δ) = η + (diff / 2) * (1 - δ) := by
+      have h1 : δ + (ρ * (1 - ε) + diff / 2) * (1 - δ) = η + (diff / 2) * (1 - δ) := by
         simp only [η]; ring
-      have hmul : (diff / 2) * (1 - δ) ≤ diff / 2 := by nlinarith
-      simp only [diff] at *; linarith
+      have h2 : (diff / 2) * (1 - δ) ≤ diff / 2 := by nlinarith
+      simp only [diff] at h2 ⊢
+      linarith
     calc C₂ * (N : ℝ) ^ δ * sN ^ (1 - δ)
         ≤ C₂ * (N : ℝ) ^ δ * (K ^ (1 - δ) * (N : ℝ) ^ ((ρ * (1 - ε) + diff / 2) * (1 - δ))) :=
-          mul_le_mul_of_nonneg_left hsN_rpow (by positivity)
+          mul_le_mul_of_nonneg_left hsN_pow (mul_nonneg hC₂ (Real.rpow_nonneg hNpos.le _))
       _ = C₂ * K ^ (1 - δ) * ((N : ℝ) ^ δ * (N : ℝ) ^ ((ρ * (1 - ε) + diff / 2) * (1 - δ))) := by ring
       _ = C₂ * K ^ (1 - δ) * (N : ℝ) ^ (δ + (ρ * (1 - ε) + diff / 2) * (1 - δ)) := by
           rw [← Real.rpow_add hNpos]
       _ ≤ C₂ * K ^ (1 - δ) * (N : ℝ) ^ (1 - ε - diff / 2) :=
           mul_le_mul_of_nonneg_left (Real.rpow_le_rpow_of_exponent_le hNge1 hexp_le2) (by positivity)
   have hN1mε_ge1 : (1 : ℝ) ≤ (N : ℝ) ^ (1 - ε) := Real.one_le_rpow hNge1 h1mε_pos.le
-  have hNsplit : (N : ℝ) ^ (1 - ε - diff / 2) = (N : ℝ) ^ (1 - ε) * (N : ℝ) ^ (-(diff / 2)) := by
-    rw [← Real.rpow_add hNpos]; congr 1; ring
-  have hmain_lt : (C₁ * K + C₂ * K ^ (1 - δ)) * (N : ℝ) ^ (1 - ε - diff / 2) <
-      (c / 2) * (N : ℝ) ^ (1 - ε) := by
-    have hleA : C₁ * K + C₂ * K ^ (1 - δ) ≤ A := by simp only [A]; linarith
-    have hmul : A * (N : ℝ) ^ (-(diff / 2)) < c / 2 := by
+  have hN1mε_pos : 0 < (N : ℝ) ^ (1 - ε) := by linarith
+  have hterm12 : C₁ * sN + C₂ * (N : ℝ) ^ δ * sN ^ (1 - δ) < (c / 2) * (N : ℝ) ^ (1 - ε) := by
+    have hsum_le : C₁ * sN + C₂ * (N : ℝ) ^ δ * sN ^ (1 - δ) ≤
+        A * (N : ℝ) ^ (1 - ε - diff / 2) := by
+      have hpos_rpow : 0 ≤ (N : ℝ) ^ (1 - ε - diff / 2) := Real.rpow_nonneg hNpos.le _
+      simp only [A]
+      nlinarith
+    have hsplit_pow : (N : ℝ) ^ (1 - ε - diff / 2) =
+        (N : ℝ) ^ (-(diff / 2)) * (N : ℝ) ^ (1 - ε) := by
+      rw [← Real.rpow_add hNpos]; congr 1; ring
+    rw [hsplit_pow] at hsum_le
+    have hA_mul : A * (N : ℝ) ^ (-(diff / 2)) < c / 2 := by
       have := mul_lt_mul_of_pos_left hsm1 hA_pos
-      have hrew : A * (c / (2 * A)) = c / 2 := by field_simp [hA_pos.ne']
+      have heq : A * (c / (2 * A)) = c / 2 := by field_simp [hA_pos.ne']
       linarith
-    rw [hNsplit]
-    have hstep : (C₁ * K + C₂ * K ^ (1 - δ)) * ((N : ℝ) ^ (1 - ε) * (N : ℝ) ^ (-(diff / 2))) ≤
-        A * ((N : ℝ) ^ (1 - ε) * (N : ℝ) ^ (-(diff / 2))) :=
-      mul_le_mul_of_nonneg_right hleA (by positivity)
-    have hstep2 : A * ((N : ℝ) ^ (1 - ε) * (N : ℝ) ^ (-(diff / 2))) =
-        (A * (N : ℝ) ^ (-(diff / 2))) * (N : ℝ) ^ (1 - ε) := by ring
-    have hstep3 : (A * (N : ℝ) ^ (-(diff / 2))) * (N : ℝ) ^ (1 - ε) <
-        (c / 2) * (N : ℝ) ^ (1 - ε) :=
-      mul_lt_mul_of_pos_right hmul (by linarith)
+    have hmul2 : A * (N : ℝ) ^ (-(diff / 2)) * (N : ℝ) ^ (1 - ε) < (c / 2) * (N : ℝ) ^ (1 - ε) :=
+      mul_lt_mul_of_pos_right hA_mul hN1mε_pos
     linarith
-  have htail_lt : 2 * C₀ * (N : ℝ)⁻¹ + C₀ ^ 2 * (N : ℝ) ^ (-3 : ℝ) <
-      (c / 2) * (N : ℝ) ^ (1 - ε) := by nlinarith
+  have hterm3 : 2 * C₀ * (N : ℝ)⁻¹ + C₀ ^ 2 * (N : ℝ) ^ (-3 : ℝ) < (c / 2) * (N : ℝ) ^ (1 - ε) := by
+    have : c / 2 ≤ (c / 2) * (N : ℝ) ^ (1 - ε) := by nlinarith
+    linarith
   linarith
 
 end ThermalTruncation

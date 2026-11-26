@@ -49,7 +49,8 @@ end OneDimensional
 
 section ClassicalIsing
 
-/-- Discrete Hubbard–Stratonovich coupling `φ(u) := (1/2) ln(e^{2u} + √(e^{4u} - 1))`. -/
+/-- Discrete Hubbard–Stratonovich coupling `φ(u) := (1/2) ln(e^{2u} + √(e^{4u} - 1))`
+satisfying `cosh(2 φ(u)) = e^{2u}` for `u ≥ 0`. -/
 noncomputable def hsPhi (u : ℝ) : ℝ :=
   (1 / 2 : ℝ) * Real.log (Real.exp (2 * u) + Real.sqrt (Real.exp (4 * u) - 1))
 
@@ -72,7 +73,9 @@ theorem cosh_two_hsPhi {u : ℝ} (hu : 0 ≤ u) :
   rw [hinv]
   ring
 
-/-- **Lemma 8.2 (Part 1 — Exact Discrete Hubbard–Stratonovich Identity)**. -/
+/-- **Lemma 8.2 (Part 1 — Exact Discrete Hubbard–Stratonovich Identity)**:
+For every `u ≥ 0` and spins `s, z₁, z₂ ∈ {-1, 1}`,
+`e^{u (s z₁ z₂)} = e^{-u} · (1/2) (e^{φ(u)(z₁ + s z₂)} + e^{-φ(u)(z₁ + s z₂)})`. -/
 theorem lemma_8_2_hubbard_stratonovich_identity {u s z₁ z₂ : ℝ} (hu : 0 ≤ u)
     (hs : s = 1 ∨ s = -1) (hz₁ : z₁ = 1 ∨ z₁ = -1) (hz₂ : z₂ = 1 ∨ z₂ = -1) :
     Real.exp (u * (s * z₁ * z₂)) =
@@ -84,13 +87,19 @@ theorem lemma_8_2_hubbard_stratonovich_identity {u s z₁ z₂ : ℝ} (hu : 0 �
     linarith
   have hprod : Real.exp (-u) * Real.exp (2 * u) = Real.exp u := by
     rw [← Real.exp_add]; congr 1; ring
+  have hmain : Real.exp u =
+      Real.exp (-u) * (1 / 2 : ℝ) * (Real.exp (2 * hsPhi u) + Real.exp (-(2 * hsPhi u))) := by
+    rw [hsum]
+    calc Real.exp u = Real.exp (-u) * Real.exp (2 * u) := hprod.symm
+      _ = Real.exp (-u) * (1 / 2 : ℝ) * (2 * Real.exp (2 * u)) := by ring
+  have h2 : hsPhi u * 2 = 2 * hsPhi u := by ring
   rcases hs with rfl | rfl <;> rcases hz₁ with rfl | rfl <;> rcases hz₂ with rfl | rfl <;>
   · norm_num
-    try (rw [show hsPhi u * 2 = 2 * hsPhi u by ring]; linarith)
-    try (rw [show hsPhi u * -2 = -(2 * hsPhi u) by ring, neg_neg, add_comm]; linarith)
     try ring
+    try (rw [h2]; linarith [hmain])
 
-/-- **Lemma 8.2 (Part 2 — Effective Field Upper Bound)**. -/
+/-- **Lemma 8.2 (Part 2 — Effective Field Upper Bound)**:
+For every `u ≥ 0`, `hsPhi u ≤ u + (1/2) ln 2`. -/
 theorem lemma_8_2_phi_bound {u : ℝ} (hu : 0 ≤ u) :
     hsPhi u ≤ u + (1 / 2 : ℝ) * Real.log 2 := by
   unfold hsPhi
@@ -110,7 +119,7 @@ theorem lemma_8_2_phi_bound {u : ℝ} (hu : 0 ≤ u) :
   rw [Real.log_mul (by norm_num) (Real.exp_pos _).ne', Real.log_exp] at hlog
   linarith
 
-/-- Variance identity `1 - tanh²(h) = (cosh h)⁻²`. -/
+/-- Variance identity `1 - tanh²(h) = (cosh h)⁻²` and monotonicity in `|h|`. -/
 theorem one_sub_tanh_sq_eq_inv_cosh_sq (h : ℝ) :
     1 - (Real.tanh h) ^ 2 = (Real.cosh h)⁻¹ ^ 2 := by
   rw [Real.tanh_eq_sinh_div_cosh]
@@ -131,7 +140,10 @@ theorem inv_one_sub_tanh_sq_le_cosh_sq {h Φ : ℝ} (habs : |h| ≤ Φ) :
     have hprod2 : Real.exp Φ * Real.exp (-Φ) = 1 := by rw [← Real.exp_add]; simp
     have hfact : (Real.exp Φ + Real.exp (-Φ)) - (Real.exp |h| + Real.exp (-|h|)) =
         (Real.exp Φ - Real.exp |h|) * (1 - Real.exp (-Φ) * Real.exp (-|h|)) := by
-      nlinarith
+      calc (Real.exp Φ + Real.exp (-Φ)) - (Real.exp |h| + Real.exp (-|h|))
+          = Real.exp Φ - Real.exp |h| + Real.exp (-Φ) * (Real.exp |h| * Real.exp (-|h|)) -
+              Real.exp (-|h|) * (Real.exp Φ * Real.exp (-Φ)) := by rw [hprod1, hprod2]; ring
+        _ = (Real.exp Φ - Real.exp |h|) * (1 - Real.exp (-Φ) * Real.exp (-|h|)) := by ring
     have hpos2 : 0 ≤ 1 - Real.exp (-Φ) * Real.exp (-|h|) := by
       have : Real.exp (-Φ) * Real.exp (-|h|) ≤ 1 := by
         rw [← Real.exp_add]; exact Real.exp_le_one_iff.mpr (by linarith)
@@ -141,7 +153,10 @@ theorem inv_one_sub_tanh_sq_le_cosh_sq {h Φ : ℝ} (habs : |h| ≤ Φ) :
     linarith
   nlinarith [Real.cosh_pos h, Real.cosh_pos Φ]
 
-/-- **Proposition 8.3** (All-Temperature Classical Ising Reverse-Poincaré Bound, Eq. 8.4). -/
+/-- **Proposition 8.3** (All-Temperature Classical Ising Reverse-Poincaré Bound, Eq. 8.4):
+In the `p`-biased Fourier basis `f = ∑_{S ⊆ Fin N} f̂(S) χ_S` of any product Bernoulli
+measure `ν_ξ` with effective local fields `|h_i| ≤ Φ_max`,
+`∑_{i : Fin N} (1 - tanh²(h_i))⁻¹ ∑_{S ∋ i} f̂(S)² ≤ cosh²(Φ_max) ∑_{k=0}^{N-1} ∑_{|S| > k} f̂(S)²`. -/
 theorem prop_8_3_product_bernoulli_reverse_poincare {N : ℕ} {Φmax : ℝ}
     (h : Fin N → ℝ) (hh : ∀ i, |h i| ≤ Φmax)
     (fhat : Finset (Fin N) → ℝ) :
@@ -170,8 +185,9 @@ theorem prop_8_3_product_bernoulli_reverse_poincare {N : ℕ} {Φmax : ℝ}
       rw [Finset.sum_comm]
       apply Finset.sum_congr rfl; intro S _
       rw [← Finset.sum_filter, Finset.sum_const, nsmul_eq_mul]
-      congr 2
-      ext i; simp
+      congr 1
+      have hset : Finset.univ.filter (fun i : Fin N ↦ i ∈ S) = S := by ext i; simp
+      rw [hset]
     have hr : (∑ k ∈ Finset.range N,
           ∑ S ∈ Finset.univ.filter (fun S : Finset (Fin N) ↦ k < S.card), (fhat S) ^ 2) =
         ∑ S : Finset (Fin N), (S.card : ℝ) * (fhat S) ^ 2 := by

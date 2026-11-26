@@ -26,11 +26,14 @@ namespace KrylovChaos
 
 section GaussianSmearing
 
-/-- **Proposition 9.1(1)** (Gaussian Moment Kernel Bound). -/
+/-- **Proposition 9.1(1)** (Gaussian Moment Kernel Bound):
+For every `n ≥ 1`, `σ > 0`, and `ω : ℝ`,
+`ω^{2n} e^{-σ² ω²} ≤ (n / (e σ²))^n`. -/
 theorem prop_9_1_gaussian_kernel_bound {n : ℕ} {σ ω : ℝ} (hn : 1 ≤ n) (hσ : 0 < σ) :
     ω ^ (2 * n) * Real.exp (-(σ ^ 2 * ω ^ 2)) ≤ ((n : ℝ) / (Real.exp 1 * σ ^ 2)) ^ n := by
   have hn_pos : (0 : ℝ) < (n : ℝ) := by exact_mod_cast (by omega : 0 < n)
   set t := σ ^ 2 * ω ^ 2
+  have ht_nn : 0 ≤ t := by positivity
   have h1 : t / (n : ℝ) ≤ Real.exp (t / (n : ℝ) - 1) := by
     have := Real.add_one_le_exp (t / (n : ℝ) - 1)
     linarith
@@ -58,6 +61,7 @@ theorem prop_9_1_gaussian_kernel_bound {n : ℕ} {σ ω : ℝ} (hn : 1 ≤ n) (h
   have hdiv := div_le_div_of_nonneg_right hmul (pow_pos (sq_pos_of_pos hσ) n).le
   have hlhs : (σ ^ 2) ^ n * ω ^ (2 * n) * Real.exp (-t) / (σ ^ 2) ^ n =
       ω ^ (2 * n) * Real.exp (-(σ ^ 2 * ω ^ 2)) := by
+    simp only [t]
     field_simp [(pow_pos (sq_pos_of_pos hσ) n).ne']
   have hrhs : ((n : ℝ) / Real.exp 1) ^ n / (σ ^ 2) ^ n =
       ((n : ℝ) / (Real.exp 1 * σ ^ 2)) ^ n := by
@@ -65,29 +69,37 @@ theorem prop_9_1_gaussian_kernel_bound {n : ℕ} {σ ω : ℝ} (hn : 1 ≤ n) (h
   rw [hlhs, hrhs] at hdiv
   exact hdiv
 
-/-- **Proposition 9.1(1)** (Sublinear Lanczos Consequence: `lim inf b_n / n = 0`). -/
+/-- **Proposition 9.1(1)** (Sublinear Lanczos Consequence):
+If `b_k > 0` satisfies `∏_{k=1}^n b_k² ≤ C' (n / (e σ²))^n` for all `n ≥ 1`, then
+there is no linear lower bound `b_k ≥ α k` (`α > 0`) for all sufficiently large `k`
+(i.e. `lim inf_{n→∞} b_n / n = 0`). -/
 theorem prop_9_1_no_linear_lower_bound {C' σ : ℝ} (b : ℕ → ℝ)
-    (hC' : 0 < C') (hσ : 0 < σ) (hb_pos : ∀ k ≥ 1, 0 < b k)
-    (hprod : ∀ n ≥ 1, ∏ k ∈ Finset.Icc 1 n, (b k) ^ 2 ≤
+    (hC' : 0 < C') (hσ : 0 < σ) (hb_pos : ∀ (k : ℕ), 1 ≤ k → 0 < b k)
+    (hprod : ∀ (n : ℕ), 1 ≤ n → ∏ k ∈ Finset.Icc 1 n, (b k) ^ 2 ≤
       C' * ((n : ℝ) / (Real.exp 1 * σ ^ 2)) ^ n) :
-    ¬ (∃ α > 0, ∃ N₀ ≥ 1, ∀ k ≥ N₀, α * (k : ℝ) ≤ b k) := by
+    ¬ (∃ α > 0, ∃ N₀ : ℕ, 1 ≤ N₀ ∧ ∀ (k : ℕ), N₀ ≤ k → α * (k : ℝ) ≤ b k) := by
   rintro ⟨α, hα, N₀, hN₀, hlin⟩
   set W₀ := ∏ k ∈ Finset.Icc 1 N₀, (b k) ^ 2
   have hW₀ : 0 < W₀ := Finset.prod_pos fun k hk ↦ sq_pos_of_pos (hb_pos k (Finset.mem_Icc.mp hk).1)
   set c := 3 / (Real.exp 1 * σ ^ 2)
   have hc : 0 < c := by positivity
   set K := C' * (α ^ 2) ^ N₀ / W₀
+  have hK : 0 < K := by positivity
   obtain ⟨M, hM1, hM2, hM3⟩ : ∃ M : ℕ, N₀ ≤ M ∧ 2 * c ^ 3 / α ^ 6 ≤ (M : ℝ) ∧ K < (2 : ℝ) ^ M := by
-    obtain ⟨M₀, hM₀⟩ := exists_nat_ge (2 * c ^ 3 / α ^ 6)
-    have htend : Filter.Tendsto (fun m : ℕ ↦ (2 : ℝ) ^ m) Filter.atTop Filter.atTop :=
-      tendsto_pow_atTop_atTop_of_one_lt (by norm_num)
-    obtain ⟨M₁, hM₁⟩ := (htend.eventually_gt_atTop K).exists
+    have h1 : ∃ M₀ : ℕ, 2 * c ^ 3 / α ^ 6 ≤ (M₀ : ℝ) := exists_nat_ge _
+    obtain ⟨M₀, hM₀⟩ := h1
+    have h2 : ∃ M₁ : ℕ, K < (2 : ℝ) ^ M₁ := by
+      have htend : Filter.Tendsto (fun m : ℕ ↦ (2 : ℝ) ^ m) Filter.atTop Filter.atTop :=
+        tendsto_pow_atTop_atTop_of_one_lt (by norm_num)
+      exact (htend.eventually_gt_atTop K).exists
+    obtain ⟨M₁, hM₁⟩ := h2
     refine ⟨max N₀ (max M₀ M₁), le_max_left _ _, ?_, ?_⟩
     · exact le_trans hM₀ (Nat.cast_le.mpr (le_trans (le_max_left _ _) (le_max_right _ _)))
     · exact lt_of_lt_of_le hM₁ (pow_le_pow_right₀ (by norm_num)
         (le_trans (le_max_right _ _) (le_max_right _ _)))
   have hMpos : 1 ≤ M := le_trans hN₀ hM1
-  have hupper := hprod (3 * M) (by omega)
+  have h3M : 1 ≤ 3 * M := by omega
+  have hupper := hprod (3 * M) h3M
   have hsplit1 : Finset.Icc 1 (3 * M) = Finset.Icc 1 M ∪ Finset.Icc (M + 1) (3 * M) := by
     ext k; simp only [Finset.mem_Icc, Finset.mem_union]; omega
   have hdisj1 : Disjoint (Finset.Icc 1 M) (Finset.Icc (M + 1) (3 * M)) := by
@@ -133,7 +145,7 @@ theorem prop_9_1_no_linear_lower_bound {C' σ : ℝ} (b : ℕ → ℝ)
     rw [hprod_split]
     exact mul_le_mul (mul_le_mul_of_nonneg_left hmid hW₀.le) htop (by positivity) (by positivity)
   have hchain : W₀ * (α ^ 2) ^ (M - N₀) * (α ^ 2 * (M : ℝ) ^ 2) ^ (2 * M) ≤
-      C' * (((3 * M : ℕ) : ℝ) / (Real.exp 1 * σ ^ 2)) ^ (3 * M) := le_trans hlhs_ge hupper
+      C' * ((3 * M : ℕ) / (Real.exp 1 * σ ^ 2)) ^ (3 * M) := le_trans hlhs_ge hupper
   have hmulN := mul_le_mul_of_nonneg_right hchain (pow_pos (sq_pos_of_pos hα) N₀).le
   have hlhs_simp :
       W₀ * (α ^ 2) ^ (M - N₀) * (α ^ 2 * (M : ℝ) ^ 2) ^ (2 * M) * (α ^ 2) ^ N₀ =
@@ -151,7 +163,7 @@ theorem prop_9_1_no_linear_lower_bound {C' σ : ℝ} (b : ℕ → ℝ)
       _ = W₀ * (α ^ 6 * (M : ℝ)) ^ M * (M : ℝ) ^ (3 * M) := by
           rw [mul_pow]; ring
   have hrhs_simp :
-      C' * (((3 * M : ℕ) : ℝ) / (Real.exp 1 * σ ^ 2)) ^ (3 * M) * (α ^ 2) ^ N₀ =
+      C' * ((3 * M : ℕ) / (Real.exp 1 * σ ^ 2)) ^ (3 * M) * (α ^ 2) ^ N₀ =
       C' * (α ^ 2) ^ N₀ * (c ^ 3) ^ M * (M : ℝ) ^ (3 * M) := by
     have hrew : ((3 * M : ℕ) : ℝ) / (Real.exp 1 * σ ^ 2) = c * (M : ℝ) := by
       simp only [c]; push_cast; ring
@@ -181,7 +193,8 @@ end GaussianSmearing
 
 section BimodalMixture
 
-/-- Exact binomial sum identity used in Proposition 9.1(2). -/
+/-- Exact binomial sum identity used in Proposition 9.1(2):
+`∑_{k=1}^{m} C(m, k) (2 k + 1) = m 2^m + 2^m - 1`. -/
 theorem binomial_sum_two_k_add_one (m : ℕ) :
     (∑ k ∈ Finset.Icc 1 m, (Nat.choose m k : ℝ) * (2 * (k : ℝ) + 1)) =
     (m : ℝ) * (2 : ℝ) ^ m + (2 : ℝ) ^ m - 1 := by
@@ -195,7 +208,7 @@ theorem binomial_sum_two_k_add_one (m : ℕ) :
       apply Finset.sum_congr rfl
       intro k hk
       have hkle : k ≤ m := Nat.lt_succ_iff.mp (Finset.mem_range.mp hk)
-      rw [Nat.sub_sub_self hkle, Nat.choose_symm hkle]
+      rw [Nat.add_sub_cancel, Nat.sub_sub_self hkle, Nat.choose_symm hkle]
     have hadd : (∑ k ∈ Finset.range (m + 1), (k : ℝ) * (Nat.choose m k : ℝ)) +
         (∑ k ∈ Finset.range (m + 1), ((m - k : ℕ) : ℝ) * (Nat.choose m k : ℝ)) =
         (m : ℝ) * (2 : ℝ) ^ m := by
@@ -231,7 +244,10 @@ theorem binomial_sum_two_k_add_one (m : ℕ) :
     · intro k _; rfl
   linarith
 
-/-- **Proposition 9.1(2)** (Exact Bimodal Thermal Size, Eq. 9.2). -/
+/-- **Proposition 9.1(2)** (Exact Bimodal Thermal Size, Eq. 9.2):
+For every `N ≥ 2`, the bimodal non-clustering mixture `ρ` and 1-local probe `A = √2 |1⟩⟨1|₁`
+satisfy `⟨ρ^{1/2}, 𝒮 ρ^{1/2}⟩_HS = (N + 1)/4 - 2^{-(N+1)/2}` and
+`𝒮_ρ(A) = N/2 - ⟨ρ^{1/2}, 𝒮 ρ^{1/2}⟩_HS = (N - 1)/4 + 2^{-(N+1)/2}`. -/
 theorem prop_9_1_bimodal_exact_size {N : ℕ} (hN : 2 ≤ N) :
     let z1Contrib := (2 : ℝ) ^ N * (1 / 8 : ℝ) *
       ((2 : ℝ) ^ (-((N - 1 : ℕ) : ℝ) / 2) - (2 : ℝ) ^ (-((N - 1 : ℕ) : ℝ))) ^ 2
@@ -248,7 +264,8 @@ theorem prop_9_1_bimodal_exact_size {N : ℕ} (hN : 2 ≤ N) :
     simp only [z1Contrib]
     have hpowN : (2 : ℝ) ^ N = (2 : ℝ) ^ (N : ℝ) := (Real.rpow_natCast 2 N).symm
     have h8 : (1 / 8 : ℝ) = (2 : ℝ) ^ (-3 : ℝ) := by
-      rw [Real.rpow_neg h2pos.le]; norm_num
+      rw [Real.rpow_neg h2pos.le]
+      norm_num
     rw [hpowN, h8, hNm1, hNp1]
     have hexp1 : ((2 : ℝ) ^ (-((N : ℝ) - 1) / 2)) ^ 2 = (2 : ℝ) ^ (-((N : ℝ) - 1)) := by
       rw [← Real.rpow_natCast, ← Real.rpow_mul h2pos.le]; congr 1; push_cast; ring
@@ -267,12 +284,16 @@ theorem prop_9_1_bimodal_exact_size {N : ℕ} (hN : 2 ≤ N) :
     rw [hsq, mul_add, mul_sub]
     have t1 : (2 : ℝ) ^ ((N : ℝ) - 3) * (2 : ℝ) ^ (-((N : ℝ) - 1)) = 1 / 4 := by
       rw [← Real.rpow_add h2pos, show (N : ℝ) - 3 + -((N : ℝ) - 1) = -2 by ring,
-        Real.rpow_neg h2pos.le]; norm_num
+        Real.rpow_neg h2pos.le]
+      norm_num
     have t2 : (2 : ℝ) ^ ((N : ℝ) - 3) * (2 * (2 : ℝ) ^ (-3 * ((N : ℝ) - 1) / 2)) =
         (2 : ℝ) ^ (-((N : ℝ) + 1) / 2) := by
-      have h21 : (2 : ℝ) = (2 : ℝ) ^ (1 : ℝ) := (Real.rpow_one 2).symm
-      conv_lhs => rw [mul_left_comm, h21, ← Real.rpow_add h2pos, ← Real.rpow_add h2pos]
-      congr 1; ring
+      calc (2 : ℝ) ^ ((N : ℝ) - 3) * (2 * (2 : ℝ) ^ (-3 * ((N : ℝ) - 1) / 2))
+          = (2 : ℝ) ^ (1 : ℝ) * ((2 : ℝ) ^ ((N : ℝ) - 3) * (2 : ℝ) ^ (-3 * ((N : ℝ) - 1) / 2)) := by
+            rw [Real.rpow_one]; ring
+        _ = (2 : ℝ) ^ ((1 : ℝ) + (((N : ℝ) - 3) + (-3 * ((N : ℝ) - 1) / 2))) := by
+            rw [← Real.rpow_add h2pos, ← Real.rpow_add h2pos]
+        _ = (2 : ℝ) ^ (-((N : ℝ) + 1) / 2) := by congr 1; ring
     have t3 : (2 : ℝ) ^ ((N : ℝ) - 3) * (2 : ℝ) ^ (-2 * ((N : ℝ) - 1)) =
         (2 : ℝ) ^ (-((N : ℝ) + 1)) := by
       rw [← Real.rpow_add h2pos]; congr 1; ring
@@ -284,7 +305,8 @@ theorem prop_9_1_bimodal_exact_size {N : ℕ} (hN : 2 ≤ N) :
     rw [hpow, hNm1, hNp1]
     have hcomb : (2 : ℝ) ^ (-((N : ℝ) + 1)) * (2 : ℝ) ^ ((N : ℝ) - 1) = 1 / 4 := by
       rw [← Real.rpow_add h2pos, show -((N : ℝ) + 1) + ((N : ℝ) - 1) = -2 by ring,
-        Real.rpow_neg h2pos.le]; norm_num
+        Real.rpow_neg h2pos.le]
+      norm_num
     have hrew : ((N : ℝ) - 1) * (2 : ℝ) ^ ((N : ℝ) - 1) + (2 : ℝ) ^ ((N : ℝ) - 1) - 1 =
         (N : ℝ) * (2 : ℝ) ^ ((N : ℝ) - 1) - 1 := by ring
     rw [hrew, mul_sub, mul_one, mul_left_comm, hcomb]
@@ -297,7 +319,9 @@ end BimodalMixture
 
 section DoubleWell
 
-/-- **Lemma B.1** (Neumann-Series Eigenvector Tail Bound, Eq. B.2). -/
+/-- **Lemma B.1** (Neumann-Series Eigenvector Tail Bound, Eq. B.2):
+For `E_B > 2` and `d ≥ 1`,
+`√2 ∑_{m=0}^∞ 2^{d-1+m} / E_B^{d-1+m+1} = (√2 / (E_B - 2)) (2 / E_B)^{d-1}`. -/
 theorem lemma_B_1_neumann_tail_sum {d : ℕ} {EB : ℝ} (hd : 1 ≤ d) (hEB : 2 < EB) :
     Real.sqrt 2 * (∑' m : ℕ, (2 : ℝ) ^ (d - 1 + m) / EB ^ (d - 1 + m + 1)) =
     (Real.sqrt 2 / (EB - 2)) * (2 / EB) ^ (d - 1) := by
@@ -317,7 +341,10 @@ theorem lemma_B_1_neumann_tail_sum {d : ℕ} {EB : ℝ} (hd : 1 ≤ d) (hEB : 2 
   rw [hinv]
   field_simp [hEBpos.ne', (by linarith : EB - 2 ≠ 0)]
 
-/-- **Proposition 9.1(3)** (2D Krylov Tunneling Ratio Limit, Eq. 9.3). -/
+/-- **Proposition 9.1(3)** (2D Krylov Tunneling Ratio Limit, Eq. 9.3):
+At the tunneling time `t_* = π / |E_- - E_+|`, the Krylov complexity satisfies `K(t_*) = 1`
+(since `sin²(π/2) = 1`), `ΔQ(t_*) = (D - 1) - 2 q₀`, and if `q₀(E_B) → 0` and `σ₀(E_B) → 0`
+as `E_B → ∞`, then `ΔQ(t_*) / (1 + σ₀) → D - 1`. -/
 theorem prop_9_1_double_well_tunneling_limit {D : ℕ}
     (q₀ σ₀ : ℝ → ℝ)
     (hq : Filter.Tendsto q₀ Filter.atTop (nhds 0))
@@ -331,7 +358,9 @@ theorem prop_9_1_double_well_tunneling_limit {D : ℕ}
     simpa using tendsto_const_nhds.sub (hq.const_mul 2)
   have hden : Filter.Tendsto (fun EB ↦ 1 + σ₀ EB) Filter.atTop (nhds 1) := by
     simpa using tendsto_const_nhds.add hσ
-  simpa using hnum.div hden one_ne_zero
+  have hdiv : Filter.Tendsto (fun EB ↦ (((D : ℝ) - 1) - 2 * q₀ EB) / (1 + σ₀ EB))
+      Filter.atTop (nhds (((D : ℝ) - 1) / 1)) := hnum.div hden one_ne_zero
+  simpa [div_one] using hdiv
 
 end DoubleWell
 
