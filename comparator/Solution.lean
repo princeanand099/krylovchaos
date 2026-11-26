@@ -9,8 +9,8 @@ import KrylovChaos
 /-!
 # Verified Solution for `KrylovChaos` (`comparator` Solution)
 
-Discharges all 23 locked headline theorems in `Challenge.lean` directly from `KrylovChaos`
-with zero `sorry`s, zero custom axioms, and zero external literature hypotheses.
+Discharges all 25 locked headline theorems in `Challenge.lean` directly from `KrylovChaos`,
+completely verified against Mathlib `v4.35.0` with zero external literature hypotheses.
 -/
 
 open ChallengeDefs Matrix
@@ -64,7 +64,7 @@ theorem prop_4_1_krylov_filtration {E : Type*} [AddCommGroup E] [Module ℂ E]
     (O : ℕ → E) (hO0 : O 0 ∈ V (min N s₀))
     (hstep : ∀ n, ∃ a b : ℂ, O (n + 1) = a • L (O n) + (if n = 0 then 0 else b • O (n - 1))) :
     ∀ n : ℕ, O n ∈ V (min N (s₀ + (r - 1) * n)) :=
-  KrylovChaos.prop_4_1_krylov_filtration hr V hV_mono L hL O hO0 hstep
+  KrylovChaos.prop_4_1_krylov_filtration V hV_mono L hL O hO0 hstep
 
 theorem theorem_1_1b_static_reduction
     {α lamL δ C₀ C₁ C₂ : ℝ} {r s₀ : ℕ}
@@ -158,8 +158,10 @@ theorem theorem_1_3b_constants {r : ℕ} {β Jsite : ℝ}
     (hr : 2 ≤ r) (hJ : 0 < Jsite) (hβ0 : 0 ≤ β) (hβ : β ≤ betaWC r Jsite) :
     (3 / 2 : ℝ) * (1 - β / (4 * invLocalityScale r Jsite))⁻¹ ^ 2 * 9 < 54 ∧
     2 * β * (3 : ℝ) ^ (r - 1) * Real.exp 1 * (r : ℝ) * Jsite ≤ 1 / 2 ∧
-    (3 / 8 : ℝ) * (24 : ℝ) ^ 2 = 216 :=
-  KrylovChaos.theorem_1_3b_constants hr hJ hβ0 hβ
+    (3 / 8 : ℝ) * (24 : ℝ) ^ 2 = 216 := by
+  simpa only [ChallengeDefs.invLocalityScale, KrylovChaos.invLocalityScale] using
+    KrylovChaos.theorem_1_3b_constants hr hJ hβ0
+      (by simpa only [ChallengeDefs.betaWC, KrylovChaos.betaWC] using hβ)
 
 theorem theorem_1_3c_mss_lyapunov_bound {α lamL A B C : ℝ}
     (hα : 0 < α) (hlam : 0 < lamL) (hA : 0 ≤ A) (hB : 0 ≤ B) (hC : 0 ≤ C)

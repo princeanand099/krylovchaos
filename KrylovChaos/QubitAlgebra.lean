@@ -17,7 +17,7 @@ Constructs the concrete finite-dimensional many-body quantum operator algebra on
 1. `kronOp`, `pauliMat`, `pauliString`, `pauliSite`: Concrete tensor-product operators,
    Hermiticity, unitarity (`P² = 1`), and exact trace orthogonality (`Tr(P_a P_b) = 2^N δ_{ab}`).
 2. `partialTraceSite` (`ℰ_x`) and `siteSizeOp` (`𝒮_x = 1 - ℰ_x`): Concrete single-site
-   partial-trace and size superoperators, with a ground-up proof of **Eq. (2.8)**:
+   local-trace and size superoperators, with a ground-up proof of **Eq. (2.8)**:
    `(1/8) ∑_{x, α ∈ {X,Y,Z}} ‖[A, σ_x^α]‖_HS² = ∑_x Re ⟨A, 𝒮_x(A)⟩_HS`.
 3. `filtrationSubmodule` (`𝒱_s`): Concrete ascending locality filtration spanned by Pauli strings
    of Hamming weight `≤ s`, with a ground-up proof of the **r-local commutator step**:

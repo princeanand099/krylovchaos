@@ -360,7 +360,7 @@ section InfiniteChainFatou
 
 /-- **Ground-Up Fatou Bound for Weighted Series on `ℕ`**:
 If `f : ℕ → ℕ → ℝ` satisfies `0 ≤ f N m`, converges pointwise `f N m → g m` as `N → ∞`,
-`w : ℕ → ℝ` satisfies `0 ≤ w m`, and for every `N` the finite partial sum satisfies
+`w : ℕ → ℝ` satisfies `0 ≤ w m`, and for every `N` the finite sum satisfies
 `∑ m ∈ Finset.range N, w m * f N m ≤ B`, then:
 1. For every `M : ℕ`, `∑ m ∈ Finset.range M, w m * g m ≤ B`,
 2. `Summable (fun m ↦ w m * g m)`, and

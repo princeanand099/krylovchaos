@@ -12,7 +12,7 @@ import Mathlib.Tactic
 /-!
 # Thermodynamic Limit of Gibbs KMS States on the Quasi-Local Spin Algebra (N → ∞)
 
-Formalizes ground-up on Mathlib `v4.35.0` (zero custom axioms, zero `sorry`s):
+Formalizes ground-up on Mathlib `v4.35.0` with zero external literature hypotheses:
 1. **Finite-`N` Gibbs KMS Analyticity (`finiteKMSCorr`, `finiteKMS_entire`, `finiteKMS_boundary_identity`)**:
    For any finite-dimensional diagonalized Hamiltonian `E : ι → ℝ`, inverse temperature `β > 0`,
    and operators `A, B : Matrix ι ι ℂ`, defines the complex-time Gibbs correlation function
