@@ -28,6 +28,8 @@ Closes the remaining Section 5 gaps from ground up without scalar assumptions:
 
 namespace KrylovChaos
 
+open scoped Classical
+
 section JacobiDyckExpansion
 
 /-- Concrete `D × D` real symmetric tridiagonal Jacobi matrix with zero diagonal and
@@ -53,21 +55,14 @@ def isFinPath {D : ℕ} (m : ℕ) (h : Fin D) (γ : Fin (m + 1) → Fin D) : Pro
   ∀ k : Fin m, (γ ⟨k.1 + 1, by omega⟩).1 = (γ ⟨k.1, by omega⟩).1 + 1 ∨
                (γ ⟨k.1, by omega⟩).1 = (γ ⟨k.1 + 1, by omega⟩).1 + 1
 
-instance instDecidableIsFinPath {D : ℕ} (m : ℕ) (h : Fin D) (γ : Fin (m + 1) → Fin D) :
-    Decidable (isFinPath m h γ) := by
-  unfold isFinPath
-  infer_instance
-
 /-- Weight of a finite-height lattice path `γ : Fin (m + 1) → Fin D`. -/
 def finPathWeight {D : ℕ} (b : ℕ → ℝ) (m : ℕ) (γ : Fin (m + 1) → Fin D) : ℝ :=
   ∏ k : Fin m, b (max (γ ⟨k.1, by omega⟩).1 (γ ⟨k.1 + 1, by omega⟩).1)
 
-/-- Append a final height `h` to a length-`m` path `γ`. -/
 private def appendPath {D : ℕ} {m : ℕ} (γ : Fin (m + 1) → Fin D) (h : Fin D) :
     Fin (m + 2) → Fin D :=
   fun k ↦ if hk : k.1 ≤ m then γ ⟨k.1, by omega⟩ else h
 
-/-- Prefix of a length-`(m + 1)` path `γ'`. -/
 private def initPath {D : ℕ} {m : ℕ} (γ' : Fin (m + 2) → Fin D) :
     Fin (m + 1) → Fin D :=
   fun k ↦ γ' ⟨k.1, by omega⟩
@@ -124,7 +119,6 @@ theorem jacobiMat_pow_eq_sum_finPaths {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) :
       fun j ↦ jacobiMat_pow_eq_sum_finPaths hD b m j
     simp_rw [hIH, Finset.sum_mul]
     rw [← Finset.sum_sigma']
-    -- Restrict to pairs `(j, γ)` where `j` is adjacent to `h`
     have hadj : ∀ j : Fin D,
         jacobiMat D b j h =
           if h.1 = j.1 + 1 ∨ j.1 = h.1 + 1 then b (max j.1 h.1) else 0 := by
@@ -277,7 +271,6 @@ theorem lemma_5_1_moment_lower_bound {D n N₀ : ℕ} {α₁ : ℝ}
     (fun γ : Fin (2 * (n - N₀) + 1) → Fin D ↦ isDyckPath (n - N₀) (fun k ↦ (γ k).1))
   let S₂ := Finset.univ.filter
     (fun γ : Fin (2 * n + 1) → Fin D ↦ isDyckPath n (fun k ↦ (γ k).1))
-  -- Map each Dyck path `γ ∈ S₁` to its shifted Dyck path in `S₂`
   let f : (Fin (2 * (n - N₀) + 1) → Fin D) → (Fin (2 * n + 1) → Fin D) :=
     fun γ k ↦
       if h : shiftDyckPath hN₀ (fun j ↦ (γ j).1) k < D then
@@ -408,9 +401,7 @@ theorem integral_pow_mul_exp_neg_Ioi {a : ℝ} (ha : 0 < a) (k : ℕ) :
   field_simp [ha.ne', hak_ne]
 
 /-- **Ground-Up Meixner `sech` Moment Lower Bound (Eq. 5.5)**:
-For every `α₁ > 0` and `m : ℕ`, the `2m`-th moment of the `η = 1` Meixner spectral density
-`dμ^M(ω) = (1 / (2 α₁)) sech(π ω / (2 α₁)) dω` (evaluated on `ω > 0` by evenness, factor `2`)
-satisfies
+For every `α₁ > 0` and `m : ℕ`,
 `(2 / π) * (2m)! * (2 α₁ / π)^{2m} ≤ (1 / α₁) * ∫_{ω > 0} ω^{2m} * (cosh(π ω / (2 α₁)))⁻¹ dω`. -/
 theorem meixner_sech_moment_lower_bound {α₁ : ℝ} (hα₁ : 0 < α₁) (m : ℕ) :
     (2 / Real.pi) * ((2 * m).factorial : ℝ) * (2 * α₁ / Real.pi) ^ (2 * m) ≤
@@ -420,11 +411,10 @@ theorem meixner_sech_moment_lower_bound {α₁ : ℝ} (hα₁ : 0 < α₁) (m : 
   have ha : 0 < a := by positivity
   have harg : ∀ ω : ℝ, Real.pi * ω / (2 * α₁) = a * ω := fun ω ↦ by ring
   simp_rw [harg]
-  -- Integrability of `ω ^ (2m) * exp(-(a * ω))` on `Ioi 0`
   have hint_std : MeasureTheory.IntegrableOn
       (fun x : ℝ ↦ Real.exp (-x) * x ^ (2 * m)) (Set.Ioi 0) := by
     have h0 := Real.GammaIntegral_convergent (show (0 : ℝ) < (2 * m + 1 : ℕ) by positivity)
-    refine h0.congr_fun (fun x hx ↦ ?_) measurableSet_Ioi
+    refine h0.congr_fun (fun x _ ↦ ?_) measurableSet_Ioi
     have hpow : x ^ (((2 * m + 1 : ℕ) : ℝ) - 1) = x ^ (2 * m) := by
       rw [Nat.cast_add, Nat.cast_one, add_sub_cancel_right, Real.rpow_natCast]
     rw [hpow]
