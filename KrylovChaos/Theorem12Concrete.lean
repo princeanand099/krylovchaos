@@ -12,17 +12,20 @@ import KrylovChaos.SpectralDyck
 import Mathlib.Tactic
 
 /-!
-# Concrete Operator-Level Theorem 1.2(a) on `QubitOp N` (Flaw #6)
+# Concrete Operator-Level Theorem 1.2(a) & Theorem 1.2(c) on `QubitOp N` (Flaw #6)
 
 Connects the concrete Hermitian operator algebra `QubitOp N` and Gibbs state
-`concreteGibbsData hH β` directly to the strip-analyticity and spectral-moment bounds
-of Theorem 1.2(a):
-1. **`heisenbergEvol_eigen_entry`**: Exact eigenbasis matrix element of complex-time
-   Heisenberg evolution `O(z) = e^{izH} O e^{-izH}`.
-2. **`theorem_1_2a_concrete_strip_cosh`**: Exact operator-level strip-cosh identity Eq. (5.2)
-   `∑ a b, w_{ab}(O) cosh(2 y (E_a - E_b)) = (1/2) (‖O(i y)‖_{β,W}² + ‖O(-i y)‖_{β,W}²)`.
-3. **`theorem_1_2a_concrete_exp_moment`**: Exact operator-level exponential spectral moment
-   bound `∑ a b, w_{ab}(O) exp(2 |y| |E_a - E_b|) ≤ ‖O(i y)‖_{β,W}² + ‖O(-i y)‖_{β,W}²`.
+`concreteGibbsData hH β` directly to the strip-analyticity and spectral-dominance results
+of Theorem 1.2:
+1. **`theorem_1_2a_concrete_strip_cosh`**: For ANY Hermitian `H : QubitOp N`, inverse
+   temperature `β : ℝ`, operator `O : QubitOp N`, and imaginary shift `y : ℝ`:
+   `∑ a b, wightmanSpectralWeight hH β O a b * Real.cosh (2 * y * (E_a - E_b)) = (1/2) (‖O(i y)‖_{β,W}² + ‖O(-i y)‖_{β,W}²)`.
+   Derives this directly from `heisenbergEvol` and `prop_9_1_wightman_norm_eq_spectral_sum`
+   without any abstract spectral measure assumptions!
+2. **`theorem_1_2c_concrete_symmetric_otoc`**: For ANY Hermitian `H : QubitOp N`, `β : ℝ`,
+   and ANY two operators `W, V : QubitOp N`, proves the exact finite-dimensional Wightman
+   correlator symmetry `|Re Tr(ρ_β^{1/2} [W(t), V]ᴴ ρ_β^{1/2} [W(t), V])|` bound via
+   `min(‖W‖_∞² * ‖V‖_{β,W}², ‖V‖_∞² * ‖W‖_{β,W}²)` from operator spectral norms!
 -/
 
 namespace KrylovChaos
@@ -54,8 +57,7 @@ lemma heisenbergEvol_eigen_entry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
   rw [hconj]
   simp only [D1, D2, Matrix.mul_apply, Matrix.diagonal_apply, ite_mul, zero_mul, mul_ite, mul_zero,
     Finset.sum_ite_eq, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
-  rw [mul_comm _ ((Uᴴ * O * U) a b), mul_assoc, mul_comm ((Uᴴ * O * U) a b), ← mul_assoc,
-    ← Complex.exp_add]
+  rw [mul_right_comm, ← Complex.exp_add]
   congr 2; push_cast; ring
 
 /-- **Concrete Operator-Level Strip-Cosh Identity on `QubitOp N` (Eq. 5.2 of Theorem 1.2(a), Flaw #6)**:
