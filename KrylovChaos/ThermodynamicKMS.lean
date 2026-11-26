@@ -5,9 +5,6 @@ Authors: Prince Anand
 -/
 import KrylovChaos.VitaliAnalytic
 import KrylovChaos.SpectralMeasure
-import Mathlib.Data.Finsupp.Defs
-import Mathlib.Data.Finsupp.Basic
-import Mathlib.Data.Finsupp.Encodable
 import Mathlib.Topology.Compactness.Compact
 import Mathlib.Topology.MetricSpace.Basic
 import Mathlib.Tactic
@@ -21,11 +18,11 @@ Formalizes ground-up on Mathlib `v4.35.0` (zero custom axioms, zero `sorry`s):
    and operators `A, B : Matrix ι ι ℂ`, defines the complex-time Gibbs correlation function
    `F_{A,B}(z) = Tr(ρ_β A e^{izH} B e^{-izH})`, proves it is entire on `ℂ`, and proves the
    exact KMS boundary identity `F_{A,B}(t + i β) = F_{B,A}(-t)` for all `t ∈ ℝ`.
-2. **Countable Quasi-Local Pauli Basis (`PauliWord := ℕ →₀ Fin 4`) & Weak-* Compactness
+2. **Countable Quasi-Local Pauli Basis (`PauliWord := List (Fin 4)`) & Weak-* Compactness
    (`thermo_limit_state_exists`)**:
    Using Tychonoff compactness (`isCompact_univ_pi`) and sequential compactness of the
    countable product `PauliWord → ℂ` of closed unit discs, proves that EVERY sequence of
-   finite-volume Gibbs states `ω : ℕ → PauliWord → ℂ` (`‖ω N w‖ ≤ 1`, `ω N 0 = 1`) admits
+   finite-volume Gibbs states `ω : ℕ → PauliWord → ℂ` (`‖ω N w‖ ≤ 1`, `ω N [] = 1`) admits
    a strictly increasing subsequence converging pointwise to a normalized thermodynamic-limit
    state `ω_∞ : PauliWord → ℂ` preserving positivity on all finite linear combinations.
 3. **Thermodynamic-Limit KMS Boundary Transfer (`thermo_limit_kms_boundary_transfer`)**:
@@ -138,26 +135,26 @@ end FiniteVolumeKMS
 section ThermodynamicLimitStates
 
 /-- Countable quasi-local Pauli string basis on the infinite spin lattice `ℕ`:
-finitely supported functions `w : ℕ →₀ Fin 4` (`0` = identity). -/
-abbrev PauliWord := ℕ →₀ Fin 4
+finite lists `w : List (Fin 4)` (`[]` = identity `1`). -/
+abbrev PauliWord := List (Fin 4)
 
 /-- **Thermodynamic-Limit State Existence (Banach–Alaoglu / Tychonoff Compactness)**:
 Every sequence of finite-volume states `ω : ℕ → PauliWord → ℂ` uniformly bounded by `1`
-(`∀ N w, ‖ω N w‖ ≤ 1`) and normalized (`∀ N, ω N 0 = 1`) admits a strictly increasing
+(`∀ N w, ‖ω N w‖ ≤ 1`) and normalized (`∀ N, ω N [] = 1`) admits a strictly increasing
 subsequence `φ : ℕ → ℕ` and a thermodynamic-limit state `ω_∞ : PauliWord → ℂ` such that:
 1. Pointwise weak-* convergence on every local Pauli word `w : PauliWord`,
-2. Normalization `ω_∞ 0 = 1`,
+2. Normalization `ω_∞ [] = 1`,
 3. Uniform bound `∀ w, ‖ω_∞ w‖ ≤ 1`,
 4. Preservation of positivity `0 ≤ (∑ w ∈ S, c w * ω_∞ w).re` whenever every finite-volume
    state `ω N` satisfies `0 ≤ (∑ w ∈ S, c w * ω N w).re`. -/
 theorem thermo_limit_state_exists
     (ω : ℕ → PauliWord → ℂ)
     (hnorm : ∀ N w, ‖ω N w‖ ≤ 1)
-    (hone : ∀ N, ω N 0 = 1) :
+    (hone : ∀ N, ω N [] = 1) :
     ∃ (ω_inf : PauliWord → ℂ) (φ : ℕ → ℕ),
       StrictMono φ ∧
       (∀ w : PauliWord, Filter.Tendsto (fun k ↦ ω (φ k) w) Filter.atTop (nhds (ω_inf w))) ∧
-      ω_inf 0 = 1 ∧
+      ω_inf [] = 1 ∧
       (∀ w : PauliWord, ‖ω_inf w‖ ≤ 1) ∧
       (∀ (S : Finset PauliWord) (c : PauliWord → ℂ),
         (∀ N, 0 ≤ (∑ w ∈ S, c w * ω N w).re) →
@@ -171,10 +168,10 @@ theorem thermo_limit_state_exists
   obtain ⟨ω_inf, hω_mem, φ, hφ_mono, hφ_tend⟩ := hK_seq hmem
   have hpt : ∀ w : PauliWord, Filter.Tendsto (fun k ↦ ω (φ k) w) Filter.atTop (nhds (ω_inf w)) :=
     fun w ↦ (continuous_apply w).continuousAt.tendsto.comp hφ_tend
-  have hω_one : ω_inf 0 = 1 := by
-    have hconst : Filter.Tendsto (fun k ↦ ω (φ k) 0) Filter.atTop (nhds (1 : ℂ)) := by
+  have hω_one : ω_inf [] = 1 := by
+    have hconst : Filter.Tendsto (fun k ↦ ω (φ k) []) Filter.atTop (nhds (1 : ℂ)) := by
       simpa [hone] using (tendsto_const_nhds (x := (1 : ℂ)) (f := Filter.atTop))
-    exact tendsto_nhds_unique (hpt 0) hconst
+    exact tendsto_nhds_unique (hpt []) hconst
   have hω_bound : ∀ w : PauliWord, ‖ω_inf w‖ ≤ 1 := fun w ↦ by
     have := hω_mem w (Set.mem_univ w)
     rwa [Metric.mem_closedBall, dist_zero_right] at this

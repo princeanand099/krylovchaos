@@ -352,7 +352,7 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
             _ = |(star z1 * z0).im| := abs_neg _
             _ ≤ ‖star z1 * z0‖ := Complex.abs_im_le_norm _
         have h2 : ‖star z1 * z0‖ = ‖z1‖ * ‖z0‖ := by
-          rw [norm_mul, Complex.norm_conj]
+          rw [norm_mul, norm_star]
         linarith
       have hexp_diff_nn : 0 ≤ Real.exp (θ * ((k + 1 : ℕ) : ℝ)) - Real.exp (θ * (k : ℝ)) := by
         have : θ * (k : ℝ) ≤ θ * ((k + 1 : ℕ) : ℝ) :=
@@ -419,7 +419,8 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
       rw [fin_sum_eq_range]
       apply Finset.sum_congr rfl; intro k hk
       have hk' : k < D' + 1 := Finset.mem_range.mp hk
-      simp [pW, hk', mul_assoc]
+      dsimp only [pW]
+      rw [dif_pos hk', dif_pos hk', mul_assoc]
     have hterm_re : ∀ k ∈ Finset.range D',
         (if hk : k < D' then
           2 * Real.sinh (θ / 2) * (α * ((k + 1 : ℕ) : ℝ) + γ) *
@@ -438,24 +439,24 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
     have ha1 :
         ∑ k ∈ Finset.range D', 2 * α * Real.sinh (θ / 2) * (((k + 1 : ℕ) : ℝ) * pW (k + 1)) ≤
         2 * α * Real.sinh (θ / 2) * ∑ k ∈ Finset.range (D' + 1), (k : ℝ) * pW k := by
-      rw [Finset.sum_range_succ', Finset.mul_sum]; simp
+      rw [Finset.sum_range_succ', mul_add (2 * α * Real.sinh (θ / 2)), Finset.mul_sum]; simp
     have ha2 :
         ∑ k ∈ Finset.range D', 2 * α * Real.sinh (θ / 2) * ((k : ℝ) * pW k) ≤
         2 * α * Real.sinh (θ / 2) * ∑ k ∈ Finset.range (D' + 1), (k : ℝ) * pW k := by
-      rw [Finset.sum_range_succ, mul_add, Finset.mul_sum]
+      rw [Finset.sum_range_succ, mul_add (2 * α * Real.sinh (θ / 2)), Finset.mul_sum]
       have : 0 ≤ 2 * α * Real.sinh (θ / 2) * ((D' : ℝ) * pW D') :=
         mul_nonneg (by positivity) (mul_nonneg (Nat.cast_nonneg _) (hpW_nn D'))
       linarith
     have hg1 :
         ∑ k ∈ Finset.range D', 2 * γ * Real.sinh (θ / 2) * pW (k + 1) ≤
         2 * γ * Real.sinh (θ / 2) * ∑ k ∈ Finset.range (D' + 1), pW k := by
-      rw [Finset.sum_range_succ', mul_add, Finset.mul_sum]
+      rw [Finset.sum_range_succ', mul_add (2 * γ * Real.sinh (θ / 2)), Finset.mul_sum]
       have : 0 ≤ 2 * γ * Real.sinh (θ / 2) * pW 0 := mul_nonneg (by positivity) (hpW_nn 0)
       linarith
     have hg2 :
         ∑ k ∈ Finset.range D', 2 * (α + γ) * Real.sinh (θ / 2) * pW k ≤
         2 * (α + γ) * Real.sinh (θ / 2) * ∑ k ∈ Finset.range (D' + 1), pW k := by
-      rw [Finset.sum_range_succ, mul_add, Finset.mul_sum]
+      rw [Finset.sum_range_succ, mul_add (2 * (α + γ) * Real.sinh (θ / 2)), Finset.mul_sum]
       have : 0 ≤ 2 * (α + γ) * Real.sinh (θ / 2) * pW D' := mul_nonneg (by positivity) (hpW_nn D')
       linarith
     rw [Finset.sum_congr rfl hterm_re, Finset.sum_add_distrib, Finset.sum_add_distrib,
@@ -711,13 +712,13 @@ theorem jacobiWavefn_trunc_diff_bound {D M : ℕ} (b : ℕ → ℝ) (hD : 0 < D)
       have hreal : (inner ℂ (w s) (jacobiCLM M b (w s))).im = 0 := by
         have hsa := jacobiCLM_symm_inner M b (w s) (w s)
         have hconj := congrArg Complex.im (inner_conj_symm (jacobiCLM M b (w s)) (w s))
-        rw [hsa, Complex.conj_im] at hconj
+        rw [← hsa, Complex.conj_im] at hconj
         linarith
       linarith
+    have hskew' : @inner ℝ _ _ ((Complex.I • jacobiCLM M b) (w s)) (w s) = 0 := by
+      rw [real_inner_comm]; exact hskew
     convert hinner using 1
-    rw [inner_add_right, inner_add_left,
-      real_inner_comm ((Complex.I • jacobiCLM M b) (w s)) (w s),
-      real_inner_comm (defect s) (w s), hskew]
+    rw [inner_add_right, inner_add_left, hskew, hskew', real_inner_comm (defect s) (w s)]
     ring
   have heps : ∀ ε : ℝ, 0 < ε → ‖w t‖ ≤ B * t + ε := by
     intro ε hε
@@ -967,11 +968,8 @@ theorem theorem_1_1a_infinite_unconditional (b : ℕ → ℝ) {α γ t θ₀ : �
     infiniteKrylovWavefn_normSq_tendsto b hα hγ ht hb_nn hb_lin
   have hunit_eq : ∀ D (hD : 0 < D), ∑ m ∈ Finset.range D, pN D m = 1 := by
     intro D hD
-    have h1 : ∑ m ∈ Finset.range D, pN D m = ∑ m : Fin D, ‖jacobiWavefn hD b t m‖ ^ 2 := by
-      rw [fin_sum_eq_range]
-      apply Finset.sum_congr rfl; intro m hm
-      have hm' : m < D := Finset.mem_range.mp hm
-      simp [pN, hm']
+    have h1 : ∑ m ∈ Finset.range D, pN D m = ∑ m : Fin D, ‖jacobiWavefn hD b t m‖ ^ 2 :=
+      (fin_sum_eq_range (fun m : Fin D ↦ ‖jacobiWavefn hD b t m‖ ^ 2)).symm
     rw [h1]
     have hnorm : ‖jacobiWavefn hD b t‖ ^ 2 = 1 := by
       unfold jacobiWavefn
