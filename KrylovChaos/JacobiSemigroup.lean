@@ -20,13 +20,13 @@ Closes the concrete Section 3 semigroup and infinite-chain bridge gaps:
    - `jacobiUnitary_zero`: `U(0) = 1`
    - `jacobiUnitary_add`: `U(t + s) = U(t) ∘ U(s)`
    - `jacobiUnitary_norm_preserve`: `‖U(t) v‖ = ‖v‖` (exact probability conservation)
-   - `hasDerivAt_exp_smul`: `HasDerivAt (fun t : ℝ ↦ exp(t • A)) (A * exp(t • A)) t`
+   - `hasDerivAt_exp_smul_real`: `HasDerivAt (fun t : ℝ ↦ exp(t • A)) (A * exp(t • A)) t`
    - `jacobiWavefn_ode`: `HasDerivAt (fun t ↦ U(t) e_0) ((i • T_D) (U(t) e_0)) t`
 3. **Ground-Up Infinite-Chain Fatou Bound** (`fatou_tsum_le_of_pointwise_tendsto` &
    `theorem_1_1a_infinite_fatou_proved`):
    discharges the `hfatou` hypothesis of `KrylovTail.theorem_1_1a_infinite_tail_and_complexity`
-   directly from pointwise convergence `|φ_m^{(N)}(t)|² → |φ_m(t)|²` and uniform finite-chain
-   bounds.
+   directly from pointwise convergence `|φ_m^{(N)}(t)|² → |φ_m(t)|²`, finite-chain unitarity,
+   and the uniform finite-chain MGF bound.
 -/
 
 namespace KrylovChaos
@@ -192,11 +192,10 @@ lemma jacobiUnitary_add (D : ℕ) (b : ℕ → ℝ) (t s : ℝ) :
   unfold Commute SemiconjBy
   simp [smul_mul_assoc, mul_smul_comm, mul_comm]
 
-/-- `U_D(t)` is unitary: `U_D(t)† = U_D(-t)` and `‖U_D(t) v‖ = ‖v‖`. -/
+/-- `U_D(t)` is unitary: `‖U_D(t) v‖ = ‖v‖` for all `t : ℝ` and `v`. -/
 theorem jacobiUnitary_norm_preserve (D : ℕ) (b : ℕ → ℝ) (t : ℝ)
     (v : EuclideanSpace ℂ (Fin D)) :
     ‖jacobiUnitary D b t v‖ = ‖v‖ := by
-  -- Differentiate `f(s) = ‖U_D(s) v‖² = Re ⟨U_D(s) v, U_D(s) v⟩` and show `f'(s) = 0`!
   have hderiv_op : ∀ s : ℝ,
       HasDerivAt (fun r : ℝ ↦ jacobiUnitary D b r)
         ((Complex.I • jacobiCLM D b) * jacobiUnitary D b s) s :=
@@ -290,41 +289,104 @@ theorem fatou_tsum_le_of_pointwise_tendsto (f : ℕ → ℕ → ℝ) (g w : ℕ 
 
 /-- **Theorem 1.1(a) Infinite-Chain Fatou Tail & Complexity Bound (Zero `hfatou` Hypothesis)**:
 Discharges the `hfatou` hypothesis of `KrylovTail.theorem_1_1a_infinite_tail_and_complexity`
-directly from pointwise convergence `p_N(m) → p(m)` and the uniform finite-chain MGF bound. -/
+directly from pointwise convergence `p_N(m) → p(m)`, finite-chain unitarity (`∑ p_N ≤ 1`),
+and the uniform finite-chain MGF bound, proving:
+1. Summability and MGF bound `∑' m, exp(θ m) p_m ≤ exp(A)`,
+2. Exponential tail bound `∑' m, (if M₀ ≤ m then p_m else 0) ≤ exp(-θ M₀ + A)`, and
+3. Infinite-chain Krylov complexity bound `∑' m, m p_m ≤ (1 / θ) (A + 1)`. -/
 theorem theorem_1_1a_infinite_fatou_proved
     (pN : ℕ → ℕ → ℝ) (p : ℕ → ℝ) {α γ t θ : ℝ}
     (hα : 0 < α) (hγ : 0 ≤ γ) (ht : 0 ≤ t) (hθ : 0 < θ)
     (hpN_nn : ∀ N m, 0 ≤ pN N m)
+    (hunit : ∀ N, ∑ m ∈ Finset.range N, pN N m ≤ 1)
     (hlim : ∀ m, Filter.Tendsto (fun N ↦ pN N m) Filter.atTop (nhds (p m)))
     (hmgf : ∀ N, ∑ m ∈ Finset.range N, Real.exp (θ * (m : ℝ)) * pN N m ≤
         Real.exp (γ / α * (Real.exp (2 * α * Real.sinh θ * t) - 1))) :
+    let A := γ / α * (Real.exp (2 * α * Real.sinh θ * t) - 1)
     Summable (fun m ↦ Real.exp (θ * (m : ℝ)) * p m) ∧
-    (∑' m : ℕ, Real.exp (θ * (m : ℝ)) * p m) ≤
-      Real.exp (γ / α * (Real.exp (2 * α * Real.sinh θ * t) - 1)) ∧
-    ∀ M : ℕ, ∑ m ∈ Finset.range M, (m : ℝ) * p m ≤
-      (1 / θ) * (γ / α * (Real.exp (2 * α * Real.sinh θ * t) - 1) + 1) := by
-  set B := Real.exp (γ / α * (Real.exp (2 * α * Real.sinh θ * t) - 1))
-  have hfat := fatou_tsum_le_of_pointwise_tendsto pN p
-    (fun m ↦ Real.exp (θ * (m : ℝ))) B hpN_nn (fun _ ↦ (Real.exp_pos _).le) hlim hmgf
-  refine ⟨hfat.2.1, hfat.2.2, ?_⟩
-  intro M
+    (∑' m : ℕ, Real.exp (θ * (m : ℝ)) * p m) ≤ Real.exp A ∧
+    (∀ M₀ : ℕ, (∑' m : ℕ, if M₀ ≤ m then p m else 0) ≤ Real.exp (-(θ * (M₀ : ℝ)) + A)) ∧
+    Summable (fun m ↦ (m : ℝ) * p m) ∧
+    (∑' m : ℕ, (m : ℝ) * p m) ≤ (1 / θ) * (A + 1) := by
+  intro A
+  have hsinh_nn : 0 ≤ Real.sinh θ := by
+    rw [Real.sinh_eq]
+    have : Real.exp (-θ) ≤ Real.exp θ := Real.exp_le_exp.mpr (by linarith)
+    linarith
+  have hA_nn : 0 ≤ A := by
+    apply mul_nonneg (div_nonneg hγ hα.le)
+    have : 1 ≤ Real.exp (2 * α * Real.sinh θ * t) := Real.one_le_exp (by positivity)
+    linarith
+  have hfat_mgf := fatou_tsum_le_of_pointwise_tendsto pN p
+    (fun m ↦ Real.exp (θ * (m : ℝ))) (Real.exp A) hpN_nn
+    (fun _ ↦ (Real.exp_pos _).le) hlim hmgf
+  have hfat_prob := fatou_tsum_le_of_pointwise_tendsto pN p
+    (fun _ ↦ 1) 1 hpN_nn (fun _ ↦ by norm_num) hlim (by simpa using hunit)
   have hp_nn : ∀ m, 0 ≤ p m := fun m ↦ ge_of_tendsto' (hlim m) (fun N ↦ hpN_nn N m)
-  -- Use `θ m ≤ exp(θ m)`? Even better: `θ m - A ≤ exp(θ m - A) - 1` or `1 + θ m ≤ exp(θ m)`!
-  -- Actually `θ m ≤ exp(θ m)` gives `∑ m p_m ≤ B / θ`, whereas using `x ≤ log B + exp(x) / B`
-  -- gives `(∑ m p_m) ≤ (1 / θ) * (log B + (∑ exp(θ m) p_m) / B)`!
-  -- Here `B ≥ 1` and `∑ p_m ≤ 1` is not even needed if we use `log B + 1` with `∑ p_m ≤ 1`:
-  -- Wait: without `∑ p_m ≤ 1`, use the elementary inequality `x ≤ exp(x)`? No, `B` can be `> 1`,
-  -- so `B` is larger than `log B + 1`. Let's use `hfat.1 M` with `θ * m ≤ Real.exp (θ * m)`?
-  -- Wait: if `B ≥ 1`, `(1/θ) * (log B + 1)` requires `∑ p_m ≤ 1`!
-  -- Let's check: does `hmgf` imply `∑ p_m ≤ B`? Only `≤ B`, not `≤ 1`.
-  -- So instead let's prove `∀ M, ∑ m ∈ Finset.range M, Real.exp (θ * m) * p m ≤ B` AND
-  -- for any `M₀ : ℕ`, tail `∑' m, (if M₀ ≤ m then p m else 0) ≤ Real.exp (-(θ * M₀)) * B`!
-  -- Wait: we can't prove `∑ m p_m ≤ (1/θ)*(log B + 1)` without `∑ p_m ≤ 1` (e.g. if `p_0 = 2`,
-  -- `p_1 = 0`, `B = 2`, `∑ m p_m = 0` works, what if `p_m` has total mass `B`?).
-  -- Let's check with `p_0 = 0, p_1 = B / e^θ`: then `∑ m p_m = B / e^θ`, which can exceed
-  -- `(1/θ)(log B + 1)` when `B` is large and `θ` is small!
-  -- Good catch!! Always add `hsum_le : ∀ N, ∑ m ∈ Finset.range N, pN N m ≤ 1` (unitarity)!
-  sorry
+  have htail : ∀ M₀ : ℕ,
+      (∑' m : ℕ, if M₀ ≤ m then p m else 0) ≤ Real.exp (-(θ * (M₀ : ℝ)) + A) := by
+    intro M₀
+    have hdom : ∀ m : ℕ,
+        (if M₀ ≤ m then p m else 0) ≤
+        Real.exp (-(θ * (M₀ : ℝ))) * (Real.exp (θ * (m : ℝ)) * p m) := by
+      intro m
+      split_ifs with hm
+      · have hle : Real.exp (θ * (M₀ : ℝ)) ≤ Real.exp (θ * (m : ℝ)) :=
+          Real.exp_le_exp.mpr (mul_le_mul_of_nonneg_left (by exact_mod_cast hm) hθ.le)
+        have h1 : 1 ≤ Real.exp (-(θ * (M₀ : ℝ))) * Real.exp (θ * (m : ℝ)) := by
+          rw [← Real.exp_add]
+          exact Real.one_le_exp (by
+            have : (M₀ : ℝ) ≤ (m : ℝ) := by exact_mod_cast hm
+            nlinarith)
+        calc p m = 1 * p m := (one_mul _).symm
+          _ ≤ (Real.exp (-(θ * (M₀ : ℝ))) * Real.exp (θ * (m : ℝ))) * p m :=
+                mul_le_mul_of_nonneg_right h1 (hp_nn m)
+          _ = Real.exp (-(θ * (M₀ : ℝ))) * (Real.exp (θ * (m : ℝ)) * p m) := by ring
+      · positivity
+    have hsumm_t : Summable (fun m : ℕ ↦ if M₀ ≤ m then p m else 0) :=
+      Summable.of_nonneg_of_le (fun m ↦ by split_ifs <;> [exact hp_nn m; exact le_refl 0])
+        hdom (hfat_mgf.2.1.mul_left _)
+    calc ∑' m : ℕ, (if M₀ ≤ m then p m else 0)
+        ≤ ∑' m : ℕ, Real.exp (-(θ * (M₀ : ℝ))) * (Real.exp (θ * (m : ℝ)) * p m) :=
+            hsumm_t.tsum_le_tsum hdom (hfat_mgf.2.1.mul_left _)
+      _ = Real.exp (-(θ * (M₀ : ℝ))) * ∑' m : ℕ, Real.exp (θ * (m : ℝ)) * p m := tsum_mul_left
+      _ ≤ Real.exp (-(θ * (M₀ : ℝ))) * Real.exp A :=
+            mul_le_mul_of_nonneg_left hfat_mgf.2.2 (Real.exp_pos _).le
+      _ = Real.exp (-(θ * (M₀ : ℝ)) + A) := (Real.exp_add _ _).symm
+  have hcomp_partial : ∀ M : ℕ, ∑ m ∈ Finset.range M, (m : ℝ) * p m ≤ (1 / θ) * (A + 1) := by
+    intro M
+    have hstep : ∀ m : ℕ,
+        θ * ((m : ℝ) * p m) ≤ A * p m + (Real.exp A)⁻¹ * (Real.exp (θ * (m : ℝ)) * p m) := by
+      intro m
+      have hexp : θ * (m : ℝ) - A ≤ Real.exp (θ * (m : ℝ) - A) := by
+        linarith [Real.add_one_le_exp (θ * (m : ℝ) - A)]
+      rw [Real.exp_sub, div_eq_inv_mul] at hexp
+      have h1 : θ * (m : ℝ) ≤ A + (Real.exp A)⁻¹ * Real.exp (θ * (m : ℝ)) := by linarith
+      have h2 := mul_le_mul_of_nonneg_right h1 (hp_nn m)
+      linarith
+    have hsum_θ :
+        θ * (∑ m ∈ Finset.range M, (m : ℝ) * p m) ≤
+        A * (∑ m ∈ Finset.range M, p m) +
+        (Real.exp A)⁻¹ * (∑ m ∈ Finset.range M, Real.exp (θ * (m : ℝ)) * p m) := by
+      rw [Finset.mul_sum, Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]
+      exact Finset.sum_le_sum fun m _ ↦ hstep m
+    have hp_le : ∑ m ∈ Finset.range M, p m ≤ 1 := by simpa using hfat_prob.1 M
+    have hm_le : ∑ m ∈ Finset.range M, Real.exp (θ * (m : ℝ)) * p m ≤ Real.exp A := hfat_mgf.1 M
+    have hbound : θ * (∑ m ∈ Finset.range M, (m : ℝ) * p m) ≤ A + 1 := by
+      calc θ * (∑ m ∈ Finset.range M, (m : ℝ) * p m)
+          ≤ A * 1 + (Real.exp A)⁻¹ * Real.exp A := by
+              have h1 := mul_le_mul_of_nonneg_left hp_le hA_nn
+              have h2 := mul_le_mul_of_nonneg_left hm_le (inv_nonneg.mpr (Real.exp_pos A).le)
+              linarith
+        _ = A + 1 := by rw [mul_one, inv_mul_cancel₀ (Real.exp_pos A).ne']
+    rw [one_div, inv_mul_eq_div, le_div_iff₀ hθ]
+    linarith
+  have hcomp_summ : Summable (fun m : ℕ ↦ (m : ℝ) * p m) :=
+    summable_of_sum_range_le (fun m ↦ mul_nonneg (Nat.cast_nonneg m) (hp_nn m)) hcomp_partial
+  have hcomp_tsum : ∑' m : ℕ, (m : ℝ) * p m ≤ (1 / θ) * (A + 1) :=
+    le_of_tendsto (hcomp_summ.hasSum.tendsto_sum_nat)
+      (Filter.Eventually.of_forall hcomp_partial)
+  exact ⟨hfat_mgf.2.1, hfat_mgf.2.2, htail, hcomp_summ, hcomp_tsum⟩
 
 end InfiniteChainFatou
 

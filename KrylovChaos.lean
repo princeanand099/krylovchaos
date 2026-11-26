@@ -27,4 +27,6 @@ import KrylovChaos.WightmanProjectors
 import KrylovChaos.LanczosMoments
 import KrylovChaos.CausalNormBounds
 import KrylovChaos.BimodalExact
+import KrylovChaos.SpectralMeasure
+import KrylovChaos.JacobiSemigroup
 import KrylovChaos.SanityChecks
