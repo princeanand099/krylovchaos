@@ -54,7 +54,7 @@ lemma opNorm_conjTranspose_le {N : ℕ} (A : QubitOp N) : opNorm Aᴴ ≤ opNorm
     simp_rw [Finset.sum_mul, Finset.mul_sum]
     conv_rhs => rw [Finset.sum_comm]
     apply Finset.sum_congr rfl; intro j _
-    conv_rhs => rw [Finset.sum_comm]
+    conv_rhs => simp_rw [Finset.sum_mul]; rw [Finset.sum_comm]
     apply Finset.sum_congr rfl; intro i _
     apply Finset.sum_congr rfl; intro k _
     simp only [Matrix.conjTranspose_apply, Complex.star_def, starRingEnd_self_apply]
@@ -171,7 +171,7 @@ lemma opNorm_kron_depolPHalf_mul_inv_le {N : ℕ} (s : Fin N → Fin 6) (U : Fin
           if x ∈ U then Matrix.diagonal ![(a : ℂ), (b : ℂ)] else 1) := by
         ext i j; simp only [Matrix.diagonal_apply, kronOp, Matrix.of_apply]
         by_cases hij : i = j
-        · subst hij; dsimp only [d]; simp only [Matrix.diagonal_apply_eq]
+        · subst hij; dsimp only [d]; simp only [↓reduceIte, Matrix.diagonal_apply_eq]
           apply Finset.prod_congr rfl; intro x _; by_cases hx : x ∈ U <;> simp [hx]
         · simp only [hij, ↓reduceIte]
           have hne : ∃ x : Fin N, i x ≠ j x := by
@@ -221,7 +221,7 @@ lemma opNorm_kron_depolPHalf_mul_inv_le {N : ℕ} (s : Fin N → Fin 6) (U : Fin
         ext i j; fin_cases i <;> fin_cases j <;> simp, Matrix.mul_one]
       exact (mul_eq_one_comm.mp (signedPauliU_unitary u)).symm
     conv_lhs => rw [hUU, signedPauliU_diag_signedPauli u]
-    rw [Matrix.smul_mul, Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_smul,
+    rw [← Matrix.smul_mul, ← Matrix.mul_smul, ← Matrix.smul_mul, ← Matrix.mul_smul,
       ← Matrix.add_mul, ← Matrix.mul_add]
     congr 2; ext i j; fin_cases i <;> fin_cases j <;> simp <;> ring
   have hdiag_half : ∀ u : Fin 6, depolPHalf u =
@@ -521,7 +521,7 @@ theorem prodDepolNormSq_matComm_supportedOn_le {N : ℕ} (s s' : Fin N → Fin 6
         split_ifs <;> simp
       rw [hB_full, ← Finset.sum_sub_distrib]
       apply Finset.sum_congr rfl; intro a _
-      by_cases ha : ∀ y ∈ U, a y = 0 <;> simp [ha, c]
+      by_cases ha : ∀ y ∈ U, a y = 0 <;> simp only [ha, ↓reduceIte, zero_smul, sub_self, sub_zero, c]
     rw [hZ_expand, prodDepolNormSq_expand]
     have hfilt : ∑ a : Fin N → Fin 4, ‖if ∀ y ∈ U, a y = 0 then (0 : ℂ) else c a‖ ^ 2 =
         ∑ a ∈ Finset.univ.filter (fun a : Fin N → Fin 4 ↦ ∃ y ∈ U, a y ≠ 0), ‖c a‖ ^ 2 := by
