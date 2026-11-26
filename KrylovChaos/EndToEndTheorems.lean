@@ -274,7 +274,7 @@ theorem theorem_1_1b_end_to_end {N : ℕ} (G : GibbsData N)
     (C₁ * (N : ℝ) ^ δ * s_M ^ η + C₂) +
       2 * (N : ℝ) * Real.exp ((-(θ * M) + A) / 2) +
       (N : ℝ) * Real.exp (-(θ * M) + A) := by
-  have hlem42 := lemma_4_2_operator_thermal_size_truncation G O A_M R_M
+  have hlem42 := lemma_4_2_operator_thermal_size_truncation G G.ρQuarter_sq
     hdecomp hnormA hnormR hq_nn hq_le hΛ_nn hH1_static
   have hsqrt_le : Real.sqrt q ≤ Real.exp ((-(θ * M) + A) / 2) := by
     have h1 := Real.sqrt_le_sqrt htail
