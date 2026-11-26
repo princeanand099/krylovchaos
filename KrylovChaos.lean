@@ -37,4 +37,5 @@ import KrylovChaos.EndToEndTheorems
 import KrylovChaos.InfiniteChainLimit
 import KrylovChaos.ProductStateMultiSite
 import KrylovChaos.ThermodynamicKMS
+import KrylovChaos.SpectralSmearingAndDoubleWell
 import KrylovChaos.SanityChecks

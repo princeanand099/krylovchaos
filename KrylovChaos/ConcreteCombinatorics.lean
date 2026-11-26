@@ -88,7 +88,7 @@ private lemma catalanRec_partial_sum_le_two :
         rw [Nat.cast_mul, pow_succ]
         have hp : (1 / 4 : ℝ) ^ j * (1 / 4 : ℝ) ^ (k - j) = (1 / 4 : ℝ) ^ k := by
           rw [← pow_add, Nat.add_sub_cancel' hjk]
-        linear_combination (catalanRec j : ℝ) * (catalanRec (k - j) : ℝ) * (1 / 4 : ℝ) * hp
+        linear_combination -(catalanRec j : ℝ) * (catalanRec (k - j) : ℝ) * (1 / 4 : ℝ) * hp
       rw [hrew, mul_assoc]
       apply mul_le_mul_of_nonneg_left _ (by norm_num)
       rw [Finset.sum_mul_sum]
@@ -101,7 +101,7 @@ private lemma catalanRec_partial_sum_le_two :
           ((catalanRec j : ℝ) * (1 / 4 : ℝ) ^ j) *
           ((catalanRec (k - j) : ℝ) * (1 / 4 : ℝ) ^ (k - j))) = ∑ p ∈ S, g (f p) :=
         (Finset.sum_sigma (Finset.range (N + 1)) (fun k ↦ Finset.range (k + 1))
-          (fun k j ↦ g (j, k - j))).symm
+          (fun p ↦ g (f p))).symm
       have hR : (∑ i ∈ Finset.range (N + 1), ∑ j ∈ Finset.range (N + 1),
           ((catalanRec i : ℝ) * (1 / 4 : ℝ) ^ i) *
           ((catalanRec j : ℝ) * (1 / 4 : ℝ) ^ j)) =
@@ -144,11 +144,11 @@ lemma catalanRec_le_four_pow (n : ℕ) : (catalanRec n : ℝ) ≤ (4 : ℝ) ^ n 
     rw [Finset.sum_pair (Nat.succ_ne_zero n).symm] at hle
     have h0 : (catalanRec 0 : ℝ) * (1 / 4 : ℝ) ^ 0 = 1 := by simp [catalanRec_zero]
     rw [h0] at hle
-    have h1 : (catalanRec (n + 1) : ℝ) * (1 / 4 : ℝ) ^ (n + 1) ≤ 1 := by
-      have hle' : 1 + (catalanRec (n + 1) : ℝ) * (1 / 4 : ℝ) ^ (n + 1) ≤
-          ∑ k ∈ Finset.range (n + 2), (catalanRec k : ℝ) * (1 / 4 : ℝ) ^ k := hle
-      have hsum' : ∑ k ∈ Finset.range (n + 2), (catalanRec k : ℝ) * (1 / 4 : ℝ) ^ k ≤ 2 := hsum
-      linarith
+    have hle' : 1 + (catalanRec (n + 1) : ℝ) * (1 / 4 : ℝ) ^ (n + 1) ≤
+        ∑ k ∈ Finset.range (n + 2), (catalanRec k : ℝ) * (1 / 4 : ℝ) ^ k := hle
+    have hsum' : ∑ k ∈ Finset.range (n + 2), (catalanRec k : ℝ) * (1 / 4 : ℝ) ^ k ≤ 2 := hsum
+    have htrans : 1 + (catalanRec (n + 1) : ℝ) * (1 / 4 : ℝ) ^ (n + 1) ≤ 2 := le_trans hle' hsum'
+    have h1 : (catalanRec (n + 1) : ℝ) * (1 / 4 : ℝ) ^ (n + 1) ≤ 1 := by linarith
     have hpow : (0 : ℝ) < (4 : ℝ) ^ (n + 1) := by positivity
     have hmul := mul_le_mul_of_nonneg_right h1 hpow.le
     rw [mul_assoc, ← mul_pow] at hmul
@@ -214,11 +214,7 @@ lemma binTreeSum_nonneg {N : ℕ} (E : Finset (Finset (Fin N)))
         · exact zero_le_one
         · exact Finset.sum_nonneg fun z _ ↦ ih (m - j) (by omega) z
 
-/-- **Lemma A.1 (Concrete Catalan Plane-Tree Bound, Zero `htree` Hypothesis)**:
-For any finite hypergraph `E` with `∀ X ∈ E, X.card ≤ r`, nonnegative edge weights `η`, and
-site bound `∀ x, ∑_{X ∈ E, x ∈ X} η X ≤ η₀`, the concrete size-`m` (`m ≥ 1`) plane-tree
-weight sum satisfies:
-`binTreeSum E η m x ≤ catalanRec m * (r * η₀)^(m - 1) * η₀ ≤ 4^m * (r * η₀)^(m - 1) * η₀`. -/
+/-- **Lemma A.1 (Concrete Catalan Plane-Tree Bound, Zero `htree` Hypothesis)**. -/
 theorem lemma_A_1_concrete_bin_tree_sum {N r : ℕ}
     (E : Finset (Finset (Fin N))) (hcard : ∀ X ∈ E, X.card ≤ r)
     (η : Finset (Fin N) → ℝ) (hη_nn : ∀ X ∈ E, 0 ≤ η X)
@@ -372,8 +368,7 @@ lemma sum_overlapping_le {N : ℕ} (E : Finset (Finset (Fin N)))
     _ ≤ ∑ _x ∈ U, Jsite := Finset.sum_le_sum fun x _ ↦ hsite x
     _ = (U.card : ℝ) * Jsite := by simp [Finset.sum_const, nsmul_eq_mul]
 
-/-- **Lemma A.2 (Concrete Forward Causal Sequence Bound, Zero `hcayley` Hypothesis)**:
-`causalSeqSum E w k U ≤ (∏ j ∈ Finset.range k, (|U| + j * (r - 1))) * Jsite ^ k`. -/
+/-- **Lemma A.2 (Concrete Forward Causal Sequence Bound, Zero `hcayley` Hypothesis)**. -/
 theorem lemma_A_2_concrete_causal_seq_sum {N r : ℕ} (hr : 1 ≤ r)
     (E : Finset (Finset (Fin N))) (hcard : ∀ X ∈ E, X.card ≤ r)
     (w : Finset (Fin N) → ℝ) (hw_nn : ∀ X ∈ E, 0 ≤ w X)
@@ -456,9 +451,7 @@ lemma unorderedTreeSum_nonneg {N : ℕ} (E : Finset (Finset (Fin N)))
     exact mul_nonneg (hη_nn X hX)
       (Finset.prod_nonneg fun Y hY ↦ by linarith [ih Y (Finset.mem_filter.mp hY).1])
 
-/-- **Lemma A.3 (Concrete Unordered Rooted Tree Sum Bound, Zero Abstract `S` Hypothesis)**:
-If `η₀ * Real.exp (c * r) ≤ c` (`c ≥ 0`), then for every depth `h` and hyperedge `X ∈ E`,
-`unorderedTreeSum E η h X ≤ η X * Real.exp (c * |X|)`. -/
+/-- **Lemma A.3 (Concrete Unordered Rooted Tree Sum Bound, Zero Abstract `S` Hypothesis)**. -/
 theorem lemma_A_3_concrete_unordered_tree_sum {N r : ℕ}
     (E : Finset (Finset (Fin N))) (hcard : ∀ X ∈ E, X.card ≤ r)
     (η : Finset (Fin N) → ℝ) (hη_nn : ∀ X ∈ E, 0 ≤ η X)
