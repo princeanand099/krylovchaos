@@ -1008,19 +1008,33 @@ lemma polyTermSum_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
     · intro T _; rw [Finset.mem_range]; exact Nat.lt_succ_of_le (by simpa using Finset.card_le_univ T)
   exact hconv
 
-private lemma hasSum_finset_cauchy_product {ι : Type*} [Fintype ι]
-    (a b : ℕ → ι → ℂ) (P1 P2 : ι → ℂ) (r1 r2 : ℕ → ℝ)
-    (ha : ∀ l, HasSum (fun k ↦ a k l) (P1 l))
-    (hb : ∀ l, HasSum (fun k ↦ b k l) (P2 l))
-    (hb1 : ∀ l k, ‖a k l‖ ≤ r1 k) (hs1 : Summable r1)
-    (hb2 : ∀ l k, ‖b k l‖ ≤ r2 k) (hs2 : Summable r2) :
-    HasSum (fun m : ℕ ↦ ∑ l : ι, ∑ p ∈ Finset.antidiagonal m, a p.1 l * b p.2 l)
-      (∑ l : ι, P1 l * P2 l) := by
-  let g : ι → ℕ → ℂ := fun l m ↦ ∑ p ∈ Finset.antidiagonal m, a p.1 l * b p.2 l
-  exact hasSum_sum (f := g) (a := fun l ↦ P1 l * P2 l) (s := Finset.univ) fun l _ ↦
-    hasSum_cauchy_product_complex (ha l) (hb l)
-      (Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) (hb1 l) hs1)
-      (Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) (hb2 l) hs2)
+private lemma hasSum_finset_cauchy_product {ι : Type*} [DecidableEq ι]
+    (s : Finset ι) (a b : ℕ → ι → ℂ) (P1 P2 : ι → ℂ) (r1 r2 : ℕ → ℝ)
+    (ha : ∀ l ∈ s, HasSum (fun k ↦ a k l) (P1 l))
+    (hb : ∀ l ∈ s, HasSum (fun k ↦ b k l) (P2 l))
+    (hb1 : ∀ l ∈ s, ∀ k, ‖a k l‖ ≤ r1 k) (hs1 : Summable r1)
+    (hb2 : ∀ l ∈ s, ∀ k, ‖b k l‖ ≤ r2 k) (hs2 : Summable r2) :
+    HasSum (fun m : ℕ ↦ ∑ l ∈ s, ∑ p ∈ Finset.antidiagonal m, a p.1 l * b p.2 l)
+      (∑ l ∈ s, P1 l * P2 l) := by
+  induction s using Finset.induction with
+  | empty =>
+    simp only [Finset.sum_empty]
+    exact hasSum_zero
+  | insert l t hlt ih =>
+    simp only [Finset.sum_insert hlt]
+    have h1 : Summable (fun k ↦ ‖a k l‖) :=
+      Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) (hb1 l (Finset.mem_insert_self l t)) hs1
+    have h2 : Summable (fun k ↦ ‖b k l‖) :=
+      Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) (hb2 l (Finset.mem_insert_self l t)) hs2
+    have hl : HasSum (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, a p.1 l * b p.2 l) (P1 l * P2 l) :=
+      hasSum_cauchy_product_complex (ha l (Finset.mem_insert_self l t))
+        (hb l (Finset.mem_insert_self l t)) h1 h2
+    have ht := ih
+      (fun x hx ↦ ha x (Finset.mem_insert_of_mem hx))
+      (fun x hx ↦ hb x (Finset.mem_insert_of_mem hx))
+      (fun x hx ↦ hb1 x (Finset.mem_insert_of_mem hx))
+      (fun x hx ↦ hb2 x (Finset.mem_insert_of_mem hx))
+    exact hl.add ht
 
 lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
     (hsupp : ∀ X, h X ∈ supportedOn X) (β' : ℝ)
@@ -1065,15 +1079,15 @@ lemma polyOp_union_of_disjoint {N : ℕ} (h : Finset (Fin N) → QubitOp N)
       intro m; simp only [Matrix.sum_apply, Matrix.mul_apply]; rw [Finset.sum_comm]
     simp_rw [hterm]
     rw [Matrix.mul_apply]
-    exact hasSum_finset_cauchy_product
+    exact hasSum_finset_cauchy_product Finset.univ
       (fun k l ↦ A k i l) (fun k l ↦ B k l j)
       (fun l ↦ polyOp h β' γ₁ i l) (fun l ↦ polyOp h β' γ₂ l j)
       (fun k ↦ scalarWordSum (fun X ↦ |β'| * opNorm (h X)) γ₁ k / (k.factorial : ℝ))
       (fun k ↦ scalarWordSum (fun X ↦ |β'| * opNorm (h X)) γ₂ k / (k.factorial : ℝ))
-      (fun l ↦ hasSum_entry hA_has i l)
-      (fun l ↦ hasSum_entry hB_has l j)
-      (fun l k ↦ le_trans (norm_entry_le_opNorm (A k) i l) (opNorm_polyTermSum_scaled_le h β' γ₁ k)) hsr1
-      (fun l k ↦ le_trans (norm_entry_le_opNorm (B k) l j) (opNorm_polyTermSum_scaled_le h β' γ₂ k)) hsr2
+      (fun l _ ↦ hasSum_entry hA_has i l)
+      (fun l _ ↦ hasSum_entry hB_has l j)
+      (fun l _ k ↦ le_trans (norm_entry_le_opNorm (A k) i l) (opNorm_polyTermSum_scaled_le h β' γ₁ k)) hsr1
+      (fun l _ k ↦ le_trans (norm_entry_le_opNorm (B k) l j) (opNorm_polyTermSum_scaled_le h β' γ₂ k)) hsr2
   ext i j
   have hhas_lhs : HasSum (fun m : ℕ ↦ (∑ p ∈ Finset.antidiagonal m, A p.1 * B p.2) i j)
       (polyOp h β' (γ₁ ∪ γ₂) i j) :=
