@@ -108,25 +108,25 @@ theorem majoranaProbe_anticomm {n : ℕ} {i j : Fin (2 * n)} (hij : i ≠ j) :
         · have hx : x₀.1 = i.1 / 2 := min_eq_left (le_of_lt hlt)
           have h1 : ¬(x₀.1 < i.1 / 2) := by omega
           have h2 : x₀.1 < j.1 / 2 := by omega
-          simp only [h1, ↓reduceIte, hx, h2]
+          rw [if_neg h1, if_pos hx, if_pos h2]
           split_ifs <;> decide
         · have hx : x₀.1 = i.1 / 2 := by simp [x₀, heq]
           have h1 : ¬(x₀.1 < i.1 / 2) := by omega
           have h2 : ¬(x₀.1 < j.1 / 2) := by omega
           have h3 : x₀.1 = j.1 / 2 := by omega
           have hmod : i.1 % 2 ≠ j.1 % 2 := by omega
-          simp only [h1, h2, ↓reduceIte, hx, h3]
+          rw [if_neg h1, if_pos hx, if_neg h2, if_pos h3]
           by_cases hm : i.1 % 2 = 0
           · have hm2 : ¬(j.1 % 2 = 0) := by omega
-            simp [hm, hm2]
+            rw [if_pos hm, if_neg hm2]; decide
           · have hm2 : j.1 % 2 = 0 := by omega
-            simp [hm, hm2]
+            rw [if_neg hm, if_pos hm2]; decide
         · have hx : x₀.1 = j.1 / 2 := min_eq_right (le_of_lt hgt)
           have h1 : x₀.1 < i.1 / 2 := by omega
           have h2 : ¬(x₀.1 < j.1 / 2) := by omega
-          simp only [h1, ↓reduceIte, hx, h2]
+          rw [if_pos h1, if_neg h2, if_pos hx]
           split_ifs <;> decide
-      simp [hne]
+      rw [if_neg hne]
     · intro x _ hne_x
       have hcomm : jwWord n i x = 0 ∨ jwWord n j x = 0 ∨ jwWord n i x = jwWord n j x := by
         have hxv : x.1 ≠ min (i.1 / 2) (j.1 / 2) := fun h ↦ hne_x (Fin.ext h)
@@ -135,18 +135,18 @@ theorem majoranaProbe_anticomm {n : ℕ} {i j : Fin (2 * n)} (hij : i ≠ j) :
         · right; right
           have h1 : x.1 < i.1 / 2 := lt_of_lt_of_le hlt (min_le_left _ _)
           have h2 : x.1 < j.1 / 2 := lt_of_lt_of_le hlt (min_le_right _ _)
-          simp [h1, h2]
+          rw [if_pos h1, if_pos h2]
         · have hgt : min (i.1 / 2) (j.1 / 2) < x.1 := by omega
           rcases le_total (i.1 / 2) (j.1 / 2) with hle | hle
           · left
             have h1 : ¬(x.1 < i.1 / 2) := by omega
             have h2 : ¬(x.1 = i.1 / 2) := by omega
-            simp [h1, h2]
+            rw [if_neg h1, if_neg h2]
           · right; left
             have h1 : ¬(x.1 < j.1 / 2) := by omega
             have h2 : ¬(x.1 = j.1 / 2) := by omega
-            simp [h1, h2]
-      simp [hcomm]
+            rw [if_neg h1, if_neg h2]
+      rw [if_pos hcomm]
     · intro hx; exact absurd (Finset.mem_univ x₀) hx
   rw [hprod_neg, neg_one_smul]
 
