@@ -53,6 +53,7 @@ lemma card_leftCollar_le (N r m : ℕ) :
   let S : Finset (Fin N) := Finset.univ.filter (fun x : Fin N ↦ m ≤ x.val + r ∧ x.val < m)
   have hinj : Set.InjOn (fun x : Fin N ↦ x.val + r - m) (S : Set (Fin N)) := by
     intro a ha b hb heq
+    dsimp only at heq
     have ha' := (Finset.mem_filter.mp ha).2
     have hb' := (Finset.mem_filter.mp hb).2
     exact Fin.ext (by omega)
@@ -148,7 +149,6 @@ theorem heisenbergEvol_concrete_norm_bound {N r : ℕ} (hr : 1 ≤ r)
         _ = (2 : ℝ) ^ k * fwdCausalSum E (fun X ↦ opNorm (h X)) k U₀ * opNorm O := by
             unfold fwdCausalSum
             rw [Finset.mul_sum, Finset.sum_mul]
-            apply Finset.sum_congr rfl; intro f _; ring
     have hfwd := fwdCausalSum_general_le hr E hcard (fun X ↦ opNorm (h X)) (fun X _ ↦ opNorm_nonneg _)
       hJ hsite k U₀
     have hprod_le : (∏ j : Fin k, ((U₀.card : ℝ) + (j.val : ℝ) * (r : ℝ))) ≤
@@ -166,6 +166,7 @@ theorem heisenbergEvol_concrete_norm_bound {N r : ℕ} (hr : 1 ≤ r)
     have hfact_prod : (∏ j : Fin k, ((p + j.val + 1 : ℕ) : ℝ)) =
         ((k + p).choose p : ℝ) * (k.factorial : ℝ) := by
       have hnat : (∏ j : Fin k, (p + j.val + 1)) * p.factorial = (k + p).factorial := by
+        clear hcoeff had_le hfwd hprod_le
         induction k with
         | zero => simp
         | succ k ihk =>
@@ -200,7 +201,7 @@ theorem heisenbergEvol_concrete_norm_bound {N r : ℕ} (hr : 1 ≤ r)
           apply mul_le_mul_of_nonneg_left _ (by positivity)
           exact mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hfwd_le (by positivity)) (opNorm_nonneg O)
       _ = opNorm O * (((k + p).choose p : ℝ) * q ^ k) := by
-          dsimp only [q]; rw [mul_pow, mul_pow, mul_pow]
+          dsimp only [q]; simp only [mul_pow]
           field_simp [hkf.ne']
   have hsumm_poly : Summable (fun k : ℕ ↦ ((k + p).choose p : ℝ) * q ^ k) := by
     by_cases hq0 : q = 0
@@ -219,7 +220,7 @@ theorem heisenbergEvol_concrete_norm_bound {N r : ℕ} (hr : 1 ≤ r)
         have hbig : (p : ℝ) * q / (r_lim - q) < (k + 1 : ℝ) := by
           have : (N₀ : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
           linarith
-        have hmul : (p : ℝ) * q < (r_lim - q) * (k + 1 : ℝ) := (div_lt_iff₀ hrq).mp hbig
+        have hmul : (p : ℝ) * q < (r_lim - q) * (k + 1 : ℝ) := by linarith [(div_lt_iff₀ hrq).mp hbig]
         rw [div_mul_eq_mul_div, div_le_iff₀ hk1]; linarith
       rcases hN with ⟨N₀, hN₀⟩
       rw [Filter.eventually_atTop]
