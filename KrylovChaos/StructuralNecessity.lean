@@ -24,6 +24,19 @@ Formalizes:
 
 namespace KrylovChaos
 
+private lemma prod_le_prod_nonneg' {ι : Type*} [DecidableEq ι] (s : Finset ι) (f g : ι → ℝ)
+    (hf : ∀ i ∈ s, 0 ≤ f i) (hfg : ∀ i ∈ s, f i ≤ g i) :
+    ∏ i ∈ s, f i ≤ ∏ i ∈ s, g i := by
+  induction s using Finset.induction_on with
+  | empty => simp
+  | insert a s ha ih =>
+    rw [Finset.prod_insert ha, Finset.prod_insert ha]
+    have hfa : 0 ≤ f a := hf a (Finset.mem_insert_self a s)
+    have hga : f a ≤ g a := hfg a (Finset.mem_insert_self a s)
+    have hfs : ∀ i ∈ s, 0 ≤ f i := fun i hi ↦ hf i (Finset.mem_insert_of_mem hi)
+    have hfgs : ∀ i ∈ s, f i ≤ g i := fun i hi ↦ hfg i (Finset.mem_insert_of_mem hi)
+    exact mul_le_mul hga (ih hfs hfgs) (Finset.prod_nonneg hfs) (le_trans hfa hga)
+
 section GaussianSmearing
 
 /-- **Proposition 9.1(1)** (Gaussian Moment Kernel Bound):
@@ -120,7 +133,7 @@ theorem prop_9_1_no_linear_lower_bound {C' σ : ℝ} (b : ℕ → ℝ)
         = ∏ _ ∈ Finset.Icc (N₀ + 1) M, α ^ 2 := by
           rw [Finset.prod_const, Nat.card_Icc]; congr 1; omega
       _ ≤ ∏ k ∈ Finset.Icc (N₀ + 1) M, (b k) ^ 2 := by
-          apply Finset.prod_le_prod (fun _ _ ↦ sq_nonneg _)
+          apply prod_le_prod_nonneg' _ _ _ (fun _ _ ↦ sq_nonneg _)
           intro k hk
           have hkge : N₀ ≤ k := by have := (Finset.mem_Icc.mp hk).1; omega
           have hk1 : (1 : ℝ) ≤ (k : ℝ) := by exact_mod_cast (by omega : 1 ≤ k)
@@ -131,7 +144,7 @@ theorem prop_9_1_no_linear_lower_bound {C' σ : ℝ} (b : ℕ → ℝ)
         = ∏ _ ∈ Finset.Icc (M + 1) (3 * M), (α ^ 2 * (M : ℝ) ^ 2) := by
           rw [Finset.prod_const, Nat.card_Icc]; congr 1; omega
       _ ≤ ∏ k ∈ Finset.Icc (M + 1) (3 * M), (b k) ^ 2 := by
-          apply Finset.prod_le_prod (fun _ _ ↦ by positivity)
+          apply prod_le_prod_nonneg' _ _ _ (fun _ _ ↦ by positivity)
           intro k hk
           have hkge : M ≤ k := by have := (Finset.mem_Icc.mp hk).1; omega
           have hbk : α * (M : ℝ) ≤ b k :=

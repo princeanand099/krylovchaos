@@ -90,14 +90,13 @@ theorem prop_6_4_comm_splitting
       σ * ρQ * A * ρQ - ρQ * A * ρQinv * σ * ρQ * ρQ := by
     simp only [Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_assoc]
     rw [← Matrix.mul_assoc ρQ ρQinv, hInvR, Matrix.one_mul]
-    simp only [Matrix.mul_assoc]
   have h2 : ρQ * A * ρQinv * (σ * (ρQ * ρQ) - ρQ * ρQ * σ) =
       ρQ * A * ρQinv * σ * ρQ * ρQ - ρQ * A * ρQ * σ := by
     simp only [Matrix.mul_sub, Matrix.mul_assoc]
     congr 1
     rw [← Matrix.mul_assoc ρQinv ρQ, hInvL, Matrix.one_mul]
-    simp only [Matrix.mul_assoc]
   rw [h1, h2]
+  simp only [Matrix.mul_assoc]
   abel
 
 /-- **Proposition 6.4(1)** (Exact Third-Term Trace Identity, Eq. 6.7):
@@ -127,14 +126,13 @@ theorem prop_6_4_third_term_identity
       simp [Matrix.conjTranspose_mul, hρQ, hρQinv, hA, Matrix.mul_assoc]
     rw [hYadj]
     calc Matrix.trace (Dᴴ * ρQinv * A * ρQ * (ρQ * A * ρQinv * D))
-        = Matrix.trace ((Dᴴ * ρHinv) * (ρQ * A * ρQ * (ρQ * A * ρQ)) * (ρHinv * D)) := by
+        = Matrix.trace ((Dᴴ * ρHinv) * ((ρQ * A * ρQ * (ρQ * A * ρQ)) * (ρHinv * D))) := by
           simp only [Matrix.mul_assoc]
           rw [← Matrix.mul_assoc ρHinv ρQ, hQinvL]
           simp only [Matrix.mul_assoc]
           rw [← Matrix.mul_assoc ρQ ρHinv, hQinvR]
-          simp only [Matrix.mul_assoc]
-      _ = Matrix.trace (((ρQ * A * ρQ * (ρQ * A * ρQ)) * (ρHinv * D)) * (Dᴴ * ρHinv)) := by
-          rw [Matrix.trace_mul_comm (Dᴴ * ρHinv)]; simp only [Matrix.mul_assoc]
+      _ = Matrix.trace (((ρQ * A * ρQ * (ρQ * A * ρQ)) * (ρHinv * D)) * (Dᴴ * ρHinv)) :=
+          Matrix.trace_mul_comm _ _
       _ = Matrix.trace (ρQ * A * ρQ * (ρQ * A * ρQ) * (ρHinv * D * (Dᴴ * ρHinv))) := by
           simp only [Matrix.mul_assoc]
   have hD_tr : Matrix.trace (Dᴴ * D) = Matrix.trace (ρβ * B) := by
