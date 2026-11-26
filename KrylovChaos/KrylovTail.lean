@@ -5,7 +5,7 @@ Authors: Prince Anand
 -/
 import KrylovChaos.Basic
 import Mathlib.Analysis.Calculus.Deriv.Comp
-import Mathlib.Analysis.Calculus.MeanValue
+import Mathlib.Analysis.Calculus.Deriv.MeanValue
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
 import Mathlib.Tactic
 
