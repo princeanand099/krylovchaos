@@ -42,7 +42,8 @@ theorem hsNormSq_nn {N : ℕ} (M : QubitOp N) : 0 ≤ (hsInner M M).re := by
   apply Finset.sum_nonneg
   intro j _
   rw [Complex.star_def, Complex.conj_mul']
-  exact Complex.normSq_nonneg _
+  norm_cast
+  positivity
 
 /-- `partialTraceSite x` is self-adjoint for the Hilbert–Schmidt inner product. -/
 theorem partialTraceSite_selfAdjoint {N : ℕ} (x : Fin N) (A B : QubitOp N) :
@@ -59,7 +60,7 @@ theorem partialTraceSite_selfAdjoint {N : ℕ} (x : Fin N) (A B : QubitOp N) :
       Matrix.smul_mul, Matrix.sum_mul, Matrix.trace_smul, Matrix.trace_sum,
       smul_eq_mul, Matrix.mul_assoc]
   rw [h1, h2]
-  congr 1
+  apply congrArg ((1 / 4 : ℂ) * ·)
   apply Finset.sum_congr rfl
   intro α _
   rw [Matrix.trace_mul_comm (Aᴴ * pauliSite x α * B) (pauliSite x α)]
@@ -77,59 +78,47 @@ private def pauliMulIdx' : Fin 4 → Fin 4 → Fin 4
   | 3, 2 => 1
   | 3, 1 => 2
   | 1, 3 => 2
+  | _, _ => 0
+
+private def pauliMulPhase' : Fin 4 → Fin 4 → ℂ
+  | 1, 2 => Complex.I
+  | 2, 3 => Complex.I
+  | 3, 1 => Complex.I
+  | 2, 1 => -Complex.I
+  | 3, 2 => -Complex.I
+  | 1, 3 => -Complex.I
+  | _, _ => 1
 
 private lemma pauliMulIdx'_invol (α β : Fin 4) :
     pauliMulIdx' α (pauliMulIdx' α β) = β := by
   fin_cases α <;> fin_cases β <;> decide
 
-private lemma pauliMat_mul_conj (α β : Fin 4) :
-    ∃ c : ℂ, c * star c = 1 ∧
-      pauliMat α * pauliMat β = c • pauliMat (pauliMulIdx' α β) ∧
-      pauliMat β * pauliMat α = star c • pauliMat (pauliMulIdx' α β) := by
-  fin_cases α <;> fin_cases β
-  · exact ⟨1, by simp, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two]⟩
-  · exact ⟨1, by simp, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two]⟩
-  · exact ⟨1, by simp, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two]⟩
-  · exact ⟨1, by simp, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two]⟩
-  · exact ⟨1, by simp, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two]⟩
-  · exact ⟨1, by simp, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two]⟩
-  · exact ⟨Complex.I, by simp [Complex.star_def, Complex.I_mul_I],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.star_def, Complex.I_mul_I]⟩
-  · exact ⟨-Complex.I, by simp [Complex.star_def, Complex.I_mul_I],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.star_def, Complex.I_mul_I]⟩
-  · exact ⟨1, by simp, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two]⟩
-  · exact ⟨-Complex.I, by simp [Complex.star_def, Complex.I_mul_I],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.star_def, Complex.I_mul_I]⟩
-  · exact ⟨1, by simp, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I]⟩
-  · exact ⟨Complex.I, by simp [Complex.star_def, Complex.I_mul_I],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.star_def, Complex.I_mul_I]⟩
-  · exact ⟨1, by simp, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two]⟩
-  · exact ⟨Complex.I, by simp [Complex.star_def, Complex.I_mul_I],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.star_def, Complex.I_mul_I]⟩
-  · exact ⟨-Complex.I, by simp [Complex.star_def, Complex.I_mul_I],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two, Complex.star_def, Complex.I_mul_I]⟩
-  · exact ⟨1, by simp, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two],
-      by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, pauliMulIdx', Matrix.mul_apply, Fin.sum_univ_two]⟩
+private lemma pauliMulPhase'_unit (α β : Fin 4) :
+    pauliMulPhase' α β * star (pauliMulPhase' α β) = 1 := by
+  fin_cases α <;> fin_cases β <;>
+    simp [pauliMulPhase', Complex.star_def, Complex.I_mul_I]
+
+private lemma pauliMat_mul_eq (α β : Fin 4) :
+    pauliMat α * pauliMat β = pauliMulPhase' α β • pauliMat (pauliMulIdx' α β) := by
+  fin_cases α <;> fin_cases β <;>
+    ext i j <;> fin_cases i <;> fin_cases j <;>
+    simp [pauliMat, pauliMulIdx', pauliMulPhase', Matrix.mul_apply, Fin.sum_univ_two,
+      Complex.I_mul_I]
+
+private lemma pauliMat_mul_rev (α β : Fin 4) :
+    pauliMat β * pauliMat α = star (pauliMulPhase' α β) • pauliMat (pauliMulIdx' α β) := by
+  have h := congrArg Matrix.conjTranspose (pauliMat_mul_eq α β)
+  rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_smul, pauliMat_herm, pauliMat_herm,
+      pauliMat_herm] at h
+  exact h
 
 private lemma pauliSite_conj_mul {N : ℕ} (x : Fin N) (α β : Fin 4) (M : QubitOp N) :
     pauliSite x α * (pauliSite x β * M * pauliSite x β) * pauliSite x α =
     pauliSite x (pauliMulIdx' α β) * M * pauliSite x (pauliMulIdx' α β) := by
-  obtain ⟨c, hc, h1, h2⟩ := pauliMat_mul_conj α β
+  set c := pauliMulPhase' α β
+  have hc : c * star c = 1 := pauliMulPhase'_unit α β
+  have h1 : pauliMat α * pauliMat β = c • pauliMat (pauliMulIdx' α β) := pauliMat_mul_eq α β
+  have h2 : pauliMat β * pauliMat α = star c • pauliMat (pauliMulIdx' α β) := pauliMat_mul_rev α β
   have hL : pauliSite x α * pauliSite x β = c • pauliSite x (pauliMulIdx' α β) := by
     unfold pauliSite pauliString
     rw [kronOp_mul]
@@ -186,8 +175,8 @@ theorem partialTraceSite_idempotent {N : ℕ} (x : Fin N) (M : QubitOp N) :
   simp_rw [hinner]
   rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin]
   have h4 : (4 : ℕ) • (∑ γ : Fin 4, pauliSite x γ * M * pauliSite x γ) =
-      (4 : ℂ) • (∑ γ : Fin 4, pauliSite x γ * M * pauliSite x γ) := by
-    exact Nat.cast_smul_eq_nsmul ℂ 4 _ |>.symm
+      (4 : ℂ) • (∑ γ : Fin 4, pauliSite x γ * M * pauliSite x γ) :=
+    (Nat.cast_smul_eq_nsmul ℂ 4 _).symm
   rw [h4, smul_smul]
   congr 1
   norm_num
@@ -281,20 +270,20 @@ theorem totalSizeOp_cauchy_schwarz {N : ℕ} (A B : QubitOp N) :
         Complex.ofReal_re, Complex.ofReal_im, zero_mul, sub_zero]
       have hsym := totalSizeOp_symm_re B A
       unfold hsInner at hsym
-      change a + t * b + (t * (Bᴴ * totalSizeOp A).trace.re + t * (t * c)) =
-        a + 2 * t * b + t ^ 2 * c
-      rw [hsym]; ring
+      rw [hsym]
+      change a + t * b + t * (b + t * c) = a + 2 * t * b + t ^ 2 * c
+      ring
     linarith
   have hc_nn : 0 ≤ c := (totalSizeOp_bounds B).1
   by_cases hc0 : c = 0
-  · subst hc0
-    have hb0 : b = 0 := by
+  · have hb0 : b = 0 := by
       by_contra hne
-      have := hquad (-(a + 1) / (2 * b))
-      have : a + 2 * (-(a + 1) / (2 * b)) * b + (-(a + 1) / (2 * b)) ^ 2 * 0 = -1 := by
+      have h1 := hquad (-(a + 1) / (2 * b))
+      rw [hc0] at h1
+      have h2 : a + 2 * (-(a + 1) / (2 * b)) * b + (-(a + 1) / (2 * b)) ^ 2 * 0 = -1 := by
         field_simp [hne]; ring
       linarith
-    rw [hb0]; simp
+    rw [hb0, hc0]; simp
   · have hc_pos : 0 < c := lt_of_le_of_ne hc_nn (Ne.symm hc0)
     have hmin := hquad (-b / c)
     have hval : a + 2 * (-b / c) * b + (-b / c) ^ 2 * c = (a * c - b ^ 2) / c := by
@@ -305,28 +294,28 @@ theorem totalSizeOp_cauchy_schwarz {N : ℕ} (A B : QubitOp N) :
       rwa [div_mul_cancel₀ _ hc0] at this
     linarith
 
-/-- Wightman map `J_β(A) = ρ_β^{1/4} A ρ_β^{1/4}` on `QubitOp N`. -/
-def gibbsWightmanMap {N : ℕ} (G : GibbsData N) (A : QubitOp N) : QubitOp N :=
-  G.ρQuarter * A * G.ρQuarter
-
 lemma gibbsWightmanInner_eq_hsInner {N : ℕ} (G : GibbsData N) (A B : QubitOp N) :
-    wightmanInner G.ρHalf A B = hsInner (gibbsWightmanMap G A) (gibbsWightmanMap G B) := by
-  unfold wightmanInner hsInner gibbsWightmanMap
+    wightmanInner G.ρHalf A B = hsInner (jBeta G.ρQuarter A) (jBeta G.ρQuarter B) := by
+  unfold wightmanInner hsInner jBeta
   rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, G.ρQuarter_herm]
-  rw [Matrix.trace_mul_comm (G.ρQuarter * Aᴴ * G.ρQuarter) (G.ρQuarter * B * G.ρQuarter)]
-  simp only [Matrix.mul_assoc]
-  rw [Matrix.trace_mul_comm G.ρQuarter (B * (G.ρQuarter * (G.ρQuarter * (Aᴴ * (G.ρQuarter * G.ρQuarter)))))]
-  simp only [← Matrix.mul_assoc]
+  rw [Matrix.trace_mul_comm (G.ρQuarter * (Aᴴ * G.ρQuarter)) (G.ρQuarter * B * G.ρQuarter)]
   have h1 : G.ρQuarter * G.ρQuarter = G.ρHalf := G.ρQuarter_sq
-  calc (B * G.ρQuarter * G.ρQuarter * Aᴴ * G.ρQuarter * G.ρQuarter).trace
-      = (B * (G.ρQuarter * G.ρQuarter) * Aᴴ * (G.ρQuarter * G.ρQuarter)).trace := by
-          simp only [Matrix.mul_assoc]
-    _ = (B * G.ρHalf * Aᴴ * G.ρHalf).trace := by rw [h1]
-    _ = (G.ρHalf * Aᴴ * G.ρHalf * B).trace := by
-          rw [Matrix.trace_mul_comm (B * G.ρHalf * Aᴴ) G.ρHalf]
-          simp only [Matrix.mul_assoc]
-          rw [Matrix.trace_mul_comm (G.ρHalf * B) (G.ρHalf * Aᴴ)]
-          simp only [Matrix.mul_assoc]
+  have hstep1 :
+      (G.ρQuarter * B * G.ρQuarter * (G.ρQuarter * (Aᴴ * G.ρQuarter))).trace =
+      (G.ρQuarter * (B * (G.ρQuarter * G.ρQuarter) * Aᴴ * G.ρQuarter)).trace := by
+    simp only [Matrix.mul_assoc]
+  rw [hstep1, Matrix.trace_mul_comm G.ρQuarter, h1]
+  have hstep2 :
+      (B * G.ρHalf * Aᴴ * G.ρQuarter * G.ρQuarter).trace =
+      (B * G.ρHalf * Aᴴ * (G.ρQuarter * G.ρQuarter)).trace := by
+    simp only [Matrix.mul_assoc]
+  rw [hstep2, h1, Matrix.trace_mul_comm (B * G.ρHalf * Aᴴ) G.ρHalf]
+  have hstep3 :
+      (G.ρHalf * (B * G.ρHalf * Aᴴ)).trace =
+      ((G.ρHalf * B) * (G.ρHalf * Aᴴ)).trace := by
+    simp only [Matrix.mul_assoc]
+  rw [hstep3, Matrix.trace_mul_comm (G.ρHalf * B) (G.ρHalf * Aᴴ)]
+  simp only [Matrix.mul_assoc]
 
 /-- **Operator-Level Lemma 4.2** (Thermal Size Truncation on `QubitOp N`, Eq. 4.3):
 For any Gibbs state `G : GibbsData N` and any operator decomposition `O = A_M + R_M` in
@@ -343,15 +332,15 @@ theorem lemma_4_2_operator_thermal_size_truncation {N : ℕ}
     (hΛ_nn : 0 ≤ Λ_M)
     (hlead : mssThermalSize G A_M ≤ (1 - q) * Λ_M) :
     mssThermalSize G O ≤ Λ_M + 2 * (N : ℝ) * Real.sqrt q + (N : ℝ) * q := by
-  set JA := gibbsWightmanMap G A_M
-  set JR := gibbsWightmanMap G R_M
-  have hJO : gibbsWightmanMap G O = JA + JR := by
-    rw [hdecomp]; unfold gibbsWightmanMap; simp [Matrix.mul_add, Matrix.add_mul]
+  set JA := jBeta G.ρQuarter A_M
+  set JR := jBeta G.ρQuarter R_M
+  have hJO : jBeta G.ρQuarter O = JA + JR := by
+    rw [hdecomp]; unfold jBeta JA JR; simp [Matrix.mul_add, Matrix.add_mul]
   have hS_add : totalSizeOp (JA + JR) = totalSizeOp JA + totalSizeOp JR := by
     unfold totalSizeOp siteSizeOp partialTraceSite
     simp only [Matrix.mul_add, Matrix.add_mul, Finset.sum_add_distrib, smul_add,
       Finset.sum_sub_distrib, sub_add_sub_comm]
-  have hexp : (hsInner (gibbsWightmanMap G O) (totalSizeOp (gibbsWightmanMap G O))).re =
+  have hexp : (hsInner (jBeta G.ρQuarter O) (totalSizeOp (jBeta G.ρQuarter O))).re =
       (hsInner JA (totalSizeOp JA)).re + 2 * (hsInner JA (totalSizeOp JR)).re +
       (hsInner JR (totalSizeOp JR)).re := by
     rw [hJO, hS_add]
@@ -385,8 +374,6 @@ theorem lemma_4_2_operator_thermal_size_truncation {N : ℕ}
     have hNsq_nn : 0 ≤ (N : ℝ) * Real.sqrt q := by positivity
     nlinarith [sq_abs (hsInner JA (totalSizeOp JR)).re, le_abs_self (hsInner JA (totalSizeOp JR)).re]
   unfold mssThermalSize at hlead ⊢
-  change (hsInner (gibbsWightmanMap G O) (totalSizeOp (gibbsWightmanMap G O))).re -
-      (hsInner (gibbsWightmanMap G 1) (totalSizeOp (gibbsWightmanMap G 1))).re ≤ _
   rw [hexp]
   have h1q : (1 - q) * Λ_M ≤ Λ_M := by nlinarith
   linarith
@@ -407,11 +394,11 @@ noncomputable def toHSOp (N : ℕ) : QubitOp N →ₗ[ℂ] HSOp N where
 
 /-- The Wightman embedding `J_β : QubitOp N →ₗ[ℂ] HSOp N`, `A ↦ ρ_β^{1/4} A ρ_β^{1/4}`. -/
 noncomputable def wightmanEmbed {N : ℕ} (G : GibbsData N) : QubitOp N →ₗ[ℂ] HSOp N where
-  toFun A := toHSOp N (gibbsWightmanMap G A)
+  toFun A := toHSOp N (jBeta G.ρQuarter A)
   map_add' A B := by
-    simp only [gibbsWightmanMap, Matrix.mul_add, Matrix.add_mul, map_add]
+    simp only [jBeta, Matrix.mul_add, Matrix.add_mul, map_add]
   map_smul' c A := by
-    simp only [gibbsWightmanMap, Matrix.mul_smul, Matrix.smul_mul, map_smul]
+    simp only [jBeta, Matrix.mul_smul, Matrix.smul_mul, map_smul, RingHom.id_apply]
 
 /-- Concrete Wightman filtration subspace `J_β(𝒱_s) ⊆ HSOp N`. -/
 noncomputable def wightmanFiltrationSubspace {N : ℕ} (G : GibbsData N) (s : ℕ) :

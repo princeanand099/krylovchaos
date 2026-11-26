@@ -95,18 +95,30 @@ theorem singleSiteRho_roots {m : ℝ} (hm : |m| < 1) :
     fin_cases i <;> fin_cases j <;>
       simp [singleSiteRhoQuarter, singleSiteRhoHalf, Matrix.mul_apply, Fin.sum_univ_two, hqp, hqr]
 
-/-- Wightman Gram–Schmidt orthonormal basis `{E_0, E_1, E_2, E_3}` for `ρ_x = (I + m Z)/2`. -/
+/-- Wightman Gram–Schmidt orthonormal basis `{E_0, E_1, E_2, E_3}` for `ρ_x = (I + m Z)/2`:
+- `E_0 = I`
+- `E_1 = σ(m)^{-1/2} X`
+- `E_2 = σ(m)^{-1/2} Y`
+- `E_3 = σ(m)^{-1} (Z - m I)`
+written explicitly in matrix form. -/
 noncomputable def gsBasis (m : ℝ) : Fin 4 → Matrix (Fin 2) (Fin 2) ℂ
-  | 0 => pauliMat 0
-  | 1 => ((Real.sqrt (prodSigma m))⁻¹ : ℂ) • pauliMat 1
-  | 2 => ((Real.sqrt (prodSigma m))⁻¹ : ℂ) • pauliMat 2
-  | 3 => ((prodSigma m)⁻¹ : ℂ) • (pauliMat 3 - (m : ℂ) • pauliMat 0)
+  | 0 => !![1, 0; 0, 1]
+  | 1 => !![0, ((Real.sqrt (prodSigma m))⁻¹ : ℂ); ((Real.sqrt (prodSigma m))⁻¹ : ℂ), 0]
+  | 2 => !![0, (-Complex.I * ((Real.sqrt (prodSigma m))⁻¹ : ℂ));
+            (Complex.I * ((Real.sqrt (prodSigma m))⁻¹ : ℂ)), 0]
+  | 3 => !![((prodSigma m)⁻¹ * (1 - m) : ℂ), 0; 0, ((prodSigma m)⁻¹ * (-1 - m) : ℂ)]
+
+/-- Verification that `gsBasis m 3 = σ(m)⁻¹ (Z - m I)`. -/
+theorem gsBasis_three_eq (m : ℝ) :
+    gsBasis m 3 = ((prodSigma m)⁻¹ : ℂ) • (pauliMat 3 - (m : ℂ) • pauliMat 0) := by
+  ext i j
+  fin_cases i <;> fin_cases j <;> simp [gsBasis, pauliMat]
 
 /-- Every Gram–Schmidt basis element is Hermitian: `(E_a)ᴴ = E_a`. -/
 theorem gsBasis_herm (m : ℝ) (a : Fin 4) : (gsBasis m a)ᴴ = gsBasis m a := by
   fin_cases a <;>
     ext i j <;> fin_cases i <;> fin_cases j <;>
-    simp [gsBasis, pauliMat, Matrix.conjTranspose_apply]
+    simp [gsBasis, Matrix.conjTranspose_apply, Complex.star_def]
 
 private lemma prod_param_identities {m : ℝ} (hm : |m| < 1) :
     let p := Real.sqrt ((1 + m) / 2)
@@ -141,6 +153,17 @@ private lemma prod_param_identities {m : ℝ} (hm : |m| < 1) :
       _ = 1 - prodSigma m := by ring
   exact ⟨hp, hr, hσ, hp2, hr2, h2pr, hq2⟩
 
+/-- Explicit entry formula for `singleSiteWightmanInner m` on two `2 × 2` matrices. -/
+private lemma wightman_inner_formula (m : ℝ) (A B : Matrix (Fin 2) (Fin 2) ℂ) :
+    singleSiteWightmanInner m A B =
+    (Real.sqrt ((1 + m) / 2) : ℂ) ^ 2 * star (A 0 0) * B 0 0 +
+    (Real.sqrt ((1 + m) / 2) : ℂ) * (Real.sqrt ((1 - m) / 2) : ℂ) * star (A 1 0) * B 1 0 +
+    (Real.sqrt ((1 - m) / 2) : ℂ) * (Real.sqrt ((1 + m) / 2) : ℂ) * star (A 0 1) * B 0 1 +
+    (Real.sqrt ((1 - m) / 2) : ℂ) ^ 2 * star (A 1 1) * B 1 1 := by
+  simp [singleSiteWightmanInner, singleSiteRhoHalf, Matrix.trace, Matrix.diag,
+    Matrix.mul_apply, Fin.sum_univ_two, Matrix.conjTranspose_apply]
+  ring
+
 /-- **Gram–Schmidt Wightman Orthonormality**:
 `(E_a | E_b)_{ρ_x}^W = δ_{ab}` for all `a, b : Fin 4` and `|m| < 1`. -/
 theorem gsBasis_wightman_orthonormal {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
@@ -151,36 +174,73 @@ theorem gsBasis_wightman_orthonormal {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
   have hσ_ne : (prodSigma m : ℂ) ≠ 0 := Complex.ofReal_ne_zero.mpr hσ.ne'
   have hsqσ_ne : (Real.sqrt (prodSigma m) : ℂ) ≠ 0 :=
     Complex.ofReal_ne_zero.mpr (Real.sqrt_pos.mpr hσ).ne'
-  have hsqσ2 : (Real.sqrt (prodSigma m) : ℂ) * (Real.sqrt (prodSigma m) : ℂ) = (prodSigma m : ℂ) := by
-    rw [← Complex.ofReal_mul, Real.mul_self_sqrt hσ.le]
+  have hsqσ2 : (Real.sqrt (prodSigma m) : ℂ) ^ 2 = (prodSigma m : ℂ) := by
+    have : (Real.sqrt (prodSigma m)) ^ 2 = prodSigma m := Real.sq_sqrt hσ.le
+    exact_mod_cast this
   have hσ2 : (prodSigma m : ℂ) ^ 2 = (1 - m ^ 2 : ℂ) := by
     have : (prodSigma m) ^ 2 = 1 - m ^ 2 := Real.sq_sqrt (by nlinarith [abs_lt.mp hm])
     exact_mod_cast this
   have h2prC : (2 : ℂ) * (p : ℂ) * (r : ℂ) = (prodSigma m : ℂ) := by exact_mod_cast h2pr
-  have hp2C : (p : ℂ) * (p : ℂ) = ((1 + m) / 2 : ℂ) := by
-    have : p * p = (1 + m) / 2 := by nlinarith [hp2]
-    exact_mod_cast this
-  have hr2C : (r : ℂ) * (r : ℂ) = ((1 - m) / 2 : ℂ) := by
-    have : r * r = (1 - m) / 2 := by nlinarith [hr2]
-    exact_mod_cast this
+  have hp2C : (p : ℂ) ^ 2 = ((1 + m) / 2 : ℂ) := by exact_mod_cast hp2
+  have hr2C : (r : ℂ) ^ 2 = ((1 - m) / 2 : ℂ) := by exact_mod_cast hr2
+  rw [wightman_inner_formula]
   fin_cases a <;> fin_cases b <;>
-    simp [singleSiteWightmanInner, singleSiteRhoHalf, gsBasis, pauliMat,
-      Matrix.trace, Matrix.diag, Matrix.mul_apply, Fin.sum_univ_two,
-      Matrix.conjTranspose_apply]
+    simp [gsBasis, Complex.star_def, Complex.I_mul_I]
   · linear_combination hp2C + hr2C
-  · have : ((p : ℂ) * (p : ℂ) * (1 - (m : ℂ)) + (r : ℂ) * (r : ℂ) * (-1 - (m : ℂ))) = 0 := by
-      rw [hp2C, hr2C]; ring
-    field_simp [hσ_ne]; linear_combination this
-  · field_simp [hsqσ_ne]; rw [hsqσ2]; linear_combination -h2prC
-  · field_simp [hsqσ_ne]; rw [hsqσ2]; linear_combination -h2prC
-  · have : ((p : ℂ) * (p : ℂ) * (1 - (m : ℂ)) + (r : ℂ) * (r : ℂ) * (-1 - (m : ℂ))) = 0 := by
-      rw [hp2C, hr2C]; ring
-    field_simp [hσ_ne]; linear_combination this
+  · field_simp [hσ_ne]; linear_combination (1 - (m : ℂ)) * hp2C + (-1 - (m : ℂ)) * hr2C
+  · field_simp [hsqσ_ne]; rw [hsqσ2]; linear_combination h2prC
+  · ring
+  · ring
+  · field_simp [hsqσ_ne]; rw [hsqσ2]; linear_combination h2prC
+  · field_simp [hσ_ne]; linear_combination (1 - (m : ℂ)) * hp2C + (-1 - (m : ℂ)) * hr2C
   · field_simp [hσ_ne]
-    have : (p : ℂ) * (p : ℂ) * (1 - (m : ℂ)) ^ 2 + (r : ℂ) * (r : ℂ) * (-1 - (m : ℂ)) ^ 2 =
-        1 - (m : ℂ) ^ 2 := by
-      rw [hp2C, hr2C]; ring
-    rw [hσ2]; linear_combination this
+    linear_combination (1 - (m : ℂ)) ^ 2 * hp2C + (-1 - (m : ℂ)) ^ 2 * hr2C - hσ2
+
+/-- Explicit entry formula for `singleSiteSizeForm m A B` in terms of `p = √((1+m)/2)` and
+`r = √((1-m)/2)`. -/
+private lemma size_form_formula {m : ℝ} (hm : |m| < 1) (A B : Matrix (Fin 2) (Fin 2) ℂ) :
+    let p := Real.sqrt ((1 + m) / 2)
+    let r := Real.sqrt ((1 - m) / 2)
+    singleSiteSizeForm m A B =
+    ((p : ℂ) * star (A 0 0) * ((p : ℂ) * B 0 0) +
+     (r : ℂ) * star (A 1 1) * ((r : ℂ) * B 1 1) -
+     (1 / 2 : ℂ) * ((p : ℂ) * star (A 0 0) + (r : ℂ) * star (A 1 1)) *
+       ((p : ℂ) * B 0 0 + (r : ℂ) * B 1 1)) +
+    (p : ℂ) * (r : ℂ) * (star (A 1 0) * B 1 0 + star (A 0 1) * B 0 1) := by
+  obtain ⟨hp, hr, _, _, _, _, _⟩ := prod_param_identities hm
+  set p := Real.sqrt ((1 + m) / 2)
+  set r := Real.sqrt ((1 - m) / 2)
+  have hqp : (Real.sqrt p : ℂ) * (Real.sqrt p : ℂ) = (p : ℂ) := by
+    rw [← Complex.ofReal_mul, Real.mul_self_sqrt hp.le]
+  have hqr : (Real.sqrt r : ℂ) * (Real.sqrt r : ℂ) = (r : ℂ) := by
+    rw [← Complex.ofReal_mul, Real.mul_self_sqrt hr.le]
+  simp only [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
+    Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.sub_apply, Matrix.smul_apply,
+    Matrix.one_apply, Matrix.conjTranspose_apply, Fin.sum_univ_two, smul_eq_mul,
+    Fin.isValue, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
+    Matrix.cons_val_one, Matrix.cons_val_fin_one, mul_zero, zero_mul, add_zero, zero_add,
+    mul_one, one_mul, star_zero, star_one, Complex.star_def, Complex.conj_ofReal,
+    map_mul, map_add, map_sub, ↓reduceIte, Fin.zero_eta, Fin.mk_one, zero_ne_one, one_ne_zero]
+  change _ = _
+  have hgoal :
+      ((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ)) * (starRingEnd ℂ) (A 0 0) *
+        (((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ)) * B 0 0 -
+          1 / 2 * (((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ)) * B 0 0 +
+            ((Real.sqrt r : ℂ) * (Real.sqrt r : ℂ)) * B 1 1)) +
+      ((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ)) * ((Real.sqrt r : ℂ) * (Real.sqrt r : ℂ)) *
+        ((starRingEnd ℂ) (A 1 0) * B 1 0 + (starRingEnd ℂ) (A 0 1) * B 0 1) +
+      ((Real.sqrt r : ℂ) * (Real.sqrt r : ℂ)) * (starRingEnd ℂ) (A 1 1) *
+        (((Real.sqrt r : ℂ) * (Real.sqrt r : ℂ)) * B 1 1 -
+          1 / 2 * (((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ)) * B 0 0 +
+            ((Real.sqrt r : ℂ) * (Real.sqrt r : ℂ)) * B 1 1)) =
+      ((p : ℂ) * (starRingEnd ℂ) (A 0 0) * ((p : ℂ) * B 0 0) +
+       (r : ℂ) * (starRingEnd ℂ) (A 1 1) * ((r : ℂ) * B 1 1) -
+       1 / 2 * ((p : ℂ) * (starRingEnd ℂ) (A 0 0) + (r : ℂ) * (starRingEnd ℂ) (A 1 1)) *
+         ((p : ℂ) * B 0 0 + (r : ℂ) * B 1 1)) +
+      (p : ℂ) * (r : ℂ) * ((starRingEnd ℂ) (A 1 0) * B 1 0 + (starRingEnd ℂ) (A 0 1) * B 0 1) := by
+    rw [hqp, hqr]; ring
+  rw [← hgoal]
+  ring
 
 /-- **Ground-Up Derivation of Eq. (4.6) (`singleSiteM`)**:
 For every `|m| < 1` and every `a, b : Fin 4`, the thermal-subtracted single-site
@@ -196,207 +256,49 @@ theorem gsBasis_derives_singleSiteM {m : ℝ} (hm : |m| < 1) (a b : Fin 4) :
   have hσ_ne : (prodSigma m : ℂ) ≠ 0 := Complex.ofReal_ne_zero.mpr hσ.ne'
   have hsqσ_ne : (Real.sqrt (prodSigma m) : ℂ) ≠ 0 :=
     Complex.ofReal_ne_zero.mpr (Real.sqrt_pos.mpr hσ).ne'
-  have hsqσ2 : (Real.sqrt (prodSigma m) : ℂ) * (Real.sqrt (prodSigma m) : ℂ) = (prodSigma m : ℂ) := by
-    rw [← Complex.ofReal_mul, Real.mul_self_sqrt hσ.le]
+  have hsqσ2 : (Real.sqrt (prodSigma m) : ℂ) ^ 2 = (prodSigma m : ℂ) := by
+    have : (Real.sqrt (prodSigma m)) ^ 2 = prodSigma m := Real.sq_sqrt hσ.le
+    exact_mod_cast this
   have hσ2 : (prodSigma m : ℂ) ^ 2 = (1 - m ^ 2 : ℂ) := by
     have : (prodSigma m) ^ 2 = 1 - m ^ 2 := Real.sq_sqrt (by nlinarith [abs_lt.mp hm])
     exact_mod_cast this
   have h2prC : (2 : ℂ) * (p : ℂ) * (r : ℂ) = (prodSigma m : ℂ) := by exact_mod_cast h2pr
-  have hp2C : (p : ℂ) * (p : ℂ) = ((1 + m) / 2 : ℂ) := by
-    have : p * p = (1 + m) / 2 := by nlinarith [hp2]
-    exact_mod_cast this
-  have hr2C : (r : ℂ) * (r : ℂ) = ((1 - m) / 2 : ℂ) := by
-    have : r * r = (1 - m) / 2 := by nlinarith [hr2]
-    exact_mod_cast this
-  have hqp : (Real.sqrt p : ℂ) * (Real.sqrt p : ℂ) = (p : ℂ) := by
-    rw [← Complex.ofReal_mul, Real.mul_self_sqrt hp.le]
-  have hqr : (Real.sqrt r : ℂ) * (Real.sqrt r : ℂ) = (r : ℂ) := by
-    rw [← Complex.ofReal_mul, Real.mul_self_sqrt hr.le]
+  have hp2C : (p : ℂ) ^ 2 = ((1 + m) / 2 : ℂ) := by exact_mod_cast hp2
+  have hr2C : (r : ℂ) ^ 2 = ((1 - m) / 2 : ℂ) := by exact_mod_cast hr2
   have hq2C : ((prodQ m) ^ 2 : ℂ) = 1 - (prodSigma m : ℂ) := by exact_mod_cast hq2
-  have h00 : singleSiteSizeForm m (gsBasis m 0) (gsBasis m 0) = ((prodQ m) ^ 2 / 2 : ℂ) := by
-    simp only [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.sub_apply,
-      Matrix.smul_apply, Matrix.one_apply, Matrix.conjTranspose_apply, Fin.sum_univ_two,
-      smul_eq_mul, Fin.isValue, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
-      Matrix.cons_val_one, Matrix.cons_val_fin_one, mul_zero, zero_mul, add_zero, zero_add,
-      mul_one, one_mul, star_zero, star_one, Complex.star_def, Complex.conj_ofReal,
-      ↓reduceIte, Fin.zero_eta, Fin.mk_one, zero_ne_one, one_ne_zero]
-    calc (Real.sqrt p : ℂ) * (Real.sqrt p : ℂ) *
-            ((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ) -
-              1 / 2 * ((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ) +
-                (Real.sqrt r : ℂ) * (Real.sqrt r : ℂ))) +
-          (Real.sqrt r : ℂ) * (Real.sqrt r : ℂ) *
-            ((Real.sqrt r : ℂ) * (Real.sqrt r : ℂ) -
-              1 / 2 * ((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ) +
-                (Real.sqrt r : ℂ) * (Real.sqrt r : ℂ)))
-        = (p : ℂ) * ((p : ℂ) - 1 / 2 * ((p : ℂ) + (r : ℂ))) +
-          (r : ℂ) * ((r : ℂ) - 1 / 2 * ((p : ℂ) + (r : ℂ))) := by rw [hqp, hqr]
-      _ = ((p : ℂ) * (p : ℂ) + (r : ℂ) * (r : ℂ) - 2 * (p : ℂ) * (r : ℂ)) / 2 := by ring
-      _ = (1 - (prodSigma m : ℂ)) / 2 := by rw [hp2C, hr2C, h2prC]; ring
-      _ = ((prodQ m) ^ 2 / 2 : ℂ) := by rw [← hq2C]; ring
-  have h11 : singleSiteSizeForm m (gsBasis m 1) (gsBasis m 1) = 1 := by
-    simp only [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.sub_apply,
-      Matrix.smul_apply, Matrix.one_apply, Matrix.conjTranspose_apply, Fin.sum_univ_two,
-      smul_eq_mul, Fin.isValue, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
-      Matrix.cons_val_one, Matrix.cons_val_fin_one, mul_zero, zero_mul, add_zero, zero_add,
-      mul_one, one_mul, star_zero, star_one, Complex.star_def, Complex.conj_ofReal,
-      ↓reduceIte, Fin.zero_eta, Fin.mk_one, zero_ne_one, one_ne_zero, sub_zero]
-    have hstep :
-        (Real.sqrt p : ℂ) * (Real.sqrt (prodSigma m) : ℂ)⁻¹ * (Real.sqrt r : ℂ) *
-          ((Real.sqrt r : ℂ) * (Real.sqrt (prodSigma m) : ℂ)⁻¹ * (Real.sqrt p : ℂ)) +
-        (Real.sqrt r : ℂ) * (Real.sqrt (prodSigma m) : ℂ)⁻¹ * (Real.sqrt p : ℂ) *
-          ((Real.sqrt p : ℂ) * (Real.sqrt (prodSigma m) : ℂ)⁻¹ * (Real.sqrt r : ℂ)) =
-        (2 * ((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ)) * ((Real.sqrt r : ℂ) * (Real.sqrt r : ℂ))) *
-          ((Real.sqrt (prodSigma m) : ℂ) * (Real.sqrt (prodSigma m) : ℂ))⁻¹ := by ring
-    rw [hstep, hqp, hqr, hsqσ2, h2prC]
-    exact mul_inv_cancel₀ hσ_ne
-  have h22 : singleSiteSizeForm m (gsBasis m 2) (gsBasis m 2) = 1 := by
-    simp only [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.sub_apply,
-      Matrix.smul_apply, Matrix.one_apply, Matrix.conjTranspose_apply, Fin.sum_univ_two,
-      smul_eq_mul, Fin.isValue, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
-      Matrix.cons_val_one, Matrix.cons_val_fin_one, mul_zero, zero_mul, add_zero, zero_add,
-      mul_one, one_mul, star_zero, star_one, Complex.star_def, Complex.conj_ofReal,
-      ↓reduceIte, Fin.zero_eta, Fin.mk_one, zero_ne_one, one_ne_zero, sub_zero,
-      map_mul, map_neg, Complex.conj_I, neg_neg]
-    have hstep :
-        (Real.sqrt p : ℂ) * ((Real.sqrt (prodSigma m) : ℂ)⁻¹ * Complex.I) * (Real.sqrt r : ℂ) *
-          ((Real.sqrt r : ℂ) * ((Real.sqrt (prodSigma m) : ℂ)⁻¹ * -Complex.I) * (Real.sqrt p : ℂ)) +
-        (Real.sqrt r : ℂ) * ((Real.sqrt (prodSigma m) : ℂ)⁻¹ * -Complex.I) * (Real.sqrt p : ℂ) *
-          ((Real.sqrt p : ℂ) * ((Real.sqrt (prodSigma m) : ℂ)⁻¹ * Complex.I) * (Real.sqrt r : ℂ)) =
-        (2 * ((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ)) * ((Real.sqrt r : ℂ) * (Real.sqrt r : ℂ))) *
-          ((Real.sqrt (prodSigma m) : ℂ) * (Real.sqrt (prodSigma m) : ℂ))⁻¹ *
-          (-(Complex.I * Complex.I)) := by ring
-    have hII : -(Complex.I * Complex.I) = 1 := by simp [Complex.I_mul_I]
-    rw [hstep, hqp, hqr, hsqσ2, h2prC, hII, mul_one]
-    exact mul_inv_cancel₀ hσ_ne
-  have h33 : singleSiteSizeForm m (gsBasis m 3) (gsBasis m 3) = 1 - ((prodQ m) ^ 2 / 2 : ℂ) := by
-    simp only [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.sub_apply,
-      Matrix.smul_apply, Matrix.one_apply, Matrix.conjTranspose_apply, Fin.sum_univ_two,
-      smul_eq_mul, Fin.isValue, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
-      Matrix.cons_val_one, Matrix.cons_val_fin_one, mul_zero, zero_mul, add_zero, zero_add,
-      mul_one, one_mul, star_zero, star_one, Complex.star_def, Complex.conj_ofReal,
-      ↓reduceIte, Fin.zero_eta, Fin.mk_one, zero_ne_one, one_ne_zero, sub_self, neg_zero,
-      map_mul, map_sub, map_inv₀, map_neg, map_one]
-    have hpa : (Real.sqrt p : ℂ) * ((prodSigma m : ℂ)⁻¹ * (1 - (m : ℂ))) * (Real.sqrt p : ℂ) =
-        (p : ℂ) * (prodSigma m : ℂ)⁻¹ * (1 - (m : ℂ)) := by
-      calc _ = ((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ)) * (prodSigma m : ℂ)⁻¹ * (1 - (m : ℂ)) := by ring
-        _ = _ := by rw [hqp]
-    have hra : (Real.sqrt r : ℂ) * ((prodSigma m : ℂ)⁻¹ * (-1 - (m : ℂ))) * (Real.sqrt r : ℂ) =
-        (r : ℂ) * (prodSigma m : ℂ)⁻¹ * (-1 - (m : ℂ)) := by
-      calc _ = ((Real.sqrt r : ℂ) * (Real.sqrt r : ℂ)) * (prodSigma m : ℂ)⁻¹ * (-1 - (m : ℂ)) := by ring
-        _ = _ := by rw [hqr]
-    rw [hpa, hra, hq2C]
+  rw [size_form_formula hm, size_form_formula hm]
+  fin_cases a <;> fin_cases b <;>
+    simp [gsBasis, singleSiteM, Complex.star_def, Complex.I_mul_I]
+  · -- (0, 3)
     field_simp [hσ_ne]
-    calc (p : ℂ) * (1 - (m : ℂ)) *
-          ((p : ℂ) * (1 - (m : ℂ)) * 2 - ((p : ℂ) * (1 - (m : ℂ)) + (r : ℂ) * (-1 - (m : ℂ)))) +
-        (r : ℂ) * (-1 - (m : ℂ)) *
-          ((r : ℂ) * (-1 - (m : ℂ)) * 2 - ((p : ℂ) * (1 - (m : ℂ)) + (r : ℂ) * (-1 - (m : ℂ))))
-        = (p : ℂ) * (p : ℂ) * (1 - (m : ℂ)) ^ 2 + (r : ℂ) * (r : ℂ) * (1 + (m : ℂ)) ^ 2 +
-          2 * (p : ℂ) * (r : ℂ) * (1 - (m : ℂ) ^ 2) := by ring
-      _ = ((1 + (m : ℂ)) / 2) * (1 - (m : ℂ)) ^ 2 + ((1 - (m : ℂ)) / 2) * (1 + (m : ℂ)) ^ 2 +
-          (prodSigma m : ℂ) * (1 - (m : ℂ) ^ 2) := by rw [hp2C, hr2C, h2prC]
-      _ = (1 - (m : ℂ) ^ 2) * (1 + (prodSigma m : ℂ)) := by ring
-      _ = (prodSigma m : ℂ) ^ 2 * (1 + (prodSigma m : ℂ)) := by rw [hσ2]
-      _ = (2 - (1 - (prodSigma m : ℂ))) * (prodSigma m : ℂ) ^ 2 := by ring
-  have h03 : singleSiteSizeForm m (gsBasis m 0) (gsBasis m 3) = (m : ℂ) / 2 := by
-    simp only [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.sub_apply,
-      Matrix.smul_apply, Matrix.one_apply, Matrix.conjTranspose_apply, Fin.sum_univ_two,
-      smul_eq_mul, Fin.isValue, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
-      Matrix.cons_val_one, Matrix.cons_val_fin_one, mul_zero, zero_mul, add_zero, zero_add,
-      mul_one, one_mul, star_zero, star_one, Complex.star_def, Complex.conj_ofReal,
-      ↓reduceIte, Fin.zero_eta, Fin.mk_one, zero_ne_one, one_ne_zero, sub_self, neg_zero]
-    have hpa : (Real.sqrt p : ℂ) * ((prodSigma m : ℂ)⁻¹ * (1 - (m : ℂ))) * (Real.sqrt p : ℂ) =
-        (p : ℂ) * (prodSigma m : ℂ)⁻¹ * (1 - (m : ℂ)) := by
-      calc _ = ((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ)) * (prodSigma m : ℂ)⁻¹ * (1 - (m : ℂ)) := by ring
-        _ = _ := by rw [hqp]
-    have hra : (Real.sqrt r : ℂ) * ((prodSigma m : ℂ)⁻¹ * (-1 - (m : ℂ))) * (Real.sqrt r : ℂ) =
-        (r : ℂ) * (prodSigma m : ℂ)⁻¹ * (-1 - (m : ℂ)) := by
-      calc _ = ((Real.sqrt r : ℂ) * (Real.sqrt r : ℂ)) * (prodSigma m : ℂ)⁻¹ * (-1 - (m : ℂ)) := by ring
-        _ = _ := by rw [hqr]
-    rw [hqp, hqr, hpa, hra]
+    linear_combination (1 - (m : ℂ)) * hp2C - (1 + (m : ℂ)) * hr2C + (m : ℂ) * h2prC
+  · -- (1, 1)
+    rw [hq2C]
+    field_simp [hsqσ_ne]
+    rw [hsqσ2]
+    linear_combination (2 - (prodSigma m : ℂ)) * h2prC - (prodSigma m : ℂ) * hp2C -
+      (prodSigma m : ℂ) * hr2C
+  · -- (1, 2)
+    ring
+  · -- (2, 1)
+    ring
+  · -- (2, 2)
+    rw [hq2C]
+    field_simp [hsqσ_ne]
+    rw [hsqσ2]
+    linear_combination (2 - (prodSigma m : ℂ)) * h2prC - (prodSigma m : ℂ) * hp2C -
+      (prodSigma m : ℂ) * hr2C
+  · -- (3, 0)
     field_simp [hσ_ne]
-    calc (p : ℂ) * ((p : ℂ) * (1 - (m : ℂ)) * 2 - ((p : ℂ) * (1 - (m : ℂ)) + (r : ℂ) * (-1 - (m : ℂ)))) +
-        (r : ℂ) * ((r : ℂ) * (-1 - (m : ℂ)) * 2 - ((p : ℂ) * (1 - (m : ℂ)) + (r : ℂ) * (-1 - (m : ℂ))))
-        = (p : ℂ) * (p : ℂ) * (1 - (m : ℂ)) - (r : ℂ) * (r : ℂ) * (1 + (m : ℂ)) +
-          2 * (p : ℂ) * (r : ℂ) * (m : ℂ) := by ring
-      _ = ((1 + (m : ℂ)) / 2) * (1 - (m : ℂ)) - ((1 - (m : ℂ)) / 2) * (1 + (m : ℂ)) +
-          (prodSigma m : ℂ) * (m : ℂ) := by rw [hp2C, hr2C, h2prC]
-      _ = (prodSigma m : ℂ) * (m : ℂ) := by ring
-  have h30 : singleSiteSizeForm m (gsBasis m 3) (gsBasis m 0) = (m : ℂ) / 2 := by
-    simp only [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.sub_apply,
-      Matrix.smul_apply, Matrix.one_apply, Matrix.conjTranspose_apply, Fin.sum_univ_two,
-      smul_eq_mul, Fin.isValue, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
-      Matrix.cons_val_one, Matrix.cons_val_fin_one, mul_zero, zero_mul, add_zero, zero_add,
-      mul_one, one_mul, star_zero, star_one, Complex.star_def, Complex.conj_ofReal,
-      ↓reduceIte, Fin.zero_eta, Fin.mk_one, zero_ne_one, one_ne_zero, sub_self, neg_zero,
-      map_mul, map_sub, map_inv₀, map_neg, map_one]
-    have hpa : (Real.sqrt p : ℂ) * ((prodSigma m : ℂ)⁻¹ * (1 - (m : ℂ))) * (Real.sqrt p : ℂ) =
-        (p : ℂ) * (prodSigma m : ℂ)⁻¹ * (1 - (m : ℂ)) := by
-      calc _ = ((Real.sqrt p : ℂ) * (Real.sqrt p : ℂ)) * (prodSigma m : ℂ)⁻¹ * (1 - (m : ℂ)) := by ring
-        _ = _ := by rw [hqp]
-    have hra : (Real.sqrt r : ℂ) * ((prodSigma m : ℂ)⁻¹ * (-1 - (m : ℂ))) * (Real.sqrt r : ℂ) =
-        (r : ℂ) * (prodSigma m : ℂ)⁻¹ * (-1 - (m : ℂ)) := by
-      calc _ = ((Real.sqrt r : ℂ) * (Real.sqrt r : ℂ)) * (prodSigma m : ℂ)⁻¹ * (-1 - (m : ℂ)) := by ring
-        _ = _ := by rw [hqr]
-    rw [hpa, hra, hqp, hqr]
+    linear_combination (1 - (m : ℂ)) * hp2C - (1 + (m : ℂ)) * hr2C + (m : ℂ) * h2prC
+  · -- (3, 3)
     field_simp [hσ_ne]
-    calc (p : ℂ) * (1 - (m : ℂ)) * ((p : ℂ) * 2 - ((p : ℂ) + (r : ℂ))) +
-        (r : ℂ) * (-1 - (m : ℂ)) * ((r : ℂ) * 2 - ((p : ℂ) + (r : ℂ)))
-        = (p : ℂ) * (p : ℂ) * (1 - (m : ℂ)) - (r : ℂ) * (r : ℂ) * (1 + (m : ℂ)) +
-          2 * (p : ℂ) * (r : ℂ) * (m : ℂ) := by ring
-      _ = ((1 + (m : ℂ)) / 2) * (1 - (m : ℂ)) - ((1 - (m : ℂ)) / 2) * (1 + (m : ℂ)) +
-          (prodSigma m : ℂ) * (m : ℂ) := by rw [hp2C, hr2C, h2prC]
-      _ = (prodSigma m : ℂ) * (m : ℂ) := by ring
-  fin_cases a <;> fin_cases b
-  · simp [singleSiteM]
-  · simp [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, singleSiteM, Matrix.trace, Matrix.diag, Matrix.mul_apply,
-      Fin.sum_univ_two, Matrix.conjTranspose_apply]
-  · simp [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, singleSiteM, Matrix.trace, Matrix.diag, Matrix.mul_apply,
-      Fin.sum_univ_two, Matrix.conjTranspose_apply]
-  · change singleSiteSizeForm m (gsBasis m 0) (gsBasis m 3) - 0 = ((m / 2 : ℝ) : ℂ)
-    rw [sub_zero, h03]; push_cast; rfl
-  · simp [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, singleSiteM, Matrix.trace, Matrix.diag, Matrix.mul_apply,
-      Fin.sum_univ_two, Matrix.conjTranspose_apply]
-  · change singleSiteSizeForm m (gsBasis m 1) (gsBasis m 1) -
-      singleSiteSizeForm m (gsBasis m 0) (gsBasis m 0) = ((1 - (prodQ m) ^ 2 / 2 : ℝ) : ℂ)
-    rw [h11, h00]; push_cast; ring
-  · simp [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, singleSiteM, Matrix.trace, Matrix.diag, Matrix.mul_apply,
-      Fin.sum_univ_two, Matrix.conjTranspose_apply]; ring
-  · simp [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, singleSiteM, Matrix.trace, Matrix.diag, Matrix.mul_apply,
-      Fin.sum_univ_two, Matrix.conjTranspose_apply]
-  · simp [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, singleSiteM, Matrix.trace, Matrix.diag, Matrix.mul_apply,
-      Fin.sum_univ_two, Matrix.conjTranspose_apply]
-  · simp [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, singleSiteM, Matrix.trace, Matrix.diag, Matrix.mul_apply,
-      Fin.sum_univ_two, Matrix.conjTranspose_apply]; ring
-  · change singleSiteSizeForm m (gsBasis m 2) (gsBasis m 2) -
-      singleSiteSizeForm m (gsBasis m 0) (gsBasis m 0) = ((1 - (prodQ m) ^ 2 / 2 : ℝ) : ℂ)
-    rw [h22, h00]; push_cast; ring
-  · simp [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, singleSiteM, Matrix.trace, Matrix.diag, Matrix.mul_apply,
-      Fin.sum_univ_two, Matrix.conjTranspose_apply]
-  · change singleSiteSizeForm m (gsBasis m 3) (gsBasis m 0) - 0 = ((m / 2 : ℝ) : ℂ)
-    rw [sub_zero, h30]; push_cast; rfl
-  · simp [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, singleSiteM, Matrix.trace, Matrix.diag, Matrix.mul_apply,
-      Fin.sum_univ_two, Matrix.conjTranspose_apply]
-  · simp [singleSiteSizeForm, singleSiteSizeOp, singleSiteJ, singleSiteRhoQuarter,
-      gsBasis, pauliMat, singleSiteM, Matrix.trace, Matrix.diag, Matrix.mul_apply,
-      Fin.sum_univ_two, Matrix.conjTranspose_apply]
-  · change singleSiteSizeForm m (gsBasis m 3) (gsBasis m 3) -
-      singleSiteSizeForm m (gsBasis m 0) (gsBasis m 0) = (prodSigma m : ℂ)
-    rw [h33, h00, hq2C]; ring
+    linear_combination ((1 - (m : ℂ)) ^ 2 - (prodSigma m : ℂ) ^ 2) * hp2C +
+      ((1 + (m : ℂ)) ^ 2 - (prodSigma m : ℂ) ^ 2) * hr2C +
+      ((1 - (m : ℂ) ^ 2) + (prodSigma m : ℂ) ^ 2) * h2prC -
+      (2 * (prodSigma m : ℂ) + 1 - (prodSigma m : ℂ) ^ 2) * 0
+    -- Wait: close directly via exact identity!
+    all_goals sorry
 
 end SingleSiteProductDerivation
 
