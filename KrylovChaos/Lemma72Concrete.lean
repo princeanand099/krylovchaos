@@ -279,7 +279,6 @@ private lemma hermFunc_exp_real_isHermitian {N : ℕ} {H : QubitOp N} (hH : H.Is
     Matrix.diagonal_conjTranspose, Matrix.mul_assoc]
   congr 2; ext i j
   simp only [Matrix.diagonal_apply, Pi.star_apply, Complex.star_def, Complex.conj_ofReal]
-  split_ifs <;> rfl
 
 private lemma depolDualWeight_exp_re_pos_of_nonzero {N : ℕ}
     {H : QubitOp N} (hH : H.IsHermitian) (s : Fin N → Fin 6) (β : ℝ)
@@ -318,8 +317,11 @@ private lemma depolDualWeight_exp_re_pos_of_nonzero {N : ℕ}
     have him : (depolDualWeight s
         (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ))))).im = 0 := by
       apply depolDualWeight_im_eq_zero_of_herm s
-      convert hermFunc_exp_real_isHermitian hH (t * (β / 2)) using 2
-      funext e; push_cast; ring
+      have hfn : (fun e : ℝ ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ))) =
+          (fun e : ℝ ↦ Complex.exp (-((t * (β / 2) : ℝ) : ℂ) * (e : ℂ))) := by
+        funext e; congr 1; push_cast; ring
+      rw [hfn]
+      exact hermFunc_exp_real_isHermitian hH (t * (β / 2))
     have hz : depolDualWeight s
         (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)))) = 0 :=
       Complex.ext hft0 him
@@ -595,11 +597,14 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
   have him : (depolDualWeight s
       (hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ))))).im = 0 := by
     apply depolDualWeight_im_eq_zero_of_herm s
-    convert hermFunc_exp_real_isHermitian hH (β / 2) using 2
-    funext e; push_cast; ring
+    have hfn : (fun e : ℝ ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ))) =
+        (fun e : ℝ ↦ Complex.exp (-((β / 2 : ℝ) : ℂ) * (e : ℂ))) := by
+      funext e; congr 1; push_cast; ring
+    rw [hfn]
+    exact hermFunc_exp_real_isHermitian hH (β / 2)
   have hre : depolDualWeight s (hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ)))) =
       ((depolDualWeight s (hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ))))).re : ℂ) :=
-    Complex.ext rfl (by simp [him])
+    Complex.ext rfl (by rw [Complex.ofReal_im, him])
   rw [hre]
   dsimp only [π]
   push_cast; ring
