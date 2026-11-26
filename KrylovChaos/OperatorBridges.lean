@@ -31,7 +31,7 @@ and provides:
 1. `theorem_1_1a_limsup_rate_bound`: actual `Filter.limsup_{t → ∞} (1/t) ln K(t) ≤ 2α`.
 2. `theorem_1_1a_carleman_esa`: bridges linear Lanczos growth `b_n ≤ α n + γ` to Carleman's
    divergence criterion and zero deficiency indices in `CarlemanJacobi`.
-3. `prop_4_1_concrete_qubit_filtration`: concrete `N`-qubit proof that `ad_H^k(A) ∈ V_{min(N, s₀ + (r-1)k)}`
+3. `prop_4_1_concrete_qubit_filtration`: concrete `N`-qubit proof that `ad_H^k(A) ∈ V_{s₀ + (r-1)k}`
    for any `r`-local Hamiltonian `H : LocalHamiltonian N r`.
 4. `corollary_6_5_krylov_lieb_robinson`: **Corollary 6.5 (Krylov–Lieb–Robinson Bound, Eq. 6.11)**.
 5. `globalDepolP`, `globalDepolP_herm`, `globalDepolP_trace`, `globalDepolP_avg` (global `N`-qubit
@@ -72,7 +72,7 @@ theorem theorem_1_1a_limsup_rate_bound {C α : ℝ} {K : ℝ → ℝ}
     linarith
   have hlog_div : Real.log C / t ≤ ε := by
     have h1 : Real.log C ≤ |Real.log C| := le_abs_self _
-    have h2 : |Real.log C| < ε * t := (div_lt_iff₀ hε).mp ht2
+    have h2 : |Real.log C| < t * ε := (div_lt_iff₀ hε).mp ht2
     rw [div_le_iff₀ htpos]
     linarith
   have hpt : Real.log (K t) / t ≤ 2 * α + Real.log C / t := by
@@ -96,7 +96,7 @@ theorem theorem_1_1a_carleman_esa {α γ : ℝ} (hα : 0 < α) (hγ : 0 ≤ γ)
         (if h : n = 0 then (0 : ℂ) else (b (n - 1) : ℂ) * u (n - 1)) = z * u n) →
       Summable (fun n : ℕ ↦ ‖u n‖ ^ 2) → ∀ n : ℕ, u n = 0) := by
   have hdiv : ¬ Summable (fun n : ℕ ↦ (b n)⁻¹) :=
-    carleman_divergence_of_linear_growth hα hγ b hb_pos hb_lin
+    carleman_divergence_of_linear_growth b hα hγ hb_pos hb_lin
   exact ⟨hdiv, fun u z hz hrec hℓ2 ↦ carleman_deficiency_zero b hb_pos hdiv u z hz hrec hℓ2⟩
 
 end Section3Bridges
@@ -111,33 +111,25 @@ def iterMatCommQubit {N : ℕ} (H : QubitOp N) : ℕ → QubitOp N → QubitOp N
 /-- **Proposition 4.1 (Concrete N-Qubit Filtration Inclusion)**:
 For any concrete `r`-local `N`-qubit Hamiltonian `ham : LocalHamiltonian N r` (`r ≥ 1`)
 and any `s₀`-local operator `A ∈ filtrationSubmodule N s₀`, the `k`-th nested commutator
-`ad_H^k(A)` lies in `filtrationSubmodule N (min N (s₀ + (r - 1) * k))`. -/
+`ad_H^k(A)` lies in `filtrationSubmodule N (s₀ + (r - 1) * k)`. -/
 theorem prop_4_1_concrete_qubit_filtration {N r s₀ : ℕ} (hr : 1 ≤ r)
     (ham : LocalHamiltonian N r) (A : QubitOp N)
     (hA : A ∈ filtrationSubmodule N s₀) :
     ∀ k : ℕ, iterMatCommQubit ham.totalOp k A ∈
-      filtrationSubmodule N (min N (s₀ + (r - 1) * k)) := by
+      filtrationSubmodule N (s₀ + (r - 1) * k) := by
   have hH : ham.totalOp ∈ filtrationSubmodule N r := ham.totalOp_in_filtration
   intro k
   induction k with
   | zero =>
-    simp only [iterMatCommQubit, mul_zero, add_zero]
-    have hmin : filtrationSubmodule N s₀ ≤ filtrationSubmodule N (min N s₀) := by
-      apply Submodule.span_le.mpr
-      rintro _ ⟨a, ha, rfl⟩
-      apply Submodule.subset_span
-      refine ⟨a, ?_, rfl⟩
-      have hleN : pauliWeight a ≤ N := by
-        unfold pauliWeight
-        exact le_trans (Finset.card_filter_le _ _) (by simp)
-      exact le_min hleN ha
-    exact hmin hA
+    simpa [iterMatCommQubit] using hA
   | succ k ih =>
     simp only [iterMatCommQubit]
     have hstep := filtration_comm_step hr hH ih
-    have hle : min N (min N (s₀ + (r - 1) * k) + r - 1) ≤ min N (s₀ + (r - 1) * (k + 1)) := by
+    have hle : min N (s₀ + (r - 1) * k + r - 1) ≤ s₀ + (r - 1) * (k + 1) := by
+      have h1 : min N (s₀ + (r - 1) * k + r - 1) ≤ s₀ + (r - 1) * k + r - 1 := min_le_right _ _
+      rw [mul_add, mul_one]
       omega
-    exact filtrationSubmodule_mono hle hstep
+    exact filtrationSubmodule_mono N hle hstep
 
 end Section4Bridges
 
@@ -167,7 +159,7 @@ theorem corollary_6_5_krylov_lieb_robinson
     Sβ ≤ C_LR * (v_LR * t + 1) ^ d +
       (2 * Real.sqrt (cB * C_LR)) * Real.sqrt (N * (v_LR * t + 1) ^ d) +
       C₂ * Real.sqrt N := by
-  have hdec := prop_6_4_entropic_decoupling hN hI hcB hdecomp hIII hII hB
+  have hdec := prop_6_4_decoupling_combine hN hI hcB hdecomp hIII hII hB
   have hvt_nn : 0 ≤ (v_LR * t + 1) ^ d := pow_nonneg (by nlinarith) d
   have hsqrt_I : Real.sqrt (N * I) ≤ Real.sqrt C_LR * Real.sqrt (N * (v_LR * t + 1) ^ d) := by
     have hNI : N * I ≤ C_LR * (N * (v_LR * t + 1) ^ d) := by
@@ -231,7 +223,7 @@ theorem globalDepolP_avg (N : ℕ) :
     linear_combination 6 * havg
   simp_rw [hsingle, Finset.prod_mul_distrib, Finset.prod_const, Finset.card_univ, Fintype.card_fin]
   have h1 : (∏ x : Fin N, (1 : Matrix (Fin 2) (Fin 2) ℂ) (i x) (j x)) = (1 : QubitOp N) i j := by
-    have := congrFun (congrFun (kronOp_one N) i) j
+    have := congrFun (congrFun (kronOp_one (N := N)) i) j
     simpa [kronOp] using this
   rw [h1]
   have hpow : ((1 / 6 : ℂ) ^ N) * (3 : ℂ) ^ N = (1 / 2 : ℂ) ^ N := by
@@ -296,7 +288,7 @@ theorem lemma_8_2_multi_edge_hs {ι : Type*} [DecidableEq ι]
           (spinVal (z₁ e) + spinVal (s e) * spinVal (z₂ e)))) := by
   apply Finset.prod_congr rfl
   intro e he
-  have h1 := lemma_8_2_hubbard_stratonovich (hu e he)
+  have h1 := lemma_8_2_hubbard_stratonovich_identity (hu e he)
     (spinVal_mem (s e)) (spinVal_mem (z₁ e)) (spinVal_mem (z₂ e))
   have hsum : (∑ τ : Bool, Real.exp (hsPhi (u e) * spinVal τ *
       (spinVal (z₁ e) + spinVal (s e) * spinVal (z₂ e)))) =
