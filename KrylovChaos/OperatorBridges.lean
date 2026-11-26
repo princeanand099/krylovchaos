@@ -87,10 +87,10 @@ theorem theorem_1_1a_limsup_rate_bound {C α : ℝ} {K : ℝ → ℝ}
 
 /-- **Theorem 1.1(a) (Carleman Essential Self-Adjointness Bridge)**:
 Connects linear Lanczos growth `0 < b_n ≤ α n + γ` directly to Carleman's divergence
-criterion `∑ (b_n)⁻¹ = ∞` in `KrylovChaos.CarlemanJacobi`. -/
+criterion `∑ 1 / b_{n+1} = ∞` in `KrylovChaos.CarlemanJacobi`. -/
 theorem theorem_1_1a_carleman_esa {α γ : ℝ} (hα : 0 < α) (hγ : 0 ≤ γ)
     (b : ℕ → ℝ) (hb_pos : ∀ n : ℕ, 0 < b n) (hb_lin : ∀ n : ℕ, b n ≤ α * (n : ℝ) + γ) :
-    ¬ Summable (fun n : ℕ ↦ (b n)⁻¹) :=
+    ¬ Summable (fun n : ℕ ↦ 1 / b (n + 1)) :=
   carleman_divergence_of_linear_growth b hα hγ (fun n _ ↦ hb_pos n) (fun n _ ↦ hb_lin n)
 
 end Section3Bridges
