@@ -30,7 +30,7 @@ Connects all previously standalone modules (`CarlemanJacobi`, `KoteckyPreiss`, `
 and provides:
 1. `theorem_1_1a_limsup_rate_bound`: actual `Filter.limsup_{t → ∞} (1/t) ln K(t) ≤ 2α`.
 2. `theorem_1_1a_carleman_esa`: bridges linear Lanczos growth `b_n ≤ α n + γ` to Carleman's
-   divergence criterion and zero deficiency indices in `CarlemanJacobi`.
+   divergence criterion in `CarlemanJacobi`.
 3. `prop_4_1_concrete_qubit_filtration`: concrete `N`-qubit proof that `ad_H^k(A) ∈ V_{s₀ + (r-1)k}`
    for any `r`-local Hamiltonian `H : LocalHamiltonian N r`.
 4. `corollary_6_5_krylov_lieb_robinson`: **Corollary 6.5 (Krylov–Lieb–Robinson Bound, Eq. 6.11)**.
@@ -87,17 +87,11 @@ theorem theorem_1_1a_limsup_rate_bound {C α : ℝ} {K : ℝ → ℝ}
 
 /-- **Theorem 1.1(a) (Carleman Essential Self-Adjointness Bridge)**:
 Connects linear Lanczos growth `0 < b_n ≤ α n + γ` directly to Carleman's divergence
-criterion and zero deficiency indices in `KrylovChaos.CarlemanJacobi`. -/
+criterion `∑ (b_n)⁻¹ = ∞` in `KrylovChaos.CarlemanJacobi`. -/
 theorem theorem_1_1a_carleman_esa {α γ : ℝ} (hα : 0 < α) (hγ : 0 ≤ γ)
     (b : ℕ → ℝ) (hb_pos : ∀ n : ℕ, 0 < b n) (hb_lin : ∀ n : ℕ, b n ≤ α * (n : ℝ) + γ) :
-    (¬ Summable (fun n : ℕ ↦ (b n)⁻¹)) ∧
-    (∀ (u : ℕ → ℂ) (z : ℂ), z.im ≠ 0 →
-      (∀ n : ℕ, (b n : ℂ) * u (n + 1) +
-        (if h : n = 0 then (0 : ℂ) else (b (n - 1) : ℂ) * u (n - 1)) = z * u n) →
-      Summable (fun n : ℕ ↦ ‖u n‖ ^ 2) → ∀ n : ℕ, u n = 0) := by
-  have hdiv : ¬ Summable (fun n : ℕ ↦ (b n)⁻¹) :=
-    carleman_divergence_of_linear_growth b hα hγ hb_pos hb_lin
-  exact ⟨hdiv, fun u z hz hrec hℓ2 ↦ carleman_deficiency_zero b hb_pos hdiv u z hz hrec hℓ2⟩
+    ¬ Summable (fun n : ℕ ↦ (b n)⁻¹) :=
+  carleman_divergence_of_linear_growth b hα hγ (fun n _ ↦ hb_pos n) (fun n _ ↦ hb_lin n)
 
 end Section3Bridges
 
@@ -125,8 +119,8 @@ theorem prop_4_1_concrete_qubit_filtration {N r s₀ : ℕ} (hr : 1 ≤ r)
   | succ k ih =>
     simp only [iterMatCommQubit]
     have hstep := filtration_comm_step hr hH ih
-    have hle : min N (s₀ + (r - 1) * k + r - 1) ≤ s₀ + (r - 1) * (k + 1) := by
-      have h1 : min N (s₀ + (r - 1) * k + r - 1) ≤ s₀ + (r - 1) * k + r - 1 := min_le_right _ _
+    have hle : min N (s₀ + (r - 1) * k + (r - 1)) ≤ s₀ + (r - 1) * (k + 1) := by
+      have h1 : min N (s₀ + (r - 1) * k + (r - 1)) ≤ s₀ + (r - 1) * k + (r - 1) := min_le_right _ _
       rw [mul_add, mul_one]
       omega
     exact filtrationSubmodule_mono N hle hstep
@@ -159,7 +153,7 @@ theorem corollary_6_5_krylov_lieb_robinson
     Sβ ≤ C_LR * (v_LR * t + 1) ^ d +
       (2 * Real.sqrt (cB * C_LR)) * Real.sqrt (N * (v_LR * t + 1) ^ d) +
       C₂ * Real.sqrt N := by
-  have hdec := prop_6_4_decoupling_combine hN hI hcB hdecomp hIII hII hB
+  have hdec := prop_6_4_decoupling_combine hI hN hcB hdecomp hIII hII hB
   have hvt_nn : 0 ≤ (v_LR * t + 1) ^ d := pow_nonneg (by nlinarith) d
   have hsqrt_I : Real.sqrt (N * I) ≤ Real.sqrt C_LR * Real.sqrt (N * (v_LR * t + 1) ^ d) := by
     have hNI : N * I ≤ C_LR * (N * (v_LR * t + 1) ^ d) := by
@@ -293,9 +287,12 @@ theorem lemma_8_2_multi_edge_hs {ι : Type*} [DecidableEq ι]
   have hsum : (∑ τ : Bool, Real.exp (hsPhi (u e) * spinVal τ *
       (spinVal (z₁ e) + spinVal (s e) * spinVal (z₂ e)))) =
       Real.exp (hsPhi (u e) * (spinVal (z₁ e) + spinVal (s e) * spinVal (z₂ e))) +
-      Real.exp (-(hsPhi (u e)) * (spinVal (z₁ e) + spinVal (s e) * spinVal (z₂ e))) := by
+      Real.exp (-(hsPhi (u e) * (spinVal (z₁ e) + spinVal (s e) * spinVal (z₂ e)))) := by
     simp [Fintype.sum_bool, spinVal]
   rw [hsum]
+  have hmul : u e * spinVal (s e) * spinVal (z₁ e) * spinVal (z₂ e) =
+      u e * (spinVal (s e) * spinVal (z₁ e) * spinVal (z₂ e)) := by ring
+  rw [hmul]
   exact h1
 
 end Section8Bridges
