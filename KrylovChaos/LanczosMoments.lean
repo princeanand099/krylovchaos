@@ -126,7 +126,7 @@ theorem jacobiMat_pow_eq_sum_finPaths {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) :
           finPathWeight b m p.2 * jacobiMat D b p.1 h :=
       (Finset.sum_sigma (Finset.univ : Finset (Fin D))
         (fun j ↦ Finset.univ.filter (isFinPath m j))
-        (fun j γ ↦ finPathWeight b m γ * jacobiMat D b j h)).symm
+        (fun p ↦ finPathWeight b m p.2 * jacobiMat D b p.1 h)).symm
     rw [hsig]
     have hadj : ∀ j : Fin D,
         jacobiMat D b j h =
@@ -140,6 +140,7 @@ theorem jacobiMat_pow_eq_sum_finPaths {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) :
       · by_cases h2 : j.1 = h.1 + 1
         · have hmax : max j.1 h.1 = h.1 + 1 := by omega
           simp [h1, h2, hmax]
+          intro hc; omega
         · simp [h1, h2]
     simp_rw [hadj]
     have hfilt :
@@ -197,7 +198,7 @@ theorem jacobiMat_pow_eq_sum_finPaths {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) :
       · ext k
         by_cases hk : k.1 ≤ m
         · simp only [appendPath, initPath, hk, ↓reduceDIte]
-        · have hkeq : k = ⟨m + 1, by omega⟩ := Fin.ext (by omega)
+        · have hkeq : k = ⟨m + 1, by omega⟩ := Fin.ext (by dsimp; omega)
           simp only [appendPath, hk, ↓reduceDIte]
           rw [hkeq, hm1]
     · intro p hp
@@ -256,7 +257,8 @@ theorem jacobiMat_moment_eq_dyck_sum {D n : ℕ} (hD : n < D) (b : ℕ → ℝ) 
       Finset.univ.filter (fun γ : Fin (2 * n + 1) → Fin D ↦ isDyckPath n (fun k ↦ (γ k).1)) := by
     apply Finset.ext
     intro γ
-    simp only [Finset.mem_filter, Finset.mem_univ, true_and, isFinPath, isDyckPath]
+    rw [Finset.mem_filter, Finset.mem_filter]
+    simp only [Finset.mem_univ, true_and, isFinPath, isDyckPath]
     exact ⟨fun ⟨h0, hend, hsteps⟩ ↦ ⟨h0, congrArg Fin.val hend, hsteps⟩,
            fun ⟨h0, hend, hsteps⟩ ↦ ⟨h0, Fin.ext hend, hsteps⟩⟩
   rw [hfilt]
@@ -378,6 +380,7 @@ theorem integral_pow_mul_exp_neg_Ioi {a : ℝ} (ha : 0 < a) (k : ℕ) :
     rw [h1]
     apply MeasureTheory.setIntegral_congr_fun measurableSet_Ioi
     intro x _
+    dsimp only
     rw [add_sub_cancel_right, Real.rpow_natCast]
   have hcomp :=
     MeasureTheory.Measure.integral_comp_mul_left
@@ -399,10 +402,11 @@ theorem integral_pow_mul_exp_neg_Ioi {a : ℝ} (ha : 0 < a) (k : ℕ) :
     rw [← MeasureTheory.integral_const_mul]
     apply MeasureTheory.setIntegral_congr_fun measurableSet_Ioi
     intro ω _
+    dsimp only
     rw [mul_pow]; ring
   rw [hpull] at hcomp
   have hak_ne : a ^ k ≠ 0 := pow_ne_zero k ha.ne'
-  rw [pow_succ, ← div_div, mul_comm (a ^ k)]
+  rw [pow_succ, ← div_div]
   have hdiv : ∫ ω in Set.Ioi (0 : ℝ), ω ^ k * Real.exp (-(a * ω)) =
       (a⁻¹ * (k.factorial : ℝ)) / a ^ k := by
     field_simp [hak_ne]
