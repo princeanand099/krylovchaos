@@ -257,18 +257,18 @@ private lemma singleDepolW3_ne_zero (u v : Fin 6) : singleDepolW3 u v ≠ 0 := b
       rw [ha0]; ext i j; simp [s1]; ring
     rcases h1' with ⟨b0, b1, hb⟩
     have h2' : ∃ d0 d1 d2 : ℂ, singleDepolGS2 u v = d0 • pauliMat 0 + d1 • pauliMat 1 + d2 • pauliMat 2 := by
-      set u0 := singleDepolInner u v (singleDepolGS0 u v) (pauliMat 2)
-      set u1 := singleDepolInner u v (singleDepolGS1 u v) (pauliMat 2)
+      let u0 := singleDepolInner u v (singleDepolGS0 u v) (pauliMat 2)
+      let u1 := singleDepolInner u v (singleDepolGS1 u v) (pauliMat 2)
       refine ⟨s2 * (-u0 * a0 - u1 * b0), s2 * (-u1 * b1), s2, ?_⟩
-      unfold singleDepolGS2 singleDepolW2
-      rw [ha0, hb]; ext i j; simp [s2, u0, u1]; ring
+      have hstep : singleDepolGS2 u v = s2 • (pauliMat 2 - u0 • singleDepolGS0 u v - u1 • singleDepolGS1 u v) := rfl
+      rw [hstep, ha0, hb]; ext i j; simp; ring
     rcases h2' with ⟨d0, d1, d2, hd⟩
-    set v0 := singleDepolInner u v (singleDepolGS0 u v) (pauliMat 3)
-    set v1 := singleDepolInner u v (singleDepolGS1 u v) (pauliMat 3)
-    set v2 := singleDepolInner u v (singleDepolGS2 u v) (pauliMat 3)
+    let v0 := singleDepolInner u v (singleDepolGS0 u v) (pauliMat 3)
+    let v1 := singleDepolInner u v (singleDepolGS1 u v) (pauliMat 3)
+    let v2 := singleDepolInner u v (singleDepolGS2 u v) (pauliMat 3)
     refine ⟨-v0 * a0 - v1 * b0 - v2 * d0, -v1 * b1 - v2 * d1, -v2 * d2, ?_⟩
-    unfold singleDepolW3
-    rw [ha0, hb, hd]; ext i j; simp [v0, v1, v2]; ring
+    have hstep : singleDepolW3 u v = pauliMat 3 - v0 • singleDepolGS0 u v - v1 • singleDepolGS1 u v - v2 • singleDepolGS2 u v := rfl
+    rw [hstep, ha0, hb, hd]; ext i j; simp; ring
   rcases hspan with ⟨c0, c1, c2, hw3⟩
   rw [hw3] at h0
   have hlin : ∑ a : Fin 4,
@@ -283,8 +283,9 @@ private lemma singleDepol_norm_unit (u v : Fin 6) {W : Matrix (Fin 2) (Fin 2) �
       (((Real.sqrt (singleDepolInner u v W W).re)⁻¹ : ℂ) • W)
       (((Real.sqrt (singleDepolInner u v W W).re)⁻¹ : ℂ) • W) = 1 := by
   have hpos := singleDepolInner_self_pos u v hW
-  have hsr : Real.sqrt (singleDepolInner u v W W).re ≠ 0 := (Real.sqrt_pos.mpr hpos).ne'
-  rw [singleDepolInner_smul_left, singleDepolInner_smul_right, singleDepolInner_self_eq_re]
+  set r : ℝ := (singleDepolInner u v W W).re
+  have heq : singleDepolInner u v W W = (r : ℂ) := singleDepolInner_self_eq_re u v W
+  rw [singleDepolInner_smul_left, singleDepolInner_smul_right, heq]
   simp only [Complex.star_def, Complex.conj_inv, Complex.conj_ofReal]
   rw [← mul_assoc, ← mul_inv, ← Complex.ofReal_mul, Real.mul_self_sqrt hpos.le,
     inv_mul_cancel₀ (Complex.ofReal_ne_zero.mpr hpos.ne')]
@@ -331,7 +332,7 @@ theorem singleDepolBasis_orthonormal (u v : Fin 6) (i j : Fin 4) :
     unfold singleDepolW3
     rw [singleDepolInner_sub_right, singleDepolInner_sub_right, singleDepolInner_sub_right,
       singleDepolInner_smul_right, singleDepolInner_smul_right, singleDepolInner_smul_right,
-      h10, h11, h12, mul_zero, mul_one, mul_zero, sub_zero, sub_self, sub_zero]
+      h10, h11, h12, mul_zero, mul_one, mul_zero, sub_zero, sub_self]
   have h2w3 : singleDepolInner u v (singleDepolGS2 u v) (singleDepolW3 u v) = 0 := by
     unfold singleDepolW3
     rw [singleDepolInner_sub_right, singleDepolInner_sub_right, singleDepolInner_sub_right,
@@ -391,18 +392,18 @@ lemma pauliMat_expand_singleDepol (u v : Fin 6) (k : Fin 4) :
       rw [Fin.sum_univ_four]; simp [singleDepolBasis, hn0]
     · refine ⟨fun i ↦ if i = 0 then singleDepolInner u v (singleDepolGS0 u v) (pauliMat 1)
           else if i = 1 then n1 else 0, ?_⟩
-      rw [Fin.sum_univ_four]; simp only [Fin.isValue, ↓reduceIte, zero_smul, add_zero, singleDepolBasis]
+      rw [Fin.sum_univ_four]; simp [singleDepolBasis]
       rw [← hn1]; unfold singleDepolW1; abel
     · refine ⟨fun i ↦ if i = 0 then singleDepolInner u v (singleDepolGS0 u v) (pauliMat 2)
           else if i = 1 then singleDepolInner u v (singleDepolGS1 u v) (pauliMat 2)
           else if i = 2 then n2 else 0, ?_⟩
-      rw [Fin.sum_univ_four]; simp only [Fin.isValue, ↓reduceIte, zero_smul, add_zero, singleDepolBasis]
+      rw [Fin.sum_univ_four]; simp [singleDepolBasis]
       rw [← hn2]; unfold singleDepolW2; abel
     · refine ⟨fun i ↦ if i = 0 then singleDepolInner u v (singleDepolGS0 u v) (pauliMat 3)
           else if i = 1 then singleDepolInner u v (singleDepolGS1 u v) (pauliMat 3)
           else if i = 2 then singleDepolInner u v (singleDepolGS2 u v) (pauliMat 3)
           else n3, ?_⟩
-      rw [Fin.sum_univ_four]; simp only [Fin.isValue, ↓reduceIte, singleDepolBasis]
+      rw [Fin.sum_univ_four]; simp [singleDepolBasis]
       rw [← hn3]; unfold singleDepolW3; abel
   rcases hspan with ⟨c, hc⟩
   conv_lhs => rw [hc]
@@ -529,7 +530,7 @@ private lemma singleDepolBasis_expand_pauli (u v : Fin 6) (i : Fin 4) :
       ext p q
       fin_cases p <;> fin_cases q <;>
         (simp [Fin.sum_univ_four, pauliMat, Matrix.trace, Matrix.diag, Matrix.mul_apply,
-          Fin.sum_univ_two]; ring_nf; simp [Complex.I_sq]; try ring)
+          Fin.sum_univ_two]; try (ring_nf; simp [Complex.I_sq]; try ring))
     exact hM
 
 lemma prodDepolBasis_mem_singleSiteTrivial {N : ℕ} (s s' : Fin N → Fin 6)
@@ -665,7 +666,7 @@ theorem prodDepolDistSq_singleSite_eq {N : ℕ} (s s' : Fin N → Fin 6) (x : Fi
             have hax : a x ≠ 0 := (Finset.mem_filter.mp ha).2
             have hlin : prodDepolInner s s' (prodDepolBasis s s' a) (A - B) =
                 c a - prodDepolInner s s' (prodDepolBasis s s' a) B := by
-              unfold prodDepolInner c; rw [Matrix.mul_sub, Matrix.trace_sub]
+              dsimp only [c]; unfold prodDepolInner; rw [Matrix.mul_sub, Matrix.trace_sub]
             rw [hlin, horth a hax, sub_zero]
         _ ≤ ∑ a : Fin N → Fin 4,
               ‖prodDepolInner s s' (prodDepolBasis s s' a) (A - B)‖ ^ 2 :=
@@ -746,7 +747,7 @@ theorem prodDepolDistSq_filtration_eq {N : ℕ} (s s' : Fin N → Fin 6) (k : �
             have hak : k < stringWeight a := (Finset.mem_filter.mp ha).2
             have hlin : prodDepolInner s s' (prodDepolBasis s s' a) (A - B) =
                 c a - prodDepolInner s s' (prodDepolBasis s s' a) B := by
-              unfold prodDepolInner c; rw [Matrix.mul_sub, Matrix.trace_sub]
+              dsimp only [c]; unfold prodDepolInner; rw [Matrix.mul_sub, Matrix.trace_sub]
             rw [hlin, horth a hak, sub_zero]
         _ ≤ ∑ a : Fin N → Fin 4,
               ‖prodDepolInner s s' (prodDepolBasis s s' a) (A - B)‖ ^ 2 :=
@@ -869,72 +870,58 @@ end ProductBasisAndFiltrationIdentity
 
 section Theorem13bOperatorCW
 
-/-- Concrete equal-time Wightman commutator sum `C_W(A) = (1/8) ∑_x ∑_{α=1}^3 ‖[A, σ_x^α]‖_{β,W}²`. -/
-noncomputable def otocCW {N : ℕ} (G : GibbsData N) (A : QubitOp N) : ℝ :=
-  (1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3,
-    gibbsWightmanNormSq G (matComm A (pauliSite x α.succ))
-
 /-- Concrete single-site commutator identity: `[A, σ_x^α] = [𝒮_x(A), σ_x^α]`. -/
 lemma matComm_pauliSite_eq_siteSizeOp {N : ℕ} (x : Fin N) (α : Fin 3) (A : QubitOp N) :
     matComm A (pauliSite x α.succ) = matComm (siteSizeOp x A) (pauliSite x α.succ) := by
+  have hp0 : pauliMat 0 = (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
+    ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat]
+  have hpt_pauli : ∀ a : Fin N → Fin 4,
+      partialTraceSite x (pauliString a) = if a x = 0 then pauliString a else 0 := by
+    intro a
+    unfold partialTraceSite pauliString
+    have hconj : ∀ c : Fin 4,
+        pauliSite x c * kronOp (fun y ↦ pauliMat (a y)) * pauliSite x c =
+        kronOp (fun y ↦ if y = x then pauliMat c * pauliMat (a x) * pauliMat c else pauliMat (a y)) := by
+      intro c; unfold pauliSite pauliString; rw [kronOp_mul, kronOp_mul]
+      congr 1; funext y
+      by_cases hy : y = x
+      · subst hy; simp
+      · simp [hy, hp0]
+    simp_rw [hconj]
+    ext p q
+    simp only [Matrix.smul_apply, Matrix.sum_apply, kronOp, Matrix.of_apply, smul_eq_mul]
+    have hsplit : ∀ c : Fin 4,
+        (∏ y : Fin N, (if y = x then pauliMat c * pauliMat (a x) * pauliMat c else pauliMat (a y)) (p y) (q y)) =
+        (pauliMat c * pauliMat (a x) * pauliMat c) (p x) (q x) *
+          ∏ y ∈ Finset.univ.erase x, pauliMat (a y) (p y) (q y) := by
+      intro c; rw [← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ x)]
+      congr 1; · simp
+      · apply Finset.prod_congr rfl; intro y hy; simp [(Finset.mem_erase.mp hy).1]
+    simp_rw [hsplit, ← Finset.sum_mul, ← mul_assoc]
+    have htw : (1 / 4 : ℂ) * (∑ c : Fin 4, (pauliMat c * pauliMat (a x) * pauliMat c) (p x) (q x)) =
+        if a x = 0 then pauliMat 0 (p x) (q x) else 0 := by
+      generalize a x = u; generalize p x = i1; generalize q x = j1
+      fin_cases u <;> fin_cases i1 <;> fin_cases j1 <;>
+        (simp [Fin.sum_univ_four, pauliMat, Matrix.mul_apply, Fin.sum_univ_two]; try norm_num)
+    rw [htw]
+    by_cases hax : a x = 0
+    · rw [if_pos hax, if_pos hax]
+      simp only [kronOp, Matrix.of_apply]
+      rw [← Finset.mul_prod_erase Finset.univ (fun y ↦ pauliMat (a y) (p y) (q y)) (Finset.mem_univ x), hax]
+    · rw [if_neg hax, if_neg hax, zero_mul, Matrix.zero_apply]
   have hcomm : matComm (partialTraceSite x A) (pauliSite x α.succ) = 0 := by
     have hA := pauli_expansion_concrete A
     have hpt_comm : ∀ a : Fin N → Fin 4,
         matComm (partialTraceSite x (pauliString a)) (pauliSite x α.succ) = 0 := by
       intro a
-      unfold partialTraceSite pauliSite pauliString
-      have hconj : ∀ c : Fin 4,
-          kronOp (fun y ↦ if y = x then pauliMat c else pauliMat 0) *
-          kronOp (fun y ↦ pauliMat (a y)) *
-          kronOp (fun y ↦ if y = x then pauliMat c else pauliMat 0) =
-          kronOp (fun y ↦ if y = x then pauliMat c * pauliMat (a x) * pauliMat c else pauliMat (a y)) := by
-        intro c; rw [kronOp_mul, kronOp_mul]; congr 1; funext y
-        by_cases hy : y = x
-        · subst hy; simp
-        · have hp0 : pauliMat 0 = (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
-            ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat]
-          simp [hy, hp0]
-      have htw : (1 / 4 : ℂ) • ∑ c : Fin 4,
-          pauliMat c * pauliMat (a x) * pauliMat c =
-          (if a x = 0 then 1 else 0) • (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
-        ext i j; generalize a x = u
-        fin_cases u <;> fin_cases i <;> fin_cases j <;>
-          (simp [Fin.sum_univ_four, pauliMat, Matrix.mul_apply, Fin.sum_univ_two]; try norm_num)
-      have hpt_eq : (1 / 4 : ℂ) • ∑ c : Fin 4,
-          kronOp (fun y ↦ if y = x then pauliMat c else pauliMat 0) *
-          kronOp (fun y ↦ pauliMat (a y)) *
-          kronOp (fun y ↦ if y = x then pauliMat c else pauliMat 0) =
-          if a x = 0 then kronOp (fun y ↦ pauliMat (a y)) else 0 := by
-        simp_rw [hconj]
-        ext p q
-        simp only [Matrix.smul_apply, Matrix.sum_apply, kronOp, Matrix.of_apply, smul_eq_mul]
-        have hsplit : ∀ c : Fin 4,
-            (∏ y : Fin N, (if y = x then pauliMat c * pauliMat (a x) * pauliMat c else pauliMat (a y)) (p y) (q y)) =
-            (pauliMat c * pauliMat (a x) * pauliMat c) (p x) (q x) *
-              ∏ y ∈ Finset.univ.erase x, pauliMat (a y) (p y) (q y) := by
-          intro c; rw [← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ x)]
-          congr 1; · simp
-          · apply Finset.prod_congr rfl; intro y hy; simp [(Finset.mem_erase.mp hy).1]
-        simp_rw [hsplit, ← Finset.sum_mul, ← mul_assoc]
-        have htw' := congrFun (congrFun htw (p x)) (q x)
-        simp only [Matrix.smul_apply, Matrix.sum_apply, smul_eq_mul] at htw'
-        rw [htw']
-        by_cases hax : a x = 0
-        · rw [if_pos hax, if_pos hax]
-          have hp0 : pauliMat 0 = (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
-            ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat]
-          rw [← Finset.mul_prod_erase Finset.univ (fun y ↦ pauliMat (a y) (p y) (q y)) (Finset.mem_univ x),
-            hax, hp0, one_mul]
-        · rw [if_neg hax, if_neg hax, zero_mul, zero_mul, Matrix.zero_apply]
-      rw [hpt_eq]
+      rw [hpt_pauli a]
       by_cases hax : a x = 0
-      · rw [if_pos hax]; unfold matComm
+      · rw [if_pos hax]
+        unfold matComm pauliSite pauliString
         rw [kronOp_mul, kronOp_mul]
-        have heq : (fun y : Fin N ↦ pauliMat (a y) * (if y = x then pauliMat α.succ else pauliMat 0)) =
-            fun y ↦ (if y = x then pauliMat α.succ else pauliMat 0) * pauliMat (a y) := by
+        have heq : (fun y : Fin N ↦ pauliMat (a y) * pauliMat (Function.update (fun _ ↦ (0 : Fin 4)) x α.succ y)) =
+            fun y ↦ pauliMat (Function.update (fun _ ↦ (0 : Fin 4)) x α.succ y) * pauliMat (a y) := by
           funext y
-          have hp0 : pauliMat 0 = (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
-            ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat]
           by_cases hy : y = x
           · subst hy; simp [hax, hp0]
           · simp [hy, hp0]
@@ -1132,6 +1119,19 @@ private lemma prodDepolNormSq_sub_le {N : ℕ} (s s' : Fin N → Fin 6) (X Y : Q
     ring
   linarith [prodDepolNormSq_nonneg s s' (X + Y)]
 
+private lemma trace_pauli_conj_right {N : ℕ} (P S1 S2 B : QubitOp N) (hPh : Pᴴ = P) :
+    (S1 * (B * P)ᴴ * S2 * (B * P)).trace = ((P * S1 * P) * Bᴴ * S2 * B).trace := by
+  rw [Matrix.conjTranspose_mul, hPh]
+  calc (S1 * (P * Bᴴ) * S2 * (B * P)).trace
+      = ((S1 * P * Bᴴ * S2 * B) * P).trace := by simp only [Matrix.mul_assoc]
+    _ = (P * (S1 * P * Bᴴ * S2 * B)).trace := Matrix.trace_mul_comm _ _
+    _ = ((P * S1 * P) * Bᴴ * S2 * B).trace := by simp only [Matrix.mul_assoc]
+
+private lemma trace_pauli_conj_left {N : ℕ} (P S1 S2 B : QubitOp N) (hPh : Pᴴ = P) :
+    (S1 * (P * B)ᴴ * S2 * (P * B)).trace = (S1 * Bᴴ * (P * S2 * P) * B).trace := by
+  rw [Matrix.conjTranspose_mul, hPh]
+  simp only [Matrix.mul_assoc]
+
 lemma prodDepolNormSq_matComm_pauliSite_le {N : ℕ} (s s' : Fin N → Fin 6)
     (x : Fin N) (α : Fin 3) (B : QubitOp N) :
     prodDepolNormSq s s' (matComm B (pauliSite x α.succ)) ≤ 12 * prodDepolNormSq s s' B := by
@@ -1157,14 +1157,7 @@ lemma prodDepolNormSq_matComm_pauliSite_le {N : ℕ} (s s' : Fin N → Fin 6)
         simp [hy, hp0]
     have heq : prodDepolNormSq s s' (B * P) = prodDepolNormSq (Function.update s x v) s' B := by
       unfold prodDepolNormSq prodDepolInner
-      rw [Matrix.conjTranspose_mul, hPh, ← hconj]
-      congr 1
-      calc (globalDepolP N s * (P * Bᴴ) * globalDepolP N s' * (B * P)).trace
-          = ((globalDepolP N s * P * Bᴴ * globalDepolP N s' * B) * P).trace := by
-            simp only [Matrix.mul_assoc]
-        _ = (P * (globalDepolP N s * P * Bᴴ * globalDepolP N s' * B)).trace := Matrix.trace_mul_comm _ _
-        _ = (P * globalDepolP N s * P * Bᴴ * globalDepolP N s' * B).trace := by
-            simp only [Matrix.mul_assoc]
+      rw [trace_pauli_conj_right P (globalDepolP N s) (globalDepolP N s') B hPh, hconj]
     rw [heq]
     exact (prodDepolNormSq_replace_le_three s s' x v B).1
   have hPB : prodDepolNormSq s s' (P * B) ≤ 3 * prodDepolNormSq s s' B := by
@@ -1179,9 +1172,7 @@ lemma prodDepolNormSq_matComm_pauliSite_le {N : ℕ} (s s' : Fin N → Fin 6)
         simp [hy, hp0]
     have heq : prodDepolNormSq s s' (P * B) = prodDepolNormSq s (Function.update s' x v) B := by
       unfold prodDepolNormSq prodDepolInner
-      rw [Matrix.conjTranspose_mul, hPh, ← hconj]
-      congr 1
-      simp only [Matrix.mul_assoc]
+      rw [trace_pauli_conj_left P (globalDepolP N s) (globalDepolP N s') B hPh, hconj]
     rw [heq]
     exact (prodDepolNormSq_replace_le_three s s' x v B).2
   unfold matComm
