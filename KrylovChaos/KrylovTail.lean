@@ -6,7 +6,6 @@ Authors: Prince Anand
 import KrylovChaos.Basic
 import Mathlib.Analysis.Calculus.Deriv.Comp
 import Mathlib.Analysis.Calculus.MeanValue
-import Mathlib.Analysis.Calculus.Monotone
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
 import Mathlib.Tactic
 
@@ -138,7 +137,7 @@ theorem hasDerivAt_charTheta {α θ₀ t : ℝ} (hα : 0 < α) (hθ₀ : 0 < θ�
   have hdu : HasDerivAt (charU α θ₀) (-2 * α * u) t := by
     unfold charU
     have hlin : HasDerivAt (fun s ↦ -2 * α * s) (-2 * α) t := by
-      simpa using (hasDerivAt_id t).const_mul (-2 * α)
+      simpa using (hasDerivAt_id' t).const_mul (-2 * α)
     have hexp := hlin.exp
     convert hexp.const_mul (Real.tanh (θ₀ / 4)) using 1
     simp [u, charU]; ring
@@ -221,9 +220,7 @@ theorem finite_chain_unitarity {Nmax : ℕ} (b : ℕ → ℝ) (φ : ℕ → ℝ 
   rw [Finset.sum_eq_zero hrest, h0]
   norm_num
 
-/-- **Lemma 3.1** (Finite-Chain Moment Generating Inequality, Eq. 3.2):
-Along `θ(t) = charTheta α θ₀ t`,
-`G_{Nmax}(θ(t), t) ≤ exp((1/2 + γ/α)(θ₀ - θ(t))) ≤ exp((1/2 + γ/α) θ₀)`. -/
+/-- **Lemma 3.1** (Finite-Chain Moment Generating Inequality, Eq. 3.2). -/
 theorem lemma_3_1_finite_chain_mgf {Nmax : ℕ} {α γ θ₀ : ℝ}
     (b : ℕ → ℝ) (φ : ℕ → ℝ → ℝ)
     (hα : 0 < α) (hγ : 0 ≤ γ) (hθ₀ : 0 < θ₀)
@@ -240,6 +237,14 @@ theorem lemma_3_1_finite_chain_mgf {Nmax : ℕ} {α γ θ₀ : ℝ}
   have hunit := finite_chain_unitarity b φ hb0 hbN hode hinit
   let G : ℝ → ℝ := fun s ↦ finiteMGF Nmax φ (charTheta α θ₀ s) s
   let H : ℝ → ℝ := fun s ↦ Real.log (G s) + (1 / 2 + γ / α) * (charTheta α θ₀ s - θ₀)
+  let G' : ℝ → ℝ := fun s ↦
+    ∑ n ∈ Finset.range (Nmax + 1),
+      ((n : ℝ) * (-4 * α * Real.sinh (charTheta α θ₀ s / 2)) *
+          Real.exp (charTheta α θ₀ s * (n : ℝ)) * (φ n s) ^ 2 +
+        Real.exp (charTheta α θ₀ s * (n : ℝ)) *
+          (2 * φ n s * (b n * φ (n - 1) s - b (n + 1) * φ (n + 1) s)))
+  let H' : ℝ → ℝ := fun s ↦
+    G' s / G s + (1 / 2 + γ / α) * (-4 * α * Real.sinh (charTheta α θ₀ s / 2))
   have hG_ge_one : ∀ s ≥ 0, 1 ≤ G s := by
     intro s hs
     have hθs := (charTheta_pos hα hθ₀ hs).le
@@ -250,13 +255,7 @@ theorem lemma_3_1_finite_chain_mgf {Nmax : ℕ} {α γ θ₀ : ℝ}
         have hexp : 1 ≤ Real.exp (charTheta α θ₀ s * (n : ℝ)) :=
           Real.one_le_exp (mul_nonneg hθs (Nat.cast_nonneg n))
         nlinarith [sq_nonneg (φ n s)]
-  have hG_deriv : ∀ s ≥ 0,
-      HasDerivAt G
-        (∑ n ∈ Finset.range (Nmax + 1),
-          ((n : ℝ) * (-4 * α * Real.sinh (charTheta α θ₀ s / 2)) *
-              Real.exp (charTheta α θ₀ s * (n : ℝ)) * (φ n s) ^ 2 +
-            Real.exp (charTheta α θ₀ s * (n : ℝ)) *
-              (2 * φ n s * (b n * φ (n - 1) s - b (n + 1) * φ (n + 1) s)))) s := by
+  have hG_deriv : ∀ s ≥ 0, HasDerivAt G (G' s) s := by
     intro s hs
     apply HasDerivAt.fun_sum
     intro n hn
@@ -271,14 +270,9 @@ theorem lemma_3_1_finite_chain_mgf {Nmax : ℕ} {α γ θ₀ : ℝ}
       simpa using (hode n hnle s).pow 2
     convert hexp.fun_mul hsq using 1
     ring
-  have hdiff_ineq : ∀ s ≥ 0,
-      (∑ n ∈ Finset.range (Nmax + 1),
-        ((n : ℝ) * (-4 * α * Real.sinh (charTheta α θ₀ s / 2)) *
-            Real.exp (charTheta α θ₀ s * (n : ℝ)) * (φ n s) ^ 2 +
-          Real.exp (charTheta α θ₀ s * (n : ℝ)) *
-            (2 * φ n s * (b n * φ (n - 1) s - b (n + 1) * φ (n + 1) s)))) ≤
-      2 * (α + 2 * γ) * Real.sinh (charTheta α θ₀ s / 2) * G s := by
+  have hdiff_ineq : ∀ s ≥ 0, G' s ≤ 2 * (α + 2 * γ) * Real.sinh (charTheta α θ₀ s / 2) * G s := by
     intro s hs
+    simp only [G']
     set θ := charTheta α θ₀ s
     have hθpos : 0 < θ := charTheta_pos hα hθ₀ hs
     have hsinh_pos : 0 < Real.sinh (θ / 2) := Real.sinh_pos_iff.mpr (by linarith)
@@ -441,40 +435,24 @@ theorem lemma_3_1_finite_chain_mgf {Nmax : ℕ} {α γ θ₀ : ℝ}
       intro n _; ring
     rw [hfirst]
     linarith
-  have hH_anti : AntitoneOn H (Set.Ici 0) := by
-    apply antitoneOn_of_deriv_nonpos (convex_Ici 0)
-    · intro s hs
-      have hGs : 0 < G s := lt_of_lt_of_le zero_lt_one (hG_ge_one s hs)
-      have hd1 := (hG_deriv s hs).log hGs.ne'
-      have hd2 := ((hasDerivAt_charTheta hα hθ₀ hs).sub_const θ₀).const_mul (1 / 2 + γ / α)
-      exact (hd1.fun_add hd2).continuousAt.continuousWithinAt
-    · intro s hs
-      have hs0 : 0 ≤ s := interior_subset hs
-      have hGs : 0 < G s := lt_of_lt_of_le zero_lt_one (hG_ge_one s hs0)
-      have hd1 := (hG_deriv s hs0).log hGs.ne'
-      have hd2 := ((hasDerivAt_charTheta hα hθ₀ hs0).sub_const θ₀).const_mul (1 / 2 + γ / α)
-      exact (hd1.fun_add hd2).differentiableAt.differentiableWithinAt
-    · intro s hs
-      have hs0 : 0 ≤ s := interior_subset hs
-      have hGs : 0 < G s := lt_of_lt_of_le zero_lt_one (hG_ge_one s hs0)
-      have hd1 := (hG_deriv s hs0).log hGs.ne'
-      have hd2 := ((hasDerivAt_charTheta hα hθ₀ hs0).sub_const θ₀).const_mul (1 / 2 + γ / α)
-      rw [(hd1.fun_add hd2).deriv]
-      have hineq := hdiff_ineq s hs0
-      have hdiv :
-          (∑ n ∈ Finset.range (Nmax + 1),
-            ((n : ℝ) * (-4 * α * Real.sinh (charTheta α θ₀ s / 2)) *
-                Real.exp (charTheta α θ₀ s * (n : ℝ)) * (φ n s) ^ 2 +
-              Real.exp (charTheta α θ₀ s * (n : ℝ)) *
-                (2 * φ n s * (b n * φ (n - 1) s - b (n + 1) * φ (n + 1) s)))) / G s ≤
-          2 * (α + 2 * γ) * Real.sinh (charTheta α θ₀ s / 2) := by
-        rwa [div_le_iff₀ hGs]
-      have hcancel :
-          2 * (α + 2 * γ) * Real.sinh (charTheta α θ₀ s / 2) +
-            (1 / 2 + γ / α) * (-4 * α * Real.sinh (charTheta α θ₀ s / 2)) = 0 := by
-        field_simp [hα.ne']
-        ring
-      linarith
+  have hH_deriv : ∀ s ≥ 0, HasDerivAt H (H' s) s := by
+    intro s hs
+    have hGs : 0 < G s := lt_of_lt_of_le zero_lt_one (hG_ge_one s hs)
+    have hd1 := (hG_deriv s hs).log hGs.ne'
+    have hd2 := ((hasDerivAt_charTheta hα hθ₀ hs).sub_const θ₀).const_mul (1 / 2 + γ / α)
+    exact hd1.fun_add hd2
+  have hH'_nonpos : ∀ s ≥ 0, H' s ≤ 0 := by
+    intro s hs
+    have hGs : 0 < G s := lt_of_lt_of_le zero_lt_one (hG_ge_one s hs)
+    have hineq := hdiff_ineq s hs
+    have hdiv : G' s / G s ≤ 2 * (α + 2 * γ) * Real.sinh (charTheta α θ₀ s / 2) := by
+      rwa [div_le_iff₀ hGs]
+    have hcancel :
+        2 * (α + 2 * γ) * Real.sinh (charTheta α θ₀ s / 2) +
+          (1 / 2 + γ / α) * (-4 * α * Real.sinh (charTheta α θ₀ s / 2)) = 0 := by
+      field_simp [hα.ne']
+      ring
+    simp only [H']; linarith
   have hH0 : H 0 = 0 := by
     have hG0 : G 0 = 1 := by
       simp only [G, finiteMGF, charTheta_zero hθ₀]
@@ -489,8 +467,17 @@ theorem lemma_3_1_finite_chain_mgf {Nmax : ℕ} {α γ θ₀ : ℝ}
       simp
     simp only [H, hG0, Real.log_one, charTheta_zero hθ₀, sub_self, mul_zero, add_zero]
   have hHt : H t ≤ 0 := by
-    rw [← hH0]
-    exact hH_anti (Set.mem_Ici.mpr le_rfl) (Set.mem_Ici.mpr ht) ht
+    rcases eq_or_lt_of_le ht with rfl | htpos
+    · linarith [hH0]
+    obtain ⟨c, ⟨hc0, _⟩, hslope⟩ := exists_hasDerivAt_eq_slope H H' htpos
+      (fun s hs ↦ (hH_deriv s hs.1).continuousAt.continuousWithinAt)
+      (fun s hs ↦ hH_deriv s hs.1.le)
+    rw [hH0, sub_zero, sub_zero] at hslope
+    have hmul : H t = t * H' c := by
+      have := (eq_div_iff htpos.ne').mp hslope.symm
+      linarith
+    have hc_le := hH'_nonpos c hc0.le
+    nlinarith
   have hlog_le : Real.log (G t) ≤ (1 / 2 + γ / α) * (θ₀ - charTheta α θ₀ t) := by
     simp only [H] at hHt
     linarith

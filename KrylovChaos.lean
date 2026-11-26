@@ -11,3 +11,6 @@ import KrylovChaos.ProductState
 import KrylovChaos.SpectralDyck
 import KrylovChaos.GlauberDecoupling
 import KrylovChaos.DepolarizedFrame
+import KrylovChaos.PolymerTrees
+import KrylovChaos.ClassicalIsing
+import KrylovChaos.StructuralNecessity

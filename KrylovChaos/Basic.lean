@@ -4,7 +4,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Prince Anand
 -/
 import Mathlib.Analysis.Calculus.MeanValue
-import Mathlib.Analysis.Calculus.Monotone
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
@@ -111,34 +110,42 @@ theorem sech_ge_exp_neg {u : ℝ} (hu : 0 ≤ u) :
 /-- Elementary inequality `sinh x ≤ x * cosh x` for all `x ≥ 0`. -/
 theorem sinh_le_mul_cosh {x : ℝ} (hx : 0 ≤ x) :
     Real.sinh x ≤ x * Real.cosh x := by
+  rcases eq_or_lt_of_le hx with rfl | hxpos
+  · simp
   let f : ℝ → ℝ := fun t ↦
     t * ((Real.exp t + Real.exp (-t)) / 2) - (Real.exp t - Real.exp (-t)) / 2
-  have hderiv : ∀ t : ℝ, HasDerivAt f (t * ((Real.exp t - Real.exp (-t)) / 2)) t := by
+  let f' : ℝ → ℝ := fun t ↦ t * ((Real.exp t - Real.exp (-t)) / 2)
+  have hderiv : ∀ t : ℝ, HasDerivAt f (f' t) t := by
     intro t
     have hpos : HasDerivAt Real.exp (Real.exp t) t := Real.hasDerivAt_exp t
     have hneg : HasDerivAt (fun s ↦ Real.exp (-s)) (-Real.exp (-t)) t := by
       simpa using (hasDerivAt_neg t).exp
     have hcosh : HasDerivAt (fun s ↦ (Real.exp s + Real.exp (-s)) / 2)
-        ((Real.exp t - Real.exp (-t)) / 2) t := by
-      convert (hpos.fun_add hneg).div_const 2 using 1; ring
+        ((Real.exp t + -Real.exp (-t)) / 2) t :=
+      (hpos.fun_add hneg).div_const 2
     have hsinh : HasDerivAt (fun s ↦ (Real.exp s - Real.exp (-s)) / 2)
-        ((Real.exp t + Real.exp (-t)) / 2) t := by
-      convert (hpos.fun_sub hneg).div_const 2 using 1; ring
-    have hprod := (hasDerivAt_id t).fun_mul hcosh
-    convert hprod.fun_sub hsinh using 1
-    ring
-  have hmono : MonotoneOn f (Set.Ici 0) := by
-    apply monotoneOn_of_deriv_nonneg (convex_Ici 0)
-    · exact fun t _ ↦ (hderiv t).continuousAt.continuousWithinAt
-    · exact fun t _ ↦ (hderiv t).differentiableAt.differentiableWithinAt
-    · intro t ht
-      have ht0 : 0 ≤ t := interior_subset ht
-      rw [(hderiv t).deriv]
-      have hge : Real.exp (-t) ≤ Real.exp t := Real.exp_le_exp.mpr (by linarith)
-      nlinarith
-  have h0 : f 0 ≤ f x := hmono (Set.mem_Ici.mpr le_rfl) (Set.mem_Ici.mpr hx) hx
-  simp only [f, Real.sinh_eq, Real.cosh_eq] at h0 ⊢
-  simp only [zero_mul, neg_zero, sub_self, zero_div, sub_zero] at h0
+        ((Real.exp t - -Real.exp (-t)) / 2) t :=
+      (hpos.fun_sub hneg).div_const 2
+    have hprod := (hasDerivAt_id' t).fun_mul hcosh
+    have hsub := hprod.fun_sub hsinh
+    have heq : 1 * ((Real.exp t + Real.exp (-t)) / 2) +
+        t * ((Real.exp t + -Real.exp (-t)) / 2) - (Real.exp t - -Real.exp (-t)) / 2 = f' t := by
+      simp only [f']; ring
+    rwa [heq] at hsub
+  obtain ⟨c, ⟨hc0, _⟩, hslope⟩ := exists_hasDerivAt_eq_slope f f' hxpos
+    (fun t _ ↦ (hderiv t).continuousAt.continuousWithinAt)
+    (fun t _ ↦ hderiv t)
+  have hf'c : 0 ≤ f' c := by
+    simp only [f']
+    have hge : Real.exp (-c) ≤ Real.exp c := Real.exp_le_exp.mpr (by linarith)
+    nlinarith
+  have hfx : 0 ≤ f x - f 0 := by
+    rw [sub_zero] at hslope
+    have := (eq_div_iff hxpos.ne').mp hslope.symm
+    nlinarith
+  have hf0 : f 0 = 0 := by simp [f]
+  rw [hf0, sub_zero] at hfx
+  simp only [f, Real.sinh_eq, Real.cosh_eq] at hfx ⊢
   linarith
 
 /-- Elementary inequality `tanh x ≤ x` for all `x ≥ 0` (used in Theorem 1.1(a)). -/
