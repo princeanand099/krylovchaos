@@ -17,6 +17,7 @@ import KrylovChaos.DepolarizedFrame
 import KrylovChaos.PolymerTrees
 import KrylovChaos.ConcreteCombinatorics
 import KrylovChaos.HighTempConditioning
+import KrylovChaos.HighTempReversePoincare
 import KrylovChaos.ClassicalIsing
 import KrylovChaos.ClassicalIsingConcrete
 import KrylovChaos.StructuralNecessity
