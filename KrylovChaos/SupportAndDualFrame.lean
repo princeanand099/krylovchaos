@@ -433,7 +433,7 @@ lemma opNorm_sum_le {N : ℕ} {ι : Type*} (s : Finset ι) (f : ι → QubitOp N
     rw [h0, norm_zero]
   | insert a s ha ih =>
     rw [Finset.sum_insert ha, Finset.sum_insert ha]
-    exact le_trans (opNorm_add_le _ _) (add_le_add_left ih _)
+    linarith [opNorm_add_le (f a) (∑ i ∈ s, f i), ih]
 
 lemma opNorm_list_prod_le {N : ℕ} (l : List (QubitOp N)) :
     opNorm l.prod ≤ (l.map opNorm).prod := by
