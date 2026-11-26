@@ -14,4 +14,8 @@ import KrylovChaos.DepolarizedFrame
 import KrylovChaos.PolymerTrees
 import KrylovChaos.ClassicalIsing
 import KrylovChaos.StructuralNecessity
+import KrylovChaos.CarlemanJacobi
+import KrylovChaos.KoteckyPreiss
+import KrylovChaos.VitaliAnalytic
+import KrylovChaos.ArakiOneDim
 import KrylovChaos.SanityChecks
