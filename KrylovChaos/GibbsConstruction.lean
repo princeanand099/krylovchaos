@@ -409,8 +409,8 @@ theorem heisenbergEvol_entry_hasDerivAt {N : ℕ} {H : QubitOp N} (hH : H.IsHerm
     apply Finset.sum_congr rfl; intro b _
     have hexp : Complex.exp (Complex.I * (t : ℂ) * (hH.eigenvalues b : ℂ)) *
         Complex.exp (Complex.I * (-(t : ℂ)) * (hH.eigenvalues a : ℂ)) =
-        Complex.exp (Complex.I * (t : ℂ) * ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ)) := by
-      rw [← Complex.exp_add]; congr 1; push_cast; ring
+        Complex.exp (Complex.I * (t : ℂ) * ((hH.eigenvalues b : ℂ) - (hH.eigenvalues a : ℂ))) := by
+      rw [← Complex.exp_add]; congr 1; ring
     push_cast
     linear_combination Complex.I * U i b * B b a * Uᴴ a j *
       ((hH.eigenvalues b : ℂ) - (hH.eigenvalues a : ℂ)) * hexp

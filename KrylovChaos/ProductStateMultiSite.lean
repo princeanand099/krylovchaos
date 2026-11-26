@@ -168,7 +168,7 @@ private lemma singleSite_pauli_twirl (M : Matrix (Fin 2) (Fin 2) ℂ) :
   ext i j
   fin_cases i <;> fin_cases j <;>
     (simp [Fin.sum_univ_four, pauliMat, Matrix.mul_apply, Matrix.vecMul, dotProduct,
-      Fin.sum_univ_two, Matrix.trace, Matrix.diag]; ring_nf; simp [Complex.I_sq]; ring)
+      Fin.sum_univ_two, Matrix.trace, Matrix.diag]; ring_nf; simp [Complex.I_sq]; try ring)
 
 private lemma singleSite_kron_partialTrace {N : ℕ} (F : Fin N → Matrix (Fin 2) (Fin 2) ℂ)
     (x : Fin N) :

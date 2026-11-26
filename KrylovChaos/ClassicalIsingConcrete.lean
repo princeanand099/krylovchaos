@@ -353,15 +353,12 @@ section ConcreteReversePoincare
 lemma siteChi_flip_diff (h : ℝ) (b : Bool) :
     ((siteChi h b - siteChi h (!b)) / 2) ^ 2 = (1 - (Real.tanh h) ^ 2)⁻¹ := by
   have hpos := one_sub_tanh_sq_pos h
+  have hsq : Real.sqrt (1 - (Real.tanh h) ^ 2) ^ 2 = 1 - (Real.tanh h) ^ 2 :=
+    Real.sq_sqrt hpos.le
+  have hsr : Real.sqrt (1 - (Real.tanh h) ^ 2) ≠ 0 := (Real.sqrt_pos.mpr hpos).ne'
   unfold siteChi
-  cases b <;> simp only [Bool.not_true, Bool.not_false, spinVal, ↓reduceIte, Bool.false_eq_true]
-  · rw [← sub_div, show (-1 - Real.tanh h) - (1 - Real.tanh h) = -2 by ring,
-      neg_div, neg_sq, div_div,
-      show Real.sqrt (1 - (Real.tanh h) ^ 2) * 2 = 2 * Real.sqrt (1 - (Real.tanh h) ^ 2) by ring,
-      mul_div_mul_left _ _ (by norm_num : (2 : ℝ) ≠ 0), one_div, inv_pow, Real.sq_sqrt hpos.le]
-  · rw [← sub_div, show (1 - Real.tanh h) - (-1 - Real.tanh h) = 2 by ring,
-      div_div, show Real.sqrt (1 - (Real.tanh h) ^ 2) * 2 = 2 * Real.sqrt (1 - (Real.tanh h) ^ 2) by ring,
-      mul_div_mul_left _ _ (by norm_num : (2 : ℝ) ≠ 0), one_div, inv_pow, Real.sq_sqrt hpos.le]
+  cases b <;> simp only [Bool.not_true, Bool.not_false, spinVal, ↓reduceIte, Bool.false_eq_true] <;>
+    (field_simp [hsr, hpos.ne']; rw [hsq]; ring)
 
 theorem prodBernoulli_discrete_grad_eq {N : ℕ} (h : Fin N → ℝ)
     (fhat : Finset (Fin N) → ℝ) (i : Fin N) :
