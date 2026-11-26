@@ -66,6 +66,55 @@ private lemma prod_range_two_add (m : ℕ) :
         Nat.cast_add, Nat.cast_one]
       ring
 
+/-- Convert a summable `ℕ × ℕ` series into a Cauchy-product antidiagonal series. -/
+private lemma tsum_prod_eq_tsum_antidiag {G : Type*} [NormedAddCommGroup G] [CompleteSpace G]
+    (h : ℕ × ℕ → G) (hh : Summable h) :
+    (∑' p : ℕ × ℕ, h p) = ∑' m : ℕ, ∑ p ∈ Finset.antidiagonal m, h p := by
+  let e : (m : ℕ) × {p : ℕ × ℕ // p.1 + p.2 = m} ≃ ℕ × ℕ :=
+    Equiv.sigmaFiberEquiv (fun p : ℕ × ℕ ↦ p.1 + p.2)
+  have hcomp : Summable (fun q : (m : ℕ) × {p : ℕ × ℕ // p.1 + p.2 = m} ↦ h (e q)) :=
+    hh.comp_injective e.injective
+  have hfib : ∀ m : ℕ, Fintype {p : ℕ × ℕ // p.1 + p.2 = m} := fun m ↦
+    Fintype.ofEquiv (Finset.antidiagonal m)
+      { toFun := fun p ↦ ⟨p.1, Finset.mem_antidiagonal.mp p.2⟩
+        invFun := fun p ↦ ⟨p.1, Finset.mem_antidiagonal.mpr p.2⟩
+        left_inv := fun _ ↦ rfl
+        right_inv := fun _ ↦ rfl }
+  have h1 : (∑' p : ℕ × ℕ, h p) = ∑' q : (m : ℕ) × {p : ℕ × ℕ // p.1 + p.2 = m}, h (e q) :=
+    (e.tsum_eq h).symm
+  rw [h1, hcomp.tsum_sigma' (fun m ↦ (hasSum_fintype _).summable)]
+  refine tsum_congr fun m ↦ ?_
+  haveI := hfib m
+  rw [tsum_fintype]
+  refine Finset.sum_bij (fun p _ ↦ p.1) ?_ ?_ ?_ ?_
+  · intro p _; exact Finset.mem_antidiagonal.mpr p.2
+  · intro p₁ _ p₂ _ hp; exact Subtype.ext hp
+  · intro p hp; exact ⟨⟨p, Finset.mem_antidiagonal.mp hp⟩, Finset.mem_univ _, rfl⟩
+  · intro p _; rfl
+
+private lemma summable_antidiag_of_summable_prod {G : Type*} [NormedAddCommGroup G] [CompleteSpace G]
+    (h : ℕ × ℕ → G) (hh : Summable h) :
+    Summable (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, h p) := by
+  let e : (m : ℕ) × {p : ℕ × ℕ // p.1 + p.2 = m} ≃ ℕ × ℕ :=
+    Equiv.sigmaFiberEquiv (fun p : ℕ × ℕ ↦ p.1 + p.2)
+  have hcomp : Summable (fun q : (m : ℕ) × {p : ℕ × ℕ // p.1 + p.2 = m} ↦ h (e q)) :=
+    hh.comp_injective e.injective
+  have hfib : ∀ m : ℕ, Fintype {p : ℕ × ℕ // p.1 + p.2 = m} := fun m ↦
+    Fintype.ofEquiv (Finset.antidiagonal m)
+      { toFun := fun p ↦ ⟨p.1, Finset.mem_antidiagonal.mp p.2⟩
+        invFun := fun p ↦ ⟨p.1, Finset.mem_antidiagonal.mpr p.2⟩
+        left_inv := fun _ ↦ rfl
+        right_inv := fun _ ↦ rfl }
+  have hs := hcomp.sigma (fun m ↦ (hasSum_fintype _).summable)
+  refine hs.congr fun m ↦ ?_
+  haveI := hfib m
+  rw [tsum_fintype]
+  refine Finset.sum_bij (fun p _ ↦ p.1) ?_ ?_ ?_ ?_
+  · intro p _; exact Finset.mem_antidiagonal.mpr p.2
+  · intro p₁ _ p₂ _ hp; exact Subtype.ext hp
+  · intro p hp; exact ⟨⟨p, Finset.mem_antidiagonal.mp hp⟩, Finset.mem_univ _, rfl⟩
+  · intro p _; rfl
+
 section HadamardExpansion
 
 variable {E : Type*} [NormedRing E] [NormOneClass E] [NormedAlgebra ℂ E] [CompleteSpace E]
@@ -130,8 +179,7 @@ theorem adPow_eq_binomial_sum (H O : E) :
       · intro k hk
         rw [Finset.mem_Ico] at hk
         have h1 : k - 1 + 1 = k := by omega
-        have h2 : k - 1 + 1 - 1 = k - 1 := by omega
-        rw [h1, h2]
+        rw [h1]
     have hR_ext :
         (∑ k ∈ Finset.range (m + 1),
           (-((-1 : ℂ) ^ (m + 1 - k) * (Nat.choose m k : ℂ))) • (H ^ k * O * H ^ (m + 1 - k))) =
@@ -144,7 +192,7 @@ theorem adPow_eq_binomial_sum (H O : E) :
       apply Finset.sum_congr rfl
       intro k hk
       have hne : k ≠ m + 1 := by have := Finset.mem_range.mp hk; omega
-      simp [hne]
+      simp only [hne, ↓reduceIte]
     rw [hL_ext, hR_ext, ← Finset.sum_sub_distrib]
     apply Finset.sum_congr rfl
     intro k hk
@@ -175,12 +223,12 @@ theorem exp_conj_eq_tsum_adPow (H O : E) (z : ℂ) :
   let f : ℕ → E := fun j ↦ (((j.factorial : ℂ)⁻¹) • (z • H) ^ j) * O
   let g : ℕ → E := fun k ↦ ((k.factorial : ℂ)⁻¹) • (-(z • H)) ^ k
   have hf_sum : HasSum f (NormedSpace.exp (z • H) * O) := by
-    have h0 := NormedSpace.expSeries_div_hasSum_exp (𝕂 := ℂ) (z • H)
+    have h0 := NormedSpace.expSeries_div_hasSum_exp (z • H)
     have h1 : HasSum (fun j ↦ ((j.factorial : ℂ)⁻¹ • (z • H) ^ j)) (NormedSpace.exp (z • H)) := by
       simpa [NormedSpace.expSeries_apply_eq, div_eq_inv_mul] using h0
     exact h1.mul_right O
   have hg_sum : HasSum g (NormedSpace.exp (-(z • H))) := by
-    have h0 := NormedSpace.expSeries_div_hasSum_exp (𝕂 := ℂ) (-(z • H))
+    have h0 := NormedSpace.expSeries_div_hasSum_exp (-(z • H))
     simpa [g, NormedSpace.expSeries_apply_eq, div_eq_inv_mul] using h0
   have hf_norm : Summable (fun j ↦ ‖f j‖) := by
     refine Summable.of_nonneg_of_le (fun j ↦ norm_nonneg _) (fun j ↦ ?_)
@@ -199,9 +247,11 @@ theorem exp_conj_eq_tsum_adPow (H O : E) (z : ℂ) :
       _ ≤ (k.factorial : ℝ)⁻¹ * ‖-(z • H)‖ ^ k := by
             gcongr; exact norm_pow_le _ _
       _ = ‖-(z • H)‖ ^ k / (k.factorial : ℝ) := by ring
+  have hprod_summ : Summable (fun p : ℕ × ℕ ↦ f p.1 * g p.2) :=
+    summable_mul_of_summable_norm hf_norm hg_norm
   have hprod := hf_sum.tsum_eq.symm ▸ hg_sum.tsum_eq.symm ▸
     tsum_mul_tsum_of_summable_norm hf_norm hg_norm
-  rw [hprod]
+  rw [hprod, tsum_prod_eq_tsum_antidiag _ hprod_summ]
   refine tsum_congr fun m ↦ ?_
   rw [adPow_eq_binomial_sum, Finset.smul_sum, Finset.Nat.sum_antidiagonal_eq_sum_range_succ]
   apply Finset.sum_congr rfl
@@ -312,6 +362,11 @@ lemma causalOp_supportedOn {N r : ℕ} (D : LocalInteractionDecomp E N r)
       D.supportedOn_comm_union _ _ _
         (causalOp_supportedOn D U O hO (fun k : Fin m ↦ Γ k.castSucc))
 
+private lemma snoc_init_eq {α : Type*} {m : ℕ} (f : Fin m → α) (x : α) :
+    (fun k : Fin m ↦ Fin.snoc (α := fun _ ↦ α) f x k.castSucc) = f := by
+  ext k
+  exact Fin.snoc_castSucc (α := fun _ ↦ α) f x k
+
 open scoped Classical in
 /-- **Exact Causal-Sequence Expansion of `ad_H^m(O)`**:
 `ad_H^m(O) = ∑_{Γ causal, |Γ|=m} T_Γ`. -/
@@ -363,17 +418,12 @@ theorem adPow_eq_causal_sum {N r : ℕ} (D : LocalInteractionDecomp E N r)
           (fun p : (_ : Fin m → D.ι) × D.ι ↦
             D.term p.2 * causalOp D O p.1 - causalOp D O p.1 * D.term p.2)).symm
       rw [hsig]
-      refine Finset.sum_bij (fun p _ ↦ Fin.snoc p.1 p.2) ?_ ?_ ?_ ?_
+      refine Finset.sum_bij (fun p _ ↦ Fin.snoc (α := fun _ ↦ D.ι) p.1 p.2) ?_ ?_ ?_ ?_
       · intro p hp
         simp only [Finset.mem_filter, Finset.mem_sigma, Finset.mem_univ, true_and] at hp ⊢
         obtain ⟨hprev, hnd⟩ := hp
-        refine ⟨?_, ?_⟩
-        · have heq : (fun k : Fin m ↦ Fin.snoc p.1 p.2 k.castSucc) = p.1 := by
-            ext k; exact Fin.snoc_castSucc p.1 p.2 k
-          rw [heq]; exact hprev
-        · have heq : (fun k : Fin m ↦ Fin.snoc p.1 p.2 k.castSucc) = p.1 := by
-            ext k; exact Fin.snoc_castSucc p.1 p.2 k
-          rw [heq, Fin.snoc_last]; exact hnd
+        rw [isCausalSeq, snoc_init_eq, Fin.snoc_last]
+        exact ⟨hprev, hnd⟩
       · intro p₁ _ p₂ _ heq
         have h1 : p₁.1 = p₂.1 := by
           ext k
@@ -390,10 +440,7 @@ theorem adPow_eq_causal_sum {N r : ℕ} (D : LocalInteractionDecomp E N r)
           exact hΓ'
         · exact Fin.snoc_init_self Γ'
       · intro p _
-        simp only [causalOp, Fin.snoc_last]
-        have heq : (fun k : Fin m ↦ Fin.snoc p.1 p.2 k.castSucc) = p.1 := by
-          ext k; exact Fin.snoc_castSucc p.1 p.2 k
-        rw [heq]
+        simp only [causalOp, Fin.snoc_last, snoc_init_eq]
 
 open scoped Classical in
 /-- **Lemma 2.1(1) (Eq. 2.3 — Causal-Sequence Norm Sum Bound)**:
@@ -432,12 +479,11 @@ theorem lemma_2_1_causal_norm_sum {N r : ℕ} (D : LocalInteractionDecomp E N r)
               ‖D.term p.2 * causalOp D O p.1 - causalOp D O p.1 * D.term p.2‖)).symm
         rw [hsig]
         symm
-        refine Finset.sum_bij (fun p _ ↦ Fin.snoc p.1 p.2) ?_ ?_ ?_ ?_
+        refine Finset.sum_bij (fun p _ ↦ Fin.snoc (α := fun _ ↦ D.ι) p.1 p.2) ?_ ?_ ?_ ?_
         · intro p hp
           simp only [Finset.mem_filter, Finset.mem_sigma, Finset.mem_univ, true_and] at hp ⊢
-          have heq : (fun k : Fin m ↦ Fin.snoc p.1 p.2 k.castSucc) = p.1 := by
-            ext k; exact Fin.snoc_castSucc p.1 p.2 k
-          rw [heq, Fin.snoc_last]; exact hp
+          rw [isCausalSeq, snoc_init_eq, Fin.snoc_last]
+          exact hp
         · intro p₁ _ p₂ _ heq
           have h1 : p₁.1 = p₂.1 := by
             ext k; have := congrFun heq k.castSucc; simpa [Fin.snoc_castSucc] using this
@@ -450,10 +496,7 @@ theorem lemma_2_1_causal_norm_sum {N r : ℕ} (D : LocalInteractionDecomp E N r)
             by simp only [Finset.mem_filter, Finset.mem_sigma, Finset.mem_univ, true_and]; exact hΓ',
             Fin.snoc_init_self Γ'⟩
         · intro p _
-          simp only [causalOp, Fin.snoc_last]
-          have heq : (fun k : Fin m ↦ Fin.snoc p.1 p.2 k.castSucc) = p.1 := by
-            ext k; exact Fin.snoc_castSucc p.1 p.2 k
-          rw [heq]
+          simp only [causalOp, Fin.snoc_last, snoc_init_eq]
       rw [hreidx]
       have hstep : ∀ Γ ∈ Finset.univ.filter (isCausalSeq D U (m := m)),
           (∑ i ∈ Finset.univ.filter (fun i : D.ι ↦ ¬ Disjoint (D.supp i) (causalSupp D U Γ)),
@@ -495,7 +538,7 @@ theorem lemma_2_1_causal_norm_sum {N r : ℕ} (D : LocalInteractionDecomp E N r)
             rw [← Finset.sum_filter, Finset.sum_const, nsmul_eq_mul]
             congr 2
             ext x
-            simp [Finset.mem_inter]
+            simp [Finset.mem_filter, Finset.mem_inter]
           rw [hswap2, Finset.sum_filter]
           apply Finset.sum_le_sum
           intro i _
@@ -567,9 +610,11 @@ private lemma tsum_succ_mul_geometric {q : ℝ} (hq0 : 0 ≤ q) (hq1 : q < 1) :
     ∑' m : ℕ, ((m + 1 : ℕ) : ℝ) * q ^ m = (1 - q)⁻¹ ^ 2 := by
   have hsumm : Summable (fun j : ℕ ↦ ‖q ^ j‖) := by
     simpa [Real.norm_of_nonneg (pow_nonneg hq0 _)] using summable_geometric_of_lt_one hq0 hq1
+  have hprod_summ : Summable (fun p : ℕ × ℕ ↦ q ^ p.1 * q ^ p.2) :=
+    summable_mul_of_summable_norm hsumm hsumm
   have hprod := tsum_mul_tsum_of_summable_norm hsumm hsumm
   rw [tsum_geometric_of_lt_one hq0 hq1, ← sq] at hprod
-  rw [hprod]
+  rw [hprod, tsum_prod_eq_tsum_antidiag _ hprod_summ]
   refine tsum_congr fun m ↦ ?_
   rw [Finset.Nat.sum_antidiagonal_eq_sum_range_succ]
   have hterm : ∀ j ∈ Finset.range (m + 1), q ^ j * q ^ (m - j) = q ^ m := by
@@ -679,8 +724,10 @@ theorem lemma_2_1_r_local_exp_bound {N r : ℕ} (D : LocalInteractionDecomp E N 
   have hsumm_rhs : Summable (fun m : ℕ ↦ ((m + 1 : ℕ) : ℝ) * q ^ m) := by
     have hsumm : Summable (fun j : ℕ ↦ ‖q ^ j‖) := by
       simpa [Real.norm_of_nonneg (pow_nonneg hq0 _)] using summable_geometric_of_lt_one hq0 hq1
-    have hconv := summable_mul_of_summable_norm hsumm hsumm
-    refine hconv.congr fun m ↦ ?_
+    have hprod_summ : Summable (fun p : ℕ × ℕ ↦ q ^ p.1 * q ^ p.2) :=
+      summable_mul_of_summable_norm hsumm hsumm
+    have hanti := summable_antidiag_of_summable_prod _ hprod_summ
+    refine hanti.congr fun m ↦ ?_
     rw [Finset.Nat.sum_antidiagonal_eq_sum_range_succ]
     have hterm : ∀ j ∈ Finset.range (m + 1), q ^ j * q ^ (m - j) = q ^ m := by
       intro j hj

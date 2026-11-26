@@ -20,10 +20,10 @@ proving from ground up on `QubitOp N`:
    (`diag_siteSizeOp_inner`).
 2. Exact Hilbert–Schmidt size of `J_ρ(A_N) = |1, 0, …, 0⟩⟨1, 0, …, 0|`: `N / 2`
    (`bimodal_jA_size`).
-3. Exact Hilbert–Schmidt size of `ρ_N^{1/2}`: `(N + 1) / 4 - 2^{-(N + 1) / 2}`
+3. Exact Hilbert–Schmidt size of `ρ_N^{1/2}`: `(N + 1) / 4 - (√(2^{N+1}))⁻¹`
    (`bimodal_rhoHalf_size`).
 4. **Exact Eq. (9.2)** (`prop_9_1_bimodal_exact_size`):
-   `⟨J_ρ(A_N), 𝒮 J_ρ(A_N)⟩_HS - ⟨ρ_N^{1/2}, 𝒮 ρ_N^{1/2}⟩_HS = (N - 1) / 4 + 2^{-(N + 1) / 2}`
+   `⟨J_ρ(A_N), 𝒮 J_ρ(A_N)⟩_HS - ⟨ρ_N^{1/2}, 𝒮 ρ_N^{1/2}⟩_HS = (N - 1) / 4 + (√(2^{N+1}))⁻¹`
    for every `N ≥ 2`.
 -/
 
@@ -43,7 +43,8 @@ lemma flipSite_invol {N : ℕ} (x : Fin N) (s : Fin N → Fin 2) :
   by_cases hy : y = x
   · subst hy
     simp only [flipSite, Function.update_self]
-    fin_cases (s y) <;> decide
+    generalize s y = v
+    fin_cases v <;> decide
   · simp [flipSite, Function.update_of_ne hy]
 
 lemma flipSite_ne_self {N : ℕ} (x : Fin N) (s : Fin N → Fin 2) :
@@ -51,7 +52,8 @@ lemma flipSite_ne_self {N : ℕ} (x : Fin N) (s : Fin N → Fin 2) :
   intro h
   have hx := congrFun h x
   simp only [flipSite, Function.update_self] at hx
-  fin_cases (s x) <;> simp at hx
+  generalize s x = v at hx
+  fin_cases v <;> simp at hx
 
 private lemma pauliSite_diag_conj {N : ℕ} (x : Fin N) (α : Fin 4)
     (d : (Fin N → Fin 2) → ℝ) :
@@ -70,19 +72,26 @@ private lemma pauliSite_diag_conj {N : ℕ} (x : Fin N) (α : Fin 4)
     by_cases hall : ∀ y : Fin N, y ≠ x → u y = v y
     · rw [if_pos hall, ← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ x)]
       simp only [Function.update_self]
-      have hrest : (∏ y ∈ Finset.univ.erase x, pauliMat (Function.update (fun _ ↦ 0) x α y) (u y) (v y)) = 1 := by
+      have hrest :
+          (∏ y ∈ Finset.univ.erase x,
+            pauliMat (Function.update (fun _ : Fin N ↦ (0 : Fin 4)) x α y) (u y) (v y)) = 1 := by
         apply Finset.prod_eq_one
         intro y hy
         have hne : y ≠ x := (Finset.mem_erase.mp hy).1
         rw [Function.update_of_ne hne, hall y hne]
-        fin_cases (v y) <;> simp [pauliMat]
+        generalize v y = w
+        fin_cases w <;> simp [pauliMat]
       rw [hrest, mul_one]
     · rw [if_neg hall]
-      push_neg at hall
-      rcases hall with ⟨y, hyx, huy⟩
+      have hex : ∃ y : Fin N, y ≠ x ∧ u y ≠ v y := by
+        by_contra h
+        exact hall fun y hy ↦ by_contra fun hne ↦ h ⟨y, hy, hne⟩
+      rcases hex with ⟨y, hyx, huy⟩
       apply Finset.prod_eq_zero (Finset.mem_univ y)
       rw [Function.update_of_ne hyx]
-      fin_cases (u y) <;> fin_cases (v y) <;> simp [pauliMat] at huy ⊢
+      generalize u y = w₁ at huy ⊢
+      generalize v y = w₂ at huy ⊢
+      fin_cases w₁ <;> fin_cases w₂ <;> simp [pauliMat] at huy ⊢
   simp_rw [hP]
   by_cases hα : α = 0 ∨ α = 3
   · rw [if_pos hα]
@@ -96,7 +105,9 @@ private lemma pauliSite_diag_conj {N : ℕ} (x : Fin N) (α : Fin 4)
         by_cases hall : ∀ y, y ≠ x → u y = v y
         · rw [if_pos hall]
           have hux : u x ≠ v x := fun hx ↦ huv (funext fun y ↦ if h : y = x then h ▸ hx else hall y h)
-          rcases hα with rfl | rfl <;> fin_cases (u x) <;> fin_cases (v x) <;> simp [pauliMat] at hux ⊢
+          generalize u x = w₁ at hux ⊢
+          generalize v x = w₂ at hux ⊢
+          rcases hα with rfl | rfl <;> fin_cases w₁ <;> fin_cases w₂ <;> simp [pauliMat] at hux ⊢
         · rw [if_neg hall]
     simp_rw [hdiag]
     by_cases hab : a = b
@@ -104,7 +115,8 @@ private lemma pauliSite_diag_conj {N : ℕ} (x : Fin N) (α : Fin 4)
       simp only [↓reduceIte]
       rw [Finset.sum_eq_single a]
       · simp only [↓reduceIte]
-        rcases hα with rfl | rfl <;> fin_cases (a x) <;> simp [pauliMat]
+        generalize a x = w
+        rcases hα with rfl | rfl <;> fin_cases w <;> simp [pauliMat]
       · intro c _ hca; simp [Ne.symm hca]
       · intro h; exact absurd (Finset.mem_univ a) h
     · simp only [hab, ↓reduceIte]
@@ -121,8 +133,10 @@ private lemma pauliSite_diag_conj {N : ℕ} (x : Fin N) (α : Fin 4)
       intro u v
       by_cases hv : v = flipSite x u
       · subst hv
-        have hall : ∀ y, y ≠ x → u y = flipSite x u y := fun y hy ↦ by simp [flipSite, Function.update_of_ne hy]
-        simp [hall, flipSite, Function.update_self]
+        have hall : ∀ y, y ≠ x → u y = flipSite x u y :=
+          fun y hy ↦ by simp [flipSite, Function.update_of_ne hy]
+        rw [if_pos hall, if_pos rfl]
+        simp [flipSite, Function.update_self]
       · rw [if_neg hv]
         by_cases hall : ∀ y, y ≠ x → u y = v y
         · rw [if_pos hall]
@@ -133,7 +147,9 @@ private lemma pauliSite_diag_conj {N : ℕ} (x : Fin N) (α : Fin 4)
             by_cases hy : y = x
             · subst hy; simp [flipSite, Function.update_self, hx]
             · simp [flipSite, Function.update_of_ne hy, hall y hy]
-          rcases hα12 with rfl | rfl <;> fin_cases (u x) <;> fin_cases (v x) <;> simp [pauliMat] at hux ⊢
+          generalize u x = w₁ at hux ⊢
+          generalize v x = w₂ at hux ⊢
+          rcases hα12 with rfl | rfl <;> fin_cases w₁ <;> fin_cases w₂ <;> simp [pauliMat] at hux ⊢
         · rw [if_neg hall]
     simp_rw [hflip]
     by_cases hab : a = b
@@ -143,7 +159,8 @@ private lemma pauliSite_diag_conj {N : ℕ} (x : Fin N) (α : Fin 4)
       · simp only [↓reduceIte, flipSite_invol]
         have hflx : (flipSite x a) x = 1 - a x := by simp [flipSite]
         rw [hflx]
-        rcases hα12 with rfl | rfl <;> fin_cases (a x) <;> simp [pauliMat, Complex.I_mul_I]
+        generalize a x = w
+        rcases hα12 with rfl | rfl <;> fin_cases w <;> simp [pauliMat, Complex.I_mul_I]
       · intro c _ hc; simp [hc]
       · intro h; exact absurd (Finset.mem_univ _) h
     · simp only [hab, ↓reduceIte]
@@ -179,7 +196,7 @@ theorem diag_siteSizeOp_inner {N : ℕ} (x : Fin N) (d : (Fin N → Fin 2) → �
     simp only [Matrix.sub_apply, Matrix.diagonal_apply]
     by_cases hab : a = b
     · subst hab; simp; push_cast; ring
-    · simp [hab]
+    · simp only [hab, ↓reduceIte, sub_self]
   rw [hS]
   unfold hsInner
   rw [Matrix.diagonal_conjTranspose, Matrix.diagonal_mul_diagonal, Matrix.trace_diagonal,
@@ -263,8 +280,10 @@ theorem bimodal_rhoHalf_size {N : ℕ} (hN : 2 ≤ N) :
       have h2 : flipSite x (bimodalBasis1 hN) x₀ = 1 := by
         simp [flipSite, Function.update_of_ne (Ne.symm hne), h1]
       have h3 : flipSite x (bimodalBasis1 hN) ≠ bimodalBasis1 hN := flipSite_ne_self x _
+      have h1_ne : bimodalBasis1 hN x₀ ≠ 0 := by rw [h1]; decide
+      have h2_ne : flipSite x (bimodalBasis1 hN) x₀ ≠ 0 := by rw [h2]; decide
       simp only [bimodalRhoHalfDiag, x₀] at *
-      rw [if_neg (by rw [h1]; decide), if_pos rfl, if_neg (by rw [h2]; decide), if_neg h3]
+      rw [if_neg h1_ne, if_pos rfl, if_neg h2_ne, if_neg h3]
       have hsq : (Real.sqrt 2)⁻¹ * (Real.sqrt 2)⁻¹ = (2 : ℝ)⁻¹ := by
         rw [← mul_inv, Real.mul_self_sqrt (by norm_num)]
       linarith [hsq]
@@ -309,8 +328,9 @@ theorem bimodal_rhoHalf_size {N : ℕ} (hN : 2 ≤ N) :
       have h1 : (Finset.univ.filter (fun s : Fin N → Fin 2 ↦ s x₀ = 0)).card =
           Fintype.card {s : Fin N → Fin 2 // s x₀ = 0} := by
         rw [Fintype.card_subtype]
-      rw [h1, Fintype.card_congr e, Fintype.card_fun, Fintype.card_fin,
-        Fintype.card_subtype_compl, Fintype.card_unique, Fintype.card_fin]
+      have hsub : Fintype.card {y : Fin N // y ≠ x₀} = N - 1 := by
+        rw [Fintype.card_subtype_compl, Fintype.card_fin, Fintype.card_unique]
+      rw [h1, Fintype.card_congr e, Fintype.card_fun, Fintype.card_fin, hsub]
     have hsplit :
         (∑ s : Fin N → Fin 2, bimodalRhoHalfDiag hN s *
           (bimodalRhoHalfDiag hN s - bimodalRhoHalfDiag hN (flipSite x₀ s)) / 2) =
