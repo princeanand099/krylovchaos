@@ -4,7 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Prince Anand
 -/
 import KrylovChaos.Basic
+import KrylovChaos.QubitAlgebra
 import KrylovChaos.WightmanIsometry
+import KrylovChaos.ManyBodySetup
 import KrylovChaos.KrylovTail
 import KrylovChaos.Filtration
 import KrylovChaos.ProductState
@@ -18,5 +20,5 @@ import KrylovChaos.CarlemanJacobi
 import KrylovChaos.KoteckyPreiss
 import KrylovChaos.VitaliAnalytic
 import KrylovChaos.ArakiOneDim
-import KrylovChaos.QubitAlgebra
+import KrylovChaos.OperatorBridges
 import KrylovChaos.SanityChecks
