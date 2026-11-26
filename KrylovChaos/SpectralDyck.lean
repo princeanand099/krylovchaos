@@ -129,11 +129,12 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
       ((m + K : ℕ) : ℝ) ^ K * u ^ m := by
     intro m
     have hprod_le : ∏ j ∈ Finset.range m, (α + (j : ℝ)) ≤
-        ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) := by
+        ∏ j ∈ Finset.range m, ((K + 1 + j : ℕ) : ℝ) := by
       apply prod_le_prod_nonneg (Finset.range m) (fun j _ ↦ by positivity)
       intro j _; push_cast; linarith
-    have hfac_id : (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) * (K.factorial : ℝ) =
+    have hfac_id : (∏ j ∈ Finset.range m, ((K + 1 + j : ℕ) : ℝ)) * (K.factorial : ℝ) =
         ((m + K).factorial : ℝ) := by
+      clear hprod_le
       induction m with
       | zero => simp
       | succ m ih =>
@@ -157,9 +158,9 @@ theorem theorem_1_2a_binomial_series_summable {r sW : ℕ} {κ κ' : ℝ}
       exact_mod_cast hnat
     have hKfac : (1 : ℝ) ≤ (K.factorial : ℝ) := by exact_mod_cast Nat.factorial_pos K
     have hprod_le2 : ∏ j ∈ Finset.range m, (α + (j : ℝ)) ≤ ((m + K).factorial : ℝ) := by
-      have h1 : (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) ≤
-          (∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ)) * (K.factorial : ℝ) := by
-        have hnn : 0 ≤ ∏ j ∈ Finset.range m, ((K + j : ℕ) : ℝ) :=
+      have h1 : (∏ j ∈ Finset.range m, ((K + 1 + j : ℕ) : ℝ)) ≤
+          (∏ j ∈ Finset.range m, ((K + 1 + j : ℕ) : ℝ)) * (K.factorial : ℝ) := by
+        have hnn : 0 ≤ ∏ j ∈ Finset.range m, ((K + 1 + j : ℕ) : ℝ) :=
           Finset.prod_nonneg fun j _ ↦ Nat.cast_nonneg _
         nlinarith
       linarith [hprod_le, h1, hfac_id]
@@ -237,7 +238,8 @@ theorem shiftDyckPath_isDyck {n N₀ : ℕ} (hN₀ : N₀ ≤ n)
     · subst h0
       by_cases hn : n = 0
       · subst hn; simp
-      · simp [hn, hγ.2.1]
+      · simp only [Nat.sub_zero, zero_add, show ¬(2 * n ≤ 0) by omega, ↓reduceDIte, le_refl]
+        exact hγ.2.1
     · have h1 : ¬ (2 * n ≤ N₀) := by omega
       have h2 : ¬ (2 * n ≤ 2 * n - N₀) := by omega
       simp [h1, h2]
