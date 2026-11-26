@@ -49,12 +49,12 @@ lemma adPowMat_eigen_entry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (B : Q
     rw [adPowMat, matComm]
     have h1 : Uᴴ * (H * adPowMat H k B) * U = (Uᴴ * H * U) * (Uᴴ * adPowMat H k B * U) := by
       calc Uᴴ * (H * adPowMat H k B) * U
-          = Uᴴ * H * (1 * adPowMat H k B) * U := by rw [Matrix.one_mul]
+          = Uᴴ * H * (1 * adPowMat H k B) * U := by simp only [Matrix.one_mul, Matrix.mul_assoc]
         _ = Uᴴ * H * ((U * Uᴴ) * adPowMat H k B) * U := by rw [hUU]
         _ = (Uᴴ * H * U) * (Uᴴ * adPowMat H k B * U) := by simp only [Matrix.mul_assoc]
     have h2 : Uᴴ * (adPowMat H k B * H) * U = (Uᴴ * adPowMat H k B * U) * (Uᴴ * H * U) := by
       calc Uᴴ * (adPowMat H k B * H) * U
-          = Uᴴ * adPowMat H k B * (1 * H) * U := by rw [Matrix.one_mul]
+          = Uᴴ * adPowMat H k B * (1 * H) * U := by simp only [Matrix.one_mul, Matrix.mul_assoc]
         _ = Uᴴ * adPowMat H k B * ((U * Uᴴ) * H) * U := by rw [hUU]
         _ = (Uᴴ * adPowMat H k B * U) * (Uᴴ * H * U) := by simp only [Matrix.mul_assoc]
     have hsplit : Uᴴ * (H * adPowMat H k B - adPowMat H k B * H) * U =
@@ -64,7 +64,7 @@ lemma adPowMat_eigen_entry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (B : Q
     let M : QubitOp N := Uᴴ * adPowMat H k B * U
     change (Matrix.diagonal (fun i ↦ (hH.eigenvalues i : ℂ)) * M -
       M * Matrix.diagonal (fun i ↦ (hH.eigenvalues i : ℂ))) a b = _
-    simp only [Matrix.sub_apply, Matrix.mul_apply, Matrix.diagonal_apply, ite_mul, zero_mul,
+    conv_lhs => simp only [Matrix.sub_apply, Matrix.mul_apply, Matrix.diagonal_apply, ite_mul, zero_mul,
       mul_ite, mul_zero, Finset.sum_ite_eq, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
     dsimp only [M]; rw [ih a b]
     push_cast; ring
@@ -93,7 +93,7 @@ private lemma conj_hermFunc_mul_hermFunc {N : ℕ} {H : QubitOp N} (hH : H.IsHer
   let M : QubitOp N := Uᴴ * B * U
   change (Matrix.diagonal (fun k ↦ f (hH.eigenvalues k)) * M *
     Matrix.diagonal (fun k ↦ g (hH.eigenvalues k))) a b = _
-  simp only [Matrix.mul_apply, Matrix.diagonal_apply, ite_mul, zero_mul,
+  conv_lhs => simp only [Matrix.mul_apply, Matrix.diagonal_apply, ite_mul, zero_mul,
     mul_ite, mul_zero, Finset.sum_ite_eq, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
   dsimp only [M]; ring
 
@@ -114,9 +114,7 @@ lemma hasSum_heisenbergEvol_adPow {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     intro X i j
     let M : QubitOp N := Uᴴ * X * U
     have hX : X = U * M * Uᴴ := hconj X
-    rw [hX]
-    simp only [Matrix.mul_apply, Finset.sum_mul]
-    rw [Finset.sum_comm]
+    conv_lhs => rw [hX]; simp only [Matrix.mul_apply, Finset.sum_mul]; rw [Finset.sum_comm]
   change HasSum (fun k (i j : QubitIdx N) ↦ (((Complex.I * z) ^ k / (k.factorial : ℂ)) • adPowMat H k B) i j) (fun i j ↦ heisenbergEvol hH z B i j)
   rw [Pi.hasSum]; intro i; rw [Pi.hasSum]; intro j
   have hlhs_entry : ∀ k : ℕ,
@@ -140,7 +138,7 @@ lemma hasSum_heisenbergEvol_adPow {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     have hev : (Uᴴ * heisenbergEvol hH z B * U) a b =
         Complex.exp (Complex.I * z * ((hH.eigenvalues a - hH.eigenvalues b : ℝ) : ℂ)) *
           (Uᴴ * B * U) a b := by
-      unfold heisenbergEvol
+      unfold heisenbergEvol complexPropagator
       rw [conj_hermFunc_mul_hermFunc hH _ _ B a b, ← Complex.exp_add]
       congr 2; push_cast; ring
     rw [hev]; ring
@@ -329,7 +327,7 @@ lemma fwdCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
           (∏ j : Fin k, w (g j)) *
             ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion {x₀} g).Nonempty), w X := by
       simp_rw [Finset.mul_sum]
-      rw [← Finset.sum_sigma]
+      rw [← Finset.sum_sigma (f := fun (g : Fin k → Finset (Fin N)) (X : Finset (Fin N)) ↦ (∏ j : Fin k, w (g j)) * w X)]
       refine Finset.sum_bij (fun f _ ↦ ⟨Fin.tail f, f 0⟩) ?_ ?_ ?_ ?_
       · intro f hf
         rcases Finset.mem_filter.mp hf with ⟨hfpi, hf0, hft⟩
@@ -446,7 +444,7 @@ lemma revCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
       apply add_le_add
       · -- Case 1: `y ∈ causalUnion {x} (Fin.tail f)`
         simp_rw [Finset.mul_sum]
-        rw [← Finset.sum_sigma]
+        rw [← Finset.sum_sigma (f := fun (g : Fin k → Finset (Fin N)) (X : Finset (Fin N)) ↦ (∏ j : Fin k, w (g j)) * w X)]
         have heq1 : ∑ f ∈ S1, ∏ j : Fin (k + 1), w (f j) =
             ∑ p ∈ (((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
               (fun g ↦ y ∈ causalUnion {x} g)).sigma
@@ -481,7 +479,7 @@ lemma revCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
               ∑ g ∈ ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
                 (fun g ↦ (X ∩ causalUnion {x} g).Nonempty), ∏ j : Fin k, w (g j) := by
           simp_rw [Finset.mul_sum]
-          rw [← Finset.sum_sigma]
+          rw [← Finset.sum_sigma (f := fun (X : Finset (Fin N)) (g : Fin k → Finset (Fin N)) ↦ w X * ∏ j : Fin k, w (g j))]
           have hmap : ∀ f ∈ S2, (⟨f 0, Fin.tail f⟩ : Σ _X : Finset (Fin N), Fin k → Finset (Fin N)) ∈
               (E.filter (fun X ↦ y ∈ X)).sigma (fun X ↦
                 ((Fintype.piFinset fun _ : Fin k ↦ E).filter (isCausalSeq {x})).filter
@@ -561,7 +559,8 @@ lemma revCausalSum_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fin N)))
       have hcard_u := card_causalUnion_le hr E hcard {x} g (Fintype.mem_piFinset.mp hgpi) hgcs
       have hcard_le : ((causalUnion {x} g).card : ℝ) ≤ ((k + 1 : ℕ) : ℝ) * (r : ℝ) := by
         have hnat : (causalUnion {x} g).card ≤ (k + 1) * r := by
-          have : k * (r - 1) ≤ k * r := Nat.mul_le_mul_left k (Nat.sub_le r 1)
+          have h1' : k * (r - 1) ≤ k * r := Nat.mul_le_mul_left k (Nat.sub_le r 1)
+          have h2' : (k + 1) * r = k * r + r := by ring
           simp only [Finset.card_singleton] at hcard_u; omega
         exact_mod_cast hnat
       have hbound : ∑ X ∈ E.filter (fun X ↦ (causalUnion {x} g ∩ X).Nonempty), w X ≤
@@ -657,7 +656,7 @@ lemma sqrt_prodDepolNormSq_smul {N : ℕ} (s s' : Fin N → Fin 6) (c : ℂ) (X 
     unfold prodDepolNormSq prodDepolInner
     rw [Matrix.conjTranspose_smul]
     simp only [Matrix.mul_smul, Matrix.smul_mul, smul_smul, Matrix.trace_smul, smul_eq_mul]
-    rw [mul_comm (star c) c, Complex.star_def, Complex.mul_conj, Complex.re_ofReal_mul,
+    rw [Complex.star_def, Complex.mul_conj, Complex.re_ofReal_mul,
       Complex.normSq_eq_norm_sq]
   rw [hsq, Real.sqrt_mul (sq_nonneg _), Real.sqrt_sq (norm_nonneg _)]
 
@@ -719,7 +718,7 @@ lemma fwdCausalSum_general_le {N r : ℕ} (hr : 1 ≤ r) (E : Finset (Finset (Fi
           (∏ j : Fin k, w (g j)) *
             ∑ X ∈ E.filter (fun X ↦ (X ∩ causalUnion U₀ g).Nonempty), w X := by
       simp_rw [Finset.mul_sum]
-      rw [← Finset.sum_sigma]
+      rw [← Finset.sum_sigma (f := fun (g : Fin k → Finset (Fin N)) (X : Finset (Fin N)) ↦ (∏ j : Fin k, w (g j)) * w X)]
       refine Finset.sum_bij (fun f _ ↦ ⟨Fin.tail f, f 0⟩) ?_ ?_ ?_ ?_
       · intro f hf
         rcases Finset.mem_filter.mp hf with ⟨hfpi, hf0, hft⟩
