@@ -195,7 +195,7 @@ lemma depol_single_site_reconstruct (M : Matrix (Fin 2) (Fin 2) ℂ) :
   ext i j
   fin_cases i <;> fin_cases j <;>
     simp [Fin.sum_univ_six, depolP, depolDualF, signedPauli, pauliX, pauliY, pauliZ,
-      Matrix.trace, Matrix.mul_apply, Fin.sum_univ_two] <;>
+      Matrix.trace, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_sq] <;>
     ring
 
 /-- Global tensor-product dual frame operator `⨂_x depolDualF (s x)`. -/
@@ -269,7 +269,7 @@ lemma depol_global_reconstruct_kron {N : ℕ} (f : Fin N → Matrix (Fin 2) (Fin
       ∑ s : Fin N → Fin 6, depolDualWeight s (kronOp f) • globalDepolP N s := by
   have h1 : kronOp f = kronOp (fun x ↦ (1 / 3 : ℂ) • ∑ u : Fin 6, (f x * depolDualF u).trace • depolP u) := by
     congr 1; funext x; exact depol_single_site_reconstruct (f x)
-  rw [h1]
+  conv_lhs => rw [h1]
   have hsmul : kronOp (fun x ↦ (1 / 3 : ℂ) • ∑ u : Fin 6, (f x * depolDualF u).trace • depolP u) =
       ((1 / 3 : ℂ) ^ N) • kronOp (fun x ↦ ∑ u : Fin 6, (f x * depolDualF u).trace • depolP u) := by
     ext i j
@@ -296,14 +296,14 @@ theorem depol_global_reconstruct {N : ℕ} (A : QubitOp N) :
     rw [Finset.sum_eq_single p]
     · rw [Finset.sum_eq_single q]
       · have hprod : (∏ x : Fin N, Matrix.single (p x) (q x) (1 : ℂ) (p x) (q x)) = 1 :=
-          Finset.prod_eq_one fun x _ ↦ by simp [Matrix.single]
+          Finset.prod_eq_one fun x _ ↦ by simp only [Matrix.single_apply, and_self, ↓reduceIte]
         rw [hprod, mul_one]
       · intro j _ hj
         have hne : ∃ x : Fin N, j x ≠ q x := by
           by_contra hall; push Not at hall; exact hj (funext hall)
         rcases hne with ⟨x, hx⟩
         have h0 : ∏ y : Fin N, Matrix.single (p y) (j y) (1 : ℂ) (p y) (q y) = 0 :=
-          Finset.prod_eq_zero (Finset.mem_univ x) (by simp [Matrix.single, hx])
+          Finset.prod_eq_zero (Finset.mem_univ x) (by simp only [Matrix.single_apply, hx, and_false, false_and, ↓reduceIte])
         rw [h0, mul_zero]
       · intro hq; exact absurd (Finset.mem_univ q) hq
     · intro i _ hi
@@ -312,7 +312,7 @@ theorem depol_global_reconstruct {N : ℕ} (A : QubitOp N) :
         by_contra hall; push Not at hall; exact hi (funext hall)
       rcases hne with ⟨x, hx⟩
       have h0 : ∏ y : Fin N, Matrix.single (i y) (j y) (1 : ℂ) (p y) (q y) = 0 :=
-        Finset.prod_eq_zero (Finset.mem_univ x) (by simp [Matrix.single, hx])
+        Finset.prod_eq_zero (Finset.mem_univ x) (by simp only [Matrix.single_apply, hx, and_false, false_and, ↓reduceIte])
       rw [h0, mul_zero]
     · intro hp; exact absurd (Finset.mem_univ p) hp
   conv_lhs => rw [hA]
@@ -397,7 +397,7 @@ lemma opToCLM_smul {N : ℕ} (c : ℂ) (A : QubitOp N) : opToCLM (c • A) = c �
   ext v i; simp [opToCLM, Matrix.smul_mulVec]
 
 lemma opToCLM_mul {N : ℕ} (A B : QubitOp N) : opToCLM (A * B) = (opToCLM A).comp (opToCLM B) := by
-  ext v i; simp [opToCLM, Matrix.mulVec_mulVec]
+  ext v i; simp [opToCLM, EuclideanSpace.equiv, Matrix.mulVec_mulVec]
 
 lemma opNorm_one_le {N : ℕ} : opNorm (1 : QubitOp N) ≤ 1 := by
   unfold opNorm; rw [opToCLM_one]; exact ContinuousLinearMap.norm_id_le
@@ -418,7 +418,7 @@ lemma opNorm_sum_le {N : ℕ} {ι : Type*} (s : Finset ι) (f : ι → QubitOp N
   | empty =>
     simp only [Finset.sum_empty]
     unfold opNorm
-    have h0 : opToCLM (0 : QubitOp N) = 0 := by ext v i; simp [opToCLM]
+    have h0 : opToCLM (0 : QubitOp N) = 0 := by ext v i; simp [opToCLM, Matrix.zero_mulVec]
     rw [h0, norm_zero]
   | insert a s ha ih =>
     rw [Finset.sum_insert ha, Finset.sum_insert ha]
@@ -445,16 +445,16 @@ lemma opNorm_unitary_le {N : ℕ} {U : QubitOp N} (hU : Uᴴ * U = 1) :
       rw [EuclideanSpace.norm_sq_eq]
       simp only [Complex.re_sum, Complex.star_def]
       apply Finset.sum_congr rfl; intro i _
-      rw [mul_comm, Complex.mul_conj, ← Complex.ofReal_pow, Complex.ofReal_re, Complex.normSq_eq_norm_sq]
+      rw [mul_comm, Complex.mul_conj, Complex.ofReal_re, Complex.normSq_eq_norm_sq]
     rw [hinner, hinner]
     congr 1
-    have hsum : ∑ i : QubitIdx N, star (opToCLM U v i) * opToCLM U v i =
-        ∑ j : QubitIdx N, star (v j) * v j := by
-      have hlhs : ∑ i : QubitIdx N, star (opToCLM U v i) * opToCLM U v i =
-          ∑ j : QubitIdx N, ∑ k : QubitIdx N, star (v j) * (Uᴴ * U) j k * v k := by
-        simp only [opToCLM, LinearMap.coe_toContinuousLinearMap', LinearMap.comp_apply,
-          LinearEquiv.coe_coe, EuclideanSpace.equiv_symm_pi_apply, Matrix.toLin'_apply,
-          Matrix.mulVec, dotProduct, star_sum, star_mul', Finset.sum_mul, Finset.mul_sum,
+    have hsum : ∑ i : QubitIdx N, star ((opToCLM U v).ofLp i) * (opToCLM U v).ofLp i =
+        ∑ j : QubitIdx N, star (v.ofLp j) * v.ofLp j := by
+      have hop : ∀ i : QubitIdx N, (opToCLM U v).ofLp i = ∑ k : QubitIdx N, U i k * v.ofLp k := by
+        intro i; simp [opToCLM, EuclideanSpace.equiv, Matrix.mulVec, dotProduct]
+      have hlhs : ∑ i : QubitIdx N, star ((opToCLM U v).ofLp i) * (opToCLM U v).ofLp i =
+          ∑ j : QubitIdx N, ∑ k : QubitIdx N, star (v.ofLp j) * (Uᴴ * U) j k * v.ofLp k := by
+        simp_rw [hop, star_sum, star_mul', Finset.sum_mul, Finset.mul_sum,
           Matrix.mul_apply, Matrix.conjTranspose_apply]
         rw [Finset.sum_comm]
         conv_lhs => arg 2; ext j; rw [Finset.sum_comm]
@@ -479,7 +479,12 @@ lemma norm_entry_le_opNorm {N : ℕ} (A : QubitOp N) (i j : QubitIdx N) :
   have h1 : ‖opToCLM A ej i‖ ≤ ‖opToCLM A ej‖ := PiLp.norm_apply_le (opToCLM A ej) i
   have h2 : ‖opToCLM A ej‖ ≤ opNorm A * ‖ej‖ := ContinuousLinearMap.le_opNorm (opToCLM A) ej
   have hval : opToCLM A ej i = A i j := by
-    simp [opToCLM, ej, Matrix.mulVec, dotProduct, EuclideanSpace.single_apply]
+    change (A *ᵥ (WithLp.ofLp ej)) i = A i j
+    simp only [Matrix.mulVec, dotProduct, ej, EuclideanSpace.single, WithLp.ofLp_toLp]
+    rw [Finset.sum_eq_single j]
+    · simp [Pi.single_apply]
+    · intro k _ hkj; simp [Pi.single_apply, hkj]
+    · intro hj; exact absurd (Finset.mem_univ j) hj
   rw [hval] at h1
   rw [hej, mul_one] at h2
   exact le_trans h1 h2
@@ -503,10 +508,10 @@ lemma signedPauliU_unitary (u : Fin 6) :
   fin_cases u <;> ext i j <;> fin_cases i <;> fin_cases j <;>
     simp only [signedPauliU, Matrix.mul_apply, Matrix.conjTranspose_apply, Fin.sum_univ_two,
       Matrix.smul_apply, smul_eq_mul, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero,
-      Matrix.cons_val_one, Matrix.cons_val_fin_one, Matrix.one_apply, Complex.star_def,
-      map_mul, map_neg, map_one, Complex.conj_ofReal, Complex.conj_I, Complex.ofReal_div,
-      Complex.ofReal_one, one_div, Fin.isValue, Fin.reduceEq, ↓reduceIte] <;>
-    (try ring_nf) <;> simp only [h2, Complex.I_sq] <;> ring
+      Matrix.cons_val_one, Matrix.cons_val_fin_one, Matrix.one_apply, Matrix.neg_apply,
+      Complex.star_def, map_mul, map_neg, map_one, Complex.conj_ofReal, Complex.conj_I,
+      Complex.ofReal_div, Complex.ofReal_one, one_div, Fin.isValue, Fin.reduceEq, ↓reduceIte] <;>
+    (try ring_nf) <;> (try simp only [h2, Complex.I_sq]) <;> ring
 
 lemma signedPauliU_diag_depolDualF (u : Fin 6) :
     depolDualF u =
@@ -514,14 +519,14 @@ lemma signedPauliU_diag_depolDualF (u : Fin 6) :
   have h2 := inv_sqrt2_sq_complex
   fin_cases u <;> ext i j <;> fin_cases i <;> fin_cases j <;>
     simp only [depolDualF, signedPauli, signedPauliU, pauliX, pauliY, pauliZ,
-      Matrix.add_apply, Matrix.smul_apply, smul_eq_mul, Matrix.mul_apply,
+      Matrix.add_apply, Matrix.neg_apply, Matrix.smul_apply, smul_eq_mul, Matrix.mul_apply,
       Matrix.conjTranspose_apply, Matrix.diagonal_apply, Fin.sum_univ_two,
       Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero, Matrix.cons_val_one,
       Matrix.cons_val_fin_one, Matrix.one_apply, Complex.star_def,
       map_mul, map_neg, map_one, Complex.conj_ofReal, Complex.conj_I, Complex.ofReal_div,
       Complex.ofReal_one, one_div, Fin.isValue, Fin.reduceEq, ↓reduceIte,
       mul_zero, zero_mul, add_zero, zero_add] <;>
-    (try ring_nf) <;> simp only [h2, Complex.I_sq] <;> ring
+    (try ring_nf) <;> (try simp only [h2, Complex.I_sq]) <;> ring
 
 lemma depolDualWeight_eq_restricted {N : ℕ} (s : Fin N → Fin 6) {U : Finset (Fin N)}
     {A : QubitOp N} (hA : A ∈ supportedOn U) :
@@ -636,10 +641,13 @@ theorem norm_depolDualWeight_le {N : ℕ} (s : Fin N → Fin 6) {U : Finset (Fin
       apply Finset.prod_congr rfl; intro x _
       by_cases hx : x ∈ U <;> simp [hx]
     simp_rw [hnorm_D]
+    have hps := (Fintype.prod_sum (fun (x : Fin N) (b : Fin 2) ↦
+      ‖if x ∈ U then (![(7 / 2 : ℂ), (-5 / 2 : ℂ)] b)
+        else (![(1 / 2 : ℂ), (1 / 2 : ℂ)] b)‖)).symm
     change ∑ i : Fin N → Fin 2, ∏ x : Fin N,
         ‖if x ∈ U then (![(7 / 2 : ℂ), (-5 / 2 : ℂ)] (i x))
           else (![(1 / 2 : ℂ), (1 / 2 : ℂ)] (i x))‖ = (6 : ℝ) ^ U.card
-    rw [← Fintype.prod_sum]
+    rw [hps]
     have hsite : ∀ x : Fin N,
         (∑ b : Fin 2, ‖if x ∈ U then (![(7 / 2 : ℂ), (-5 / 2 : ℂ)] b)
           else (![(1 / 2 : ℂ), (1 / 2 : ℂ)] b)‖) = if x ∈ U then (6 : ℝ) else 1 := by
