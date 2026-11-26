@@ -64,9 +64,10 @@ theorem prop_2_2_jBeta_isometry
     simp [Matrix.conjTranspose_mul, hHerm, Matrix.mul_assoc]
   rw [h1]
   calc Matrix.trace (ρQuarter * Aᴴ * ρQuarter * (ρQuarter * B * ρQuarter))
-      = Matrix.trace (ρQuarter * (ρQuarter * Aᴴ * ρQuarter * (ρQuarter * B))) := by
-        rw [Matrix.trace_mul_cycle]
+      = Matrix.trace ((ρQuarter * Aᴴ * ρQuarter * ρQuarter * B) * ρQuarter) := by
         simp [Matrix.mul_assoc]
+    _ = Matrix.trace (ρQuarter * (ρQuarter * Aᴴ * ρQuarter * ρQuarter * B)) :=
+        Matrix.trace_mul_comm _ ρQuarter
     _ = Matrix.trace ((ρQuarter * ρQuarter) * Aᴴ * (ρQuarter * ρQuarter) * B) := by
         simp [Matrix.mul_assoc]
     _ = Matrix.trace (ρHalf * Aᴴ * ρHalf * B) := by rw [hSq]
@@ -81,10 +82,8 @@ theorem prop_2_2_jBeta_comm_liouvillian
   simp only [Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_assoc]
   rw [← Matrix.mul_assoc ρQuarter H, ← hComm]
   simp only [Matrix.mul_assoc]
-  rw [hComm]
 
-/-- Self-adjointness of the Liouvillian `ℒ = [H, ·]` in the Wightman inner product
-when `H` and `ρ^{1/2}` are Hermitian and commute. -/
+/-- Self-adjointness of the Liouvillian `ℒ = [H, ·]` in the Wightman inner product. -/
 theorem liouvillian_selfAdjoint_wightman
     (ρHalf H A B : Matrix ι ι ℂ)
     (hH : Hᴴ = H)
@@ -101,16 +100,14 @@ theorem liouvillian_selfAdjoint_wightman
   have ht2 : Matrix.trace (ρHalf * (Aᴴ * (ρHalf * (B * H)))) =
       Matrix.trace (ρHalf * (H * (Aᴴ * (ρHalf * B)))) := by
     calc Matrix.trace (ρHalf * (Aᴴ * (ρHalf * (B * H))))
-        = Matrix.trace (H * (ρHalf * (Aᴴ * (ρHalf * B)))) := by
-          rw [Matrix.trace_mul_cycle]
-          simp [Matrix.mul_assoc]
+        = Matrix.trace ((ρHalf * Aᴴ * ρHalf * B) * H) := by simp [Matrix.mul_assoc]
+      _ = Matrix.trace (H * (ρHalf * Aᴴ * ρHalf * B)) := Matrix.trace_mul_comm _ H
       _ = Matrix.trace ((H * ρHalf) * (Aᴴ * (ρHalf * B))) := by simp [Matrix.mul_assoc]
       _ = Matrix.trace (ρHalf * (H * (Aᴴ * (ρHalf * B)))) := by
           rw [hComm]; simp [Matrix.mul_assoc]
   rw [ht1, ht2]
 
-/-- Vanishing of the diagonal Lanczos matrix elements `(O | ℒ O)_β^W = 0` for any
-Hermitian or anti-Hermitian operator `O` (`Oᴴ = s • O`). -/
+/-- Vanishing of the diagonal Lanczos matrix elements `(O | ℒ O)_β^W = 0`. -/
 theorem liouvillian_diag_zero_wightman
     (ρHalf H O : Matrix ι ι ℂ) (s : ℂ)
     (hAdj : Oᴴ = s • O)
@@ -130,9 +127,7 @@ theorem liouvillian_diag_zero_wightman
       _ = Matrix.trace (ρHalf * (O * (ρHalf * (O * H)))) := by simp [Matrix.mul_assoc]
   rw [hEq, sub_self]
 
-/-- Single-probe Hilbert–Schmidt commutator norm identity: for Hermitian `M` and
-Hermitian unitary `P` (`Pᴴ = P`, `P² = 1`),
-`‖[M, P]‖_HS² = 2 Re Tr(M²) - 2 Re Tr(M P M P)`. -/
+/-- Single-probe Hilbert–Schmidt commutator norm identity. -/
 theorem hsNormSq_comm_hermitian_unitary
     (M P : Matrix ι ι ℂ) (hM : Mᴴ = M) (hP : Pᴴ = P) (hP2 : P * P = 1) :
     hsNormSq (matComm M P) =
@@ -148,27 +143,22 @@ theorem hsNormSq_comm_hermitian_unitary
   simp only [Matrix.trace_add, Matrix.trace_sub, Complex.add_re, Complex.sub_re]
   have ht1 : Matrix.trace (P * M * M * P) = Matrix.trace (M * M) := by
     calc Matrix.trace (P * M * M * P)
-        = Matrix.trace ((P * P) * (M * M)) := by
-          rw [Matrix.trace_mul_cycle]; simp [Matrix.mul_assoc]
+        = Matrix.trace ((P * M * M) * P) := rfl
+      _ = Matrix.trace (P * (P * M * M)) := Matrix.trace_mul_comm _ P
+      _ = Matrix.trace ((P * P) * (M * M)) := by simp [Matrix.mul_assoc]
       _ = Matrix.trace (M * M) := by rw [hP2, Matrix.one_mul]
   have ht2 : Matrix.trace (M * P * P * M) = Matrix.trace (M * M) := by
     have : M * P * P * M = M * (P * P) * M := by simp [Matrix.mul_assoc]
     rw [this, hP2, Matrix.mul_one]
   have ht3 : Matrix.trace (P * M * P * M) = Matrix.trace (M * P * M * P) := by
     calc Matrix.trace (P * M * P * M)
-        = Matrix.trace ((P * M) * (P * M)) := by simp [Matrix.mul_assoc]
-      _ = Matrix.trace ((M * P) * (M * P)) := by
-          calc Matrix.trace ((P * M) * (P * M))
-              = Matrix.trace (M * (P * M * P)) := by
-                rw [Matrix.trace_mul_cycle]; simp [Matrix.mul_assoc]
-            _ = Matrix.trace ((M * P) * (M * P)) := by simp [Matrix.mul_assoc]
+        = Matrix.trace (P * (M * P * M)) := by simp [Matrix.mul_assoc]
+      _ = Matrix.trace ((M * P * M) * P) := Matrix.trace_mul_comm P _
       _ = Matrix.trace (M * P * M * P) := by simp [Matrix.mul_assoc]
   rw [ht1, ht2, ht3]
   ring
 
-/-- Single-probe Hilbert–Schmidt anticommutator norm identity: for Hermitian `M` and
-Hermitian unitary `P` (`Pᴴ = P`, `P² = 1`),
-`‖{M, P}‖_HS² = 2 Re Tr(M²) + 2 Re Tr(M P M P)`. -/
+/-- Single-probe Hilbert–Schmidt anticommutator norm identity. -/
 theorem hsNormSq_anticomm_hermitian_unitary
     (M P : Matrix ι ι ℂ) (hM : Mᴴ = M) (hP : Pᴴ = P) (hP2 : P * P = 1) :
     hsNormSq (matAntiComm M P) =
@@ -184,25 +174,25 @@ theorem hsNormSq_anticomm_hermitian_unitary
   simp only [Matrix.trace_add, Complex.add_re]
   have ht1 : Matrix.trace (P * M * M * P) = Matrix.trace (M * M) := by
     calc Matrix.trace (P * M * M * P)
-        = Matrix.trace ((P * P) * (M * M)) := by
-          rw [Matrix.trace_mul_cycle]; simp [Matrix.mul_assoc]
+        = Matrix.trace (P * (P * M * M)) := Matrix.trace_mul_comm _ P
+      _ = Matrix.trace ((P * P) * (M * M)) := by simp [Matrix.mul_assoc]
       _ = Matrix.trace (M * M) := by rw [hP2, Matrix.one_mul]
   have ht2 : Matrix.trace (M * P * P * M) = Matrix.trace (M * M) := by
     have : M * P * P * M = M * (P * P) * M := by simp [Matrix.mul_assoc]
     rw [this, hP2, Matrix.mul_one]
   have ht3 : Matrix.trace (P * M * P * M) = Matrix.trace (M * P * M * P) := by
     calc Matrix.trace (P * M * P * M)
-        = Matrix.trace (M * (P * M * P)) := by
-          rw [Matrix.trace_mul_cycle]; simp [Matrix.mul_assoc]
+        = Matrix.trace (P * (M * P * M)) := by simp [Matrix.mul_assoc]
+      _ = Matrix.trace ((M * P * M) * P) := Matrix.trace_mul_comm P _
       _ = Matrix.trace (M * P * M * P) := by simp [Matrix.mul_assoc]
   rw [ht1, ht2, ht3]
   ring
 
-/-- MSS-regulated four-point correlator `F_MSS(A, V) := Re Tr(ρ^{1/4} A ρ^{1/4} V ρ^{1/4} A ρ^{1/4} V)`. -/
+/-- MSS-regulated four-point correlator `F_MSS(A, V)`. -/
 def fMSS (ρQuarter A V : Matrix ι ι ℂ) : ℝ :=
   (Matrix.trace (jBeta ρQuarter A * V * jBeta ρQuarter A * V)).re
 
-/-- Zero-time Wightman two-point correlator `C_{β,V}^W(0) := Re Tr(ρ^{1/2} V ρ^{1/2} V)`. -/
+/-- Zero-time Wightman two-point correlator `C_{β,V}^W(0)`. -/
 def cWZero (ρHalf V : Matrix ι ι ℂ) : ℝ :=
   (Matrix.trace (ρHalf * V * ρHalf * V)).re
 
@@ -278,8 +268,7 @@ end OperatorAlgebra
 
 section NestedCommutatorCluster
 
-/-- **Lemma 2.1(1)** (Nested-Commutator Cluster Bound, Eq. 2.3):
-Inductive bound on the causal-sequence norm sum `S(m) := ∑_{|Γ|=m} ‖T_Γ‖_∞`. -/
+/-- **Lemma 2.1(1)** (Nested-Commutator Cluster Bound, Eq. 2.3). -/
 theorem lemma_2_1_causal_induction
     {r s : ℕ} {Jsite normO : ℝ} (S : ℕ → ℝ)
     (hr : 2 ≤ r) (hJ : 0 < Jsite)
@@ -299,7 +288,6 @@ theorem lemma_2_1_causal_induction
         (invLocalityScale r Jsite)⁻¹ * ((s : ℝ) / ((r : ℝ) - 1) + (m : ℝ)) := by
       unfold invLocalityScale
       field_simp
-      ring
     calc S (m + 1)
         ≤ 2 * ((s : ℝ) + (m : ℝ) * ((r : ℝ) - 1)) * Jsite * S m := hstep m
       _ ≤ 2 * ((s : ℝ) + (m : ℝ) * ((r : ℝ) - 1)) * Jsite *
@@ -311,14 +299,13 @@ theorem lemma_2_1_causal_induction
           rw [hrewrite, Finset.prod_range_succ, pow_succ]
           ring
 
-/-- Factorial comparison for single-site operators (`s = 1`, `r ≥ 2`):
-`∏_{j=0}^{m-1} (1/(r-1) + j) ≤ m!`. -/
+/-- Factorial comparison for single-site operators (`s = 1`, `r ≥ 2`). -/
 theorem prod_single_site_le_factorial {r : ℕ} (hr : 2 ≤ r) (m : ℕ) :
     ∏ j ∈ Finset.range m, ((1 : ℝ) / ((r : ℝ) - 1) + (j : ℝ)) ≤ (m.factorial : ℝ) := by
   induction m with
   | zero => simp
   | succ m ih =>
-    rw [Finset.prod_range_succ, Nat.factorial_succ, Nat.cast_mul, mul_comm]
+    rw [Finset.prod_range_succ, Nat.factorial_succ, Nat.cast_mul, mul_comm ((m + 1 : ℕ) : ℝ)]
     have hr1 : (1 : ℝ) ≤ (r : ℝ) - 1 := by
       have : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
       linarith
@@ -326,18 +313,15 @@ theorem prod_single_site_le_factorial {r : ℕ} (hr : 2 ≤ r) (m : ℕ) :
       have hdiv : (1 : ℝ) / ((r : ℝ) - 1) ≤ 1 := div_le_one_of_le₀ hr1 (by linarith)
       push_cast
       linarith
-    have hprod_nn : 0 ≤ ∏ j ∈ Finset.range m, ((1 : ℝ) / ((r : ℝ) - 1) + (j : ℝ)) :=
-      Finset.prod_nonneg fun j _ ↦ by positivity
     exact mul_le_mul ih hterm (by positivity) (by positivity)
 
-/-- Factorial comparison for `r`-local operators (`s ≤ r`, `r ≥ 2`):
-`∏_{j=0}^{m-1} (s/(r-1) + j) ≤ (m + 1)!`. -/
+/-- Factorial comparison for `r`-local operators (`s ≤ r`, `r ≥ 2`). -/
 theorem prod_r_local_le_factorial_succ {r s : ℕ} (hr : 2 ≤ r) (hs : s ≤ r) (m : ℕ) :
     ∏ j ∈ Finset.range m, ((s : ℝ) / ((r : ℝ) - 1) + (j : ℝ)) ≤ ((m + 1).factorial : ℝ) := by
   induction m with
   | zero => simp
   | succ m ih =>
-    rw [Finset.prod_range_succ, Nat.factorial_succ, Nat.cast_mul, mul_comm]
+    rw [Finset.prod_range_succ, Nat.factorial_succ, Nat.cast_mul, mul_comm ((m + 1 + 1 : ℕ) : ℝ)]
     have hr1 : (1 : ℝ) ≤ (r : ℝ) - 1 := by
       have : (2 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
       linarith
@@ -349,12 +333,9 @@ theorem prod_r_local_le_factorial_succ {r s : ℕ} (hr : 2 ≤ r) (hs : s ≤ r)
     have hterm : (s : ℝ) / ((r : ℝ) - 1) + (m : ℝ) ≤ ((m + 1 + 1 : ℕ) : ℝ) := by
       push_cast
       linarith
-    have hprod_nn : 0 ≤ ∏ j ∈ Finset.range m, ((s : ℝ) / ((r : ℝ) - 1) + (j : ℝ)) :=
-      Finset.prod_nonneg fun j _ ↦ by positivity
     exact mul_le_mul ih hterm (by positivity) (by positivity)
 
-/-- **Lemma 2.1(2)** (Single-site imaginary-time series bound, Eq. 2.4):
-`∑_{m=0}^∞ ((|τ|/4)^m / m!) κ^{-m} ∏_{j=0}^{m-1} (1/(r-1) + j) ≤ (1 - |τ|/(4κ))⁻¹`. -/
+/-- **Lemma 2.1(2)** (Single-site imaginary-time series bound, Eq. 2.4). -/
 theorem lemma_2_1_single_site_series {r : ℕ} {κ τ : ℝ}
     (hr : 2 ≤ r) (hκ : 0 < κ) (hτ : |τ| < 4 * κ) :
     (∑' m : ℕ, ((|τ| / 4) ^ m / (m.factorial : ℝ)) * κ⁻¹ ^ m *
@@ -378,8 +359,8 @@ theorem lemma_2_1_single_site_series {r : ℕ} {κ τ : ℝ}
       _ = q ^ m := by
           simp only [q]
           field_simp [hfac.ne']
-          rw [← mul_pow, ← div_pow]
-          ring
+          rw [← mul_pow]
+          congr 1; ring
   have hgeom : Summable (fun m : ℕ ↦ q ^ m) := summable_geometric_of_lt_one hq0 hq1
   have hsumm : Summable (fun m : ℕ ↦
       ((|τ| / 4) ^ m / (m.factorial : ℝ)) * κ⁻¹ ^ m *
@@ -396,8 +377,7 @@ theorem lemma_2_1_single_site_series {r : ℕ} {κ τ : ℝ}
       ≤ ∑' m : ℕ, q ^ m := hsumm.tsum_le_tsum hterm hgeom
     _ = (1 - q)⁻¹ := tsum_geometric_of_lt_one hq0 hq1
 
-/-- **Lemma 2.1(3)** (`r`-local imaginary-time series bound, Eq. 2.5):
-`∑_{m=0}^∞ ((|τ|/4)^m / m!) κ^{-m} ∏_{j=0}^{m-1} (s/(r-1) + j) ≤ (1 - |τ|/(4κ))⁻²`. -/
+/-- **Lemma 2.1(3)** (`r`-local imaginary-time series bound, Eq. 2.5). -/
 theorem lemma_2_1_r_local_series {r s : ℕ} {κ τ : ℝ}
     (hr : 2 ≤ r) (hs : s ≤ r) (hκ : 0 < κ) (hτ : |τ| < 4 * κ) :
     (∑' m : ℕ, ((|τ| / 4) ^ m / (m.factorial : ℝ)) * κ⁻¹ ^ m *
@@ -423,15 +403,11 @@ theorem lemma_2_1_r_local_series {r s : ℕ} {κ τ : ℝ}
           rw [Nat.factorial_succ, Nat.cast_mul]
           simp only [q]
           field_simp [hfac.ne']
-          rw [← mul_pow, ← div_pow]
-          ring
+          rw [← mul_pow]
+          congr 1; ring
   have hhas : HasSum (fun m : ℕ ↦ ((m + 1 : ℕ) : ℝ) * q ^ m) ((1 - q)⁻¹ ^ 2) := by
     have h1 := hasSum_geometric_of_lt_one hq0 hq1
-    have h2 := h1.mul_left ((1 - q)⁻¹)
-    -- Use Cauchy product of geometric series with itself:
-    have hc := hasSum_sum_range_mul_of_summable_norm
-      (by simpa [Real.norm_eq_abs, abs_of_nonneg hq0] using h1.summable)
-      (by simpa [Real.norm_eq_abs, abs_of_nonneg hq0] using h1.summable)
+    have hc := hasSum_sum_range_mul_of_summable_norm h1.summable.norm h1.summable.norm
     have hsum_eq : (fun n : ℕ ↦ ∑ k ∈ Finset.range (n + 1), q ^ k * q ^ (n - k)) =
         (fun n : ℕ ↦ ((n + 1 : ℕ) : ℝ) * q ^ n) := by
       ext n

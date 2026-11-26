@@ -63,11 +63,7 @@ theorem prop_4_1_krylov_filtration {N r s₀ : ℕ}
           exact Submodule.smul_mem _ b (hV_mono hidx2 hprev)
       exact Submodule.add_mem _ hterm1 hterm2
 
-/-- **Proposition 4.1(2)** (Finite-Temperature `q`-Complexity Bound, Eq. 4.2):
-Given tail weights `p : ℕ → ℝ` (`p n = |φ_n(t)|² ≥ 0`) and filtration tail norms
-`q : ℕ → ℝ` (`q s = ‖(1 - Π_s) O(t)‖² ≤ 1`) obeying the subspace-monotone projection
-inequality `q s ≤ ∑_{n ∈ (k, Kmax)} p n` whenever `s₀ + (r - 1) * k ≤ s`, we have
-`∑_{s=0}^{N-1} q s ≤ (r - 1) * (∑_{n=0}^{Kmax-1} n * p n) + s₀`. -/
+/-- **Proposition 4.1(2)** (Finite-Temperature `q`-Complexity Bound, Eq. 4.2). -/
 theorem prop_4_1_q_complexity_bound {N Kmax r s₀ : ℕ} (hr : 1 ≤ r)
     (p q : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n)
     (hq_le_one : ∀ s, q s ≤ 1)
@@ -104,12 +100,14 @@ theorem prop_4_1_q_complexity_bound {N Kmax r s₀ : ℕ} (hr : 1 ≤ r)
       _ = ((min N s₀ : ℕ) : ℝ) := by simp
       _ ≤ (s₀ : ℝ) := Nat.cast_le.mpr (min_le_right N s₀)
   · have hr1_pos : 0 < r - 1 := by omega
+    have hfilt_eq : (Finset.range N).filter (fun s ↦ ¬ s < s₀) =
+        (Finset.range N).filter (fun s ↦ s₀ ≤ s) := by
+      ext s; simp [Nat.not_lt]
     have hsplit : ∑ s ∈ Finset.range N, q s =
         ∑ s ∈ (Finset.range N).filter (fun s ↦ s < s₀), q s +
         ∑ s ∈ (Finset.range N).filter (fun s ↦ s₀ ≤ s), q s := by
-      have h := (Finset.sum_filter_add_sum_filter_not (Finset.range N) (fun s ↦ s < s₀) q).symm
-      convert h using 2
-      ext s; simp [Nat.not_lt]
+      rw [← hfilt_eq]
+      exact (Finset.sum_filter_add_sum_filter_not (Finset.range N) (fun s ↦ s < s₀) q).symm
     rw [hsplit]
     have hpart1 : ∑ s ∈ (Finset.range N).filter (fun s ↦ s < s₀), q s ≤ (s₀ : ℝ) := by
       calc ∑ s ∈ (Finset.range N).filter (fun s ↦ s < s₀), q s
@@ -136,13 +134,15 @@ theorem prop_4_1_q_complexity_bound {N Kmax r s₀ : ℕ} (hr : 1 ≤ r)
               (((Finset.range N).filter (fun s ↦ s₀ ≤ s ∧ (s - s₀) / (r - 1) < n)).card : ℝ) *
                 p n := by
             simp_rw [Finset.sum_filter]
+            have hpull : ∀ a : ℕ,
+                (if s₀ ≤ a then ∑ n ∈ Finset.range Kmax, if (a - s₀) / (r - 1) < n then p n else 0 else 0) =
+                ∑ n ∈ Finset.range Kmax, if s₀ ≤ a ∧ (a - s₀) / (r - 1) < n then p n else 0 := by
+              intro a; split_ifs with ha <;> simp [ha]
+            simp_rw [hpull]
             rw [Finset.sum_comm]
             apply Finset.sum_congr rfl
             intro n _
             rw [← Finset.sum_filter, Finset.sum_const, nsmul_eq_mul]
-            congr 2
-            ext s
-            simp [and_assoc]
         _ ≤ ∑ n ∈ Finset.range Kmax, (((r - 1) * n : ℕ) : ℝ) * p n := by
             apply Finset.sum_le_sum
             intro n _
@@ -186,9 +186,9 @@ theorem lemma_4_2_thermal_size_truncation
     nlinarith
   have hre : reCross ≤ (N : ℝ) * ε := by
     have h1 : reCross ≤ |reCross| := le_abs_self reCross
-    have h2 : (N : ℝ) * Real.sqrt (1 - ε ^ 2) * ε ≤ (N : ℝ) * 1 * ε := by
-      have hN : (0 : ℝ) ≤ (N : ℝ) := Nat.cast_nonneg N
-      nlinarith
+    have hN : (0 : ℝ) ≤ (N : ℝ) := Nat.cast_nonneg N
+    have h2 : (N : ℝ) * Real.sqrt (1 - ε ^ 2) * ε ≤ (N : ℝ) * 1 * ε :=
+      mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hsqrt hN) hε0
     linarith
   have hlead' : qA - bg ≤ Λ := by
     have h1 : (1 - ε ^ 2) * Λ ≤ Λ := by nlinarith
@@ -198,21 +198,21 @@ theorem lemma_4_2_thermal_size_truncation
 
 /-- **Theorem 1.1(b)** (Static Reduction of `λ_L ≤ 2 α`, Eq. 1.14). -/
 theorem theorem_1_1b_static_reduction
-    {α λL δ C₀ C₁ C₂ : ℝ} {r s₀ : ℕ}
-    (hr : 1 ≤ r) (hα : 0 < α) (hλ : 0 < λL) (hδ0 : 0 ≤ δ) (hδ1 : δ < 1)
+    {α lamL δ C₀ C₁ C₂ : ℝ} {r s₀ : ℕ}
+    (hr : 1 ≤ r) (hα : 0 < α) (hλ : 0 < lamL) (hδ0 : 0 ≤ δ) (hδ1 : δ < 1)
     (hC₀ : 0 ≤ C₀) (hC₁ : 0 ≤ C₁) (hC₂ : 0 ≤ C₂)
     (hH1 : ∀ ε₀ > 0, ∃ ε ∈ Set.Ioo (0 : ℝ) ε₀, ∃ c > 0, ∃ N₁ : ℕ,
       ∀ N ≥ N₁,
-        let tN := ((1 - ε) / λL) * Real.log (N : ℝ)
+        let tN := ((1 - ε) / lamL) * Real.log (N : ℝ)
         let MN := (1 / Real.tanh 1) * Real.exp (2 * α * tN) * Real.log (N : ℝ) + 1
         let sN := (s₀ : ℝ) + ((r : ℝ) - 1) * MN
         c * (N : ℝ) ^ (1 - ε) ≤
           C₁ * sN + C₂ * (N : ℝ) ^ δ * sN ^ (1 - δ) +
           2 * C₀ * (N : ℝ)⁻¹ + C₀ ^ 2 * (N : ℝ) ^ (-3 : ℝ)) :
-    λL ≤ 2 * α := by
+    lamL ≤ 2 * α := by
   by_contra hlt
   push_neg at hlt
-  set ρ := 2 * α / λL
+  set ρ := 2 * α / lamL
   have hρ_pos : 0 < ρ := div_pos (by linarith) hλ
   have hρ_lt : ρ < 1 := (div_lt_one hλ).mpr hlt
   set gap := (1 - δ) * (1 - ρ)
@@ -237,7 +237,11 @@ theorem theorem_1_1b_static_reduction
     simp only [η]; nlinarith
   have htanh1_pos : 0 < Real.tanh 1 := by
     rw [Real.tanh_eq_sinh_div_cosh]
-    exact div_pos (Real.sinh_pos_iff.mpr zero_lt_one) (Real.cosh_pos 1)
+    have hsinh1 : 0 < Real.sinh 1 := by
+      rw [Real.sinh_eq]
+      have : Real.exp (-1) < Real.exp 1 := Real.exp_lt_exp.mpr (by norm_num)
+      linarith
+    exact div_pos hsinh1 (Real.cosh_pos 1)
   set K := (1 / Real.tanh 1) * (max 1 ((r : ℝ) - 1)) + (s₀ : ℝ) + (max 1 ((r : ℝ) - 1))
   have hK_pos : 0 < K := by
     have : 0 < 1 / Real.tanh 1 := by positivity
@@ -295,7 +299,7 @@ theorem theorem_1_1b_static_reduction
     exact (Real.le_log_iff_exp_le hNpos).mpr h3
   have hineq := hN₁ N hN1
   dsimp only at hineq
-  have hexp_eq : Real.exp (2 * α * (((1 - ε) / λL) * Real.log (N : ℝ))) =
+  have hexp_eq : Real.exp (2 * α * (((1 - ε) / lamL) * Real.log (N : ℝ))) =
       (N : ℝ) ^ (ρ * (1 - ε)) := by
     rw [Real.rpow_def_of_pos hNpos]
     congr 1

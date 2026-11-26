@@ -260,18 +260,18 @@ theorem theorem_1_3b_constants {r : ℕ} {β Jsite : ℝ}
   exact ⟨h1, h2, by norm_num⟩
 
 /-- **Theorem 1.3(c)** (High-Temperature MSS Lyapunov Exponent Bound, Eq. 1.24). -/
-theorem theorem_1_3c_mss_lyapunov_bound {α λL A B C : ℝ}
-    (hα : 0 < α) (hλ : 0 < λL) (hA : 0 ≤ A) (hB : 0 ≤ B) (hC : 0 ≤ C)
+theorem theorem_1_3c_mss_lyapunov_bound {α lamL A B C : ℝ}
+    (hα : 0 < α) (hλ : 0 < lamL) (hA : 0 ≤ A) (hB : 0 ≤ B) (hC : 0 ≤ C)
     (hH : ∀ ε₀ > 0, ∃ ε ∈ Set.Ioo (0 : ℝ) ε₀, ∃ c > 0, ∃ N₁ : ℕ,
       ∀ N ≥ N₁,
         c * (N : ℝ) ^ (1 - ε) ≤
-          A * (N : ℝ) ^ ((2 * α / λL) * (1 - ε)) +
-          B * Real.sqrt ((N : ℝ) * (N : ℝ) ^ ((2 * α / λL) * (1 - ε))) +
+          A * (N : ℝ) ^ ((2 * α / lamL) * (1 - ε)) +
+          B * Real.sqrt ((N : ℝ) * (N : ℝ) ^ ((2 * α / lamL) * (1 - ε))) +
           C * Real.sqrt (N : ℝ)) :
-    λL ≤ 2 * α := by
+    lamL ≤ 2 * α := by
   by_contra hlt
   push_neg at hlt
-  set ρ := 2 * α / λL
+  set ρ := 2 * α / lamL
   have hρ_pos : 0 < ρ := div_pos (by linarith) hλ
   have hρ_lt : ρ < 1 := (div_lt_one hλ).mpr hlt
   set gap := (1 - ρ) / 2

@@ -38,9 +38,14 @@ noncomputable def finiteMGF (Nmax : ℕ) (φ : ℕ → ℝ → ℝ) (θ t : ℝ)
 noncomputable def finiteKrylovComplexity (Nmax : ℕ) (φ : ℕ → ℝ → ℝ) (t : ℝ) : ℝ :=
   ∑ n ∈ Finset.range (Nmax + 1), (n : ℝ) * (φ n t) ^ 2
 
+theorem sinh_pos_of_pos {x : ℝ} (hx : 0 < x) : 0 < Real.sinh x := by
+  rw [Real.sinh_eq]
+  have : Real.exp (-x) < Real.exp x := Real.exp_lt_exp.mpr (by linarith)
+  linarith
+
 theorem tanh_pos_of_pos {x : ℝ} (hx : 0 < x) : 0 < Real.tanh x := by
   rw [Real.tanh_eq_sinh_div_cosh]
-  exact div_pos (Real.sinh_pos_iff.mpr hx) (Real.cosh_pos x)
+  exact div_pos (sinh_pos_of_pos hx) (Real.cosh_pos x)
 
 theorem tanh_lt_one (x : ℝ) : Real.tanh x < 1 := by
   rw [Real.tanh_eq_sinh_div_cosh, div_lt_one (Real.cosh_pos x)]
@@ -67,12 +72,10 @@ theorem charTheta_zero {α θ₀ : ℝ} (hθ₀ : 0 < θ₀) : charTheta α θ�
     rw [Real.tanh_eq_sinh_div_cosh, Real.sinh_eq, Real.cosh_eq]
     have hc : Real.exp (θ₀ / 4) + Real.exp (-(θ₀ / 4)) ≠ 0 := by positivity
     have hpos : Real.exp (-(θ₀ / 4)) ≠ 0 := (Real.exp_pos _).ne'
-    have hmul : Real.exp (θ₀ / 4) * Real.exp (θ₀ / 4) = Real.exp (θ₀ / 2) := by
-      rw [← Real.exp_add]; ring_nf
-    have hinv : Real.exp (-(θ₀ / 4)) * Real.exp (θ₀ / 4) = 1 := by
-      rw [← Real.exp_add]; simp
+    have hrel : Real.exp (-(θ₀ / 4)) * Real.exp (θ₀ / 2) = Real.exp (θ₀ / 4) := by
+      rw [← Real.exp_add]; congr 1; ring
     field_simp [hc, hpos]
-    nlinarith [hmul, hinv]
+    linarith
   rw [h1, Real.log_exp]
   ring
 
@@ -134,6 +137,7 @@ theorem hasDerivAt_charTheta {α θ₀ t : ℝ} (hα : 0 < α) (hθ₀ : 0 < θ�
   have hu1 : u < 1 := charU_lt_one hα hθ₀ ht
   have h1pu : 0 < 1 + u := by linarith
   have h1mu : 0 < 1 - u := by linarith
+  have h1mu2 : 1 - u ^ 2 ≠ 0 := by nlinarith
   have hdu : HasDerivAt (charU α θ₀) (-2 * α * u) t := by
     unfold charU
     have hlin : HasDerivAt (fun s ↦ -2 * α * s) (-2 * α) t := by
@@ -161,12 +165,15 @@ theorem hasDerivAt_charTheta {α θ₀ t : ℝ} (hα : 0 < α) (hθ₀ : 0 < θ�
     have hexp_neg : Real.exp (-(charTheta α θ₀ t / 2)) = (1 - u) / (1 + u) := by
       rw [Real.exp_neg, hexp, inv_div]
     rw [Real.sinh_eq, hexp, hexp_neg]
-    field_simp [h1pu.ne', h1mu.ne']
+    field_simp [h1pu.ne', h1mu.ne', h1mu2]
     ring
-  convert h2log using 1
-  rw [hsinh]
-  field_simp [h1pu.ne', h1mu.ne']
-  ring
+  have hval : 2 * (((-2 * α * u) * (1 - u) - (1 + u) * (2 * α * u)) / (1 - u) ^ 2 /
+      ((1 + u) / (1 - u))) = -4 * α * Real.sinh (charTheta α θ₀ t / 2) := by
+    rw [hsinh]
+    field_simp [h1pu.ne', h1mu.ne', h1mu2]
+    ring
+  rw [hval] at h2log
+  exact h2log
 
 /-- Unitarity of finite-chain Krylov evolution: `∑_{n=0}^{Nmax} φ_n(t)² = 1` for all `t`. -/
 theorem finite_chain_unitarity {Nmax : ℕ} (b : ℕ → ℝ) (φ : ℕ → ℝ → ℝ)
@@ -185,7 +192,7 @@ theorem finite_chain_unitarity {Nmax : ℕ} (b : ℕ → ℝ) (φ : ℕ → ℝ 
       have hnle : n ≤ Nmax := Nat.lt_succ_iff.mp (Finset.mem_range.mp hn)
       have hsq : HasDerivAt (fun s ↦ (φ n s) ^ 2)
           (2 * (φ n t) ^ 1 * (b n * φ (n - 1) t - b (n + 1) * φ (n + 1) t)) t :=
-        (hode n hnle t).pow 2
+        (hode n hnle t).fun_pow 2
       simpa using hsq
     have hzero : ∑ n ∈ Finset.range (Nmax + 1),
         2 * φ n t * (b n * φ (n - 1) t - b (n + 1) * φ (n + 1) t) = 0 := by
@@ -208,6 +215,7 @@ theorem finite_chain_unitarity {Nmax : ℕ} (b : ℕ → ℝ) (φ : ℕ → ℝ 
     fun t ↦ is_const_of_deriv_eq_zero (fun s ↦ (hderiv s).differentiableAt)
       (fun s ↦ (hderiv s).deriv) t 0
   intro t
+  change S t = 1
   rw [hconst t]
   simp only [S]
   rw [Finset.sum_range_succ']
@@ -267,15 +275,15 @@ theorem lemma_3_1_finite_chain_mgf {Nmax : ℕ} {α γ θ₀ : ℝ}
       (hθd.mul_const (n : ℝ)).exp
     have hsq : HasDerivAt (fun u ↦ (φ n u) ^ 2)
         (2 * φ n s * (b n * φ (n - 1) s - b (n + 1) * φ (n + 1) s)) s := by
-      simpa using (hode n hnle s).pow 2
+      simpa using (hode n hnle s).fun_pow 2
     convert hexp.fun_mul hsq using 1
     ring
   have hdiff_ineq : ∀ s ≥ 0, G' s ≤ 2 * (α + 2 * γ) * Real.sinh (charTheta α θ₀ s / 2) * G s := by
     intro s hs
     simp only [G']
-    set θ := charTheta α θ₀ s
+    set θ := charTheta α θ₀ s with hθ_def
     have hθpos : 0 < θ := charTheta_pos hα hθ₀ hs
-    have hsinh_pos : 0 < Real.sinh (θ / 2) := Real.sinh_pos_iff.mpr (by linarith)
+    have hsinh_pos : 0 < Real.sinh (θ / 2) := sinh_pos_of_pos (by linarith)
     rw [Finset.sum_add_distrib]
     have htime_eq :
         ∑ n ∈ Finset.range (Nmax + 1),
@@ -350,6 +358,8 @@ theorem lemma_3_1_finite_chain_mgf {Nmax : ℕ} {α γ θ₀ : ℝ}
           (add_nonneg (sq_nonneg u) (sq_nonneg v))
       exact le_trans hstep1 hstep2
     have hsum_le := Finset.sum_le_sum hterm_le
+    have hGs_eq : G s = ∑ n ∈ Finset.range (Nmax + 1), Real.exp (θ * (n : ℝ)) * (φ n s) ^ 2 := by
+      simp only [G, finiteMGF, ← hθ_def]
     have hsplit_rhs :
         ∑ k ∈ Finset.range Nmax,
           2 * Real.sinh (θ / 2) * (α * ((k + 1 : ℕ) : ℝ) + γ) *
@@ -395,10 +405,9 @@ theorem lemma_3_1_finite_chain_mgf {Nmax : ℕ} {α γ θ₀ : ℝ}
           rw [Finset.sum_range_succ']; simp
         have hg : ∑ k ∈ Finset.range Nmax,
               Real.exp (θ * ((k + 1 : ℕ) : ℝ)) * (φ (k + 1) s) ^ 2 ≤ G s := by
-          simp only [G, finiteMGF]
-          rw [Finset.sum_range_succ']
+          rw [hGs_eq, Finset.sum_range_succ']
           have h0nn : 0 ≤ Real.exp (θ * (0 : ℝ)) * (φ 0 s) ^ 2 := by positivity
-          linarith
+          simpa using h0nn
         rw [ha]
         nlinarith
       have hpart2 :
@@ -419,8 +428,7 @@ theorem lemma_3_1_finite_chain_mgf {Nmax : ℕ} {α γ θ₀ : ℝ}
           have hnn : 0 ≤ (Nmax : ℝ) * Real.exp (θ * (Nmax : ℝ)) * (φ Nmax s) ^ 2 := by positivity
           linarith
         have hg : ∑ k ∈ Finset.range Nmax, Real.exp (θ * (k : ℝ)) * (φ k s) ^ 2 ≤ G s := by
-          simp only [G, finiteMGF]
-          rw [Finset.sum_range_succ]
+          rw [hGs_eq, Finset.sum_range_succ]
           have hnn : 0 ≤ Real.exp (θ * (Nmax : ℝ)) * (φ Nmax s) ^ 2 := by positivity
           linarith
         nlinarith
@@ -596,7 +604,7 @@ theorem theorem_1_1a_finite_complexity {Nmax : ℕ} {α γ θ₀ : ℝ}
         div_le_div₀ (Real.exp_pos _).le hG hden_pos hden_le
     _ = (Real.exp ((1 / 2 + γ / α) * θ₀) / (4 * Real.exp 1 * Real.tanh (θ₀ / 4))) *
           Real.exp (2 * α * t) := by
-        rw [Real.exp_neg]
+        rw [show -2 * α * t = -(2 * α * t) by ring, Real.exp_neg]
         field_simp [htanh_pos.ne', (Real.exp_pos 1).ne', (Real.exp_pos (2 * α * t)).ne']
 
 /-- **Theorem 1.1(a)** (Infinite-Chain Fatou Transfer, Eq. 3.5). -/
@@ -736,7 +744,7 @@ theorem theorem_1_1a_infinite_tail_and_complexity {α γ θ₀ : ℝ}
           div_le_div₀ (Real.exp_pos _).le htsum_G hden_pos hden_le
       _ = (Real.exp ((1 / 2 + γ / α) * θ₀) / (4 * Real.exp 1 * Real.tanh (θ₀ / 4))) *
             Real.exp (2 * α * t) := by
-          rw [Real.exp_neg]
+          rw [show -2 * α * t = -(2 * α * t) by ring, Real.exp_neg]
           field_simp [htanh_pos.ne', (Real.exp_pos 1).ne', (Real.exp_pos (2 * α * t)).ne']
 
 /-- Asymptotic growth rate bound from Eq. (1.13). -/
