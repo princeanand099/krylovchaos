@@ -391,7 +391,7 @@ private lemma conj_unitary_mul_self {N : ℕ} {A B C : QubitOp N}
     (hA : A * Aᴴ = 1) (hB : Bᴴ * B = 1) (hC : Cᴴ * C = 1) :
     (Aᴴ * B * C)ᴴ * (Aᴴ * B * C) = 1 := by
   simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-  calc Cᴴ * Bᴴ * A * (Aᴴ * B * C)
+  calc Cᴴ * (Bᴴ * A) * (Aᴴ * B * C)
       = Cᴴ * Bᴴ * (A * Aᴴ) * B * C := by simp only [Matrix.mul_assoc]
     _ = Cᴴ * (Bᴴ * B) * C := by rw [hA, Matrix.mul_one]; simp only [Matrix.mul_assoc]
     _ = Cᴴ * C := by rw [hB, Matrix.mul_one]
@@ -401,7 +401,7 @@ private lemma conj_unitary_self_mul {N : ℕ} {A B C : QubitOp N}
     (hA : Aᴴ * A = 1) (hB : B * Bᴴ = 1) (hC : C * Cᴴ = 1) :
     (Aᴴ * B * C) * (Aᴴ * B * C)ᴴ = 1 := by
   simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-  calc Aᴴ * B * C * (Cᴴ * Bᴴ * A)
+  calc Aᴴ * B * C * (Cᴴ * (Bᴴ * A))
       = Aᴴ * B * (C * Cᴴ) * Bᴴ * A := by simp only [Matrix.mul_assoc]
     _ = Aᴴ * (B * Bᴴ) * A := by rw [hC, Matrix.mul_one]; simp only [Matrix.mul_assoc]
     _ = Aᴴ * A := by rw [hB, Matrix.mul_one]
@@ -783,11 +783,12 @@ theorem prop_6_4_2_concrete_entropic_decoupling {N : ℕ} {ρ H X : QubitOp N}
       rw [Complex.star_def, Complex.mul_conj', ← Complex.ofReal_pow, Complex.ofReal_re]
     have heig : hρt.eigenvalues i = ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * hρ.eigenvalues j := by
       have hD : Qᴴ * ρt * Q = Matrix.diagonal (fun a ↦ (hρt.eigenvalues a : ℂ)) :=
-        conj_diag_of_eq hQHQ (hermFunc_id hρt)
+        conj_diag_of_eq hQHQ (hermFunc_id hρt).symm
       have hW_eq : Qᴴ * ρt * Q = W * Matrix.diagonal (fun j ↦ (hρ.eigenvalues j : ℂ)) * Wᴴ :=
-        conj_unitary_diag_eq (hermFunc_id hρ)
+        conj_unitary_diag_eq (hermFunc_id hρ).symm
       have hent := congrFun (congrFun (hD.symm.trans hW_eq) i) i
-      simp only [Matrix.diagonal_apply_eq, Matrix.mul_apply, Matrix.mul_diagonal,
+      simp only [Matrix.diagonal_apply_eq, Matrix.mul_apply, Matrix.diagonal_apply,
+        mul_ite, mul_zero, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte,
         Matrix.conjTranspose_apply] at hent
       have hre := congrArg Complex.re hent
       rw [Complex.ofReal_re, Complex.re_sum] at hre

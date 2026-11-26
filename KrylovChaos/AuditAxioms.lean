@@ -6,7 +6,7 @@ Authors: Prince Anand
 import KrylovChaos
 
 /-!
-# Comprehensive Kernel Axiom Audit for `KrylovChaos` (All 39 Modules)
+# Comprehensive Kernel Axiom Audit for `KrylovChaos` (All 47 Modules)
 
 Run with `lake env lean KrylovChaos/AuditAxioms.lean`.
 Every listed headline theorem must depend strictly on a subset of
@@ -93,3 +93,31 @@ Every listed headline theorem must depend strictly on a subset of
 #print axioms KrylovChaos.theorem_1_1a_infinite_exact_constant
 #print axioms KrylovChaos.prop_4_1_concrete_operator
 #print axioms KrylovChaos.lemma_4_2_concrete_operator
+
+-- Concrete Gap-Closure Theorems (Sub-Gaps #1–#4, 100% Unconditional on Mathlib)
+#print axioms KrylovChaos.depol_global_reconstruct
+#print axioms KrylovChaos.depolDualWeight_mul_of_disjoint
+#print axioms KrylovChaos.norm_depolDualWeight_le
+#print axioms KrylovChaos.opNorm_polyOp_le
+#print axioms KrylovChaos.norm_polyWeight_le
+#print axioms KrylovChaos.depolDualWeight_exp_eq_polymerZ
+#print axioms KrylovChaos.lemma_7_2_concrete_positive_frame
+#print axioms KrylovChaos.theorem_1_3a_unconditional
+#print axioms KrylovChaos.theorem_1_3b_CW_unconditional
+#print axioms KrylovChaos.prodDepolNormSq_matComm_supportedOn_le
+#print axioms KrylovChaos.hasSum_heisenbergEvol_adPow
+#print axioms KrylovChaos.fwdCausalSum_le
+#print axioms KrylovChaos.fwdCausalSum_general_le
+#print axioms KrylovChaos.revCausalSum_le
+#print axioms KrylovChaos.theorem_1_3b_otocI_unconditional
+#print axioms KrylovChaos.theorem_1_3c_concrete_end_to_end
+#print axioms KrylovChaos.power_series_schwarz_bound
+#print axioms KrylovChaos.normalizedTrace_mul_of_disjoint
+#print axioms KrylovChaos.lemma_6_3_trace_polymer_kp
+#print axioms KrylovChaos.gibbsRelEntropy_unitary_invariant
+#print axioms KrylovChaos.gibbsRelEntropy_heisenberg_invariant
+#print axioms KrylovChaos.gibbsRelEntropy_le_log_of_renyi2
+#print axioms KrylovChaos.prop_6_4_2_concrete_entropic_decoupling
+#print axioms KrylovChaos.lieb_robinson_concrete_opNorm
+#print axioms KrylovChaos.opNorm_boundaryOp_le
+#print axioms KrylovChaos.heisenbergEvol_concrete_norm_bound
