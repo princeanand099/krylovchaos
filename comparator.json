@@ -1,11 +1,32 @@
 {
   "challenge_module": "Challenge",
   "solution_module": "Solution",
-  "theorem_names": [],
+  "theorem_names": [
+    "theorem_1_1a_finite_tail",
+    "theorem_1_1a_finite_complexity",
+    "theorem_1_1a_infinite_tail_and_complexity",
+    "prop_4_1_krylov_filtration",
+    "theorem_1_1b_static_reduction",
+    "prop_4_3_product_state_static_bound",
+    "theorem_1_2a_laplace_identity",
+    "theorem_1_2a_even_exp_moment",
+    "theorem_1_2b_lanczos_rate_bound",
+    "theorem_1_2b_rate_chain",
+    "theorem_1_2c_otoc_dominance",
+    "prop_6_4_decoupling_combine",
+    "theorem_1_3a_reverse_poincare",
+    "theorem_1_3b_constants",
+    "theorem_1_3c_mss_lyapunov_bound",
+    "lemma_8_2_hubbard_stratonovich_identity",
+    "prop_8_3_product_bernoulli_reverse_poincare",
+    "prop_9_1_no_linear_lower_bound",
+    "lemma_B_1_neumann_tail_sum"
+  ],
   "definition_names": [],
   "permitted_axioms": [
     "propext",
-    "Quot.sound",
-    "Classical.choice"
-  ]
+    "Classical.choice",
+    "Quot.sound"
+  ],
+  "enable_nanoda": false
 }

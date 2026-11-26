@@ -22,9 +22,9 @@ Formalizes:
   dominance `C_W ≤ 54 Q`, `I ≤ 216 Q` (1.21–1.22), and high-temperature Lyapunov bounds (1.23–1.24).
 -/
 
-open scoped Matrix
-
 namespace KrylovChaos
+
+open Matrix
 
 section SingleSiteFrame
 
@@ -108,11 +108,9 @@ theorem lemma_7_1_dual_reconstruction (B : Matrix (Fin 2) (Fin 2) ℂ) :
     (1 / 6 : ℂ) • ∑ s : Fin 6, ((1 / 2 : ℂ) * Matrix.trace (B * depolF s)) • depolP s := by
   ext i j
   fin_cases i <;> fin_cases j <;>
-  · simp [Fin.sum_univ_six, Fin.sum_univ_two, depolP, depolF, signedPauli,
+    simp [Fin.sum_univ_six, Fin.sum_univ_two, depolP, depolF, signedPauli,
       pauliX, pauliY, pauliZ, Matrix.trace, Matrix.diag, Matrix.mul_apply]
-    ring_nf
-    simp [Complex.I_sq]
-    ring
+  all_goals (ring_nf; try simp [Complex.I_sq]; try ring)
 
 /-- **Lemma 7.1(2b)**: If `B` is Hermitian (`Bᴴ = B`), then `(1/2) Tr(B F̃_s)` is real. -/
 theorem lemma_7_1_dual_real_of_herm (B : Matrix (Fin 2) (Fin 2) ℂ) (hB : Bᴴ = B) (s : Fin 6) :
@@ -147,8 +145,8 @@ theorem lemma_7_1_dual_eigenvalues (s : Fin 6) :
     (|(7 / 2 : ℝ)| + |(-5 / 2 : ℝ)| = 6) := by
   refine ⟨?_, by norm_num⟩
   fin_cases s <;> ext i j <;> fin_cases i <;> fin_cases j <;>
-  · simp [depolF, signedPauli, pauliX, pauliY, pauliZ, Matrix.mul_apply, Fin.sum_univ_two]
-    try (ring_nf; simp [Complex.I_sq])
+    simp [depolF, signedPauli, pauliX, pauliY, pauliZ, Matrix.mul_apply, Fin.sum_univ_two]
+  all_goals (ring_nf; try simp [Complex.I_sq]; try ring)
 
 end SingleSiteFrame
 
@@ -279,8 +277,8 @@ theorem theorem_1_3b_constants {r : ℕ} {β Jsite : ℝ}
 
 /-- **Theorem 1.3(c)** (High-Temperature MSS Lyapunov Exponent Bound, Eq. 1.24):
 If for arbitrarily small `ε ∈ (0, 1/2)` there exist `c > 0` and `N₁` such that for all `N ≥ N₁`,
-`c N^{1 - ε} ≤ A N^{ρ (1 - ε)} + B √(N · N^{ρ (1 - ε)}) + C √N` (where `ρ = 2 α / lamL`),
-then `lamL ≤ 2 α`. -/
+`c N^{1 - ε} ≤ A N^{ρ (1 - ε)} + B √(N · N^{ρ (1 - ε)}) + C √N` (where `ρ = 2 α / λ_L`),
+then `λ_L ≤ 2 α`. -/
 theorem theorem_1_3c_mss_lyapunov_bound {α lamL A B C : ℝ}
     (hα : 0 < α) (hlam : 0 < lamL) (hA : 0 ≤ A) (hB : 0 ≤ B) (hC : 0 ≤ C)
     (hH : ∀ ε₀ > 0, ∃ ε ∈ Set.Ioo (0 : ℝ) ε₀, ∃ c > 0, ∃ N₁ : ℕ,
@@ -295,22 +293,23 @@ theorem theorem_1_3c_mss_lyapunov_bound {α lamL A B C : ℝ}
   set ρ := 2 * α / lamL
   have hρ_pos : 0 < ρ := div_pos (by linarith) hlam
   have hρ_lt : ρ < 1 := (div_lt_one hlam).mpr hlt'
-  set gap := (1 - ρ) / 2
-  have hgap_pos : 0 < gap := by linarith
-  set ε₀ := min (1 / 4) (gap / 2)
-  have hε₀_pos : 0 < ε₀ := lt_min (by norm_num) (by linarith)
+  let gap := (1 - ρ) / 2
+  have hgap_pos : 0 < gap := by dsimp only [gap]; linarith
+  let ε₀ := min (1 / 4) (gap / 2)
+  have hε₀_pos : 0 < ε₀ := by dsimp only [ε₀]; exact lt_min (by norm_num) (by linarith)
   obtain ⟨ε, ⟨hε_pos, hε_lt⟩, c, hc_pos, N₁, hN₁⟩ := hH ε₀ hε₀_pos
   have hε_q : ε < 1 / 4 := lt_of_lt_of_le hε_lt (min_le_left _ _)
-  have hε_g : ε < gap / 2 := lt_of_lt_of_le hε_lt (min_le_right _ _)
+  have hε_g : ε < (1 - ρ) / 4 := by
+    have := lt_of_lt_of_le hε_lt (min_le_right _ _)
+    dsimp only [gap] at this
+    linarith
   set η := max (ρ * (1 - ε)) (1 / 2 + (1 / 2) * ρ * (1 - ε))
   have hη_lt : η < 1 - ε := by
     apply max_lt
     · nlinarith
     · have h1 : 1 - ε - (1 / 2 + 1 / 2 * ρ * (1 - ε)) =
           (1 - ρ) / 2 - ε * (1 - ρ / 2) := by ring
-      have h2 : ε * (1 - ρ / 2) < (1 - ρ) / 2 := by
-        simp only [gap] at hε_g
-        nlinarith
+      have h2 : ε * (1 - ρ / 2) < (1 - ρ) / 2 := by nlinarith
       linarith
   have hhalf_le_η : (1 / 2 : ℝ) ≤ η := by
     apply le_trans _ (le_max_right _ _)
@@ -330,10 +329,6 @@ theorem theorem_1_3c_mss_lyapunov_bound {α lamL A B C : ℝ}
   have hNpos : (0 : ℝ) < (N : ℝ) := by exact_mod_cast (by omega : 0 < N)
   have hNge1 : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast (by omega : 1 ≤ N)
   have hineq := hN₁ N hN1
-  change c * (N : ℝ) ^ (1 - ε) ≤
-      A * (N : ℝ) ^ (ρ * (1 - ε)) +
-      B * Real.sqrt ((N : ℝ) * (N : ℝ) ^ (ρ * (1 - ε))) +
-      C * Real.sqrt (N : ℝ) at hineq
   have hrt_mid : Real.sqrt ((N : ℝ) * (N : ℝ) ^ (ρ * (1 - ε))) =
       (N : ℝ) ^ (1 / 2 + (1 / 2) * ρ * (1 - ε)) := by
     rw [Real.sqrt_eq_rpow, Real.mul_rpow hNpos.le (Real.rpow_nonneg hNpos.le _),
