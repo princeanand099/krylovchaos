@@ -33,20 +33,22 @@ lemma singleDepolInner_eq_hs (u v : Fin 6) (X Y : Matrix (Fin 2) (Fin 2) ℂ) :
       hsInner (depolPHalf v * X * depolPHalf u) (depolPHalf v * Y * depolPHalf u) := by
   unfold singleDepolInner hsInner
   rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, depolPHalf_herm, depolPHalf_herm]
-  have h1 : (depolPHalf u * (Xᴴ * depolPHalf v) * (depolPHalf v * Y * depolPHalf u)).trace =
-      ((depolPHalf u * Xᴴ * (depolPHalf v * depolPHalf v) * Y) * depolPHalf u).trace := by
-    simp only [Matrix.mul_assoc]
-  rw [h1, Matrix.trace_mul_comm]
-  have h2 : (depolPHalf u * (depolPHalf u * Xᴴ * (depolPHalf v * depolPHalf v) * Y)).trace =
-      ((depolPHalf u * depolPHalf u) * Xᴴ * (depolPHalf v * depolPHalf v) * Y).trace := by
-    simp only [Matrix.mul_assoc]
-  rw [h2, depolPHalf_sq, depolPHalf_sq]
+  calc (depolP u * Xᴴ * depolP v * Y).trace
+      = (depolPHalf u * (depolPHalf u * Xᴴ * (depolPHalf v * depolPHalf v) * Y)).trace := by
+          rw [← depolPHalf_sq u, ← depolPHalf_sq v]; simp only [Matrix.mul_assoc]
+    _ = ((depolPHalf u * Xᴴ * (depolPHalf v * depolPHalf v) * Y) * depolPHalf u).trace :=
+          Matrix.trace_mul_comm _ _
+    _ = (depolPHalf u * (Xᴴ * depolPHalf v) * (depolPHalf v * Y * depolPHalf u)).trace := by
+          simp only [Matrix.mul_assoc]
 
 lemma singleDepolInner_conj (u v : Fin 6) (X Y : Matrix (Fin 2) (Fin 2) ℂ) :
     singleDepolInner u v Y X = star (singleDepolInner u v X Y) := by
   rw [singleDepolInner_eq_hs, singleDepolInner_eq_hs]
   unfold hsInner
-  rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+  rw [← Matrix.trace_conjTranspose]
+  congr 1
+  symm
+  rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
 
 lemma singleDepolInner_add_right (u v : Fin 6) (X Y Z : Matrix (Fin 2) (Fin 2) ℂ) :
     singleDepolInner u v X (Y + Z) = singleDepolInner u v X Y + singleDepolInner u v X Z := by
@@ -119,9 +121,9 @@ lemma singleDepolInner_self_pos (u v : Fin 6) {X : Matrix (Fin 2) (Fin 2) ℂ} (
   rw [hre]
   have hterm : 0 < ‖M i₀ j₀‖ ^ 2 := sq_pos_of_pos (norm_pos_iff.mpr hij)
   have hle1 : ‖M i₀ j₀‖ ^ 2 ≤ ∑ j : Fin 2, ‖M i₀ j‖ ^ 2 :=
-    Finset.single_le_sum (fun j _ ↦ sq_nonneg _) (Finset.mem_univ j₀)
+    Finset.single_le_sum (f := fun j : Fin 2 ↦ ‖M i₀ j‖ ^ 2) (fun j _ ↦ sq_nonneg _) (Finset.mem_univ j₀)
   have hle2 : ∑ j : Fin 2, ‖M i₀ j‖ ^ 2 ≤ ∑ i : Fin 2, ∑ j : Fin 2, ‖M i j‖ ^ 2 :=
-    Finset.single_le_sum (fun i _ ↦ Finset.sum_nonneg fun j _ ↦ sq_nonneg _) (Finset.mem_univ i₀)
+    Finset.single_le_sum (f := fun i : Fin 2 ↦ ∑ j : Fin 2, ‖M i j‖ ^ 2) (fun i _ ↦ Finset.sum_nonneg fun j _ ↦ sq_nonneg _) (Finset.mem_univ i₀)
   linarith
 
 private lemma pauliMat_trace_mul (a b : Fin 4) :
@@ -190,47 +192,40 @@ private lemma pauliMat_ne_zero (a : Fin 4) : pauliMat a ≠ 0 := by
 
 private lemma singleDepolW1_ne_zero (u v : Fin 6) : singleDepolW1 u v ≠ 0 := by
   intro h0
-  unfold singleDepolW1 singleDepolGS0 at h0
-  set α : ℂ := singleDepolInner u v (singleDepolGS0 u v) (pauliMat 1) *
-    ((Real.sqrt (singleDepolInner u v (pauliMat 0) (pauliMat 0)).re)⁻¹ : ℂ)
-  have hlin : ∑ a : Fin 4, (if a = 0 then -α else if a = 1 then 1 else 0) • pauliMat a = 0 := by
+  let s0 : ℂ := ((Real.sqrt (singleDepolInner u v (pauliMat 0) (pauliMat 0)).re)⁻¹ : ℂ)
+  let a01 : ℂ := singleDepolInner u v (singleDepolGS0 u v) (pauliMat 1)
+  have hgs0 : singleDepolGS0 u v = s0 • pauliMat 0 := rfl
+  have hw1_step : singleDepolW1 u v = pauliMat 1 - a01 • singleDepolGS0 u v := rfl
+  have hw1 : singleDepolW1 u v = (-a01 * s0) • pauliMat 0 + (1 : ℂ) • pauliMat 1 := by
+    rw [hw1_step, hgs0]
+    ext i j; simp only [Matrix.sub_apply, Matrix.add_apply, Matrix.smul_apply, smul_eq_mul]; ring
+  rw [hw1] at h0
+  have hlin : ∑ a : Fin 4,
+      (if a = 0 then (-a01 * s0) else if a = 1 then (1 : ℂ) else 0) • pauliMat a = 0 := by
     rw [Fin.sum_univ_four]
-    simp only [↓reduceIte, Fin.isValue, zero_smul, add_zero, one_smul]
-    have hsm : α • pauliMat 0 =
-        singleDepolInner u v (singleDepolGS0 u v) (pauliMat 1) •
-          (((Real.sqrt (singleDepolInner u v (pauliMat 0) (pauliMat 0)).re)⁻¹ : ℂ) • pauliMat 0) := by
-      simp only [α, smul_smul]
-    rw [neg_smul, hsm]
-    have : -(singleDepolInner u v (singleDepolGS0 u v) (pauliMat 1) •
-        (((Real.sqrt (singleDepolInner u v (pauliMat 0) (pauliMat 0)).re)⁻¹ : ℂ) • pauliMat 0)) +
-        pauliMat 1 = pauliMat 1 -
-        singleDepolInner u v (singleDepolGS0 u v) (pauliMat 1) •
-          (((Real.sqrt (singleDepolInner u v (pauliMat 0) (pauliMat 0)).re)⁻¹ : ℂ) • pauliMat 0) := by
-      abel
-    rw [this]; exact h0
+    simpa [Fin.isValue] using h0
   have h1 := pauliMat_lin_indep _ hlin 1
   simp at h1
 
 private lemma singleDepolW2_ne_zero (u v : Fin 6) : singleDepolW2 u v ≠ 0 := by
   intro h0
-  set s0 : ℂ := ((Real.sqrt (singleDepolInner u v (pauliMat 0) (pauliMat 0)).re)⁻¹ : ℂ)
-  set s1 : ℂ := ((Real.sqrt (singleDepolInner u v (singleDepolW1 u v) (singleDepolW1 u v)).re)⁻¹ : ℂ)
-  set a01 : ℂ := singleDepolInner u v (singleDepolGS0 u v) (pauliMat 1)
-  set a02 : ℂ := singleDepolInner u v (singleDepolGS0 u v) (pauliMat 2)
-  set a12 : ℂ := singleDepolInner u v (singleDepolGS1 u v) (pauliMat 2)
+  let s0 : ℂ := ((Real.sqrt (singleDepolInner u v (pauliMat 0) (pauliMat 0)).re)⁻¹ : ℂ)
+  let s1 : ℂ := ((Real.sqrt (singleDepolInner u v (singleDepolW1 u v) (singleDepolW1 u v)).re)⁻¹ : ℂ)
+  let a01 : ℂ := singleDepolInner u v (singleDepolGS0 u v) (pauliMat 1)
+  let a02 : ℂ := singleDepolInner u v (singleDepolGS0 u v) (pauliMat 2)
+  let a12 : ℂ := singleDepolInner u v (singleDepolGS1 u v) (pauliMat 2)
   have hgs0 : singleDepolGS0 u v = s0 • pauliMat 0 := rfl
-  have hgs1 : singleDepolGS1 u v = s1 • pauliMat 1 - (s1 * a01 * s0) • pauliMat 0 := by
-    unfold singleDepolGS1 singleDepolW1
-    rw [hgs0, smul_sub, smul_smul, smul_smul]
-    congr 1; congr 1; ring
+  have hgs1_step : singleDepolGS1 u v = s1 • (pauliMat 1 - a01 • singleDepolGS0 u v) := rfl
+  have hgs1 : singleDepolGS1 u v = (-(s1 * a01 * s0)) • pauliMat 0 + s1 • pauliMat 1 := by
+    rw [hgs1_step, hgs0]
+    ext i j; simp only [Matrix.sub_apply, Matrix.add_apply, Matrix.smul_apply, smul_eq_mul]; ring
+  have hw2_step : singleDepolW2 u v = pauliMat 2 - a02 • singleDepolGS0 u v - a12 • singleDepolGS1 u v := rfl
   have hw2 : singleDepolW2 u v =
       (-a02 * s0 + a12 * s1 * a01 * s0) • pauliMat 0 +
       (-a12 * s1) • pauliMat 1 +
       (1 : ℂ) • pauliMat 2 := by
-    unfold singleDepolW2
-    rw [hgs0, hgs1]
-    simp only [smul_sub, smul_smul, add_smul, neg_smul, one_smul]
-    ext i j; simp; ring
+    rw [hw2_step, hgs0, hgs1]
+    ext i j; simp only [Matrix.sub_apply, Matrix.add_apply, Matrix.smul_apply, smul_eq_mul]; ring
   rw [hw2] at h0
   have hlin : ∑ a : Fin 4,
       (if a = 0 then (-a02 * s0 + a12 * s1 * a01 * s0)
@@ -246,29 +241,33 @@ private lemma singleDepolW3_ne_zero (u v : Fin 6) : singleDepolW3 u v ≠ 0 := b
   intro h0
   have hspan : ∃ c0 c1 c2 : ℂ,
       singleDepolW3 u v = c0 • pauliMat 0 + c1 • pauliMat 1 + c2 • pauliMat 2 + (1 : ℂ) • pauliMat 3 := by
-    set s0 : ℂ := ((Real.sqrt (singleDepolInner u v (pauliMat 0) (pauliMat 0)).re)⁻¹ : ℂ)
-    set s1 : ℂ := ((Real.sqrt (singleDepolInner u v (singleDepolW1 u v) (singleDepolW1 u v)).re)⁻¹ : ℂ)
-    set s2 : ℂ := ((Real.sqrt (singleDepolInner u v (singleDepolW2 u v) (singleDepolW2 u v)).re)⁻¹ : ℂ)
+    let s0 : ℂ := ((Real.sqrt (singleDepolInner u v (pauliMat 0) (pauliMat 0)).re)⁻¹ : ℂ)
+    let s1 : ℂ := ((Real.sqrt (singleDepolInner u v (singleDepolW1 u v) (singleDepolW1 u v)).re)⁻¹ : ℂ)
+    let s2 : ℂ := ((Real.sqrt (singleDepolInner u v (singleDepolW2 u v) (singleDepolW2 u v)).re)⁻¹ : ℂ)
     have h0' : ∃ a0 : ℂ, singleDepolGS0 u v = a0 • pauliMat 0 := ⟨s0, rfl⟩
     rcases h0' with ⟨a0, ha0⟩
     have h1' : ∃ b0 b1 : ℂ, singleDepolGS1 u v = b0 • pauliMat 0 + b1 • pauliMat 1 := by
-      refine ⟨-(s1 * singleDepolInner u v (singleDepolGS0 u v) (pauliMat 1) * a0), s1, ?_⟩
-      unfold singleDepolGS1 singleDepolW1
-      rw [ha0]; ext i j; simp [s1]; ring
+      let w0 := singleDepolInner u v (singleDepolGS0 u v) (pauliMat 1)
+      refine ⟨-(s1 * w0 * a0), s1, ?_⟩
+      have hstep : singleDepolGS1 u v = s1 • (pauliMat 1 - w0 • singleDepolGS0 u v) := rfl
+      rw [hstep, ha0]
+      ext i j; simp only [Matrix.sub_apply, Matrix.add_apply, Matrix.smul_apply, smul_eq_mul]; ring
     rcases h1' with ⟨b0, b1, hb⟩
     have h2' : ∃ d0 d1 d2 : ℂ, singleDepolGS2 u v = d0 • pauliMat 0 + d1 • pauliMat 1 + d2 • pauliMat 2 := by
       let u0 := singleDepolInner u v (singleDepolGS0 u v) (pauliMat 2)
       let u1 := singleDepolInner u v (singleDepolGS1 u v) (pauliMat 2)
       refine ⟨s2 * (-u0 * a0 - u1 * b0), s2 * (-u1 * b1), s2, ?_⟩
       have hstep : singleDepolGS2 u v = s2 • (pauliMat 2 - u0 • singleDepolGS0 u v - u1 • singleDepolGS1 u v) := rfl
-      rw [hstep, ha0, hb]; ext i j; simp; ring
+      rw [hstep, ha0, hb]
+      ext i j; simp only [Matrix.sub_apply, Matrix.add_apply, Matrix.smul_apply, smul_eq_mul]; ring
     rcases h2' with ⟨d0, d1, d2, hd⟩
     let v0 := singleDepolInner u v (singleDepolGS0 u v) (pauliMat 3)
     let v1 := singleDepolInner u v (singleDepolGS1 u v) (pauliMat 3)
     let v2 := singleDepolInner u v (singleDepolGS2 u v) (pauliMat 3)
     refine ⟨-v0 * a0 - v1 * b0 - v2 * d0, -v1 * b1 - v2 * d1, -v2 * d2, ?_⟩
     have hstep : singleDepolW3 u v = pauliMat 3 - v0 • singleDepolGS0 u v - v1 • singleDepolGS1 u v - v2 • singleDepolGS2 u v := rfl
-    rw [hstep, ha0, hb, hd]; ext i j; simp; ring
+    rw [hstep, ha0, hb, hd]
+    ext i j; simp only [Matrix.sub_apply, Matrix.add_apply, Matrix.smul_apply, smul_eq_mul]; ring
   rcases hspan with ⟨c0, c1, c2, hw3⟩
   rw [hw3] at h0
   have hlin : ∑ a : Fin 4,
@@ -332,7 +331,7 @@ theorem singleDepolBasis_orthonormal (u v : Fin 6) (i j : Fin 4) :
     unfold singleDepolW3
     rw [singleDepolInner_sub_right, singleDepolInner_sub_right, singleDepolInner_sub_right,
       singleDepolInner_smul_right, singleDepolInner_smul_right, singleDepolInner_smul_right,
-      h10, h11, h12, mul_zero, mul_one, mul_zero, sub_zero, sub_self]
+      h10, h11, h12, mul_zero, mul_one, mul_zero, sub_zero, sub_zero, sub_self]
   have h2w3 : singleDepolInner u v (singleDepolGS2 u v) (singleDepolW3 u v) = 0 := by
     unfold singleDepolW3
     rw [singleDepolInner_sub_right, singleDepolInner_sub_right, singleDepolInner_sub_right,
@@ -454,6 +453,7 @@ private lemma kronOp_sum_expand {N : ℕ} (F : Fin N → Fin 4 → Matrix (Fin 2
 /-- Every `A : QubitOp N` expands uniquely in `prodDepolBasis s s'`. -/
 theorem prodDepolBasis_expand {N : ℕ} (s s' : Fin N → Fin 6) (A : QubitOp N) :
     A = ∑ a : Fin N → Fin 4, prodDepolInner s s' (prodDepolBasis s s' a) A • prodDepolBasis s s' a := by
+  -- First show A is in the span of prodDepolBasis s s'
   have hpauli_span : ∀ α : Fin N → Fin 4,
       ∃ c : (Fin N → Fin 4) → ℂ, pauliString α = ∑ a : Fin N → Fin 4, c a • prodDepolBasis s s' a := by
     intro α
@@ -524,13 +524,14 @@ private lemma singleDepolBasis_expand_pauli (u v : Fin 6) (i : Fin 4) :
     refine ⟨fun k ↦ if k = 0 then ((Real.sqrt (singleDepolInner u v (pauliMat 0) (pauliMat 0)).re)⁻¹ : ℂ) else 0, ?_, ?_⟩
     · rw [Fin.sum_univ_four]; simp [singleDepolBasis, singleDepolGS0]
     · intro _ k hk; simp [hk]
-  · set M := singleDepolBasis u v i
+  · -- Any Mat2 expands in pauliMat
+    set M := singleDepolBasis u v i
     refine ⟨fun k ↦ (1 / 2 : ℂ) * (pauliMat k * M).trace, ?_, fun h ↦ (hi0 h).elim⟩
     have hM : M = ∑ k : Fin 4, ((1 / 2 : ℂ) * (pauliMat k * M).trace) • pauliMat k := by
       ext p q
       fin_cases p <;> fin_cases q <;>
         (simp [Fin.sum_univ_four, pauliMat, Matrix.trace, Matrix.diag, Matrix.mul_apply,
-          Fin.sum_univ_two]; try (ring_nf; simp [Complex.I_sq]; try ring))
+          Fin.sum_univ_two]; ring_nf; try simp only [Complex.I_sq]; ring)
     exact hM
 
 lemma prodDepolBasis_mem_singleSiteTrivial {N : ℕ} (s s' : Fin N → Fin 6)

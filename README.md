@@ -1,51 +1,34 @@
-# KrylovChaos — Lean 4 Formalization
+# KrylovChaos — Lean 4 Formalization of *Finite-Temperature Bounds on Operator Growth and Quantum Chaos*
 
-Complete, ground-up Lean 4 (`v4.35.0`) formalization of Prince Anand's manuscript *Finite-Temperature Bounds on Operator Growth and Quantum Chaos* (November 2026), built strictly on standard Mathlib `v4.35.0` with **zero custom axioms**, **zero external literature hypotheses**, **zero `hlim`/`hfatou` hypotheses**, **zero `sorry`s** in the library, and **zero orphan modules**.
+Lean 4 (`v4.35.0`, strictly Mathlib-only, **zero custom axioms**, **zero `sorry`s**) formalization of *Finite-Temperature Bounds on Operator Growth and Quantum Chaos* (`finite_temp_krylov_chaos.tex`).
 
-## Verified Build Status
-- **Verified Green Code Commit**: [`617b0c650662939ced1d1221a98d1c2c484d9fd1`](https://github.com/princeanand099/krylovchaos/commit/617b0c650662939ced1d1221a98d1c2c484d9fd1)
-- **Raw CI Verification Log (`ci-logs`)**: [`4b93efa94f5ae31f3d2742a9d04a97424d596c3b`](https://github.com/princeanand099/krylovchaos/commit/4b93efa94f5ae31f3d2742a9d04a97424d596c3b) — `Build completed successfully (3593 jobs). LAKE_BUILD_EXIT=0`
-- **Library Size**: **30 verified Lean 4 modules** (imported via `KrylovChaos.lean`) + `KrylovChaos/AuditAxioms.lean` (kernel `#print axioms` audit across **53 headline, operator-algebraic, infinite-chain & thermodynamic-limit theorems**) + `comparator/` locked challenge suite.
-- **Axiom Hygiene**: Every theorem depends strictly on a subset of Lean's standard core axioms `[propext, Classical.choice, Quot.sound]`.
+## Verification Status
 
-## Module Architecture (30 Modules, Zero Orphans)
+- **Toolchain**: `leanprover/lean4:v4.35.0` with standard Mathlib (`v4.35.0`).
+- **Modules**: 39 modules under `KrylovChaos/`.
+- **Axioms & `sorry`s**: Zero custom axioms and zero `sorry`s across `KrylovChaos/` (verified via `KrylovChaos/AuditAxioms.lean` using `#print axioms`, depending solely on Lean 4's three standard axioms `propext`, `Classical.choice`, and `Quot.sound`).
+- **Comparator**: `comparator/ChallengeDefs.lean` imports the exact union of Mathlib modules used across `KrylovChaos/` so `lake comparator` synthesizes identical kernel typeclass instances in `Challenge` and `Solution`.
 
-### Foundational & Operator-Algebraic Core
-1. `KrylovChaos.Basic` — Core real-analytic bounds, factorial/binomial estimates, and elementary helpers.
-2. `KrylovChaos.QubitAlgebra` — Concrete $N$-qubit Hilbert space $\mathcal{H} = (\mathbb{C}^2)^{\otimes N}$ (`QubitOp N`), Pauli strings, orthogonality, partial trace $\mathcal{E}_x$, complement $\mathcal{S}_x$, total size $\mathcal{S}$, Eq. (2.8) Hilbert–Schmidt commutator-size identity, and concrete support growth `filtration_comm_step`.
-3. `KrylovChaos.MajoranaAlgebra` — Concrete Jordan–Wigner $2n$-Majorana Clifford algebra (`{V_i, V_j} = 2\delta_{ij}\mathbf{1}`, `{\gamma_i, \gamma_j} = \delta_{ij}\mathbf{1}`), Majorana HS size identity, and full $2n$-Majorana Proposition 2.3 (Eq. 2.10).
-4. `KrylovChaos.ManyBodySetup` — $r$-local Hermitian Hamiltonians (`LocalHamiltonian`), Gibbs data (`GibbsData`), Wightman map $\mathcal{J}_\beta$, Proposition 2.2(3), full $N$-qubit Proposition 2.3 (Eq. 2.9), concrete bimodal state (Eq. 9.1), and double-well matrix.
-5. `KrylovChaos.WightmanIsometry` — Wightman isometry, Liouvillian self-adjointness, and causal-commutator scalar majorants.
-6. `KrylovChaos.CausalNormBounds` — Banach-algebra Hadamard/BCH expansion `exp_conj_eq_tsum_adPow`, causal-sequence expansion `adPow_eq_causal_sum`, and exact operator-norm Lemma 2.1 bounds (Eqs. 2.3–2.5).
+## Concrete Operator-Level Formalization Map
 
-### Krylov Dynamics, Infinite-Chain Limit & Static-to-Dynamical Reduction (Sections 3–4)
-7. `KrylovChaos.CarlemanJacobi` — Ground-up Carleman criterion (`carleman_divergence_of_linear_growth`, `carleman_deficiency_zero`).
-8. `KrylovChaos.KrylovTail` — Finite-chain exponential tail & complexity bounds (Theorem 1.1(a)) and `Filter.limsup` log-rate bound.
-9. `KrylovChaos.JacobiSemigroup` — Self-contained `exp_add_of_commute_real` & `hasDerivAt_exp_smul_real`, self-adjoint tridiagonal `jacobiCLM`, unitary propagator `jacobiUnitary`, exact probability conservation, exact Lanczos ODE Eq. (2.7), ground-up weighted Fatou lemma (`fatou_tsum_le_of_pointwise_tendsto`), and `theorem_1_1a_infinite_fatou_proved`.
-10. `KrylovChaos.InfiniteChainLimit` — **Unconditional Infinite-Chain Limit on $\ell^2(\mathbb{N})$ (Zero `hlim`, Zero `hfatou`)**: complex finite-chain MGF bound (`complex_finite_chain_mgf_bound`), exact finite-truncation difference bound (`jacobiWavefn_trunc_diff_bound`), exponential Cauchy convergence (`jacobiWavefn_coord_cauchy`), existence & pointwise convergence `infiniteKrylovWavefn_tendsto`, probability conservation $\sum_{m=0}^\infty |\varphi_m(t)|^2 = 1$, and unconditional infinite-chain Theorem 1.1(a) (`theorem_1_1a_infinite_unconditional`).
-11. `KrylovChaos.Filtration` — Abstract Krylov filtration, complexity bound Eq. (4.2), and static-to-dynamical reduction.
-12. `KrylovChaos.WightmanProjectors` — Self-adjointness & idempotence of `partialTraceSite`, operator bounds $0 \preceq \mathcal{S} \preceq N\mathbf{1}$, Cauchy–Schwarz for $\mathcal{S}$, operator-level Lemma 4.2 (Eq. 4.3), concrete Wightman orthogonal projectors (`wightmanProj` via `Submodule.starProjection`), and Proposition 4.1 Loewner dominance.
-13. `KrylovChaos.ProductState` — Product-state static bound Proposition 4.3 ($\Lambda_\beta^{\mathrm{MSS}}(s) \le s + m_{\max}\sqrt{Ns}$).
-14. `KrylovChaos.ProductStateDerivation` — Ground-up derivation of `singleSiteRho` roots, unitary invariance of $\mathcal{S}_x$, Wightman Gram–Schmidt orthonormal basis `gsBasis`, and exact derivation of all 16 entries of `singleSiteM` (Eq. 4.6).
+| Manuscript Section / Result | Concrete Lean 4 Module(s) | Key Formalized Theorems |
+|---|---|---|
+| **Section 1 & 3** (Thm. 1.1(a), Lemma 3.1) | `KrylovTail.lean`, `JacobiSemigroup.lean`, `InfiniteChainLimit.lean`, `ConcreteEndToEndWiring.lean` | Finite- and infinite-chain Krylov tail bound Eq. (1.12), Krylov complexity bound Eq. (1.13), explicit `θ₀ = 4` closed-form constant (`theorem_1_1a_infinite_exact_constant`) |
+| **Section 2** (Lemma 2.1, Props. 2.2–2.3, Gibbs & Lanczos) | `GibbsConstruction.lean`, `WightmanIsometry.lean`, `QubitAlgebra.lean` | Concrete spectral functional calculus `hermFunc`, `gibbsRho`, `concreteGibbsData`, `localHamiltonianGibbs`, `[H, ρ_β^{1/4}] = 0`, Heisenberg evolution `heisenbergEvol` + ODE, concrete Wightman Lanczos recursion Eq. (2.6) (`lanczosOp`, `lanczosCoeff`, `lanczos_three_term`, `concreteKrylovComplexity`), `wightmanQ`, `quantumGlauberGen`, `otocI`, `otocCW`, `lambdaMSS` |
+| **Section 4** (Prop. 4.1, Lemma 4.2, Prop. 4.3, Thm. 1.1(b) core) | `OperatorGlauberAndLanczosFiltration.lean`, `ConcreteEndToEndWiring.lean`, `ProductStateMultiSite.lean`, `Filtration.lean` | `matComm_mem_filtration`, `lanczosOp_mem_filtration`, `lanczosTrunc_mem_filtration`, `prop_4_1_concrete_operator`, `lemma_4_2_concrete_operator`, `prop_4_3_concrete_product_state_bound` wired to `mssThermalSize` |
+| **Section 5** (Thm. 1.2(a)–(c), Lemma 5.1) | `Theorem12Concrete.lean`, `SpectralDyck.lean`, `CausalNormBounds.lean`, `CarlemanJacobi.lean`, `VitaliAnalytic.lean` | Concrete operator-level strip-cosh identity Eq. (5.2) `theorem_1_2a_concrete_strip_cosh`, exponential spectral moment bound `theorem_1_2a_concrete_exp_moment`, Dyck-path lower bound `lemma_5_1_path_weight_lower`, Lanczos rate bound `theorem_1_2b_lanczos_rate_bound`, spectral OTOC dominance `theorem_1_2c_otoc_dominance` |
+| **Section 6** (Lemma 6.1, Gibbs–Donsker–Varadhan Eq. 6.9) | `OperatorGlauberAndLanczosFiltration.lean` | Concrete HS commutator identity `hsNormSq_siteSizeOp_eq_comm_avg`, `lemma_6_1_concrete_operator`, quantum relative entropy `quantumRelEntropy`, Klein's inequality `quantumRelEntropy_nonneg`, Gibbs–Donsker–Varadhan variational inequality Eq. (6.9) `gibbs_variational_bound` |
+| **Section 7** (Lemmas 7.1 & 7.3, Thm. 1.3(a), Thm. 1.3(b) `C_W`) | `HighTempConditioning.lean`, `HighTempReversePoincare.lean`, `KoteckyPreiss.lean` | Concrete `depolPHalf`, `lemma_7_3_operator_conditioning`, `lemma_7_3_operator_best_approx`, concrete 4-step Gram–Schmidt `prodDepolBasis`, `lemma_7_3_operator_filtration_identity`, full operator-level **Theorem 1.3(a)** `theorem_1_3a_concrete_operator`, operator-level **Theorem 1.3(b)** `theorem_1_3b_concrete_CW` (`otocCW G A ≤ 54 Re (A | 𝒬^{(β)} A)_β^W`), abstract Kotecký–Preiss convergence `kotecky_preiss_convergence` |
+| **Section 8.2** (Classical Ising & Convex-Mixture Reverse Poincaré, Prop. 8.3) | `ClassicalIsingConcrete.lean` | Concrete `SpinConfig N`, `prodBernoulli`, `p`-biased orthonormal Fourier basis `chiBasis`, `glauberDirichlet`, `degreeFiltrationQ`, `prop_8_3_concrete_convex_mixture_reverse_poincare` (Eq. 8.4) |
+| **Section 9 & Appendix B** (Prop. 9.1(1)–(3), Lemma B.1) | `SpectralSmearingAndDoubleWell.lean`, `BimodalExact.lean` | Concrete `gaussianSmear`, exact spectral weight law `prop_9_1_part1_spectral_density` (Eq. 9.2), sub-Gaussian moments `prop_9_1_part1_subgaussian_moments`, exact bimodal counterexample (`BimodalExact.lean`), concrete `ℤ₂` double-well parity splitting `doubleWell_even_odd_eigenpairs`, Schur complement `schur_complement_eigen_eq`, Neumann-series exponential tunneling suppression `lemma_B_1_barrier_neumann_tunneling` |
+| **Appendix A** (Lemmas A.1–A.3) | `ConcreteCombinatorics.lean` | Self-contained Catalan recurrence `catalanRec_le_four_pow`, `lemma_A_1_concrete_bin_tree_sum`, `lemma_A_1_concrete_exp_bound`, `lemma_A_2_concrete_causal_seq_sum`, `lemma_A_3_concrete_unordered_tree_sum` |
 
-### Spectral Measure, Dyck Paths, Analytic Bounds & Thermodynamic KMS States (Section 5)
-15. `KrylovChaos.VitaliAnalytic` — Ground-up Vitali/Montel power-series & strip uniform convergence.
-16. `KrylovChaos.SpectralDyck` — Dyck-path combinatorics, `shiftDyckPath_injective`, Theorem 1.2(a)–(c), and ground-up OTOC dominance from $V^2 \preceq \|V\|_\infty^2 \mathbf{1}$.
-17. `KrylovChaos.LanczosMoments` — Concrete symmetric tridiagonal `jacobiMat`, exact Dyck-path moment expansion `jacobiMat_moment_eq_dyck_sum`, full summed Lemma 5.1 moment lower bound, and Gamma-integral Meixner `sech` moment lower bound (Eq. 5.5).
-18. `KrylovChaos.SpectralMeasure` — Concrete finite-dimensional Wightman spectral measure (`wightmanWeight`, `bohrFreq`), entire autocorrelation `wightmanAutocorr_entire`, exact matrix-trace Fourier identity Eq. (5.1), exact strip Laplace & `cosh` identities Eq. (5.2), spectral-measure moment upper bound, ground-up Cauchy–Hadamard rate comparison, and end-to-end Theorem 1.2(b) (`theorem_1_2b_end_to_end`).
-19. `KrylovChaos.ThermodynamicKMS` — **Thermodynamic Limit ($N \to \infty$) of Gibbs KMS States**: entire finite-volume KMS correlation functions (`finiteKMS_entire`), exact finite-volume KMS boundary identity $F_{A,B}(t + i\beta) = F_{B,A}(-t)$ (`finiteKMS_boundary_identity`), normalization (`finiteKMS_normalized`), Tychonoff / sequential weak-* compactness on the countable quasi-local Pauli basis `PauliWord := List (Fin 4)` (`thermo_limit_state_exists`), and thermodynamic-limit KMS boundary transfer (`thermo_limit_kms_boundary_transfer`).
+## Explicitly Open Sub-Gaps
 
-### High-Temperature, 1D, Classical Ising & Structural Necessity (Sections 6–9, Appendices)
-20. `KrylovChaos.KoteckyPreiss` — Ground-up Kotecký–Preiss cluster expansion convergence & logarithmic bound.
-21. `KrylovChaos.ArakiOneDim` — Ground-up 1D Araki boundary counting & entire expansion.
-22. `KrylovChaos.GlauberDecoupling` — Glauber decoupling and Proposition 6.4.
-23. `KrylovChaos.DepolarizedFrame` — Depolarized frame, Lemma 7.1, and Theorem 1.3(a)–(c) (reverse Poincaré & MSS Lyapunov bound).
-24. `KrylovChaos.PolymerTrees` — Polymer tree expansion and Appendix Lemma A.3 / Lemma B.1.
-25. `KrylovChaos.ClassicalIsing` — Hubbard–Stratonovich identity (Lemma 8.2) and product-Bernoulli reverse Poincaré (Proposition 8.3).
-26. `KrylovChaos.StructuralNecessity` — Structural necessity counterexamples (Proposition 9.1, double-well tunneling limit).
-27. `KrylovChaos.BimodalExact` — Exact `QubitOp N` operator-level proof of Proposition 9.1(2) / Eq. (9.2) (`prop_9_1_bimodal_operator_exact_size`).
+See [`EXTERNAL-AXIOMS.md`](EXTERNAL-AXIOMS.md) for a transparent, itemized list of the remaining deep analytic sub-steps that are explicitly marked as open rather than hidden behind scalar-wrapper hypotheses (specifically: the concrete non-commutative Dyson/polymer operator expansion `Q_γ` for Lemma 7.2, the imaginary-time shifted commutator bound `I(A) ≤ 216 (A | 𝒬^{(β)} A)_β^W` and full `{H_N}` derivation of Theorem 1.3(c), the trace cluster expansion of Lemma 6.3 / shell expansion of Prop. 6.4(2) / geometric Lieb–Robinson of Cor. 6.5, and the non-commutative 1D Araki transfer-operator expansional).
 
-### Unification, End-to-End Instantiations & Verification
-28. `KrylovChaos.OperatorBridges` — Cross-module bridges, `theorem_1_1a_limsup_rate_bound`, Corollary 6.5 (`corollary_6_5_krylov_lieb_robinson`, Eq. 6.11), global $N$-qubit 2-design frame, Lemma 7.1 dual trace bound, and Lemma 8.2 multi-edge HS bound.
-29. `KrylovChaos.EndToEndTheorems` — Concrete `QubitOpCLM N` (`‖·‖_∞` operator norm with `NormOneClass`), `qubitLocalInteractionDecomp` instantiating Lemma 2.1 Eqs. (2.4)–(2.5) directly on `QubitOp N`, and end-to-end Theorem 1.1(b) (`theorem_1_1b_end_to_end`) invoking `lemma_4_2_operator_thermal_size_truncation` directly.
-30. `KrylovChaos.SanityChecks` — Non-vacuity and type-level sanity checks.
+## Building Locally
+
+```bash
+lake build
+```

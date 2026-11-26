@@ -192,7 +192,7 @@ theorem quantumRelEntropy_nonneg {N : ℕ} {ρ σ : QubitOp N}
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * (hρ.eigenvalues i * Real.log (hσ.eigenvalues j))) -
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * hρ.eigenvalues i) +
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * hσ.eigenvalues j) := by
-      simp_rw [← Finset.sum_add_distrib, ← Finset.sum_sub_distrib]
+      simp_rw [← Finset.sum_add_distrib, ← Finset.sum_sub_distrib, ← Finset.sum_add_distrib]
       apply Finset.sum_congr rfl; intro i _
       apply Finset.sum_congr rfl; intro j _; ring
     rw [hsplit, ← h1, h2, h3]; ring
@@ -277,7 +277,7 @@ theorem gibbsRelEntropy_nonneg {N : ℕ} {ρ H : QubitOp N}
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * (hρ.eigenvalues i * Real.log (gibbsPartitionFn hH β))) -
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * hρ.eigenvalues i) +
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * μ j) := by
-      simp_rw [← Finset.sum_add_distrib, ← Finset.sum_sub_distrib]
+      simp_rw [← Finset.sum_add_distrib, ← Finset.sum_sub_distrib, ← Finset.sum_add_distrib]
       apply Finset.sum_congr rfl; intro i _
       apply Finset.sum_congr rfl; intro j _; ring
     rw [hsplit, ← h1, ← h4, h2, h3]; ring
@@ -309,8 +309,8 @@ theorem gibbs_variational_bound {N : ℕ} {ρ H X : QubitOp N}
   have hK_eq : (((-1 : ℝ) : ℂ) • K) = ((β : ℝ) : ℂ) • H - X := by
     simp only [K, smul_add, smul_smul]; ext i j; simp; ring
   unfold gibbsRelEntropy at hnn ⊢
-  rw [hK_eq, add_sub_assoc, Matrix.mul_add, Matrix.mul_sub, Matrix.trace_add, Matrix.trace_sub,
-    Complex.add_re, Complex.sub_re] at hnn
+  rw [hK_eq, ← add_sub_assoc, Matrix.mul_sub, Matrix.mul_add, Matrix.trace_sub, Matrix.trace_add,
+    Complex.sub_re, Complex.add_re] at hnn
   rw [Matrix.mul_add, Matrix.trace_add, Complex.add_re, hlog_div]
   linarith
 
@@ -325,23 +325,59 @@ theorem hsNormSq_siteSizeOp_eq_comm_avg {N : ℕ} (x : Fin N) (M : QubitOp N) :
       (1 / 8 : ℝ) * ∑ α : Fin 3, hsNormSq (matComm M (pauliSite x α.succ)) := by
   have hp0 : pauliMat 0 = (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
     ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat]
+  -- Expand M in the orthogonal Pauli string basis
+  set c : (Fin N → Fin 4) → ℂ := fun a ↦ (1 / (2 : ℂ) ^ N) * (pauliString a * M).trace
+  have hM : M = ∑ a : Fin N → Fin 4, c a • pauliString a := pauli_expansion_concrete M
+  -- On each Pauli string P_a, siteSizeOp x P_a = if a x ≠ 0 then P_a else 0
+  have hsite_pauli : ∀ a : Fin N → Fin 4,
+      siteSizeOp x (pauliString a) = if a x ≠ 0 then pauliString a else 0 := by
+    intro a
+    unfold siteSizeOp partialTraceSite pauliString
+    have hconj : ∀ k : Fin 4,
+        pauliSite x k * kronOp (fun y ↦ pauliMat (a y)) * pauliSite x k =
+        kronOp (fun y ↦ if y = x then pauliMat k * pauliMat (a x) * pauliMat k else pauliMat (a y)) := by
+      intro k; unfold pauliSite pauliString; rw [kronOp_mul, kronOp_mul]; congr 1; funext y
+      by_cases hy : y = x
+      · subst hy; simp
+      · simp [hy, hp0]
+    simp_rw [hconj]
+    ext p q
+    simp only [Matrix.sub_apply, Matrix.smul_apply, Matrix.sum_apply, kronOp, Matrix.of_apply, smul_eq_mul]
+    have hsplit : ∀ k : Fin 4,
+        (∏ y : Fin N, (if y = x then pauliMat k * pauliMat (a x) * pauliMat k else pauliMat (a y)) (p y) (q y)) =
+        (pauliMat k * pauliMat (a x) * pauliMat k) (p x) (q x) *
+          ∏ y ∈ Finset.univ.erase x, pauliMat (a y) (p y) (q y) := by
+      intro k; rw [← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ x)]
+      congr 1; · simp
+      · apply Finset.prod_congr rfl; intro y hy; simp [(Finset.mem_erase.mp hy).1]
+    simp_rw [hsplit, ← Finset.sum_mul, ← mul_assoc]
+    have htw : (1 / 4 : ℂ) * (∑ k : Fin 4, (pauliMat k * pauliMat (a x) * pauliMat k) (p x) (q x)) =
+        if a x = 0 then pauliMat (a x) (p x) (q x) else 0 := by
+      generalize a x = u; generalize p x = i1; generalize q x = j1
+      fin_cases u <;> fin_cases i1 <;> fin_cases j1 <;>
+        (simp [Fin.sum_univ_four, pauliMat, Matrix.mul_apply, Fin.sum_univ_two]; try norm_num)
+    rw [htw]
+    by_cases hax : a x = 0
+    · rw [if_pos hax, if_neg (not_not.mpr hax), Matrix.zero_apply]
+      rw [← Finset.mul_prod_erase Finset.univ (fun y ↦ pauliMat (a y) (p y) (q y)) (Finset.mem_univ x), sub_self]
+    · rw [if_neg hax, if_pos hax, zero_mul, sub_zero]
+  -- Also compute HS norm of any commutator [M, P] via Pauli unitarity:
+  -- ‖[M, P]‖_HS² = 2 ‖M‖_HS² - 2 Re Tr(Mᴴ P M P)
   have hcomm_hs : ∀ α : Fin 3,
       hsNormSq (matComm M (pauliSite x α.succ)) =
       2 * hsNormSq M - 2 * (Matrix.trace (Mᴴ * pauliSite x α.succ * M * pauliSite x α.succ)).re := by
     intro α
-    let P := pauliSite x α.succ
+    set P := pauliSite x α.succ
     have hPh : Pᴴ = P := by
-      dsimp only [P]; unfold pauliSite pauliString; rw [kronOp_conjTranspose]; congr 1; funext y
+      unfold P pauliSite pauliString; rw [kronOp_conjTranspose]; congr 1; funext y
       by_cases hy : y = x
       · subst hy; simp; exact pauliMat_herm α.succ
       · simp [hy]; exact pauliMat_herm 0
     have hPsq : P * P = 1 := by
-      dsimp only [P]; unfold pauliSite pauliString; rw [kronOp_mul]
-      have h1 : (fun y : Fin N ↦ (if y = x then pauliMat α.succ else pauliMat 0) *
-          (if y = x then pauliMat α.succ else pauliMat 0)) = fun _ ↦ 1 := by
-        funext y; by_cases hy : y = x
-        · subst hy; simp; exact pauliMat_sq α.succ
-        · simp [hy]; exact pauliMat_sq 0
+      unfold P pauliSite pauliString; rw [kronOp_mul]
+      have h1 : (fun y : Fin N ↦ pauliMat (Function.update (fun _ ↦ 0) x α.succ y) *
+          pauliMat (Function.update (fun _ ↦ 0) x α.succ y)) = fun _ ↦ 1 := by
+        funext y; exact pauliMat_sq _
       rw [h1, kronOp_one]
     unfold hsNormSq hsInner matComm
     rw [Matrix.conjTranspose_sub, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hPh]
@@ -359,19 +395,22 @@ theorem hsNormSq_siteSizeOp_eq_comm_avg {N : ℕ} (x : Fin N) (M : QubitOp N) :
         _ = (Mᴴ * P * M * P).trace := Matrix.trace_mul_comm _ _
     have ht4 : (Mᴴ * P * (M * P)).trace = (Mᴴ * P * M * P).trace := by simp only [Matrix.mul_assoc]
     rw [ht1, ht2, ht3, ht4]; ring
+  -- Now sum over α : Fin 3: ∑_{α=1}^3 P_α M P_α = 4 partialTraceSite x M - M!
   have hsum_twirl : (∑ α : Fin 3, pauliSite x α.succ * M * pauliSite x α.succ) =
       (4 : ℂ) • partialTraceSite x M - M := by
     unfold partialTraceSite
     have h4 : (4 : ℂ) • ((1 / 4 : ℂ) • ∑ k : Fin 4, pauliSite x k * M * pauliSite x k) =
         ∑ k : Fin 4, pauliSite x k * M * pauliSite x k := by
       rw [smul_smul]; norm_num
-    rw [h4, Fin.sum_univ_succ]
     have h0 : pauliSite x 0 = 1 := by
       unfold pauliSite pauliString
-      have : (fun y : Fin N ↦ if y = x then pauliMat 0 else pauliMat 0) = fun _ ↦ 1 := by
-        funext y; simp [hp0]
+      have : (fun y : Fin N ↦ pauliMat (Function.update (fun _ ↦ 0) x 0 y)) = fun _ ↦ 1 := by
+        funext y; by_cases hy : y = x <;> simp [hy, hp0]
       rw [this, kronOp_one]
-    rw [h0, Matrix.one_mul, Matrix.mul_one, add_sub_cancel_left]
+    rw [h4]
+    symm
+    rw [Fin.sum_univ_succ, h0, Matrix.one_mul, Matrix.mul_one, add_sub_cancel_left]
+  -- And hsNormSq (siteSizeOp x M) = hsNormSq M - Re Tr(Mᴴ * partialTraceSite x M)
   have hsite_hs : hsNormSq (siteSizeOp x M) =
       hsNormSq M - (Matrix.trace (Mᴴ * partialTraceSite x M)).re := by
     have hidem := siteSizeOp_idem x M
@@ -417,16 +456,16 @@ private lemma pauliMat_mul_pauliMat_exists (a b : Fin 4) :
       (a = 0 → b = 0 → d = 0) := by
   fin_cases a <;> fin_cases b
   all_goals first
-    | (refine ⟨1, 0, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I])
-    | (refine ⟨1, 1, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I])
-    | (refine ⟨1, 2, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I])
-    | (refine ⟨1, 3, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I])
-    | (refine ⟨Complex.I, 1, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I])
-    | (refine ⟨Complex.I, 2, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I])
-    | (refine ⟨Complex.I, 3, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I])
-    | (refine ⟨-Complex.I, 1, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I])
-    | (refine ⟨-Complex.I, 2, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I])
-    | (refine ⟨-Complex.I, 3, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I])
+    | (refine ⟨1, 0, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I]; done)
+    | (refine ⟨1, 1, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I]; done)
+    | (refine ⟨1, 2, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I]; done)
+    | (refine ⟨1, 3, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I]; done)
+    | (refine ⟨Complex.I, 1, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I]; done)
+    | (refine ⟨Complex.I, 2, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I]; done)
+    | (refine ⟨Complex.I, 3, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I]; done)
+    | (refine ⟨-Complex.I, 1, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I]; done)
+    | (refine ⟨-Complex.I, 2, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I]; done)
+    | (refine ⟨-Complex.I, 3, ?_, by simp⟩; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I]; done)
 
 private lemma pauliString_mul_mem_filtration {N : ℕ} (a b : Fin N → Fin 4) :
     ∃ (c : ℂ) (d : Fin N → Fin 4), pauliString a * pauliString b = c • pauliString d ∧
@@ -525,7 +564,7 @@ theorem matComm_mem_filtration {N r k : ℕ} (hr : 1 ≤ r)
       unfold matComm; rw [Matrix.smul_mul, Matrix.mul_smul, smul_sub]
     rw [hlin]; exact Submodule.smul_mem _ _ hX
 
-lemma filtrationSubmodule_mono {N k₁ k₂ : ℕ} (h : k₁ ≤ k₂) :
+private lemma filtrationSubmodule_le {N k₁ k₂ : ℕ} (h : k₁ ≤ k₂) :
     filtrationSubmodule N k₁ ≤ filtrationSubmodule N k₂ := by
   apply Submodule.span_le.mpr
   rintro _ ⟨a, ha, rfl⟩
@@ -556,9 +595,9 @@ theorem lanczosOp_mem_filtration {N r s₀ : ℕ} (hr : 1 ≤ r)
       have heq : s₀ + n * (r - 1) + (r - 1) = s₀ + (n + 1) * (r - 1) := by ring
       rwa [heq] at h1
     have hprev_mono : (lanczosState G H O n).2.1 ∈ filtrationSubmodule N (s₀ + (n + 1) * (r - 1)) :=
-      filtrationSubmodule_mono (by nlinarith) hOprev
+      filtrationSubmodule_le (by nlinarith) hOprev
     have hOn_mono : lanczosOp G H O n ∈ filtrationSubmodule N (s₀ + (n + 1) * (r - 1)) :=
-      filtrationSubmodule_mono (by nlinarith) hOn
+      filtrationSubmodule_le (by nlinarith) hOn
     have hAnext : matComm H (lanczosOp G H O n) -
         ((lanczosCoeff G H O n : ℝ) : ℂ) • (lanczosState G H O n).2.1 ∈
         filtrationSubmodule N (s₀ + (n + 1) * (r - 1)) :=
@@ -590,7 +629,7 @@ theorem lanczosTrunc_mem_filtration {N r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
   have hnM : n ≤ M - 1 := by have := Finset.mem_range.mp hn; omega
   apply Submodule.smul_mem
   have hmem := (lanczosOp_mem_filtration hr (concreteGibbsData hH β) hHf hOf n).1
-  exact filtrationSubmodule_mono (Nat.add_le_add_left (Nat.mul_le_mul_right _ hnM) s₀) hmem
+  exact filtrationSubmodule_le (Nat.add_le_add_left (Nat.mul_le_mul_right _ hnM) s₀) hmem
 
 end ConcreteLanczosFiltration
 

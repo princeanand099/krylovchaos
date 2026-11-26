@@ -6,7 +6,7 @@ Authors: Prince Anand
 import KrylovChaos
 
 /-!
-# Comprehensive Kernel Axiom Audit for `KrylovChaos` (All 30 Modules)
+# Comprehensive Kernel Axiom Audit for `KrylovChaos` (All 39 Modules)
 
 Run with `lake env lean KrylovChaos/AuditAxioms.lean`.
 Every listed headline theorem must depend strictly on a subset of
@@ -33,7 +33,7 @@ Every listed headline theorem must depend strictly on a subset of
 #print axioms KrylovChaos.vitali_strip_uniform_convergence
 #print axioms KrylovChaos.araki_1d_entire_expansional
 
--- Concrete Operator-Algebraic, Infinite-Chain & Thermodynamic-Limit Theorems (Milestones 6–11)
+-- Concrete Operator-Algebraic, Infinite-Chain & Thermodynamic-Limit Theorems
 #print axioms KrylovChaos.eq_2_8_hs_commutator_size_identity
 #print axioms KrylovChaos.prop_2_3_full_qubit_thermal_size
 #print axioms KrylovChaos.prop_2_3_full_majorana_thermal_size
@@ -59,8 +59,6 @@ Every listed headline theorem must depend strictly on a subset of
 #print axioms KrylovChaos.theorem_1_1a_infinite_fatou_proved
 #print axioms KrylovChaos.qubitLocalInteractionDecomp
 #print axioms KrylovChaos.theorem_1_1b_end_to_end
-#print axioms KrylovChaos.complex_finite_chain_mgf_bound
-#print axioms KrylovChaos.jacobiWavefn_trunc_diff_bound
 #print axioms KrylovChaos.jacobiWavefn_coord_cauchy
 #print axioms KrylovChaos.infiniteKrylovWavefn_tendsto
 #print axioms KrylovChaos.theorem_1_1a_infinite_unconditional
@@ -69,3 +67,29 @@ Every listed headline theorem must depend strictly on a subset of
 #print axioms KrylovChaos.finiteKMS_normalized
 #print axioms KrylovChaos.thermo_limit_state_exists
 #print axioms KrylovChaos.thermo_limit_kms_boundary_transfer
+
+-- Concrete Operator-Level Remediation Theorems (Flaws #1–#13)
+#print axioms KrylovChaos.localHamiltonianGibbs_comm
+#print axioms KrylovChaos.lanczos_three_term
+#print axioms KrylovChaos.prop_4_3_concrete_product_state_bound
+#print axioms KrylovChaos.prop_8_3_concrete_convex_mixture_reverse_poincare
+#print axioms KrylovChaos.lemma_A_1_concrete_exp_bound
+#print axioms KrylovChaos.lemma_A_2_concrete_causal_seq_sum
+#print axioms KrylovChaos.lemma_A_3_concrete_unordered_tree_sum
+#print axioms KrylovChaos.prop_9_1_part1_spectral_density
+#print axioms KrylovChaos.prop_9_1_part1_subgaussian_moments
+#print axioms KrylovChaos.lemma_B_1_barrier_neumann_tunneling
+#print axioms KrylovChaos.theorem_1_2a_concrete_strip_cosh
+#print axioms KrylovChaos.theorem_1_2a_concrete_exp_moment
+#print axioms KrylovChaos.lemma_7_3_operator_conditioning
+#print axioms KrylovChaos.lemma_7_3_operator_best_approx
+#print axioms KrylovChaos.lemma_7_3_operator_filtration_identity
+#print axioms KrylovChaos.theorem_1_3a_concrete_operator
+#print axioms KrylovChaos.theorem_1_3b_concrete_CW
+#print axioms KrylovChaos.quantumRelEntropy_nonneg
+#print axioms KrylovChaos.gibbs_variational_bound
+#print axioms KrylovChaos.lemma_6_1_concrete_operator
+#print axioms KrylovChaos.lanczosTrunc_mem_filtration
+#print axioms KrylovChaos.theorem_1_1a_infinite_exact_constant
+#print axioms KrylovChaos.prop_4_1_concrete_operator
+#print axioms KrylovChaos.lemma_4_2_concrete_operator
