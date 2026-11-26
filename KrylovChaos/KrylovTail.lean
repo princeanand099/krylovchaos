@@ -474,7 +474,7 @@ theorem lemma_3_1_finite_chain_mgf {Nmax : ℕ} {α γ θ₀ : ℝ}
       (fun s hs ↦ hH_deriv s hs.1.le)
     rw [hH0, sub_zero, sub_zero] at hslope
     have hmul : H t = t * H' c := by
-      have := (eq_div_iff htpos.ne').mp hslope.symm
+      have := (eq_div_iff htpos.ne').mp hslope
       linarith
     have hc_le := hH'_nonpos c hc0.le
     nlinarith

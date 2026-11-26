@@ -141,7 +141,7 @@ theorem sinh_le_mul_cosh {x : ℝ} (hx : 0 ≤ x) :
     nlinarith
   have hfx : 0 ≤ f x - f 0 := by
     rw [sub_zero] at hslope
-    have := (eq_div_iff hxpos.ne').mp hslope.symm
+    have := (eq_div_iff hxpos.ne').mp hslope
     nlinarith
   have hf0 : f 0 = 0 := by simp [f]
   rw [hf0, sub_zero] at hfx
