@@ -7,9 +7,11 @@ import KrylovChaos.Basic
 import KrylovChaos.QubitAlgebra
 import KrylovChaos.WightmanIsometry
 import KrylovChaos.ManyBodySetup
+import KrylovChaos.MajoranaAlgebra
 import KrylovChaos.KrylovTail
 import KrylovChaos.Filtration
 import KrylovChaos.ProductState
+import KrylovChaos.ProductStateDerivation
 import KrylovChaos.SpectralDyck
 import KrylovChaos.GlauberDecoupling
 import KrylovChaos.DepolarizedFrame
