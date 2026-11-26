@@ -55,6 +55,7 @@ private lemma eigU_star_mul {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) :
 lemma gaussianSmear_zero {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (O : QubitOp N) :
     gaussianSmear hH 0 O = O := by
   unfold gaussianSmear
+  dsimp only
   set U : QubitOp N := (hH.eigenvectorUnitary : QubitOp N)
   have hmat : Matrix.of (fun a b : QubitIdx N ↦
       ((Real.exp (-((0 : ℝ) ^ 2 / 2) * (hH.eigenvalues a - hH.eigenvalues b) ^ 2) : ℝ) : ℂ) *
@@ -110,9 +111,7 @@ theorem prop_9_1_wightman_norm_eq_spectral_sum {N : ℕ} {H : QubitOp N} (hH : H
     have hsc : ((Real.sqrt (gibbsPartitionFn hH β))⁻¹ : ℂ) *
         ((Real.sqrt (gibbsPartitionFn hH β))⁻¹ : ℂ) = ((gibbsPartitionFn hH β)⁻¹ : ℂ) := by
       rw [← mul_inv, ← Complex.ofReal_mul, Real.mul_self_sqrt hZ.le]
-    rw [← mul_assoc, hsc]
-    congr 1
-    exact trace_conj_diag_pair U D O
+    rw [← mul_assoc, hsc, trace_conj_diag_pair U D O]
   unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner concreteGibbsData
   dsimp only
   rw [htr, Complex.re_ofReal_mul]
@@ -153,6 +152,7 @@ theorem prop_9_1_part1_spectral_density {N : ℕ} {H : QubitOp N} (hH : H.IsHerm
       Real.exp (-(σ ^ 2) * (hH.eigenvalues a - hH.eigenvalues b) ^ 2) *
         wightmanSpectralWeight hH β O a b := by
   unfold wightmanSpectralWeight gaussianSmear
+  dsimp only
   set U : QubitOp N := (hH.eigenvectorUnitary : QubitOp N)
   set M : QubitOp N := Matrix.of (fun p q : QubitIdx N ↦
     ((Real.exp (-(σ ^ 2 / 2) * (hH.eigenvalues p - hH.eigenvalues q) ^ 2) : ℝ) : ℂ) *
@@ -184,7 +184,8 @@ private lemma rpow_mul_exp_neg_le (n : ℕ) (hn : 1 ≤ n) {x : ℝ} (hx : 0 ≤
   rw [hcancel, Real.exp_zero, div_le_div_iff₀ (pow_pos hn_pos n) (Real.exp_pos _)] at hmul
   have he : Real.exp (n : ℝ) = (Real.exp 1) ^ n := by
     rw [← Real.exp_nat_mul, mul_one]
-  rw [he, div_pow, le_div_iff₀ (pow_pos (Real.exp_pos 1) n)]
+  rw [he] at hmul
+  rw [div_pow, le_div_iff₀ (pow_pos (Real.exp_pos 1) n)]
   linarith
 
 /-- **Proposition 9.1(1) — Sub-Gaussian Spectral Moment Bound**:
@@ -251,14 +252,16 @@ theorem doubleWell_even_odd_eigenpairs {n : ℕ} (H_L V : Matrix (Fin n) (Fin n)
   unfold doubleWellBlock
   constructor
   · rw [Matrix.fromBlocks_mulVec]
+    simp only [Sum.elim_comp_inl, Sum.elim_comp_inr]
     have h1 : H_L *ᵥ u + V *ᵥ u = E_plus • u := by rw [← Matrix.add_mulVec]; exact hplus
     rw [h1]
     ext x; cases x <;> simp
   · rw [Matrix.fromBlocks_mulVec]
+    simp only [Sum.elim_comp_inl, Sum.elim_comp_inr]
     have h1 : H_L *ᵥ u + V *ᵥ (-u) = E_minus • u := by
       rw [Matrix.mulVec_neg, ← sub_eq_add_neg, ← Matrix.sub_mulVec]; exact hminus
     have h2 : V *ᵥ u + H_L *ᵥ (-u) = -(E_minus • u) := by
-      rw [Matrix.mulVec_neg, ← neg_sub, ← Matrix.sub_mulVec, hminus]
+      rw [Matrix.mulVec_neg, ← sub_eq_add_neg, ← neg_sub (H_L *ᵥ u), ← Matrix.sub_mulVec, hminus]
     rw [h1, h2]
     ext x; cases x <;> simp
 
@@ -419,7 +422,8 @@ theorem lemma_B_1_barrier_neumann_tunneling (L : ℕ) {E_B t_hop : ℝ}
     · rw [if_pos hLk, abs_mul, abs_of_nonneg (pow_nonneg (inv_nonneg.mpr hE_pos.le) _)]
       have hle_sum : |(barrierHoppingMatrix L t_hop ^ k) ⟨0, Nat.zero_lt_succ L⟩ ⟨L, Nat.lt_succ_self L⟩| ≤
           ∑ j : Fin (L + 1), |(barrierHoppingMatrix L t_hop ^ k) ⟨0, Nat.zero_lt_succ L⟩ j| :=
-        Finset.single_le_sum (fun _ _ ↦ abs_nonneg _) (Finset.mem_univ _)
+        Finset.single_le_sum (f := fun j ↦ |(barrierHoppingMatrix L t_hop ^ k) ⟨0, Nat.zero_lt_succ L⟩ j|)
+          (fun _ _ ↦ abs_nonneg _) (Finset.mem_univ _)
       have hrow := barrierHoppingMatrix_pow_row_sum_le L t_hop k ⟨0, Nat.zero_lt_succ L⟩
       have hpow_eq : (E_B⁻¹) ^ (k + 1) * (2 * |t_hop|) ^ k = (1 / E_B) * q ^ k := by
         simp only [q, div_pow, pow_succ, one_div, inv_pow]; ring

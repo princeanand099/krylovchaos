@@ -15,6 +15,7 @@ import KrylovChaos.ConcreteCombinatorics
 import KrylovChaos.HighTempConditioning
 import KrylovChaos.HighTempReversePoincare
 import KrylovChaos.OperatorGlauberAndLanczosFiltration
+import KrylovChaos.ConcreteEndToEndWiring
 import KrylovChaos.CarlemanJacobi
 import KrylovChaos.KoteckyPreiss
 import KrylovChaos.ClassicalIsing
