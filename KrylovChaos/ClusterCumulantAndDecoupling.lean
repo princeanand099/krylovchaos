@@ -788,7 +788,7 @@ theorem prop_6_4_2_concrete_entropic_decoupling {N : ℕ} {ρ H X : QubitOp N}
         conj_unitary_diag_eq (hermFunc_id hρ).symm
       have hent := congrFun (congrFun (hD.symm.trans hW_eq) i) i
       simp only [Matrix.diagonal_apply_eq, Matrix.mul_apply, Matrix.diagonal_apply,
-        mul_ite, mul_zero, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte,
+        mul_ite, mul_zero, Finset.sum_ite_eq, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte,
         Matrix.conjTranspose_apply] at hent
       have hre := congrArg Complex.re hent
       rw [Complex.ofReal_re, Complex.re_sum] at hre
