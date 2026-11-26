@@ -102,47 +102,61 @@ lemma pauliString_comm_zero_of_disjoint {N : ℕ} {U₁ U₂ : Finset (Fin N)}
       rw [hbx]; simp [pauliMat]
   rw [heq, sub_self]
 
+private def pauliMulIdxE : Fin 4 → Fin 4 → Fin 4
+  | 0, β => β
+  | α, 0 => α
+  | 1, 1 => 0
+  | 2, 2 => 0
+  | 3, 3 => 0
+  | 1, 2 => 3
+  | 2, 1 => 3
+  | 2, 3 => 1
+  | 3, 2 => 1
+  | 3, 1 => 2
+  | 1, 3 => 2
+  | _, _ => 0
+
+private def pauliMulPhaseE : Fin 4 → Fin 4 → ℂ
+  | 1, 2 => Complex.I
+  | 2, 3 => Complex.I
+  | 3, 1 => Complex.I
+  | 2, 1 => -Complex.I
+  | 3, 2 => -Complex.I
+  | 1, 3 => -Complex.I
+  | _, _ => 1
+
+private lemma pauliMat_mul_eqE (α β : Fin 4) :
+    pauliMat α * pauliMat β = pauliMulPhaseE α β • pauliMat (pauliMulIdxE α β) := by
+  fin_cases α <;> fin_cases β <;>
+    ext i j <;> fin_cases i <;> fin_cases j <;>
+    simp [pauliMat, pauliMulIdxE, pauliMulPhaseE, Matrix.mul_apply, Fin.sum_univ_two,
+      Complex.I_mul_I]
+
 /-- Product of two Pauli strings supported on `U₁` and `U₂` lies in `supportedSubmodule N (U₂ ∪ U₁)`. -/
 lemma pauliString_mul_mem_union {N : ℕ} {U₁ U₂ : Finset (Fin N)}
     {a b : Fin N → Fin 4}
     (ha : ∀ x, a x ≠ 0 → x ∈ U₁) (hb : ∀ x, b x ≠ 0 → x ∈ U₂) :
     pauliString a * pauliString b ∈ supportedSubmodule N (U₂ ∪ U₁) := by
-  -- Site-by-site Pauli multiplication: `pauliMat α * pauliMat β = c • pauliMat γ`
-  have hsite : ∀ x : Fin N, ∃ (c : ℂ) (γ : Fin 4),
-      pauliMat (a x) * pauliMat (b x) = c • pauliMat γ ∧
-      (γ ≠ 0 → x ∈ U₂ ∪ U₁) := by
-    intro x
+  have hsupp : ∀ x : Fin N, pauliMulIdxE (a x) (b x) ≠ 0 → x ∈ U₂ ∪ U₁ := by
+    intro x hne
     by_cases hax : a x = 0
-    · refine ⟨1, b x, by rw [hax]; simp [pauliMat], fun hne ↦ Finset.mem_union_left _ (hb x hne)⟩
-    · by_cases hbx : b x = 0
-      · refine ⟨1, a x, by rw [hbx]; simp [pauliMat], fun hne ↦ Finset.mem_union_right _ (ha x hne)⟩
-      · have hx : x ∈ U₂ ∪ U₁ := Finset.mem_union_right _ (ha x hax)
-        -- Both `a x` and `b x` are in `{1, 2, 3}`
-        generalize a x = α; generalize b x = β
-        fin_cases α <;> fin_cases β
-        all_goals
-          first
-          | exact ⟨1, 0, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I], fun _ ↦ hx⟩
-          | exact ⟨1, 1, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I], fun _ ↦ hx⟩
-          | exact ⟨1, 2, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I], fun _ ↦ hx⟩
-          | exact ⟨1, 3, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I], fun _ ↦ hx⟩
-          | exact ⟨Complex.I, 3, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I], fun _ ↦ hx⟩
-          | exact ⟨-Complex.I, 3, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I], fun _ ↦ hx⟩
-          | exact ⟨Complex.I, 1, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I], fun _ ↦ hx⟩
-          | exact ⟨-Complex.I, 1, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I], fun _ ↦ hx⟩
-          | exact ⟨Complex.I, 2, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I], fun _ ↦ hx⟩
-          | exact ⟨-Complex.I, 2, by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_mul_I], fun _ ↦ hx⟩
-  choose c γ hmul hsupp using hsite
-  have hprod : pauliString a * pauliString b = (∏ x : Fin N, c x) • pauliString γ := by
+    · rw [hax] at hne
+      have hbx : b x ≠ 0 := by simpa [pauliMulIdxE] using hne
+      exact Finset.mem_union_left _ (hb x hbx)
+    · exact Finset.mem_union_right _ (ha x hax)
+  have hprod : pauliString a * pauliString b =
+      (∏ x : Fin N, pauliMulPhaseE (a x) (b x)) •
+        pauliString (fun x ↦ pauliMulIdxE (a x) (b x)) := by
     unfold pauliString
     rw [kronOp_mul]
     ext r s
     simp only [kronOp, Matrix.of_apply, Matrix.smul_apply, smul_eq_mul, ← Finset.prod_mul_distrib]
     apply Finset.prod_congr rfl
     intro x _
-    rw [hmul x, Matrix.smul_apply, smul_eq_mul]
+    rw [pauliMat_mul_eqE (a x) (b x), Matrix.smul_apply, smul_eq_mul]
   rw [hprod]
-  exact Submodule.smul_mem _ _ (Submodule.subset_span ⟨γ, hsupp, rfl⟩)
+  exact Submodule.smul_mem _ _
+    (Submodule.subset_span ⟨fun x ↦ pauliMulIdxE (a x) (b x), hsupp, rfl⟩)
 
 /-- Disjoint-support operators in `QubitOp N` commute. -/
 theorem supportedSubmodule_comm_zero {N : ℕ} {U₁ U₂ : Finset (Fin N)}
@@ -244,15 +258,14 @@ section EndToEndTheorem11b
 Directly invokes `WightmanProjectors.lemma_4_2_operator_thermal_size_truncation` inside the
 proof (no `hH1` scalar-laundering!) to bound `mssThermalSize G O` on concrete `QubitOp N`
 from:
-- Operator truncation `O = A_M + R_M` (`‖O‖_W = 1`, `‖A_M‖_W² = 1 - q`, `‖R_M‖_W² = q`),
+- Operator truncation `O = A_M + R_M` (`‖A_M‖_W² = 1 - q`, `‖R_M‖_W² = q`),
 - Krylov tail bound `q ≤ exp(-θ M + A)` (from Theorem 1.1(a) / `JacobiSemigroup`), and
 - Static hypothesis `(H1)` `mssThermalSize G A_M ≤ (1 - q) * (C₁ N^δ s_M^η + C₂)`. -/
 theorem theorem_1_1b_end_to_end {N : ℕ} (G : GibbsData N)
     (O A_M R_M : QubitOp N) {q θ M A C₁ C₂ δ η s_M : ℝ}
     (hdecomp : O = A_M + R_M)
-    (hnormO : (wightmanInner G O O).re = 1)
-    (hnormA : (wightmanInner G A_M A_M).re = 1 - q)
-    (hnormR : (wightmanInner G R_M R_M).re = q)
+    (hnormA : (wightmanInner G.ρHalf A_M A_M).re = 1 - q)
+    (hnormR : (wightmanInner G.ρHalf R_M R_M).re = q)
     (hq_nn : 0 ≤ q) (hq_le : q ≤ 1)
     (htail : q ≤ Real.exp (-(θ * M) + A))
     (hΛ_nn : 0 ≤ C₁ * (N : ℝ) ^ δ * s_M ^ η + C₂)
@@ -262,11 +275,10 @@ theorem theorem_1_1b_end_to_end {N : ℕ} (G : GibbsData N)
       2 * (N : ℝ) * Real.exp ((-(θ * M) + A) / 2) +
       (N : ℝ) * Real.exp (-(θ * M) + A) := by
   have hlem42 := lemma_4_2_operator_thermal_size_truncation G O A_M R_M
-    hdecomp hnormO hnormA hnormR hq_nn hq_le hΛ_nn hH1_static
+    hdecomp hnormA hnormR hq_nn hq_le hΛ_nn hH1_static
   have hsqrt_le : Real.sqrt q ≤ Real.exp ((-(θ * M) + A) / 2) := by
     have h1 := Real.sqrt_le_sqrt htail
     have h2 : Real.sqrt (Real.exp (-(θ * M) + A)) = Real.exp ((-(θ * M) + A) / 2) := by
-      rw [← Real.exp_half]
       have heq : (Real.exp ((-(θ * M) + A) / 2)) ^ 2 = Real.exp (-(θ * M) + A) := by
         rw [sq, ← Real.exp_add]; congr 1; ring
       rw [← heq, Real.sqrt_sq (Real.exp_pos _).le]
