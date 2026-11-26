@@ -91,8 +91,9 @@ theorem finiteKMS_boundary_identity {ι : Type*} [Fintype ι] [Nonempty ι]
       (kmsWeight E β a : ℂ) * Complex.exp ((-(β * (E b - E a)) : ℝ)) =
       (kmsWeight E β b : ℂ) := by
     unfold kmsWeight
-    rw [← Complex.ofReal_exp, Complex.ofReal_div]
-    rw [div_mul_eq_mul_div, ← Complex.ofReal_mul, ← Real.exp_add]
+    rw [← Complex.ofReal_exp, ← Complex.ofReal_mul]
+    congr 1
+    rw [div_mul_eq_mul_div, ← Real.exp_add]
     congr 2
     ring
   calc (kmsWeight E β a : ℂ) * A a b * B b a *
@@ -124,6 +125,7 @@ theorem finiteKMS_normalized {ι : Type*} [Fintype ι] [Nonempty ι] [DecidableE
     simp_rw [hsub]; simp
   simp_rw [h1]
   unfold kmsWeight
+  simp_rw [Complex.ofReal_div]
   rw [← Finset.sum_div]
   have hsum : (∑ a : ι, (Real.exp (-(β * E a)) : ℂ)) = (kmsPartitionFn E β : ℂ) := by
     unfold kmsPartitionFn; push_cast; rfl

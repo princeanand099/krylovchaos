@@ -42,6 +42,16 @@ private lemma fin_sum_eq_range {D : ℕ} (f : Fin D → ℝ) :
   rw [← Fin.sum_univ_eq_sum_range (fun k ↦ if hk : k < D then f ⟨k, hk⟩ else 0)]
   apply Finset.sum_congr rfl; intro n _; simp [n.2]
 
+private lemma jacobiMat_symm_local (D : ℕ) (b : ℕ → ℝ) (i j : Fin D) :
+    jacobiMat D b i j = jacobiMat D b j i := by
+  unfold jacobiMat
+  by_cases h1 : j.1 = i.1 + 1
+  · have h2 : i.1 ≠ j.1 + 1 := by omega
+    simp [h1, h2]
+  · by_cases h2 : i.1 = j.1 + 1
+    · simp [h1, h2]
+    · simp [h1, h2]
+
 private lemma jacobiCLM_apply_tridiag (D : ℕ) (b : ℕ → ℝ)
     (v : EuclideanSpace ℂ (Fin D)) (n : Fin D) :
     (jacobiCLM D b v) n =
@@ -53,12 +63,18 @@ private lemma jacobiCLM_apply_tridiag (D : ℕ) (b : ℕ → ℝ)
       (if n.1 + 1 = j.1 then (b (n.1 + 1) : ℂ) * v j else 0) := by
     intro j
     unfold jacobiMat
-    by_cases h1 : j.1 + 1 = n.1
-    · have h2 : ¬ (n.1 + 1 = j.1) := by omega
-      simp [h1, h2]
-    · by_cases h2 : n.1 + 1 = j.1
-      · simp [h1, h2]
-      · simp [h1, h2]
+    by_cases h1 : n.1 = j.1 + 1
+    · have h2 : j.1 ≠ n.1 + 1 := by omega
+      have h1' : j.1 + 1 = n.1 := h1.symm
+      have h2' : ¬ (n.1 + 1 = j.1) := fun h ↦ h2 h.symm
+      simp [h1, h2, h1', h2']
+    · by_cases h2 : j.1 = n.1 + 1
+      · have h1' : ¬ (j.1 + 1 = n.1) := fun h ↦ h1 h.symm
+        have h2' : n.1 + 1 = j.1 := h2.symm
+        simp [h1, h2, h1', h2']
+      · have h1' : ¬ (j.1 + 1 = n.1) := fun h ↦ h1 h.symm
+        have h2' : ¬ (n.1 + 1 = j.1) := fun h ↦ h2 h.symm
+        simp [h1, h2, h1', h2']
   simp_rw [hsplit, Finset.sum_add_distrib]
   congr 1
   · by_cases h0 : 0 < n.1
@@ -112,7 +128,7 @@ private lemma jacobiCLM_symm_inner (D : ℕ) (b : ℕ → ℝ)
   rw [Finset.sum_comm]
   apply Finset.sum_congr rfl; intro j _
   apply Finset.sum_congr rfl; intro i _
-  rw [jacobiMat_symm D b i j]
+  rw [jacobiMat_symm_local D b i j]
 
 private lemma single_apply_eq {D : ℕ} (i j : Fin D) (c : ℂ) :
     (EuclideanSpace.single i c : EuclideanSpace ℂ (Fin D)) j = if j = i then c else 0 := by
@@ -210,7 +226,7 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
                (jacobiWavefn hD b u n).im * (((Complex.I • jacobiCLM D b) (jacobiWavefn hD b u)) n).im)))
   have hderiv : ∀ u ≥ 0, HasDerivAt G (G' u) u := by
     intro u hu
-    apply HasDerivAt.sum
+    apply HasDerivAt.fun_sum
     intro n _
     have hθd := hasDerivAt_charTheta hα hθ₀ hu
     have hexp : HasDerivAt (fun r ↦ Real.exp (charTheta α θ₀ r * (n.1 : ℝ)))
@@ -275,7 +291,8 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
                   jacobiWavefn hD b u ⟨k, by omega⟩).im)
             else 0 := by
         rw [Finset.sum_range_succ']
-        simp only [Nat.not_lt_zero, ↓reduceDIte, zero_lt_one, mul_zero, add_zero]
+        simp only [Nat.not_lt_zero, ↓reduceDIte, zero_lt_one, mul_zero, dite_eq_ite, ite_self,
+          add_zero]
         apply Finset.sum_congr rfl
         intro k hk
         have hk' : k < D' := Finset.mem_range.mp hk
@@ -297,7 +314,7 @@ theorem complex_finite_chain_mgf_bound {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) 
                   jacobiWavefn hD b u ⟨k, by omega⟩).im)
             else 0 := by
         rw [Finset.sum_range_succ]
-        simp only [lt_self_iff_false, ↓reduceDIte, mul_zero, add_zero]
+        simp only [lt_self_iff_false, ↓reduceDIte, mul_zero, dite_eq_ite, ite_self, add_zero]
         apply Finset.sum_congr rfl
         intro k hk
         have hk' : k < D' := Finset.mem_range.mp hk
