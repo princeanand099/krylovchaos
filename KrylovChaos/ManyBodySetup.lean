@@ -180,10 +180,10 @@ private lemma comm_diff_eq_two_cw_sub_fmss {N : ℕ} (G : GibbsData N)
   have hcw : (Matrix.trace (P * G.ρHalf * P * G.ρHalf)).re = gibbsWightmanNormSq G P := by
     unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
     rw [hPh]
-    congr 1
-    calc Matrix.trace (P * G.ρHalf * P * G.ρHalf)
-        = Matrix.trace (G.ρHalf * (P * G.ρHalf * P)) := Matrix.trace_mul_comm _ _
-      _ = Matrix.trace (G.ρHalf * P * G.ρHalf * P) := by simp only [Matrix.mul_assoc]
+    exact congrArg Complex.re (by
+      calc Matrix.trace (P * G.ρHalf * P * G.ρHalf)
+          = Matrix.trace (G.ρHalf * (P * G.ρHalf * P)) := Matrix.trace_mul_comm _ _
+        _ = Matrix.trace (G.ρHalf * P * G.ρHalf * P) := by simp only [Matrix.mul_assoc])
   simp only [Complex.sub_re, Complex.mul_re, Complex.re_ofNat, Complex.im_ofNat, zero_mul,
     sub_zero] at h1 h2
   unfold hsNormSq hsInner matComm
