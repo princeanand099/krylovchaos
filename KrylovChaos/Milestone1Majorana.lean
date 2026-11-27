@@ -60,9 +60,10 @@ private lemma foldMajorana_sort_unique (n : ℕ) (l : List (Fin (2 * n)))
   have hnd : l.Nodup := hsort.imp (fun h ↦ ne_of_lt h)
   have hle : l.Pairwise (· ≤ ·) := hsort.imp (fun h ↦ le_of_lt h)
   have hsort_eq : l.toFinset.sort (· ≤ ·) = l := by
-    apply List.eq_of_perm_of_sorted _ (Finset.pairwise_sort _ _) hle
-    exact (List.perm_ext_iff_of_nodup (Finset.sort_nodup _ _) hnd).mpr
-      (fun x ↦ by simp [Finset.mem_sort, List.mem_toFinset])
+    have hperm : (l.toFinset.sort (· ≤ ·)).Perm l :=
+      (List.perm_ext_iff_of_nodup (Finset.sort_nodup _ _) hnd).mpr
+        (fun x ↦ by simp [Finset.mem_sort, List.mem_toFinset])
+    exact hperm.eq_of_pairwise (fun _ _ _ _ h1 h2 ↦ le_antisymm h1 h2) (Finset.pairwise_sort _ _) hle
   rw [hsort_eq]
 
 private lemma majoranaProbe_mul_foldMajorana_sorted (n : ℕ) (j : Fin (2 * n)) :
@@ -74,10 +75,10 @@ private lemma majoranaProbe_mul_foldMajorana_sorted (n : ℕ) (j : Fin (2 * n)) 
   | nil =>
     intro _
     refine ⟨1, ?_⟩
-    simp only [foldMajorana, List.foldr_nil, Matrix.mul_one, one_smul, List.toFinset_nil,
-      symmDiff_empty]
-    unfold majoranaString
-    simp [Finset.sort_singleton]
+    have hsym : symmDiff ({j} : Finset (Fin (2 * n))) ([] : List (Fin (2 * n))).toFinset = {j} := by
+      ext x; simp
+    rw [hsym]
+    simp [foldMajorana, majoranaString, Finset.sort_singleton]
   | cons a t ih =>
     intro hsort
     rw [List.pairwise_cons] at hsort
@@ -146,7 +147,7 @@ private lemma majoranaProbe_mul_foldMajorana_sorted (n : ℕ) (j : Fin (2 * n)) 
           simp only [Finset.mem_symmDiff, Finset.mem_singleton, List.toFinset_cons, Finset.mem_insert]
           constructor
           · rintro (⟨rfl, h⟩ | ⟨rfl | hxt, hxj⟩)
-            · right; left; exact ⟨rfl, fun h ↦ h (Or.inr h)⟩
+            · right; left; exact ⟨rfl, fun hm ↦ h (Or.inr hm)⟩
             · left; rfl
             · right; right; exact ⟨hxt, hxj⟩
           · rintro (rfl | ⟨rfl, h⟩ | ⟨hxt, hxj⟩)
@@ -166,7 +167,7 @@ private lemma majoranaProbe_mul_foldMajorana_sorted (n : ℕ) (j : Fin (2 * n)) 
           have hnd := Finset.sort_nodup (symmDiff ({j} : Finset (Fin (2 * n))) t.toFinset) (· ≤ ·)
           exact List.pairwise_iff_getElem.mpr fun i k hi hk hik ↦
             lt_of_le_of_ne (List.pairwise_iff_getElem.mp hp i k hi hk hik)
-              (fun heq_ik ↦ (Nat.ne_of_lt hik) ((List.nodup_iff_injective_getElem.mp hnd) heq_ik))
+              (fun heq_ik ↦ (Nat.ne_of_lt hik) (congrArg Fin.val ((List.nodup_iff_injective_getElem.mp hnd) (by simpa using heq_ik))))
         have hcons_sort : (a :: (symmDiff ({j} : Finset (Fin (2 * n))) t.toFinset).sort (· ≤ ·)).Pairwise (· < ·) :=
           List.pairwise_cons.mpr ⟨hlt_all, hsort_tail⟩
         have htofin : (a :: (symmDiff ({j} : Finset (Fin (2 * n))) t.toFinset).sort (· ≤ ·)).toFinset =
@@ -181,7 +182,7 @@ private lemma majoranaProbe_mul_foldMajorana_sorted (n : ℕ) (j : Fin (2 * n)) 
             = (majoranaProbe n j * majoranaProbe n a) * foldMajorana n t := by
                 simp only [foldMajorana, List.foldr_cons, Matrix.mul_assoc]
           _ = -(majoranaProbe n a * majoranaProbe n j) * foldMajorana n t := by
-                rw [majoranaProbe_anticomm n j a heq]
+                rw [majoranaProbe_anticomm (Ne.symm heq)]
           _ = -(majoranaProbe n a * (majoranaProbe n j * foldMajorana n t)) := by
                 simp only [Matrix.neg_mul, Matrix.mul_assoc]
           _ = -(majoranaProbe n a * (c • majoranaString n (symmDiff {j} t.toFinset))) := by
@@ -202,7 +203,9 @@ theorem majoranaString_mul_exists (n : ℕ) (P Q : Finset (Fin (2 * n))) :
     induction l with
     | nil =>
       intro _ Q
-      exact ⟨1, by simp [foldMajorana]⟩
+      refine ⟨1, ?_⟩
+      have hsym : symmDiff ([] : List (Fin (2 * n))).toFinset Q = Q := by ext x; simp
+      rw [hsym]; simp [foldMajorana]
     | cons j t ih =>
       intro hnd Q
       rw [List.nodup_cons] at hnd
@@ -212,7 +215,7 @@ theorem majoranaString_mul_exists (n : ℕ) (P Q : Finset (Fin (2 * n))) :
         have hndQ := Finset.sort_nodup (symmDiff t.toFinset Q) (· ≤ ·)
         exact List.pairwise_iff_getElem.mpr fun i k hi hk hik ↦
           lt_of_le_of_ne (List.pairwise_iff_getElem.mp hp i k hi hk hik)
-            (fun heq_ik ↦ (Nat.ne_of_lt hik) ((List.nodup_iff_injective_getElem.mp hndQ) heq_ik))
+            (fun heq_ik ↦ (Nat.ne_of_lt hik) (congrArg Fin.val ((List.nodup_iff_injective_getElem.mp hndQ) (by simpa using heq_ik))))
       rcases majoranaProbe_mul_foldMajorana_sorted n j _ hQsort with ⟨c₂, hc₂⟩
       have htofin : ((symmDiff t.toFinset Q).sort (· ≤ ·)).toFinset = symmDiff t.toFinset Q := by
         ext x; simp [Finset.mem_sort]
@@ -257,7 +260,7 @@ private lemma majoranaProbe_comm_fold_disjoint (n : ℕ) (j : Fin (2 * n))
         = (majoranaProbe n j * majoranaProbe n a) * foldMajorana n t := by
             simp only [foldMajorana, List.foldr_cons, Matrix.mul_assoc]
       _ = -(majoranaProbe n a * majoranaProbe n j) * foldMajorana n t := by
-            rw [majoranaProbe_anticomm n j a hne]
+            rw [majoranaProbe_anticomm (Ne.symm hne)]
       _ = -(majoranaProbe n a * (majoranaProbe n j * foldMajorana n t)) := by
             simp only [Matrix.neg_mul, Matrix.mul_assoc]
       _ = -(majoranaProbe n a * (((-1 : ℂ) ^ t.length) • (foldMajorana n t * majoranaProbe n j))) := by
@@ -403,14 +406,15 @@ lemma majoranaSupported_comm_union {n : ℕ} {U V : Finset (Fin (2 * n))}
 private lemma qubitOpToCLM_mul' {N : ℕ} (A B : QubitOp N) :
     qubitOpToCLM (A * B) = qubitOpToCLM A * qubitOpToCLM B := by
   apply ContinuousLinearMap.ext; intro v; ext i
-  simp only [ContinuousLinearMap.mul_apply, qubitOpToCLM, LinearMap.coe_toContinuousLinearMap',
-    LinearMap.coe_mk, AddHom.coe_mk, Matrix.mulVec_mulVec]
-  rfl
+  change ∑ x, (A * B) i x * v.ofLp x = ∑ x, A i x * ∑ y, B x y * v.ofLp y
+  simp_rw [Matrix.mul_apply, Finset.sum_mul, Finset.mul_sum, mul_assoc]
+  exact Finset.sum_comm
 
 private lemma qubitOpToCLM_sub' {N : ℕ} (A B : QubitOp N) :
     qubitOpToCLM (A - B) = qubitOpToCLM A - qubitOpToCLM B := by
   apply ContinuousLinearMap.ext; intro v; ext i
-  simp [qubitOpToCLM, Matrix.sub_mulVec]
+  change ∑ x, (A i x - B i x) * v.ofLp x = (∑ x, A i x * v.ofLp x) - ∑ x, B i x * v.ofLp x
+  simp_rw [sub_mul, Finset.sum_sub_distrib]
 
 private lemma qubitOpToCLM_zero' (N : ℕ) :
     qubitOpToCLM (0 : QubitOp N) = 0 := by
@@ -438,7 +442,7 @@ noncomputable def majoranaLocalInteractionDecomp {n r : ℕ} {ι : Type*} [Finty
       majoranaSupported_comm_zero hdisj (hsupp i) hA, qubitOpToCLM_zero']
   supportedOn_comm_union := by
     rintro U i _ ⟨A, hA, rfl⟩
-    refine ⟨term i * A - A * term i, majoranaSupported_comm_union (hsupp i) hA, ?_⟩
+    refine ⟨term i * A - A * term i, by rw [Finset.union_comm]; exact majoranaSupported_comm_union (hsupp i) hA, ?_⟩
     rw [← qubitOpToCLM_mul', ← qubitOpToCLM_mul', ← qubitOpToCLM_sub']
 
 end Item1MajoranaLocalInteractionDecomp
@@ -626,7 +630,7 @@ theorem prop_4_1_part1_majorana {n s : ℕ} (G : GibbsData n) {A : QubitOp n}
 For ANY Hermitian even-parity `H ∈ majoranaEvenFiltrationSubmodule n r` (`1 ≤ r`),
 Hermitian `O ∈ majoranaFiltrationSubmodule n s₀` with `‖O‖_{β,W}² = 1`, `M ≥ 1`, and `t : ℝ`:
 `majoranaThermalSize G (heisenbergEvol hH t O) ≤ majoranaLambdaMSS G (s₀ + (M - 1) * (r - 1)) + 4 n ε_M(t) + 2 n ε_M(t)²`
-(where `2 n` is the total number of Majorana modes, bounding `majoranaTotalSizeOp ≤ 2 n`). -/
+(where `2 n` is the total number of Majorana modes, bounding `majoranaParitySizeOp ≤ 2 n`). -/
 theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 ≤ M)
     {H O : QubitOp n} (hH : H.IsHermitian) (hO : O.IsHermitian) (β : ℝ) (t : ℝ)
     (hHf : H ∈ majoranaEvenFiltrationSubmodule n r)
@@ -647,117 +651,210 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
     have h1 : (1 : QubitOp n) = majoranaString n ∅ := by unfold majoranaString; simp
     rw [h1]
     exact Submodule.subset_span ⟨∅, by simp, rfl⟩
-  have hmaj_bounds : ∀ X : QubitOp n,
-      0 ≤ (hsInner X (majoranaTotalSizeOp n X)).re ∧
-      (hsInner X (majoranaTotalSizeOp n X)).re ≤ ((2 * n : ℕ) : ℝ) * hsNormSq X := by
+  have hPsq : fermionParityOp n * fermionParityOp n = 1 := fermionParityOp_sq n
+  have hPherm : (fermionParityOp n)ᴴ = fermionParityOp n := fermionParityOp_herm n
+  have heven_par : ∀ X : QubitOp n, isEvenParity (evenPart n X) := by
+    intro X; unfold isEvenParity evenPart
+    simp only [Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_add, Matrix.add_mul, Matrix.mul_assoc]
+    have h1 : fermionParityOp n * (fermionParityOp n * (X * fermionParityOp n) * fermionParityOp n) = X := by
+      have ha : fermionParityOp n * (fermionParityOp n * (X * fermionParityOp n) * fermionParityOp n) =
+          (fermionParityOp n * fermionParityOp n) * X * (fermionParityOp n * fermionParityOp n) := by
+        simp only [Matrix.mul_assoc]
+      rw [ha, hPsq, Matrix.one_mul, Matrix.mul_one]
+    rw [h1, add_comm]
+  have hodd_par : ∀ X : QubitOp n, isOddParity (oddPart n X) := by
+    intro X; unfold isOddParity oddPart
+    simp only [Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_assoc]
+    have h1 : fermionParityOp n * (fermionParityOp n * (X * fermionParityOp n) * fermionParityOp n) = X := by
+      have ha : fermionParityOp n * (fermionParityOp n * (X * fermionParityOp n) * fermionParityOp n) =
+          (fermionParityOp n * fermionParityOp n) * X * (fermionParityOp n * fermionParityOp n) := by
+        simp only [Matrix.mul_assoc]
+      rw [ha, hPsq, Matrix.one_mul, Matrix.mul_one]
+    rw [h1, ← smul_neg, neg_sub]
+  have hsplit : ∀ X : QubitOp n, X = evenPart n X + oddPart n X := by
+    intro X; unfold evenPart oddPart
+    rw [← smul_add, add_add_sub_cancel, ← two_smul ℂ X, smul_smul]; norm_num
+  have horth_eo : ∀ X Y : QubitOp n, isEvenParity X → isOddParity Y → hsInner X Y = 0 := by
+    intro X Y hXe hYo
+    unfold hsInner
+    have htr : (Xᴴ * Y).trace = - (Xᴴ * Y).trace := by
+      have hXh : fermionParityOp n * Xᴴ * fermionParityOp n = Xᴴ := by
+        have := congrArg Matrix.conjTranspose hXe
+        simpa [Matrix.conjTranspose_mul, hPherm, Matrix.mul_assoc] using this
+      calc (Xᴴ * Y).trace
+          = ((fermionParityOp n * Xᴴ * fermionParityOp n) * Y).trace := by rw [hXh]
+        _ = (fermionParityOp n * Xᴴ * (fermionParityOp n * Y)).trace := by simp only [Matrix.mul_assoc]
+        _ = (Xᴴ * (fermionParityOp n * Y) * fermionParityOp n).trace := by
+              rw [Matrix.trace_mul_cycle]; simp only [Matrix.mul_assoc]
+        _ = (Xᴴ * (fermionParityOp n * Y * fermionParityOp n)).trace := by simp only [Matrix.mul_assoc]
+        _ = (Xᴴ * (-Y)).trace := by rw [hYo]
+        _ = -(Xᴴ * Y).trace := by rw [Matrix.mul_neg, Matrix.trace_neg]
+    have h2 : (2 : ℂ) * (Xᴴ * Y).trace = 0 := by linear_combination htr
+    exact (mul_eq_zero.mp h2).resolve_left (by norm_num)
+  have hpar_add : ∀ X Y : QubitOp n,
+      majoranaParitySizeOp n (X + Y) = majoranaParitySizeOp n X + majoranaParitySizeOp n Y := by
+    intro X Y
+    unfold majoranaParitySizeOp majoranaTotalSizeOp majoranaOddTotalSizeOp
+      majoranaModeSizeOp majoranaOddModeSizeOp evenPart oddPart
+    simp only [Matrix.mul_add, Matrix.add_mul, smul_add, Finset.sum_add_distrib]
+    abel
+  have hpar_smul : ∀ (c : ℂ) (X : QubitOp n),
+      majoranaParitySizeOp n (c • X) = c • majoranaParitySizeOp n X := by
+    intro c X
+    unfold majoranaParitySizeOp majoranaTotalSizeOp majoranaOddTotalSizeOp
+      majoranaModeSizeOp majoranaOddModeSizeOp evenPart oddPart
+    simp only [Matrix.mul_smul, Matrix.smul_mul, smul_add, smul_sub, Finset.smul_sum, smul_comm]
+  have hpar_even_pres : ∀ X : QubitOp n, isEvenParity (majoranaTotalSizeOp n (evenPart n X)) := by
     intro X
-    unfold majoranaTotalSizeOp
-    have hsum : (hsInner X (∑ j : Fin (2 * n), majoranaModeSizeOp n j X)).re =
-        ∑ j : Fin (2 * n), (hsInner X (majoranaModeSizeOp n j X)).re := by
-      unfold hsInner; rw [Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum]
-    rw [hsum]
-    have hterm : ∀ j : Fin (2 * n),
-        0 ≤ (hsInner X (majoranaModeSizeOp n j X)).re ∧
-        (hsInner X (majoranaModeSizeOp n j X)).re ≤ hsNormSq X := by
-      intro j
-      have hcomm : (hsInner X (majoranaModeSizeOp n j X)).re =
-          (1 / 4 : ℝ) * hsNormSq (matComm (majoranaProbe n j) X) := by
-        have hVsq := majoranaProbe_sq n j
-        have hVh := majoranaProbe_herm n j
-        unfold majoranaModeSizeOp hsInner hsNormSq matComm
-        simp only [Matrix.smul_mul, Matrix.mul_smul, Matrix.mul_sub, Matrix.sub_mul,
-          Matrix.conjTranspose_sub, Matrix.conjTranspose_mul, hVh,
-          Matrix.trace_smul, Matrix.trace_sub, Matrix.trace_mul_comm]
-        have htr1 : (Xᴴ * (majoranaProbe n j * majoranaProbe n j) * X).trace = (Xᴴ * X).trace := by
-          rw [hVsq, Matrix.mul_one]
-        have htr2 : (majoranaProbe n j * Xᴴ * (majoranaProbe n j * X)).trace =
-            (Xᴴ * (majoranaProbe n j * X * majoranaProbe n j)).trace := by
-          calc (majoranaProbe n j * Xᴴ * (majoranaProbe n j * X)).trace
-              = (Xᴴ * (majoranaProbe n j * X) * majoranaProbe n j).trace := by
-                  rw [Matrix.trace_mul_cycle]; simp only [Matrix.mul_assoc]
-            _ = (Xᴴ * (majoranaProbe n j * X * majoranaProbe n j)).trace := by
-                  simp only [Matrix.mul_assoc]
-        have htr3 : (Xᴴ * majoranaProbe n j * (X * majoranaProbe n j)).trace =
-            (Xᴴ * (majoranaProbe n j * X * majoranaProbe n j)).trace := by
-          simp only [Matrix.mul_assoc]
-        have htr4 : (majoranaProbe n j * Xᴴ * (X * majoranaProbe n j)).trace = (Xᴴ * X).trace := by
-          calc (majoranaProbe n j * Xᴴ * (X * majoranaProbe n j)).trace
-              = (majoranaProbe n j * majoranaProbe n j * (Xᴴ * X)).trace := by
-                  rw [Matrix.trace_mul_cycle]; simp only [Matrix.mul_assoc]
-            _ = (Xᴴ * X).trace := by rw [hVsq, Matrix.one_mul]
-        have hexp : ((Xᴴ * majoranaProbe n j - majoranaProbe n j * Xᴴ) *
-              (majoranaProbe n j * X - X * majoranaProbe n j)).trace =
-            2 * (Xᴴ * X).trace - 2 * (Xᴴ * (majoranaProbe n j * X * majoranaProbe n j)).trace := by
-          simp only [Matrix.sub_mul, Matrix.mul_sub, Matrix.trace_sub, Matrix.mul_assoc]
-          have ha : (Xᴴ * (majoranaProbe n j * (majoranaProbe n j * X))).trace = (Xᴴ * X).trace := by
-            have : majoranaProbe n j * (majoranaProbe n j * X) = X := by
-              rw [← Matrix.mul_assoc, hVsq, Matrix.one_mul]
-            rw [this]
-          have hb : (majoranaProbe n j * (Xᴴ * (X * majoranaProbe n j))).trace = (Xᴴ * X).trace := by
-            simpa only [Matrix.mul_assoc] using htr4
-          have hc : (majoranaProbe n j * (Xᴴ * (majoranaProbe n j * X))).trace =
-              (Xᴴ * (majoranaProbe n j * X * majoranaProbe n j)).trace := by
-            simpa only [Matrix.mul_assoc] using htr2
-          have hd : (Xᴴ * (majoranaProbe n j * (X * majoranaProbe n j))).trace =
-              (Xᴴ * (majoranaProbe n j * X * majoranaProbe n j)).trace := by
-            simp only [Matrix.mul_assoc]
-          rw [ha, hb, hc, hd]; ring
-        rw [hexp]
-        simp only [smul_eq_mul, Complex.sub_re, Complex.mul_re, Complex.ofReal_re,
-          Complex.ofReal_im, zero_mul, sub_zero]
-        norm_num; ring
-      have hacomm : hsNormSq X - (hsInner X (majoranaModeSizeOp n j X)).re =
-          (1 / 4 : ℝ) * hsNormSq (majoranaProbe n j * X + X * majoranaProbe n j) := by
-        have hVsq := majoranaProbe_sq n j
-        have hVh := majoranaProbe_herm n j
-        unfold majoranaModeSizeOp hsInner hsNormSq
-        simp only [Matrix.smul_mul, Matrix.mul_smul, Matrix.mul_sub, Matrix.sub_mul,
-          Matrix.conjTranspose_add, Matrix.conjTranspose_mul, hVh,
-          Matrix.trace_smul, Matrix.trace_sub]
-        have htr4 : (majoranaProbe n j * Xᴴ * (X * majoranaProbe n j)).trace = (Xᴴ * X).trace := by
-          calc (majoranaProbe n j * Xᴴ * (X * majoranaProbe n j)).trace
-              = (majoranaProbe n j * majoranaProbe n j * (Xᴴ * X)).trace := by
-                  rw [Matrix.trace_mul_cycle]; simp only [Matrix.mul_assoc]
-            _ = (Xᴴ * X).trace := by rw [hVsq, Matrix.one_mul]
-        have htr2 : (majoranaProbe n j * Xᴴ * (majoranaProbe n j * X)).trace =
-            (Xᴴ * (majoranaProbe n j * X * majoranaProbe n j)).trace := by
-          calc (majoranaProbe n j * Xᴴ * (majoranaProbe n j * X)).trace
-              = (Xᴴ * (majoranaProbe n j * X) * majoranaProbe n j).trace := by
-                  rw [Matrix.trace_mul_cycle]; simp only [Matrix.mul_assoc]
-            _ = (Xᴴ * (majoranaProbe n j * X * majoranaProbe n j)).trace := by
-                  simp only [Matrix.mul_assoc]
-        have hexp : ((Xᴴ * majoranaProbe n j + majoranaProbe n j * Xᴴ) *
-              (majoranaProbe n j * X + X * majoranaProbe n j)).trace =
-            2 * (Xᴴ * X).trace + 2 * (Xᴴ * (majoranaProbe n j * X * majoranaProbe n j)).trace := by
-          simp only [Matrix.add_mul, Matrix.mul_add, Matrix.trace_add, Matrix.mul_assoc]
-          have ha : (Xᴴ * (majoranaProbe n j * (majoranaProbe n j * X))).trace = (Xᴴ * X).trace := by
-            have : majoranaProbe n j * (majoranaProbe n j * X) = X := by
-              rw [← Matrix.mul_assoc, hVsq, Matrix.one_mul]
-            rw [this]
-          have hb : (majoranaProbe n j * (Xᴴ * (X * majoranaProbe n j))).trace = (Xᴴ * X).trace := by
-            simpa only [Matrix.mul_assoc] using htr4
-          have hc : (majoranaProbe n j * (Xᴴ * (majoranaProbe n j * X))).trace =
-              (Xᴴ * (majoranaProbe n j * X * majoranaProbe n j)).trace := by
-            simpa only [Matrix.mul_assoc] using htr2
-          have hd : (Xᴴ * (majoranaProbe n j * (X * majoranaProbe n j))).trace =
-              (Xᴴ * (majoranaProbe n j * X * majoranaProbe n j)).trace := by
-            simp only [Matrix.mul_assoc]
-          rw [ha, hb, hc, hd]; ring
-        rw [hexp]
-        simp only [smul_eq_mul, Complex.add_re, Complex.sub_re, Complex.mul_re,
-          Complex.ofReal_re, Complex.ofReal_im, zero_mul, sub_zero]
-        norm_num; ring
-      constructor
-      · rw [hcomm]; exact mul_nonneg (by norm_num) (hsNormSq_nonneg _)
-      · have hnn : 0 ≤ (1 / 4 : ℝ) * hsNormSq (majoranaProbe n j * X + X * majoranaProbe n j) :=
-          mul_nonneg (by norm_num) (hsNormSq_nonneg _)
-        linarith
-    constructor
-    · exact Finset.sum_nonneg fun j _ ↦ (hterm j).1
-    · calc ∑ j : Fin (2 * n), (hsInner X (majoranaModeSizeOp n j X)).re
-          ≤ ∑ _j : Fin (2 * n), hsNormSq X := Finset.sum_le_sum fun j _ ↦ (hterm j).2
-        _ = ((2 * n : ℕ) : ℝ) * hsNormSq X := by
-            simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+    unfold isEvenParity majoranaTotalSizeOp majoranaModeSizeOp
+    simp only [Matrix.mul_sum, Matrix.sum_mul]
+    apply Finset.sum_congr rfl; intro j _
+    have hPjm : fermionParityOp n * majoranaProbe n j = -(majoranaProbe n j * fermionParityOp n) :=
+      fermionParityOp_anticomm_probe n j
+    have hPjr : majoranaProbe n j * fermionParityOp n = -(fermionParityOp n * majoranaProbe n j) := by
+      rw [hPjm, neg_neg]
+    have hPe := heven_par X
+    unfold isEvenParity at hPe
+    simp only [Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_sub, Matrix.sub_mul]
+    congr 1; congr 1
+    · exact hPe
+    · calc fermionParityOp n * (majoranaProbe n j * evenPart n X * majoranaProbe n j) * fermionParityOp n
+          = (fermionParityOp n * majoranaProbe n j) * evenPart n X * (majoranaProbe n j * fermionParityOp n) := by
+              simp only [Matrix.mul_assoc]
+        _ = (-(majoranaProbe n j * fermionParityOp n)) * evenPart n X * (-(fermionParityOp n * majoranaProbe n j)) := by
+              rw [hPjm, hPjr]
+        _ = majoranaProbe n j * (fermionParityOp n * evenPart n X * fermionParityOp n) * majoranaProbe n j := by
+              simp only [Matrix.neg_mul, Matrix.mul_neg, neg_neg, Matrix.mul_assoc]
+        _ = majoranaProbe n j * evenPart n X * majoranaProbe n j := by rw [hPe]
+  have hpar_odd_pres : ∀ X : QubitOp n, isOddParity (majoranaOddTotalSizeOp n (oddPart n X)) := by
+    intro X
+    unfold isOddParity majoranaOddTotalSizeOp majoranaOddModeSizeOp
+    simp only [Matrix.mul_sum, Matrix.sum_mul, ← Finset.sum_neg_distrib]
+    apply Finset.sum_congr rfl; intro j _
+    have hPjm : fermionParityOp n * majoranaProbe n j = -(majoranaProbe n j * fermionParityOp n) :=
+      fermionParityOp_anticomm_probe n j
+    have hPjr : majoranaProbe n j * fermionParityOp n = -(fermionParityOp n * majoranaProbe n j) := by
+      rw [hPjm, neg_neg]
+    have hPo := hodd_par X
+    unfold isOddParity at hPo
+    simp only [Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_add, Matrix.add_mul, ← smul_neg]
+    congr 1
+    rw [hPo]
+    have h2 : fermionParityOp n * (majoranaProbe n j * oddPart n X * majoranaProbe n j) * fermionParityOp n =
+        -(majoranaProbe n j * oddPart n X * majoranaProbe n j) := by
+      calc fermionParityOp n * (majoranaProbe n j * oddPart n X * majoranaProbe n j) * fermionParityOp n
+          = (fermionParityOp n * majoranaProbe n j) * oddPart n X * (majoranaProbe n j * fermionParityOp n) := by
+              simp only [Matrix.mul_assoc]
+        _ = (-(majoranaProbe n j * fermionParityOp n)) * oddPart n X * (-(fermionParityOp n * majoranaProbe n j)) := by
+              rw [hPjm, hPjr]
+        _ = majoranaProbe n j * (fermionParityOp n * oddPart n X * fermionParityOp n) * majoranaProbe n j := by
+              simp only [Matrix.neg_mul, Matrix.mul_neg, neg_neg, Matrix.mul_assoc]
+        _ = -(majoranaProbe n j * oddPart n X * majoranaProbe n j) := by
+              rw [hPo, Matrix.mul_neg, Matrix.neg_mul]
+    rw [h2]; abel
+  have hmaj_bounds : ∀ X : QubitOp n,
+      0 ≤ (hsInner X (majoranaParitySizeOp n X)).re ∧
+      (hsInner X (majoranaParitySizeOp n X)).re ≤ ((2 * n : ℕ) : ℝ) * hsNormSq X := by
+    intro X
+    have hnorm_split : hsNormSq X = hsNormSq (evenPart n X) + hsNormSq (oddPart n X) := by
+      conv_lhs => rw [hsplit X]
+      unfold hsNormSq hsInner
+      simp only [Matrix.conjTranspose_add, Matrix.add_mul, Matrix.mul_add, Matrix.trace_add, Complex.add_re]
+      have h1 : ((evenPart n X)ᴴ * oddPart n X).trace = 0 := horth_eo _ _ (heven_par X) (hodd_par X)
+      have h2 : ((oddPart n X)ᴴ * evenPart n X).trace = 0 := by
+        have hc : ((oddPart n X)ᴴ * evenPart n X).trace = starRingEnd ℂ (((evenPart n X)ᴴ * oddPart n X).trace) := by
+          rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+        rw [hc, h1, map_zero]
+      rw [h1, h2]; simp
+    have hinner_split : (hsInner X (majoranaParitySizeOp n X)).re =
+        (hsInner (evenPart n X) (majoranaParitySizeOp n (evenPart n X))).re +
+        (hsInner (oddPart n X) (majoranaParitySizeOp n (oddPart n X))).re := by
+      have he_eq : majoranaParitySizeOp n (evenPart n X) = majoranaTotalSizeOp n (evenPart n X) := by
+        unfold majoranaParitySizeOp
+        have ⟨he, ho⟩ := evenPart_of_even (heven_par X)
+        rw [he, ho]; unfold majoranaOddTotalSizeOp majoranaOddModeSizeOp; simp
+      have ho_eq : majoranaParitySizeOp n (oddPart n X) = majoranaOddTotalSizeOp n (oddPart n X) := by
+        unfold majoranaParitySizeOp
+        have ⟨he, ho⟩ := oddPart_of_odd (hodd_par X)
+        rw [he, ho]; unfold majoranaTotalSizeOp majoranaModeSizeOp; simp
+      rw [he_eq, ho_eq]
+      conv_lhs => rw [hsplit X]
+      unfold majoranaParitySizeOp hsInner
+      simp only [Matrix.conjTranspose_add, Matrix.add_mul, Matrix.mul_add, Matrix.trace_add, Complex.add_re]
+      have h1 : ((evenPart n X)ᴴ * majoranaOddTotalSizeOp n (oddPart n X)).trace = 0 :=
+        horth_eo _ _ (heven_par X) (hpar_odd_pres X)
+      have h2 : ((oddPart n X)ᴴ * majoranaTotalSizeOp n (evenPart n X)).trace = 0 := by
+        have hc : ((oddPart n X)ᴴ * majoranaTotalSizeOp n (evenPart n X)).trace =
+            starRingEnd ℂ (((majoranaTotalSizeOp n (evenPart n X))ᴴ * oddPart n X).trace) := by
+          rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+        rw [hc, horth_eo _ _ (hpar_even_pres X) (hodd_par X), map_zero]
+      rw [h1, h2]; simp
+    have hb_e := majoranaParitySizeOp_bounds_of_parity (evenPart n X) (Or.inl (heven_par X))
+    have hb_o := majoranaParitySizeOp_bounds_of_parity (oddPart n X) (Or.inr (hodd_par X))
+    rw [hinner_split, hnorm_split]
+    exact ⟨by linarith, by nlinarith⟩
+  have hS_sa : ∀ P Q : QubitOp n,
+      (hsInner P (majoranaParitySizeOp n Q)).re = (hsInner Q (majoranaParitySizeOp n P)).re := by
+    intro P Q
+    have hmode_sa : ∀ (V X Y : QubitOp n), Vᴴ = V →
+        (Xᴴ * (V * Y * V)).trace.re = (Yᴴ * (V * X * V)).trace.re := by
+      intro V X Y hVh
+      have hc3 : starRingEnd ℂ (Xᴴ * (V * Y * V)).trace = (Yᴴ * (V * X * V)).trace := by
+        rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul,
+          Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, hVh]
+        calc (V * Xᴴ * V * Y).trace
+            = (V * (Xᴴ * (V * Y))).trace := by simp only [Matrix.mul_assoc]
+          _ = ((Xᴴ * (V * Y)) * V).trace := Matrix.trace_mul_comm _ _
+          _ = (Xᴴ * (V * Y * V)).trace := by simp only [Matrix.mul_assoc]
+      have hc2 : starRingEnd ℂ (Yᴴ * (V * X * V)).trace = (Xᴴ * (V * Y * V)).trace := by
+        rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul,
+          Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, hVh]
+        calc (V * Yᴴ * V * X).trace
+            = (V * (Yᴴ * (V * X))).trace := by simp only [Matrix.mul_assoc]
+          _ = ((Yᴴ * (V * X)) * V).trace := Matrix.trace_mul_comm _ _
+          _ = (Yᴴ * (V * X * V)).trace := by simp only [Matrix.mul_assoc]
+      rw [← hc2, Complex.conj_re]
+    have htr_sa : ∀ (X Y : QubitOp n), (Xᴴ * Y).trace.re = (Yᴴ * X).trace.re := by
+      intro X Y
+      have hc : (Xᴴ * Y).trace = starRingEnd ℂ (Yᴴ * X).trace := by
+        rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+      rw [hc, Complex.conj_re]
+    have hinner_split : ∀ X Y : QubitOp n,
+        (hsInner X (majoranaParitySizeOp n Y)).re =
+        (hsInner (evenPart n X) (majoranaTotalSizeOp n (evenPart n Y))).re +
+        (hsInner (oddPart n X) (majoranaOddTotalSizeOp n (oddPart n Y))).re := by
+      intro X Y
+      conv_lhs => rw [hsplit X]
+      unfold majoranaParitySizeOp hsInner
+      simp only [Matrix.conjTranspose_add, Matrix.add_mul, Matrix.mul_add, Matrix.trace_add, Complex.add_re]
+      have h1 : ((evenPart n X)ᴴ * majoranaOddTotalSizeOp n (oddPart n Y)).trace = 0 :=
+        horth_eo _ _ (heven_par X) (hpar_odd_pres Y)
+      have h2 : ((oddPart n X)ᴴ * majoranaTotalSizeOp n (evenPart n Y)).trace = 0 := by
+        have hc : ((oddPart n X)ᴴ * majoranaTotalSizeOp n (evenPart n Y)).trace =
+            starRingEnd ℂ (((majoranaTotalSizeOp n (evenPart n Y))ᴴ * oddPart n X).trace) := by
+          rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+        rw [hc, horth_eo _ _ (hpar_even_pres Y) (hodd_par X), map_zero]
+      rw [h1, h2]; simp
+    rw [hinner_split P Q, hinner_split Q P]
+    congr 1
+    · unfold majoranaTotalSizeOp hsInner
+      rw [Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum,
+          Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum]
+      apply Finset.sum_congr rfl; intro j _
+      unfold majoranaModeSizeOp
+      simp only [Matrix.mul_smul, Matrix.mul_sub, Matrix.trace_smul, Matrix.trace_sub,
+        smul_eq_mul, Complex.sub_re, Complex.mul_re, Complex.ofReal_re, Complex.ofReal_im,
+        zero_mul, sub_zero]
+      rw [htr_sa (evenPart n P) (evenPart n Q), hmode_sa _ (evenPart n P) (evenPart n Q) (majoranaProbe_herm n j)]
+    · unfold majoranaOddTotalSizeOp hsInner
+      rw [Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum,
+          Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum]
+      apply Finset.sum_congr rfl; intro j _
+      unfold majoranaOddModeSizeOp
+      simp only [Matrix.mul_smul, Matrix.mul_add, Matrix.trace_smul, Matrix.trace_add,
+        smul_eq_mul, Complex.add_re, Complex.mul_re, Complex.ofReal_re, Complex.ofReal_im,
+        zero_mul, sub_zero]
+      rw [htr_sa (oddPart n P) (oddPart n Q), hmode_sa _ (oddPart n P) (oddPart n Q) (majoranaProbe_herm n j)]
   have hS_bdd : BddAbove { x : ℝ | ∃ A : QubitOp n,
       A ∈ majoranaFiltrationSubmodule n (s₀ + (M - 1) * (r - 1)) ∧
       gibbsWightmanNormSq G A = 1 ∧ x = majoranaThermalSize G A } := by
@@ -780,9 +877,8 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
       rw [Matrix.conjTranspose_one, Matrix.mul_one, Matrix.mul_one, G.sq_half, G.trace_one,
         Complex.one_re]
     exact le_csSup hS_bdd ⟨1, h1_mem, h1_norm, h1_size.symm⟩
-  -- Bound `majoranaThermalSize G A_M ≤ majoranaLambdaMSS G s_M`
   have hAM_norm_le : gibbsWightmanNormSq G A_M ≤ 1 :=
-    lanczosTrunc_wightmanNormSq_le_one hH hO β M t hOnorm
+    lanczosTrunc_wightmanNormSq_le_one hH hO β t hOnorm M
   have hlead : majoranaThermalSize G A_M ≤ majoranaLambdaMSS G (s₀ + (M - 1) * (r - 1)) := by
     by_cases h0 : gibbsWightmanNormSq G A_M = 0
     · have hA0 : jBeta G.ρQuarter A_M = 0 := by
@@ -808,17 +904,12 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
         rw [← inv_mul, Real.mul_self_sqrt hpos.le, inv_mul_cancel₀ hpos.ne']
       have hB_le : majoranaThermalSize G B ≤ majoranaLambdaMSS G (s₀ + (M - 1) * (r - 1)) :=
         le_csSup hS_bdd ⟨B, hB_mem, hB_norm, rfl⟩
-      have hAM_eq : (hsInner (jBeta G.ρQuarter A_M) (majoranaTotalSizeOp n (jBeta G.ρQuarter A_M))).re =
+      have hAM_eq : (hsInner (jBeta G.ρQuarter A_M) (majoranaParitySizeOp n (jBeta G.ρQuarter A_M))).re =
           gibbsWightmanNormSq G A_M *
-            (hsInner (jBeta G.ρQuarter B) (majoranaTotalSizeOp n (jBeta G.ρQuarter B))).re := by
+            (hsInner (jBeta G.ρQuarter B) (majoranaParitySizeOp n (jBeta G.ρQuarter B))).re := by
         have hjB : jBeta G.ρQuarter B = (c : ℂ) • jBeta G.ρQuarter A_M := by
           unfold jBeta B; simp [Matrix.mul_smul, Matrix.smul_mul]
-        have hSB : majoranaTotalSizeOp n ((c : ℂ) • jBeta G.ρQuarter A_M) =
-            (c : ℂ) • majoranaTotalSizeOp n (jBeta G.ρQuarter A_M) := by
-          unfold majoranaTotalSizeOp majoranaModeSizeOp
-          rw [Finset.smul_sum]; apply Finset.sum_congr rfl; intro j _
-          simp only [Matrix.mul_smul, Matrix.smul_mul, smul_sub, smul_comm]
-        rw [hjB, hSB]
+        rw [hjB, hpar_smul]
         unfold hsInner
         simp only [Matrix.conjTranspose_smul, Matrix.mul_smul, Matrix.smul_mul,
           Matrix.trace_smul, smul_smul, Complex.star_def, Complex.conj_ofReal]
@@ -830,7 +921,6 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
       have hbg_nn := (hmaj_bounds G.ρHalf).1
       have hB_hs_nn := (hmaj_bounds (jBeta G.ρQuarter B)).1
       nlinarith
-  -- Expand `S_β(U) - S_β(A_M)` via bilinearity + Cauchy–Schwarz for `majoranaTotalSizeOp`
   have hU_eq : U = A_M + R_M := by dsimp only [R_M]; abel
   have hdiff : majoranaThermalSize G U - majoranaThermalSize G A_M ≤
       2 * ((2 * n : ℕ) : ℝ) * ε_M + ((2 * n : ℕ) : ℝ) * ε_M ^ 2 := by
@@ -839,146 +929,86 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
     set Y := jBeta G.ρQuarter R_M
     have hXY : jBeta G.ρQuarter U = X + Y := by
       rw [hU_eq]; unfold jBeta X Y; rw [Matrix.mul_add, Matrix.add_mul]
-    have hS_add : majoranaTotalSizeOp n (X + Y) = majoranaTotalSizeOp n X + majoranaTotalSizeOp n Y := by
-      unfold majoranaTotalSizeOp majoranaModeSizeOp
-      rw [← Finset.sum_add_distrib]; apply Finset.sum_congr rfl; intro j _
-      simp only [Matrix.mul_add, Matrix.add_mul, smul_add]; abel
-    have hS_sa : ∀ P Q : QubitOp n,
-        (hsInner P (majoranaTotalSizeOp n Q)).re = (hsInner Q (majoranaTotalSizeOp n P)).re := by
-      intro P Q
-      unfold majoranaTotalSizeOp hsInner
-      rw [Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum,
-          Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum]
-      apply Finset.sum_congr rfl; intro j _
-      unfold majoranaModeSizeOp
-      have hVh := majoranaProbe_herm n j
-      simp only [Matrix.mul_smul, Matrix.mul_sub, Matrix.trace_smul, Matrix.trace_sub,
-        smul_eq_mul, Complex.sub_re, Complex.mul_re, Complex.ofReal_re, Complex.ofReal_im,
-        zero_mul, sub_zero]
-      have h1 : (Pᴴ * Q).trace.re = (Qᴴ * P).trace.re := by
-        have hc : (Pᴴ * Q).trace = starRingEnd ℂ (Qᴴ * P).trace := by
-          rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-        rw [hc, Complex.conj_re]
-      have h2 : (Pᴴ * (majoranaProbe n j * Q * majoranaProbe n j)).trace.re =
-          (Qᴴ * (majoranaProbe n j * P * majoranaProbe n j)).trace.re := by
-        have hc2 : starRingEnd ℂ (Qᴴ * (majoranaProbe n j * P * majoranaProbe n j)).trace =
-            (Pᴴ * (majoranaProbe n j * Q * majoranaProbe n j)).trace := by
-          rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul,
-            Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, hVh]
-          calc (majoranaProbe n j * Pᴴ * majoranaProbe n j * Q).trace
-              = (majoranaProbe n j * (Pᴴ * (majoranaProbe n j * Q))).trace := by simp only [Matrix.mul_assoc]
-            _ = ((Pᴴ * (majoranaProbe n j * Q)) * majoranaProbe n j).trace := Matrix.trace_mul_comm _ _
-            _ = (Pᴴ * (majoranaProbe n j * Q * majoranaProbe n j)).trace := by simp only [Matrix.mul_assoc]
-        rw [← hc2, Complex.conj_re]
-      linarith
-    have hexpand : (hsInner (X + Y) (majoranaTotalSizeOp n (X + Y))).re -
-        (hsInner X (majoranaTotalSizeOp n X)).re =
-        2 * (hsInner X (majoranaTotalSizeOp n Y)).re +
-        (hsInner Y (majoranaTotalSizeOp n Y)).re := by
-      rw [hS_add]
+    have hexpand : (hsInner (X + Y) (majoranaParitySizeOp n (X + Y))).re -
+        (hsInner X (majoranaParitySizeOp n X)).re =
+        2 * (hsInner X (majoranaParitySizeOp n Y)).re +
+        (hsInner Y (majoranaParitySizeOp n Y)).re := by
+      rw [hpar_add]
       unfold hsInner
       simp only [Matrix.conjTranspose_add, Matrix.add_mul, Matrix.mul_add,
         Matrix.trace_add, Complex.add_re]
       have hsym := hS_sa X Y
       unfold hsInner at hsym
       linarith
-    rw [hXY]; linarith only [hexpand,
-      show 2 * (hsInner X (majoranaTotalSizeOp n Y)).re + (hsInner Y (majoranaTotalSizeOp n Y)).re ≤
-          2 * ((2 * n : ℕ) : ℝ) * ε_M + ((2 * n : ℕ) : ℝ) * ε_M ^ 2 by
-        have hY_hs : hsNormSq Y = ε_M ^ 2 := by
-          dsimp only [ε_M, Y, R_M]
-          rw [Real.sq_sqrt (gibbsWightmanNormSq_nonneg G _)]
-          exact congrArg Complex.re
-            (prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter)
-        have hX_hs : hsNormSq X ≤ 1 := by
-          have : hsNormSq X = gibbsWightmanNormSq G A_M :=
-            congrArg Complex.re
-              (prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter)
+    have hY_hs : hsNormSq Y = ε_M ^ 2 := by
+      dsimp only [ε_M, Y, R_M]
+      rw [Real.sq_sqrt (gibbsWightmanNormSq_nonneg G _)]
+      exact congrArg Complex.re
+        (prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter)
+    have hX_hs : hsNormSq X ≤ 1 := by
+      have : hsNormSq X = gibbsWightmanNormSq G A_M :=
+        congrArg Complex.re
+          (prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter)
+      linarith
+    have hYY : (hsInner Y (majoranaParitySizeOp n Y)).re ≤ ((2 * n : ℕ) : ℝ) * ε_M ^ 2 := by
+      rw [← hY_hs]; exact (hmaj_bounds Y).2
+    have hquad_exp : ∀ α : ℝ,
+        0 ≤ (hsInner X (majoranaParitySizeOp n X)).re +
+            2 * α * (hsInner X (majoranaParitySizeOp n Y)).re +
+            α ^ 2 * (hsInner Y (majoranaParitySizeOp n Y)).re := by
+      intro α
+      have hq := (hmaj_bounds (X + (α : ℂ) • Y)).1
+      rw [hpar_add, hpar_smul] at hq
+      have heq : (hsInner (X + (α : ℂ) • Y) (majoranaParitySizeOp n X + (α : ℂ) • majoranaParitySizeOp n Y)).re =
+          (hsInner X (majoranaParitySizeOp n X)).re + 2 * α * (hsInner X (majoranaParitySizeOp n Y)).re +
+          α ^ 2 * (hsInner Y (majoranaParitySizeOp n Y)).re := by
+        unfold hsInner
+        simp only [Matrix.conjTranspose_add, Matrix.conjTranspose_smul, Matrix.add_mul,
+          Matrix.mul_add, Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_add,
+          Matrix.trace_smul, smul_smul, Complex.star_def, Complex.conj_ofReal,
+          Complex.add_re, Complex.re_ofReal_mul]
+        have hsym := hS_sa X Y
+        unfold hsInner at hsym
+        rw [← Complex.ofReal_mul, Complex.re_ofReal_mul]
+        ring_nf; linarith
+      linarith
+    have hcs_sq : ((hsInner X (majoranaParitySizeOp n Y)).re) ^ 2 ≤
+        (hsInner X (majoranaParitySizeOp n X)).re * (hsInner Y (majoranaParitySizeOp n Y)).re := by
+      by_cases hY0 : (hsInner Y (majoranaParitySizeOp n Y)).re = 0
+      · have h0 : (hsInner X (majoranaParitySizeOp n Y)).re = 0 := by
+          by_contra hne
+          set α : ℝ := -(hsInner X (majoranaParitySizeOp n X)).re / (2 * (hsInner X (majoranaParitySizeOp n Y)).re) - 1 / (hsInner X (majoranaParitySizeOp n Y)).re
+          have hq := hquad_exp α
+          rw [hY0, mul_zero, add_zero] at hq
+          have : 2 * α * (hsInner X (majoranaParitySizeOp n Y)).re = -(hsInner X (majoranaParitySizeOp n X)).re - 2 := by
+            dsimp only [α]; field_simp [hne]; ring
           linarith
-        have hYY : (hsInner Y (majoranaTotalSizeOp n Y)).re ≤ ((2 * n : ℕ) : ℝ) * ε_M ^ 2 := by
-          rw [← hY_hs]; exact (hmaj_bounds Y).2
-        have hXY_cs : (hsInner X (majoranaTotalSizeOp n Y)).re ≤ ((2 * n : ℕ) : ℝ) * ε_M := by
-          have hcs_sq : ((hsInner X (majoranaTotalSizeOp n Y)).re) ^ 2 ≤
-              (hsInner X (majoranaTotalSizeOp n X)).re * (hsInner Y (majoranaTotalSizeOp n Y)).re := by
-            by_cases hY0 : (hsInner Y (majoranaTotalSizeOp n Y)).re = 0
-            · have h0 : (hsInner X (majoranaTotalSizeOp n Y)).re = 0 := by
-                by_contra hne
-                set α : ℝ := -(hsInner X (majoranaTotalSizeOp n X)).re / (2 * (hsInner X (majoranaTotalSizeOp n Y)).re) - 1 / (hsInner X (majoranaTotalSizeOp n Y)).re
-                have hquad : 0 ≤ (hsInner (X + (α : ℂ) • Y) (majoranaTotalSizeOp n (X + (α : ℂ) • Y))).re :=
-                  (hmaj_bounds _).1
-                have hlin_S : majoranaTotalSizeOp n (X + (α : ℂ) • Y) =
-                    majoranaTotalSizeOp n X + (α : ℂ) • majoranaTotalSizeOp n Y := by
-                  unfold majoranaTotalSizeOp majoranaModeSizeOp
-                  rw [← Finset.sum_add_distrib, Finset.smul_sum]; apply Finset.sum_congr rfl; intro j _
-                  simp only [Matrix.mul_add, Matrix.add_mul, Matrix.mul_smul, Matrix.smul_mul,
-                    smul_add, smul_sub, smul_comm]; abel
-                rw [hlin_S] at hquad
-                have hq : (hsInner (X + (α : ℂ) • Y) (majoranaTotalSizeOp n X + (α : ℂ) • majoranaTotalSizeOp n Y)).re =
-                    (hsInner X (majoranaTotalSizeOp n X)).re + 2 * α * (hsInner X (majoranaTotalSizeOp n Y)).re +
-                    α ^ 2 * (hsInner Y (majoranaTotalSizeOp n Y)).re := by
-                  unfold hsInner
-                  simp only [Matrix.conjTranspose_add, Matrix.conjTranspose_smul, Matrix.add_mul,
-                    Matrix.mul_add, Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_add,
-                    Matrix.trace_smul, smul_smul, Complex.star_def, Complex.conj_ofReal,
-                    Complex.add_re, Complex.re_ofReal_mul]
-                  have hsym := hS_sa X Y
-                  unfold hsInner at hsym
-                  rw [← Complex.ofReal_mul, Complex.re_ofReal_mul]
-                  ring_nf; linarith
-                rw [hq, hY0, mul_zero, add_zero] at hquad
-                have : 2 * α * (hsInner X (majoranaTotalSizeOp n Y)).re =
-                    -(hsInner X (majoranaTotalSizeOp n X)).re - 2 := by
-                  dsimp only [α]; field_simp [hne]; ring
-                linarith
-              rw [h0, hY0]; norm_num
-            · have hYpos : 0 < (hsInner Y (majoranaTotalSizeOp n Y)).re :=
-                lt_of_le_of_ne (hmaj_bounds Y).1 (Ne.symm hY0)
-              set α : ℝ := -(hsInner X (majoranaTotalSizeOp n Y)).re / (hsInner Y (majoranaTotalSizeOp n Y)).re
-              have hquad : 0 ≤ (hsInner (X + (α : ℂ) • Y) (majoranaTotalSizeOp n (X + (α : ℂ) • Y))).re :=
-                (hmaj_bounds _).1
-              have hlin_S : majoranaTotalSizeOp n (X + (α : ℂ) • Y) =
-                  majoranaTotalSizeOp n X + (α : ℂ) • majoranaTotalSizeOp n Y := by
-                unfold majoranaTotalSizeOp majoranaModeSizeOp
-                rw [← Finset.sum_add_distrib, Finset.smul_sum]; apply Finset.sum_congr rfl; intro j _
-                simp only [Matrix.mul_add, Matrix.add_mul, Matrix.mul_smul, Matrix.smul_mul,
-                  smul_add, smul_sub, smul_comm]; abel
-              rw [hlin_S] at hquad
-              have hq : (hsInner (X + (α : ℂ) • Y) (majoranaTotalSizeOp n X + (α : ℂ) • majoranaTotalSizeOp n Y)).re =
-                  (hsInner X (majoranaTotalSizeOp n X)).re + 2 * α * (hsInner X (majoranaTotalSizeOp n Y)).re +
-                  α ^ 2 * (hsInner Y (majoranaTotalSizeOp n Y)).re := by
-                unfold hsInner
-                simp only [Matrix.conjTranspose_add, Matrix.conjTranspose_smul, Matrix.add_mul,
-                  Matrix.mul_add, Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_add,
-                  Matrix.trace_smul, smul_smul, Complex.star_def, Complex.conj_ofReal,
-                  Complex.add_re, Complex.re_ofReal_mul]
-                have hsym := hS_sa X Y
-                unfold hsInner at hsym
-                rw [← Complex.ofReal_mul, Complex.re_ofReal_mul]
-                ring_nf; linarith
-              rw [hq] at hquad
-              have hmul := mul_nonneg hquad hYpos.le
-              have hident : ((hsInner X (majoranaTotalSizeOp n X)).re +
-                  2 * α * (hsInner X (majoranaTotalSizeOp n Y)).re +
-                  α ^ 2 * (hsInner Y (majoranaTotalSizeOp n Y)).re) *
-                  (hsInner Y (majoranaTotalSizeOp n Y)).re =
-                  (hsInner X (majoranaTotalSizeOp n X)).re * (hsInner Y (majoranaTotalSizeOp n Y)).re -
-                  ((hsInner X (majoranaTotalSizeOp n Y)).re) ^ 2 := by
-                dsimp only [α]; field_simp [hYpos.ne']; ring
-              linarith
-          have hXX : (hsInner X (majoranaTotalSizeOp n X)).re ≤ ((2 * n : ℕ) : ℝ) := by
-            have := (hmaj_bounds X).2
-            nlinarith [Nat.cast_nonneg (α := ℝ) (2 * n)]
-          have hprod : (hsInner X (majoranaTotalSizeOp n X)).re * (hsInner Y (majoranaTotalSizeOp n Y)).re ≤
-              (((2 * n : ℕ) : ℝ) * ε_M) ^ 2 := by
-            have : (((2 * n : ℕ) : ℝ) * ε_M) ^ 2 = ((2 * n : ℕ) : ℝ) * (((2 * n : ℕ) : ℝ) * ε_M ^ 2) := by ring
-            rw [this]
-            exact mul_le_mul hXX hYY (hmaj_bounds Y).1 (Nat.cast_nonneg _)
-          have hsq_le : ((hsInner X (majoranaTotalSizeOp n Y)).re) ^ 2 ≤ (((2 * n : ℕ) : ℝ) * ε_M) ^ 2 :=
-            le_trans hcs_sq hprod
-          have hnn_rhs : 0 ≤ ((2 * n : ℕ) : ℝ) * ε_M :=
-            mul_nonneg (Nat.cast_nonneg _) (Real.sqrt_nonneg _)
-          nlinarith [sq_abs (hsInner X (majoranaTotalSizeOp n Y)).re, le_abs_self (hsInner X (majoranaTotalSizeOp n Y)).re]
-        linarith]
+        rw [h0, hY0]; norm_num
+      · have hYpos : 0 < (hsInner Y (majoranaParitySizeOp n Y)).re :=
+          lt_of_le_of_ne (hmaj_bounds Y).1 (Ne.symm hY0)
+        set α : ℝ := -(hsInner X (majoranaParitySizeOp n Y)).re / (hsInner Y (majoranaParitySizeOp n Y)).re
+        have hmul := mul_nonneg (hquad_exp α) hYpos.le
+        have hident : ((hsInner X (majoranaParitySizeOp n X)).re +
+            2 * α * (hsInner X (majoranaParitySizeOp n Y)).re +
+            α ^ 2 * (hsInner Y (majoranaParitySizeOp n Y)).re) *
+            (hsInner Y (majoranaParitySizeOp n Y)).re =
+            (hsInner X (majoranaParitySizeOp n X)).re * (hsInner Y (majoranaParitySizeOp n Y)).re -
+            ((hsInner X (majoranaParitySizeOp n Y)).re) ^ 2 := by
+          dsimp only [α]; field_simp [hYpos.ne']; ring
+        linarith
+    have hXX : (hsInner X (majoranaParitySizeOp n X)).re ≤ ((2 * n : ℕ) : ℝ) := by
+      have := (hmaj_bounds X).2; nlinarith [Nat.cast_nonneg (α := ℝ) (2 * n)]
+    have hprod : (hsInner X (majoranaParitySizeOp n X)).re * (hsInner Y (majoranaParitySizeOp n Y)).re ≤
+        (((2 * n : ℕ) : ℝ) * ε_M) ^ 2 := by
+      have : (((2 * n : ℕ) : ℝ) * ε_M) ^ 2 = ((2 * n : ℕ) : ℝ) * (((2 * n : ℕ) : ℝ) * ε_M ^ 2) := by ring
+      rw [this]; exact mul_le_mul hXX hYY (hmaj_bounds Y).1 (Nat.cast_nonneg _)
+    have hsq_le : ((hsInner X (majoranaParitySizeOp n Y)).re) ^ 2 ≤ (((2 * n : ℕ) : ℝ) * ε_M) ^ 2 :=
+      le_trans hcs_sq hprod
+    have hnn_rhs : 0 ≤ ((2 * n : ℕ) : ℝ) * ε_M :=
+      mul_nonneg (Nat.cast_nonneg _) (Real.sqrt_nonneg _)
+    have hXY_cs : (hsInner X (majoranaParitySizeOp n Y)).re ≤ ((2 * n : ℕ) : ℝ) * ε_M := by
+      nlinarith [sq_abs (hsInner X (majoranaParitySizeOp n Y)).re, le_abs_self (hsInner X (majoranaParitySizeOp n Y)).re]
+    rw [hXY]; linarith
   linarith
 
 /-- **Item #9 — Concrete End-to-End Majorana Theorem 1.1(b) (Fixed `n`, Eq. 1.14)**:
@@ -1175,8 +1205,10 @@ theorem theorem_1_1b_family_majorana {r s₀ : ℕ} (hr : 1 ≤ r)
   have htn_nn : 0 ≤ tn := by
     dsimp only [tn]; apply mul_nonneg (div_nonneg (by linarith) hlam.le) hlogn_pos.le
   have htanh1_pos : 0 < Real.tanh 1 := by
-    rw [Real.tanh_eq_sinh_div_cosh]
-    exact div_pos (Real.sinh_pos_iff.mpr (by norm_num)) (Real.cosh_pos 1)
+    rw [Real.tanh_eq_sinh_div_cosh, Real.sinh_eq]
+    apply div_pos _ (Real.cosh_pos 1)
+    have : Real.exp (-1) < Real.exp 1 := Real.exp_lt_exp.mpr (by norm_num)
+    linarith
   set xM : ℝ := (1 / Real.tanh 1) * Real.exp (2 * α * tn) * Real.log (n : ℝ)
   have hxM_pos : 0 < xM := by dsimp only [xM]; positivity
   set M : ℕ := Nat.ceil xM
@@ -1203,7 +1235,8 @@ theorem theorem_1_1b_family_majorana {r s₀ : ℕ} (hr : 1 ≤ r)
           have he : Real.exp (2 * α * tn) * Real.exp (-2 * α * tn) = 1 := by
             rw [← Real.exp_add]; simp
           field_simp [htanh1_pos.ne']
-          nlinarith [he]
+          rw [show -(2 * α * tn) = -2 * α * tn by ring]
+          exact he
         have hle := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hM_ge_xM htanh1_pos.le)
           (Real.exp_pos (-2 * α * tn)).le
         linarith
@@ -1231,8 +1264,10 @@ theorem theorem_1_1b_family_majorana {r s₀ : ℕ} (hr : 1 ≤ r)
     rw [h2n]
     have h1 := mul_le_mul_of_nonneg_left hsqrt_qM (by positivity : (0 : ℝ) ≤ 2 * (2 * (n : ℝ)))
     have hnpow : (n : ℝ) * (n : ℝ) ^ (-2 : ℝ) = (n : ℝ)⁻¹ := by
-      conv_lhs => rw [← Real.rpow_one (n : ℝ)]
-      rw [← Real.rpow_add hn_pos, show (1 : ℝ) + -2 = -1 by norm_num, Real.rpow_neg_one]
+      calc (n : ℝ) * (n : ℝ) ^ (-2 : ℝ)
+          = (n : ℝ) ^ (1 : ℝ) * (n : ℝ) ^ (-2 : ℝ) := by rw [Real.rpow_one]
+        _ = (n : ℝ) ^ ((1 : ℝ) + -2) := (Real.rpow_add hn_pos 1 (-2)).symm
+        _ = (n : ℝ)⁻¹ := by norm_num; exact Real.rpow_neg_one _
     have h2 : 2 * (2 * (n : ℝ)) * ((C₀ / 2) * (n : ℝ) ^ (-2 : ℝ)) = 2 * C₀ * (n : ℝ)⁻¹ := by
       calc 2 * (2 * (n : ℝ)) * ((C₀ / 2) * (n : ℝ) ^ (-2 : ℝ))
           = 2 * C₀ * ((n : ℝ) * (n : ℝ) ^ (-2 : ℝ)) := by ring
@@ -1243,8 +1278,10 @@ theorem theorem_1_1b_family_majorana {r s₀ : ℕ} (hr : 1 ≤ r)
     rw [h2n]
     have h1 := mul_le_mul_of_nonneg_left hqM_le (by positivity : (0 : ℝ) ≤ 2 * (n : ℝ))
     have hnpow : (n : ℝ) * (n : ℝ) ^ (-4 : ℝ) = (n : ℝ) ^ (-3 : ℝ) := by
-      conv_lhs => rw [← Real.rpow_one (n : ℝ)]
-      rw [← Real.rpow_add hn_pos]; norm_num
+      calc (n : ℝ) * (n : ℝ) ^ (-4 : ℝ)
+          = (n : ℝ) ^ (1 : ℝ) * (n : ℝ) ^ (-4 : ℝ) := by rw [Real.rpow_one]
+        _ = (n : ℝ) ^ ((1 : ℝ) + -4) := (Real.rpow_add hn_pos 1 (-4)).symm
+        _ = (n : ℝ) ^ (-3 : ℝ) := by norm_num
     have hC0sq : C₀ ^ 2 = 4 * Real.exp ((1 / 2 + γ / α) * 4) := by
       dsimp only [C₀]; rw [mul_pow, Real.sq_sqrt (Real.exp_pos _).le]; norm_num
     have h2 : 2 * (n : ℝ) * (Real.exp ((1 / 2 + γ / α) * 4) * (n : ℝ) ^ (-4 : ℝ)) =
@@ -1260,10 +1297,10 @@ theorem theorem_1_1b_family_majorana {r s₀ : ℕ} (hr : 1 ≤ r)
   have hs_le : ((s₀ + (M - 1) * (r - 1) : ℕ) : ℝ) ≤ sN := by
     dsimp only [sN, MN]
     have hM1 : ((M - 1 : ℕ) : ℝ) ≤ (M : ℝ) := by exact_mod_cast Nat.sub_le M 1
-    have hr1 : ((r - 1 : ℕ) : ℝ) = (r : ℝ) - 1 := by exact_mod_cast Nat.cast_sub hr
+    have hr1 : ((r - 1 : ℕ) : ℝ) = (r : ℝ) - 1 := by rw [Nat.cast_sub hr, Nat.cast_one]
     push_cast
     rw [hr1]
-    have hr_nn : (0 : ℝ) ≤ (r : ℝ) - 1 := by have : (1 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr; linarith
+    have hr_nn : (0 : ℝ) ≤ (r : ℝ) - 1 := by rw [← hr1]; exact Nat.cast_nonneg _
     nlinarith
   have hlam_le : majoranaLambdaMSS (concreteGibbsData (hH n) β) (s₀ + (M - 1) * (r - 1)) ≤
       C₁ * sN + C₂' * (n : ℝ) ^ δ * sN ^ (1 - δ) := by
@@ -1272,8 +1309,8 @@ theorem theorem_1_1b_family_majorana {r s₀ : ℕ} (hr : 1 ≤ r)
       have : ((2 * n : ℕ) : ℝ) = 2 * (n : ℝ) := by push_cast; ring
       rw [this, Real.mul_rpow (by norm_num) hn_pos.le]
     rw [h2n_rpow] at h2
-    have hC2eq : C₂ * ((2 : ℝ) ^ δ * (n : ℝ) ^ δ) = C₂' * (n : ℝ) ^ δ := by dsimp only [C₂']; ring
-    rw [← mul_assoc, hC2eq] at h2
+    have hC2eq : C₂ * (2 : ℝ) ^ δ = C₂' := rfl
+    rw [← mul_assoc C₂ ((2 : ℝ) ^ δ) ((n : ℝ) ^ δ), hC2eq] at h2
     have hs1 : C₁ * ((s₀ + (M - 1) * (r - 1) : ℕ) : ℝ) ≤ C₁ * sN :=
       mul_le_mul_of_nonneg_left hs_le hC₁
     have hs2 : ((s₀ + (M - 1) * (r - 1) : ℕ) : ℝ) ^ (1 - δ) ≤ sN ^ (1 - δ) :=

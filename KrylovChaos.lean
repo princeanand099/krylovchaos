@@ -29,6 +29,7 @@ import KrylovChaos.Milestone1CoreRemediation
 import KrylovChaos.Milestone1Majorana
 import KrylovChaos.Milestone1InfiniteChain
 import KrylovChaos.Milestone2AnalyticFoundations
+import KrylovChaos.Milestone2SpectralAndVitali
 import KrylovChaos.Milestone3Bridges
 import KrylovChaos.Milestone4StructuralNecessity
 import KrylovChaos.MultiSiteCommutator

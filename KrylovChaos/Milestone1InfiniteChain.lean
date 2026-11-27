@@ -66,7 +66,6 @@ theorem infinite_krylov_ode_of_pointwise_limit (b : ℕ → ℝ)
       filter_upwards [eventually_ge_atTop m] with N hN
       exact (hinit_N N m hN).symm
     exact tendsto_nhds_unique (htendsto m 0) hconst
-  -- Uniform Lipschitz bound for `φ_N N m` (for `N ≥ m`), passing to the pointwise limit `φ m`
   have hlip : ∀ m t₁ t₂, |φ m t₂ - φ m t₁| ≤ (|b m| + |b (m + 1)|) * |t₂ - t₁| := by
     intro m t₁ t₂
     set L : ℝ := |b m| + |b (m + 1)|
@@ -108,7 +107,6 @@ theorem infinite_krylov_ode_of_pointwise_limit (b : ℕ → ℝ)
     have h3 : L * |s - t| < L * (ε / L) := mul_lt_mul_of_pos_left hs hL_pos
     rw [mul_div_cancel₀ _ hL_pos.ne'] at h3
     linarith
-  -- Integral equation via FTC on `φ_N` + Dominated Convergence as `N → ∞`
   have hint_eq : ∀ m t, φ m t - φ m 0 =
       ∫ s in (0 : ℝ)..t, (b m * φ (m - 1) s - b (m + 1) * φ (m + 1) s) := by
     intro m t
@@ -162,7 +160,7 @@ theorem infinite_krylov_ode_of_pointwise_limit (b : ℕ → ℝ)
     (continuous_const.mul (hcont (m - 1))).sub (continuous_const.mul (hcont (m + 1)))
   have hderiv_int : HasDerivAt (fun x ↦ ∫ s in (0 : ℝ)..x, g s) (g t) t :=
     intervalIntegral.integral_hasDerivAt_right (hg_cont.intervalIntegrable 0 t)
-      hg_cont.stronglyMeasurableAtFilter hg_cont.continuousAt
+      (hg_cont.stronglyMeasurableAtFilter _ _) hg_cont.continuousAt
   have hfun : φ m = fun x ↦ (∫ s in (0 : ℝ)..x, g s) + φ m 0 := by
     ext x; linarith [hint_eq m x]
   rw [hfun]
@@ -222,7 +220,6 @@ theorem infinite_krylov_ode_carleman_l2_unique {b : ℕ → ℝ} (hb0 : b 0 = 0)
       rw [hfun, ← hval]
       exact hsq
     rwa [htele] at hsum
-  -- Carleman weights `w M = (max (b (M + 1)) 1)⁻¹` satisfy `0 < w M` and `w M * b (M + 1) ≤ 1`
   let w : ℕ → ℝ := fun M ↦ (max (b (M + 1)) 1)⁻¹
   have hw_pos : ∀ M, 0 < w M := fun M ↦ inv_pos.mpr (lt_of_lt_of_le one_pos (le_max_right _ _))
   have hwb_le : ∀ M, w M * b (M + 1) ≤ 1 := by
@@ -232,7 +229,6 @@ theorem infinite_krylov_ode_carleman_l2_unique {b : ℕ → ℝ} (hb0 : b 0 = 0)
     exact le_max_left _ _
   intro t ht n₀
   have ht0 : 0 ≤ t := ht.1
-  -- Weighted energy sum `S K s = ∑ M < K, w M * E M s` satisfies `S K t ≤ 2 C t` for all `K`
   have hSK_le : ∀ K : ℕ, ∑ M ∈ Finset.range K, w M * E M t ≤ 2 * C * t := by
     intro K
     let S : ℝ → ℝ := fun s ↦ ∑ M ∈ Finset.range K, w M * E M s
@@ -281,7 +277,6 @@ theorem infinite_krylov_ode_carleman_l2_unique {b : ℕ → ℝ} (hb0 : b 0 = 0)
       rw [hS0, sub_zero, sub_zero] at hc_eq
       have hdiv : S t / t ≤ 2 * C := hc_eq ▸ hc_le
       exact (div_le_iff₀ ht_pos).mp hdiv
-  -- If `ψ n₀ t ≠ 0`, then `∑_{M=n₀}^{K-1} w M ≤ 2 C t / (ψ n₀ t)^2`, contradicting Carleman divergence!
   by_contra hne
   have hψ_ne : ψ n₀ t ≠ 0 := sub_ne_zero.mpr hne
   have hψ_sq_pos : 0 < (ψ n₀ t) ^ 2 := sq_pos_of_ne_zero hψ_ne
@@ -302,13 +297,16 @@ theorem infinite_krylov_ode_carleman_l2_unique {b : ℕ → ℝ} (hb0 : b 0 = 0)
             exact Finset.mem_range.mpr (by have := Finset.mem_range.mp hM; omega)
           have hinj : Set.InjOn (fun M ↦ n₀ + M) (Finset.range K : Set ℕ) :=
             fun a _ b _ hab ↦ Nat.add_left_cancel hab
-          rw [← Finset.sum_image hinj]
+          have hsum_img : ∑ M ∈ Finset.range K, w (n₀ + M) * E (n₀ + M) t =
+              ∑ x ∈ (Finset.range K).image (fun M ↦ n₀ + M), w x * E x t :=
+            (Finset.sum_image (f := fun x ↦ w x * E x t) (fun a ha b hb hab ↦ hinj ha hb hab)).symm
+          rw [hsum_img]
           exact Finset.sum_le_sum_of_subset_of_nonneg hsub (fun M _ _ ↦
             mul_nonneg (hw_pos M).le (Finset.sum_nonneg fun n _ ↦ sq_nonneg _))
       _ ≤ 2 * C * t := hSK_le (n₀ + K)
   have hsumm_shift : Summable (fun M : ℕ ↦ w (n₀ + M)) :=
     summable_of_sum_range_le (fun M ↦ (hw_pos _).le) htail_bdd
-  have hsumm : Summable w := (summable_nat_add_iff n₀).mp hsumm_shift
+  have hsumm : Summable w := (summable_nat_add_iff n₀).mp (by simpa [add_comm] using hsumm_shift)
   exact hcarleman hsumm
 
 /-- **Item #6 — Linear-Growth Specialization (`0 ≤ b n ≤ α n + γ` → Genuine `ℓ²`-Uniqueness)**:
@@ -324,7 +322,6 @@ theorem infinite_krylov_ode_linear_growth_l2_unique {b : ℕ → ℝ} {α γ : �
       Summable (fun n ↦ (φ₁ n s - φ₂ n s) ^ 2) ∧ ∑' n, (φ₁ n s - φ₂ n s) ^ 2 ≤ C) :
     ∀ t ∈ Set.Icc 0 T, ∀ n : ℕ, φ₁ n t = φ₂ n t := by
   refine infinite_krylov_ode_carleman_l2_unique hb0 hb_nn ?_ φ₁ φ₂ hT hC hode₁ hode₂ hinit hl2
-  -- Prove Carleman divergence `¬ Summable (fun M ↦ (max (b (M + 1)) 1)⁻¹)` from `b n ≤ α n + γ`
   intro hsumm
   set A : ℝ := α + γ + 1
   have hA_pos : 0 < A := by dsimp only [A]; linarith
@@ -433,7 +430,7 @@ theorem theorem_1_1a_infinite_fatou_exact_single_exp {α γ θ₀ : ℝ}
     refine theorem_1_1a_infinite_tail_and_complexity φ hα hγ hθ₀ t ht ?_
     intro M
     have hM_bound : ∀ N ≥ M,
-        ∑ m ∈ Finset.range (M + 1), Real.exp (charTheta α θ₀ t * (m : ℝ)) * (φ_N N m t) ^ 2 ≤
+        ∑ m ∈ Finset.range M, Real.exp (charTheta α θ₀ t * (m : ℝ)) * (φ_N N m t) ^ 2 ≤
           Real.exp ((1 / 2 + γ / α) * θ₀) := by
       intro N hNM
       let bN : ℕ → ℝ := fun k ↦ if k ≤ N then b k else 0
@@ -459,7 +456,7 @@ theorem theorem_1_1a_infinite_fatou_exact_single_exp {α γ θ₀ : ℝ}
         rwa [h1, h2]
       have hmgf := lemma_3_1_finite_chain_mgf bN (φ_N N) hα hγ hθ₀ hbN0 hbNN hbN_nn hbN_lin
         hode_bN (hinit_N N) t ht
-      have hle_full : ∑ m ∈ Finset.range (M + 1),
+      have hle_full : ∑ m ∈ Finset.range M,
             Real.exp (charTheta α θ₀ t * (m : ℝ)) * (φ_N N m t) ^ 2 ≤
           finiteMGF N (φ_N N) (charTheta α θ₀ t) t := by
         unfold finiteMGF
@@ -468,15 +465,17 @@ theorem theorem_1_1a_infinite_fatou_exact_single_exp {α γ θ₀ : ℝ}
         · intro m _ _; positivity
       exact le_trans hle_full (le_trans hmgf.1 hmgf.2)
     have htend_sum : Tendsto
-        (fun N ↦ ∑ m ∈ Finset.range (M + 1), Real.exp (charTheta α θ₀ t * (m : ℝ)) * (φ_N N m t) ^ 2)
+        (fun N ↦ ∑ m ∈ Finset.range M, Real.exp (charTheta α θ₀ t * (m : ℝ)) * (φ_N N m t) ^ 2)
         atTop
-        (nhds (∑ m ∈ Finset.range (M + 1), Real.exp (charTheta α θ₀ t * (m : ℝ)) * (φ m t) ^ 2)) :=
+        (nhds (∑ m ∈ Finset.range M, Real.exp (charTheta α θ₀ t * (m : ℝ)) * (φ m t) ^ 2)) :=
       tendsto_finset_sum _ fun m _ ↦ tendsto_const_nhds.mul ((htendsto m t).pow 2)
     exact le_of_tendsto htend_sum (by filter_upwards [eventually_ge_atTop M] with N hN; exact hM_bound N hN)
   refine ⟨hmain, ?_⟩
   have htanh_pos : 0 < Real.tanh (θ₀ / 4) := by
-    rw [Real.tanh_eq_sinh_div_cosh]
-    exact div_pos (Real.sinh_pos_iff.mpr (by linarith)) (Real.cosh_pos _)
+    rw [Real.tanh_eq_sinh_div_cosh, Real.sinh_eq]
+    apply div_pos _ (Real.cosh_pos _)
+    have : Real.exp (-(θ₀ / 4)) < Real.exp (θ₀ / 4) := Real.exp_lt_exp.mpr (by linarith)
+    linarith
   set C : ℝ := Real.exp ((1 / 2 + γ / α) * θ₀) / (4 * Real.exp 1 * Real.tanh (θ₀ / 4))
   have hC_pos : 0 < C := by dsimp only [C]; positivity
   refine theorem_1_1a_limsup_rate_bound_nonneg hC_pos hα ?_

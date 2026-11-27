@@ -84,21 +84,23 @@ private lemma qubitOpToCLM_mul_eq {N : ℕ} (A B : QubitOp N) :
     qubitOpToCLM (A * B) = (qubitOpToCLM A).comp (qubitOpToCLM B) := by
   apply ContinuousLinearMap.ext; intro v
   ext i
-  simp only [ContinuousLinearMap.comp_apply, qubitOpToCLM, LinearMap.coe_toContinuousLinearMap',
-    LinearMap.coe_mk, AddHom.coe_mk, Matrix.mulVec_mulVec]
-  rfl
+  change ∑ x, (A * B) i x * v.ofLp x = ∑ x, A i x * ∑ y, B x y * v.ofLp y
+  simp_rw [Matrix.mul_apply, Finset.sum_mul, Finset.mul_sum, mul_assoc]
+  exact Finset.sum_comm
 
 private lemma qubitOpToCLM_one_eq (N : ℕ) :
     qubitOpToCLM (1 : QubitOp N) = ContinuousLinearMap.id ℂ _ := by
   apply ContinuousLinearMap.ext; intro v
   ext i
-  simp [qubitOpToCLM]
+  change ∑ x, (1 : QubitOp N) i x * v.ofLp x = v.ofLp i
+  simp [Matrix.one_apply]
 
 private lemma qubitOpToCLM_smul_eq {N : ℕ} (c : ℂ) (A : QubitOp N) :
     qubitOpToCLM (c • A) = c • qubitOpToCLM A := by
   apply ContinuousLinearMap.ext; intro v
   ext i
-  simp [qubitOpToCLM, Matrix.smul_mulVec]
+  change ∑ x, (c * A i x) * v.ofLp x = c * ∑ x, A i x * v.ofLp x
+  rw [Finset.mul_sum]; apply Finset.sum_congr rfl; intro x _; ring
 
 private lemma qubitOpToCLM_inj {N : ℕ} {A B : QubitOp N}
     (h : qubitOpToCLM A = qubitOpToCLM B) : A = B := by
@@ -121,7 +123,7 @@ theorem isEvenParity_concreteGibbsRhoQuarter {n : ℕ} {H : QubitOp n}
   congr 1
   have hfunc_eq : (fun E : ℝ ↦ (Real.exp (-(β / 4) * E) : ℂ)) =
       fun E : ℝ ↦ Complex.exp ((-(β / 4 : ℝ) : ℂ) * (E : ℂ)) := by
-    funext E; rw [← Complex.ofReal_exp]; congr 1; push_cast; ring
+    funext E; rw [Complex.ofReal_exp]; congr 1; push_cast; ring
   rw [hfunc_eq]
   apply qubitOpToCLM_inj
   rw [qubitOpToCLM_mul_eq, qubitOpToCLM_mul_eq, qubitOpToCLM_hermFunc_exp hH (-(β / 4 : ℝ) : ℂ)]
@@ -188,7 +190,7 @@ theorem prop_2_3_part2_majorana_from_even_H {n : ℕ} {H : QubitOp n}
     majoranaThermalSize G A =
       (1 / 2 : ℝ) * ∑ j : Fin (2 * n),
         (gibbsWightmanNormSq G (matComm (majoranaProbe n j) A) +
-          (majoranaFMSS G A j).re) :=
+          majoranaFMSS G A j) :=
   prop_2_3_part2_majorana_eq_2_10 (concreteGibbsData hH β)
     (isEvenParity_concreteGibbsRhoQuarter hH hH_even β) hA
 
@@ -247,8 +249,10 @@ theorem theorem_1_1b_family_concrete_qubit
   have htN_nn : 0 ≤ tN := by
     dsimp only [tN]; apply mul_nonneg (div_nonneg (by linarith) hlam.le) hlogN_pos.le
   have htanh1_pos : 0 < Real.tanh 1 := by
-    rw [Real.tanh_eq_sinh_div_cosh]
-    exact div_pos (Real.sinh_pos_iff.mpr (by norm_num)) (Real.cosh_pos 1)
+    rw [Real.tanh_eq_sinh_div_cosh, Real.sinh_eq]
+    apply div_pos _ (Real.cosh_pos 1)
+    have : Real.exp (-1) < Real.exp 1 := Real.exp_lt_exp.mpr (by norm_num)
+    linarith
   set xM : ℝ := (1 / Real.tanh 1) * Real.exp (2 * α * tN) * Real.log (N : ℝ)
   have hxM_pos : 0 < xM := by dsimp only [xM]; positivity
   set M : ℕ := Nat.ceil xM
@@ -275,9 +279,8 @@ theorem theorem_1_1b_family_concrete_qubit
           have he : Real.exp (2 * α * tN) * Real.exp (-2 * α * tN) = 1 := by
             rw [← Real.exp_add]; simp
           field_simp [htanh1_pos.ne']
-          calc Real.exp (2 * α * tN) * Real.log (N : ℝ) * Real.exp (-2 * α * tN)
-              = (Real.exp (2 * α * tN) * Real.exp (-2 * α * tN)) * Real.log (N : ℝ) := by ring
-            _ = Real.log (N : ℝ) := by rw [he, one_mul]
+          rw [show -(2 * α * tN) = -2 * α * tN by ring]
+          exact he
         rw [← hmul]
         have hfac : 0 ≤ Real.tanh 1 * Real.exp (-2 * α * tN) := by positivity
         nlinarith [hM_ge_xM]
@@ -315,7 +318,7 @@ theorem theorem_1_1b_family_concrete_qubit
     have hM1 : ((M - 1 : ℕ) : ℝ) ≤ MN := by
       have : ((M - 1 : ℕ) : ℝ) ≤ (M : ℝ) := by exact_mod_cast Nat.sub_le M 1
       linarith [hM_le]
-    have hr1 : ((r - 1 : ℕ) : ℝ) = (r : ℝ) - 1 := Nat.cast_sub hr
+    have hr1 : ((r - 1 : ℕ) : ℝ) = (r : ℝ) - 1 := by rw [Nat.cast_sub hr, Nat.cast_one]
     have hr1_nn : 0 ≤ (r : ℝ) - 1 := by rw [← hr1]; exact Nat.cast_nonneg _
     dsimp only [s_nat, sN]
     push_cast
@@ -365,17 +368,19 @@ private lemma singleSite_spectral_eq_rotated {ρ : Mat2} (hρ : ρ.IsHermitian)
       have h1 : ρ = (hρ.eigenvectorUnitary : Mat2) *
           Matrix.diagonal (fun i ↦ (hρ.eigenvalues i : ℂ)) *
           (hρ.eigenvectorUnitary : Mat2)ᴴ := by
-        simpa [Unitary.conjStarAlgAut_apply, Function.comp_def] using hspec
+        simpa [Unitary.conjStarAlgAut_apply, Function.comp_def, Matrix.star_eq_conjTranspose] using hspec
+      have hUleft : (hρ.eigenvectorUnitary : Mat2)ᴴ * (hρ.eigenvectorUnitary : Mat2) = 1 :=
+        Matrix.mem_unitaryGroup_iff'.mp hρ.eigenvectorUnitary.2
       calc (∑ i : Fin 2, (hρ.eigenvalues i : ℂ))
           = (Matrix.diagonal (fun i ↦ (hρ.eigenvalues i : ℂ))).trace :=
               (Matrix.trace_diagonal _).symm
         _ = ((hρ.eigenvectorUnitary : Mat2)ᴴ * (hρ.eigenvectorUnitary : Mat2) *
               Matrix.diagonal (fun i ↦ (hρ.eigenvalues i : ℂ))).trace := by
-              rw [Matrix.mem_unitaryGroup_iff'.mp hρ.eigenvectorUnitary.2, one_mul]
+              rw [hUleft, one_mul]
         _ = ((hρ.eigenvectorUnitary : Mat2) *
               Matrix.diagonal (fun i ↦ (hρ.eigenvalues i : ℂ)) *
               (hρ.eigenvectorUnitary : Mat2)ᴴ).trace := by
-              rw [Matrix.trace_mul_cycle]
+              rw [Matrix.trace_mul_cycle]; simp only [Matrix.mul_assoc]
         _ = ρ.trace := by rw [← h1]
     rw [htr, Fin.sum_univ_two] at htr_eig
     have hre := congrArg Complex.re htr_eig
@@ -384,15 +389,18 @@ private lemma singleSite_spectral_eq_rotated {ρ : Mat2} (hρ : ρ.IsHermitian)
       singleSiteRho (singleSiteBlochMag hρ) := by
     ext i j
     fin_cases i <;> fin_cases j <;> simp [singleSiteRho, singleSiteBlochMag, Matrix.diagonal]
-    · have : hρ.eigenvalues 0 = (1 + (hρ.eigenvalues 0 - hρ.eigenvalues 1)) / 2 := by linarith
-      rw [this]; push_cast; ring
-    · have : hρ.eigenvalues 1 = (1 - (hρ.eigenvalues 0 - hρ.eigenvalues 1)) / 2 := by linarith
-      rw [this]; push_cast; ring
+    · have h0 : hρ.eigenvalues 0 = (1 + (hρ.eigenvalues 0 - hρ.eigenvalues 1)) / 2 := by linarith
+      conv_lhs => rw [h0]
+      push_cast; ring
+    · have h1 : hρ.eigenvalues 1 = (1 - (hρ.eigenvalues 0 - hρ.eigenvalues 1)) / 2 := by linarith
+      conv_lhs => rw [h1]
+      push_cast; ring
   have h1 : ρ = singleSiteEigenUnitary hρ *
       Matrix.diagonal (fun i : Fin 2 ↦ (hρ.eigenvalues i : ℂ)) *
       (singleSiteEigenUnitary hρ)ᴴ := by
-    simpa [singleSiteEigenUnitary, Unitary.conjStarAlgAut_apply, Function.comp_def] using hspec
-  rw [h1, hdiag]
+    simpa [singleSiteEigenUnitary, Unitary.conjStarAlgAut_apply, Function.comp_def,
+      Matrix.star_eq_conjTranspose] using hspec
+  exact h1.trans (by rw [hdiag])
 
 /-- **Item #11 (`GibbsData N` for ANY Arbitrary Full-Rank `N`-Qubit Product State `⨂_x ρ_x`)**:
 Constructed directly from arbitrary (possibly non-diagonal) Hermitian single-site density
@@ -531,15 +539,9 @@ theorem lemma_A_3_multiType_unordered_tree_sum {N : ℕ} {ι : Type*} [Decidable
           (1 + multiTypeTreeSum F supp μ h e') ≤
         ∏ e' ∈ F.filter (fun e' ↦ (supp e ∩ supp e').Nonempty),
           Real.exp (multiTypeTreeSum F supp μ h e') := by
-      have h1 : ∀ {α : Type*} (s : Finset α) (f g : α → ℝ),
-          (∀ a ∈ s, 0 ≤ f a) → (∀ a ∈ s, f a ≤ g a) → ∏ a ∈ s, f a ≤ ∏ a ∈ s, g a := by
-        intro α s f g hf hfg
-        exact Finset.prod_le_prod hf hfg
-      apply h1
-      · intro e' he'
-        linarith [multiTypeTreeSum_nonneg F supp μ hμ_nn h e' (Finset.mem_filter.mp he').1]
-      · intro e' _
-        linarith [Real.add_one_le_exp (multiTypeTreeSum F supp μ h e')]
+      exact Finset.prod_le_prod
+        (fun e' he' ↦ by linarith [multiTypeTreeSum_nonneg F supp μ hμ_nn h e' (Finset.mem_filter.mp he').1])
+        (fun e' _ ↦ by linarith [Real.add_one_le_exp (multiTypeTreeSum F supp μ h e')])
     rw [← Real.exp_sum] at hprod_exp
     refine le_trans hprod_exp (Real.exp_le_exp.mpr ?_)
     have hsum_le :
