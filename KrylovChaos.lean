@@ -31,6 +31,8 @@ import KrylovChaos.Milestone1InfiniteChain
 import KrylovChaos.Milestone2AnalyticFoundations
 import KrylovChaos.Milestone2SpectralAndVitali
 import KrylovChaos.Milestone3Bridges
+import KrylovChaos.Milestone3Sections678
+import KrylovChaos.Milestone4Section9AppB
 import KrylovChaos.Milestone4StructuralNecessity
 import KrylovChaos.MultiSiteCommutator
 import KrylovChaos.OperatorBridges
@@ -54,4 +56,3 @@ import KrylovChaos.ThermodynamicKMS
 import KrylovChaos.VitaliAnalytic
 import KrylovChaos.WightmanIsometry
 import KrylovChaos.WightmanProjectors
-import KrylovChaos.Milestone3Sections678

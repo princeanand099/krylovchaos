@@ -35,9 +35,9 @@ Strictly Mathlib-only, complete proofs, zero `sorry`, zero custom axioms, zero h
    - `adPowOp_eq_jacobi_lanczos_sum` and `concrete_lanczos_moment_eq_jacobi`: proves
      `Re (O | (ad H)^{2n} O)_β^W = (jacobiMat (4^N) b ^ (2 * n)) 0 0` directly from `lanczos_three_term`
      and `lanczosOp_orthonormal_all`.
-   - `cosh_integrable_even_moment_bound`: proves `∫ ω, ω^(2n) ∂μ ≤ 2 * (2n)! * r⁻¹^(2n) * M` directly
+   - `theorem_1_2b_from_strip_measure`: proves `∫ ω, ω^(2n) ∂μ ≤ 2 * (2n)! * r⁻¹^(2n) * M` directly
      from `Integrable (cosh (r * ω)) μ`, wiring unconditionally into `theorem_1_2b_liminf_unconditional`
-     to obtain `2 * liminf (b n / n) ≤ π / r ≤ 2 π / (β + 2 κ) < 2 π / β` (Theorem 1.2(b)).
+     to obtain `2 * liminf (b n / n) ≤ π / r`.
 3. **Item #14 (Concrete `T_{τ,N}(t)`, Time-Translation Invariance, 3-Way Eq. (1.17) & `max` `otocStripHalfWidth`)**:
    - `concreteWightmanNormAtShift`, `concreteWightmanNormAtShift_time_invariant` (`T_{τ,N}(t) = T_{τ,N}(0)`).
    - `concreteOTOC_swap_symmetry`: `F_N^{W,V}(z) = F_N^{V,W}(-z)`.
@@ -89,13 +89,7 @@ theorem integrable_cosh_of_lintegral_le (μ : Measure ℝ) {r M : ℝ} (hM : 0 �
     ENNReal.toReal_mono ENNReal.ofReal_ne_top hlint
   rwa [ENNReal.toReal_ofReal hM] at hle_toReal
 
-/-- **Item #12 — Thermodynamic-Limit Spectral Measure Eq. (1.15), Strip Holomorphy, and `r_W ≥ β/2 + κ`**:
-Given weak convergence `μ_N ⇒ μ` of finite measures on `ℝ` and a uniform finite-volume cosh bound
-`∀ N, ∫ ω, cosh (r * ω) ∂(μ_N N) ≤ M` (`0 < r`, `0 ≤ M`), proves:
-1. `Integrable (fun ω ↦ Real.cosh (r * ω)) μ`,
-2. `∫ ω, Real.cosh (r * ω) ∂μ ≤ M` (exact Eq. 1.15),
-3. `DifferentiableOn ℂ (fun z ↦ ∫ ω, Complex.exp (Complex.I * z * ω) ∂μ) {z | |z.im| < r}`,
-4. If the cosh-integrability set is bounded above, `r ≤ wightmanStripHalfWidth μ`. -/
+/-- **Item #12 — Thermodynamic-Limit Spectral Measure Eq. (1.15), Strip Holomorphy, and `r_W ≥ β/2 + κ`**: -/
 theorem theorem_1_2a_thermo_limit_eq_1_15_and_rW (μ_N : ℕ → Measure ℝ) (μ : Measure ℝ)
     [∀ N, IsFiniteMeasure (μ_N N)] [IsFiniteMeasure μ]
     (hweak : ∀ f : ℝ → ℝ, Continuous f → HasCompactSupport f →
@@ -294,7 +288,7 @@ theorem adPowOp_eq_jacobi_lanczos_sum {N D : ℕ} {H O : QubitOp N}
         intro j; unfold jacobiMat
         simp only [Matrix.of_apply]
         split_ifs with h1 h2 h3
-        all_goals first | rfl | omega | (congr 1; omega) | ring | (rw [add_zero]; congr 1; omega) | (rw [zero_add]; congr 1; omega)
+        all_goals first | rfl | omega | (congr 1; omega) | (rw [zero_add]; congr 1; omega) | (rw [add_zero]; congr 1; omega) | ring
       simp_rw [hjac, Complex.ofReal_add, add_smul, Finset.sum_add_distrib]
       congr 1
       · by_cases hk1 : k.1 + 1 < D
@@ -329,9 +323,7 @@ theorem adPowOp_eq_jacobi_lanczos_sum {N D : ℕ} {H O : QubitOp N}
     apply Finset.sum_congr rfl; intro k _
     rw [Complex.ofReal_mul]; ring
 
-/-- **Item #13 — Concrete Moment–Jacobi Identity `Re (O | (ad H)^{2n} O)_β^W = (T^{2n})_{0,0}`**:
-Derives the exact moment identity on `QubitOp N` from `lanczos_three_term` and `lanczosOp_orthonormal_all`,
-with zero hypothesis laundering. -/
+/-- **Item #13 — Concrete Moment–Jacobi Identity `Re (O | (ad H)^{2n} O)_β^W = (T^{2n})_{0,0}`**: -/
 theorem concrete_lanczos_moment_eq_jacobi {N D : ℕ} {H O : QubitOp N}
     (hH : H.IsHermitian) (hO : O.IsHermitian) (β : ℝ)
     (hOnorm : gibbsWightmanNormSq (concreteGibbsData hH β) O = 1)
@@ -368,13 +360,7 @@ theorem concrete_lanczos_moment_eq_jacobi {N D : ℕ} {H O : QubitOp N}
     rw [hinnerk, lanczosOp_orthonormal_all hH hO β 0 k.1, if_neg (by intro h; exact h0k h.1), mul_zero, Complex.zero_re]
   · intro h; exact absurd (Finset.mem_univ _) h
 
-/-- **Item #13 — Cauchy–Hadamard Moment Bound from Strip Integrability & Theorem 1.2(b)**:
-If `μ : Measure ℝ` satisfies `Integrable (fun ω ↦ Real.cosh (r * ω)) μ` with `∫ cosh(r ω) ∂μ ≤ M`
-(`0 < r`, `0 < M`), and the Lanczos coefficients `b` (`0 < b h` for `h ≥ 1`) match the moments
-`((jacobiMat (2*n+1) b)^(2*n)) 0 0 = ∫ ω, ω^(2*n) ∂μ`, then:
-`2 * liminf_{n → ∞} (b n / n) ≤ π / r`.
-In particular, for `r ≥ β / 2 + κ` (`β > 0`, `κ > 0`):
-`2 * liminf_{n → ∞} (b n / n) ≤ 2 * π / (β + 2 * κ) < 2 * π / β`. -/
+/-- **Item #13 — Cauchy–Hadamard Moment Bound from Strip Integrability & Theorem 1.2(b)**: -/
 theorem theorem_1_2b_from_strip_measure (μ : Measure ℝ) {r M : ℝ} (b : ℕ → ℝ)
     (hr : 0 < r) (hM : 0 < M)
     (hcosh : Integrable (fun ω : ℝ ↦ Real.cosh (r * ω)) μ)
@@ -430,9 +416,7 @@ noncomputable def concreteWightmanNormAtShift {N : ℕ} {H : QubitOp N} (hH : H.
   gibbsWightmanNormSq (concreteGibbsData hH β)
     (heisenbergEvol hH ((t : ℂ) + Complex.I * (τ : ℂ)) W)
 
-/-- **Item #14 — Time-Translation Invariance `T_{τ,N}(t) = T_{τ,N}(0)`**:
-Because real-time Heisenberg evolution `e^{i t H} (·) e^{-i t H}` is unitary in the Wightman
-inner product, `‖W(t + i τ)‖_{β,W}² = ‖W(i τ)‖_{β,W}²` for all `t, τ : ℝ`. -/
+/-- **Item #14 — Time-Translation Invariance `T_{τ,N}(t) = T_{τ,N}(0)`**: -/
 theorem concreteWightmanNormAtShift_time_invariant {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (W : QubitOp N) (τ t : ℝ) :
     concreteWightmanNormAtShift hH β W τ t = concreteWightmanNormAtShift hH β W τ 0 := by
@@ -441,9 +425,7 @@ theorem concreteWightmanNormAtShift_time_invariant {N : ℕ} {H : QubitOp N} (hH
   rw [heisenbergEvol_real_wightmanNormSq hH β t _]
   simp
 
-/-- **Item #14 — `W ↔ V` Swap Symmetry of the Regularized OTOC (`F_N^{W,V}(z) = F_N^{V,W}(-z)`)**:
-By cyclicity of trace and `[e^{i z H}, ρ_β^{1/4}] = 0`:
-`Tr(ρ^{1/4} W(z) ρ^{1/4} V ρ^{1/4} W(z) ρ^{1/4} V) = Tr(ρ^{1/4} V(-z) ρ^{1/4} W ρ^{1/4} V(-z) ρ^{1/4} W)`. -/
+/-- **Item #14 — `W ↔ V` Swap Symmetry of the Regularized OTOC (`F_N^{W,V}(z) = F_N^{V,W}(-z)`)**: -/
 theorem concreteOTOC_swap_symmetry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (W V : QubitOp N) (z : ℂ) :
     concreteOTOC hH β W V z = concreteOTOC hH β V W (-z) := by
@@ -495,11 +477,7 @@ theorem concreteOTOC_swap_symmetry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian
     _ = ((R * V * R * (U * W * Uinv)) * (R * V * R * (U * W * Uinv))).trace := by
           simp only [Matrix.mul_assoc]
 
-/-- **Item #14 — 3-Way Concrete OTOC Dominance Inequality (Eq. 1.17)**:
-For ANY Hermitian `H, W, V : QubitOp N`, `β, t, τ : ℝ`, `z = t + i τ`:
-1. `‖F_N(z)‖ ≤ ‖V‖_∞² * T_{τ,N}^W(0)`,
-2. `‖F_N(z)‖ ≤ ‖W‖_∞² * T_{-τ,N}^V(0)`,
-3. `‖F_N(z)‖ ≤ ‖W‖_∞ * ‖V‖_∞ * √(T_{τ,N}^W(0) * T_{-τ,N}^V(0))`. -/
+/-- **Item #14 — 3-Way Concrete OTOC Dominance Inequality (Eq. 1.17)**: -/
 theorem concreteOTOC_three_way_eq_1_17 {N : ℕ} {H W V : QubitOp N}
     (hH : H.IsHermitian) (hW : W.IsHermitian) (hV : V.IsHermitian) (β t τ : ℝ) :
     let z : ℂ := (t : ℂ) + Complex.I * (τ : ℂ)
@@ -544,8 +522,7 @@ theorem concreteOTOC_three_way_eq_1_17 {N : ℕ} {H W V : QubitOp N}
         concreteWightmanNormAtShift hH β V (-τ) 0) := by positivity
   nlinarith
 
-/-- **Item #14 — Corrected Eq. (1.18) Strip Half-Width `S_OTOC` (using `max`, not `min`)**:
-`S_OTOC = max (β / 4 + κ_W / 2) (max (β / 4 + κ_V / 2) (r_max / 2))`. -/
+/-- **Item #14 — Corrected Eq. (1.18) Strip Half-Width `S_OTOC` (using `max`, not `min`)**: -/
 noncomputable def otocStripHalfWidthMax (β κ_W κ_V r_max : ℝ) : ℝ :=
   max (β / 4 + κ_W / 2) (max (β / 4 + κ_V / 2) (r_max / 2))
 
@@ -574,9 +551,6 @@ private lemma openStrip_isPreconnected (S : ℝ) : IsPreconnected {z : ℂ | |z.
           linarith
     _ = S := by rw [← add_mul, hab, one_mul]
 
-/-- Cauchy Lipschitz estimate on half-radius balls inside the strip: if `f` is holomorphic on
-`Ω = {|Im z| < S}` and `‖f w‖ ≤ M` on `closedBall z₀ (2 * δ) ⊆ Ω`, then for all
-`w₁, w₂ ∈ closedBall z₀ δ`, `‖f w₂ - f w₁‖ ≤ (2 * M / δ) * ‖w₂ - w₁‖`. -/
 private lemma cauchy_lipschitz_on_half_ball {S δ M : ℝ} (hδ : 0 < δ) (hM : 0 ≤ M)
     {f : ℂ → ℂ} {z₀ : ℂ}
     (hholo : DifferentiableOn ℂ f {z : ℂ | |z.im| < S})
@@ -605,13 +579,15 @@ private lemma cauchy_lipschitz_on_half_ball {S δ M : ℝ} (hδ : 0 < δ) (hM : 
       refine ContinuousOn.inv₀ (continuousOn_id.sub continuousOn_const) ?_
       intro z hz; rw [sub_ne_zero]; intro heq; subst heq
       rw [Metric.mem_sphere] at hz; rw [Metric.mem_closedBall] at hw₁; linarith
-    simpa only [smul_eq_mul] using (hc_inv.mul (hcont.mono Metric.sphere_subset_closedBall)).circleIntegrable h2δ.le
+    exact (ContinuousOn.circleIntegrable h2δ.le
+      (fun z hz ↦ (hc_inv z hz).smul ((hcont.mono Metric.sphere_subset_closedBall) z hz)))
   have hci2 : CircleIntegrable (fun z ↦ (z - w₂)⁻¹ • f z) z₀ (2 * δ) := by
     have hc_inv : ContinuousOn (fun z : ℂ ↦ (z - w₂)⁻¹) (Metric.sphere z₀ (2 * δ)) := by
       refine ContinuousOn.inv₀ (continuousOn_id.sub continuousOn_const) ?_
       intro z hz; rw [sub_ne_zero]; intro heq; subst heq
       rw [Metric.mem_sphere] at hz; rw [Metric.mem_closedBall] at hw₂; linarith
-    simpa only [smul_eq_mul] using (hc_inv.mul (hcont.mono Metric.sphere_subset_closedBall)).circleIntegrable h2δ.le
+    exact (ContinuousOn.circleIntegrable h2δ.le
+      (fun z hz ↦ (hc_inv z hz).smul ((hcont.mono Metric.sphere_subset_closedBall) z hz)))
   have hsub_eq : f w₂ - f w₁ =
       (2 * Real.pi * Complex.I : ℂ)⁻¹ •
         ∮ z in C(z₀, 2 * δ), ((z - w₂)⁻¹ • f z - (z - w₁)⁻¹ • f z) := by
@@ -666,15 +642,7 @@ private lemma cauchy_lipschitz_on_half_ball {S δ M : ℝ} (hδ : 0 < δ) (hM : 
     _ = (2 * M / δ) * ‖w₂ - w₁‖ := by
         field_simp [hδ.ne', Real.pi_pos.ne']
 
-/-- **Item #15 — Genuine Montel + Vitali Strip Extension Theorem (Zero Hypothesis Laundering)**:
-Let `Ω = {z : ℂ | |z.im| < S}` (`0 < S`), and let `F_N : ℕ → ℂ → ℂ` be a sequence of holomorphic
-functions on `Ω` that is:
-1. Uniformly bounded on every compact `K ⊆ Ω`: `∀ K, IsCompact K → K ⊆ Ω → ∃ M, ∀ N, ∀ z ∈ K, ‖F_N N z‖ ≤ M`,
-2. Pointwise convergent on the real axis `ℝ`: `∀ t : ℝ, Tendsto (fun N ↦ F_N N (t : ℂ)) atTop (nhds (f t))`.
-Then there exists a unique holomorphic function `F : ℂ → ℂ` on `Ω` such that:
-- `DifferentiableOn ℂ F Ω`,
-- `TendstoLocallyUniformlyOn F_N F atTop Ω`,
-- `∀ t : ℝ, F (t : ℂ) = f t`. -/
+/-- **Item #15 — Genuine Montel + Vitali Strip Extension Theorem (Zero Hypothesis Laundering)**: -/
 theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
     (F_N : ℕ → ℂ → ℂ) (f : ℝ → ℂ)
     (hholo : ∀ N, DifferentiableOn ℂ (F_N N) {z : ℂ | |z.im| < S})
