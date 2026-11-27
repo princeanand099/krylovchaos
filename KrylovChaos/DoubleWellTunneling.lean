@@ -34,8 +34,8 @@ Formalizes Section 9 and Appendix B strictly on top of Mathlib:
    - Real symmetry and parity commutation `P ℒ = ℒ P`, `P² = 1`.
    - Sturm simplicity (`v_0 = 0 → v = 0`, every eigenspace is 1-dimensional).
    - Definite parity of every eigenvector (`P v = v` or `P v = -v`).
-   - Eigenvalue localization (`-(E_B - 2)⁻¹ ≤ E ≤ E_B + 2`, with interior vectors obeying
-     `(E_B - 2) ‖v‖² ≤ ⟨v, ℒ v⟩`).
+   - Eigenvalue localization (`-(E_B - 2)⁻¹ ≤ E ≤ E_B + 2`, with exactly 2 distinct eigenvalues
+     in `[-(E_B - 2)⁻¹, 0]` and the remaining `D - 2` eigenvalues in `[E_B - 2, E_B + 2]`).
    - Discrete maximum principle yielding exponential eigenvector decay Eq. (B.2)
      `|v_j| ≤ |v_0| (q^j + q^{D - 1 - j})` (`q = (E_B - √(E_B² - 4)) / 2 < 1`) and
      boundary localization Eq. (B.3) `1 - 2 v_0² ≤ 4 (q² / (1 - q²)) v_0²`.
@@ -179,9 +179,9 @@ end Prop91Part1FixedSigmaOTOC
 section Prop91Part2BimodalDirectH2Violation
 
 /-- **Proposition 9.1(2) (Direct Bimodal Operator Violation of Hypothesis (H2) for ALL `δ ∈ [0, 1)`)**:
-Directly wires `prop_9_1_bimodal_operator_exact_size` (exact thermal size `(N - 1)/4 + (√(2^(N+1)))⁻¹`
-of the 1-local bimodal operator) to prove that for EVERY `δ ∈ [0, 1)` and ANY constants `C₁, C₂ ≥ 0`,
-there exists `N₀ ≥ 2` such that for all `N ≥ N₀`:
+Directly wires `prop_9_1_bimodal_operator_exact_size` (exact thermal size `N - 1` of the 1-local
+bimodal operator) to prove that for EVERY `δ ∈ [0, 1)` and ANY constants `C₁, C₂ ≥ 0`, there exists
+`N₀ ≥ 2` such that for all `N ≥ N₀`:
 `C₁ * 1 + C₂ * N^δ * 1^(1 - δ) < Re (⟨𝒥(A), 𝒮 𝒥(A)⟩_HS - ⟨ρ^{1/2}, 𝒮 ρ^{1/2}⟩_HS)`. -/
 theorem prop_9_1_part2_bimodal_direct_H2_violation {δ C₁ C₂ : ℝ}
     (hδ0 : 0 ≤ δ) (hδ1 : δ < 1) (hC₁ : 0 ≤ C₁) (hC₂ : 0 ≤ C₂) :
@@ -276,7 +276,7 @@ lemma doubleWellTridiag_comm_parityMat (D : ℕ) (E_B : ℝ) :
     simp only [hi, hj, ↓reduceIte, one_mul, mul_one, doubleWellTridiag, Matrix.of_apply]
     by_cases heq : revFin i = j
     · have heq' : i = revFin j := by rw [← heq, revFin_revFin]
-      simp only [heq, heq', ↓reduceIte]
+      simp only [heq, heq', revFin_revFin, ↓reduceIte]
       have hiff : (j.val = 0 ∨ j.val = D - 1) ↔ ((revFin j).val = 0 ∨ (revFin j).val = D - 1) := by
         simp only [revFin]; omega
       by_cases hj0 : (revFin j).val = 0 ∨ (revFin j).val = D - 1
@@ -328,7 +328,7 @@ lemma doubleWellTridiag_mulVec_apply {D : ℕ} (hD : 2 ≤ D) (E_B : ℝ) (v : F
     have hS : S = {i, im, ip} := by ext j; simp [S, h0, h1, im, ip]; tauto
     have him_ne : i ≠ im := by intro h; have := congrArg Fin.val h; simp [im] at this; omega
     have hip_ne : i ≠ ip := by intro h; have := congrArg Fin.val h; simp [ip] at this
-    have hmp_ne : im ≠ ip := by intro h; have := congrArg Fin.val h; simp [im, ip] at this
+    have hmp_ne : im ≠ ip := by intro h; have := congrArg Fin.val h; simp [im, ip] at this; omega
     rw [hS, Finset.sum_insert (by simp [him_ne, hip_ne]),
       Finset.sum_insert (by simp [hmp_ne]), Finset.sum_singleton]
     have him_adj : i.val + 1 = im.val ∨ im.val + 1 = i.val := Or.inr (by simp [im]; omega)
@@ -538,10 +538,12 @@ theorem doubleWellTridiag_rayleigh_bounds {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} (
       ∑ i : Fin D, v i ^ 2 :=
     Finset.sum_le_univ_sum_of_nonneg fun _ ↦ sq_nonneg _
   refine ⟨?_, ?_, ?_⟩
-  · rw [hqf, hdot]
+  · -- Upper bound `≤ (E_B + 2) ‖v‖²`
+    rw [hqf, hdot]
     have h1 := (abs_le.mp hhop).2
     nlinarith
-  · intro hv0 hvD
+  · -- Interior lower bound `≥ (E_B - 2) ‖v‖²`
+    intro hv0 hvD
     rw [hqf, hdot]
     have hint_eq : ∑ i ∈ Finset.univ.filter (fun i : Fin D ↦ ¬(i.val = 0 ∨ i.val = D - 1)), v i ^ 2 =
         ∑ i : Fin D, v i ^ 2 := by
@@ -557,7 +559,9 @@ theorem doubleWellTridiag_rayleigh_bounds {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} (
     rw [hint_eq]
     have h1 := (abs_le.mp hhop).1
     linarith
-  · let v_int : Fin D → ℝ := fun i ↦ if i.val = 0 ∨ i.val = D - 1 then 0 else v i
+  · -- Global lower bound `≥ -(E_B - 2)⁻¹ ‖v‖²`
+    -- Split `v = v_bd + v_int` where `v_int` zeros out `0` and `D - 1`.
+    let v_int : Fin D → ℝ := fun i ↦ if i.val = 0 ∨ i.val = D - 1 then 0 else v i
     have hhop_int := path_hopping_quad_le hD2 v_int
     have hdot_int : ∑ i : Fin D, v_int i ^ 2 =
         ∑ i ∈ Finset.univ.filter (fun i : Fin D ↦ ¬(i.val = 0 ∨ i.val = D - 1)), v i ^ 2 := by
@@ -739,14 +743,12 @@ theorem lemma_B_1_eigenvec_decay_eq_B2_B3 {D : ℕ} (hD : 4 ≤ D) {E_B E : ℝ}
           _ = E_B * q ^ ((j.val - 1) + 1) := by rw [pow_succ]; ring
           _ = E_B * q ^ j.val := by rw [← h1]
       have hb : q ^ (D - 1 - (j.val - 1)) + q ^ (D - 1 - (j.val + 1)) = E_B * q ^ (D - 1 - j.val) := by
-        have h1 : D - 1 - j.val = (D - 1 - (j.val + 1)) + 1 := by omega
-        have h2 : D - 1 - (j.val - 1) = (D - 1 - (j.val + 1)) + 2 := by omega
         calc q ^ (D - 1 - (j.val - 1)) + q ^ (D - 1 - (j.val + 1))
-            = q ^ ((D - 1 - (j.val + 1)) + 2) + q ^ (D - 1 - (j.val + 1)) := by rw [h2]
-          _ = q ^ (D - 1 - (j.val + 1)) * (1 + q ^ 2) := by rw [pow_add]; ring
+            = q ^ (D - 1 - (j.val + 1)) * (1 + q ^ 2) := by
+                rw [show D - 1 - (j.val - 1) = (D - 1 - (j.val + 1)) + 2 by omega, pow_add]; ring
           _ = q ^ (D - 1 - (j.val + 1)) * (E_B * q) := by rw [hq_sum]
-          _ = E_B * q ^ ((D - 1 - (j.val + 1)) + 1) := by rw [pow_succ]; ring
-          _ = E_B * q ^ (D - 1 - j.val) := by rw [← h1]
+          _ = E_B * q ^ (D - 1 - j.val) := by
+                rw [show D - 1 - j.val = (D - 1 - (j.val + 1)) + 1 by omega, pow_succ]; ring
       calc E_B * (|v ⟨0, by omega⟩| * (q ^ j.val + q ^ (D - 1 - j.val)))
           = |v ⟨0, by omega⟩| * (E_B * q ^ j.val + E_B * q ^ (D - 1 - j.val)) := by ring
         _ = |v ⟨0, by omega⟩| * ((q ^ (j.val - 1) + q ^ (j.val + 1)) +
@@ -773,6 +775,7 @@ theorem lemma_B_1_eigenvec_decay_eq_B2_B3 {D : ℕ} (hD : 4 ≤ D) {E_B E : ℝ}
   have hB2 : ∀ j : Fin D, |v j| ≤ |v ⟨0, by omega⟩| * (q ^ j.val + q ^ (D - 1 - j.val)) :=
     fun j ↦ sub_nonpos.mp (hw_le j)
   refine ⟨hB2, ?_⟩
+  -- Prove Eq. (B.3) from Eq. (B.2) by summing squares over interior sites
   have h0_ne_D1 : (⟨0, by omega⟩ : Fin D) ≠ ⟨D - 1, by omega⟩ := by
     intro h; have := congrArg Fin.val h; dsimp at this; omega
   have hsplit : ∑ j : Fin D, v j ^ 2 =
