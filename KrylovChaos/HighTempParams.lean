@@ -69,6 +69,7 @@ theorem highTempBetaWC_discharges_params {N r : ℕ} (hr : 2 ≤ r)
     β ≤ 1 / (8 * Real.exp 2 * (r : ℝ) * Jsite) := by
   intro c η₀
   have hrpos : (0 : ℝ) < (r : ℝ) := by exact_mod_cast (by omega : 0 < r)
+  have hrge1 : (1 : ℝ) ≤ (r : ℝ) := by exact_mod_cast (by omega : 1 ≤ r)
   have he1_pos : 0 < Real.exp 1 := Real.exp_pos 1
   have he2_eq : Real.exp 2 = Real.exp 1 * Real.exp 1 := by
     rw [← Real.exp_add]; norm_num
@@ -89,7 +90,12 @@ theorem highTempBetaWC_discharges_params {N r : ℕ} (hr : 2 ≤ r)
     unfold highTempBetaWC
     apply one_div_le_one_div_of_le (by positivity)
     have h2_le : (2 : ℝ) ≤ (6 : ℝ) ^ r := by linarith
-    nlinarith [Real.exp_pos 2, mul_pos hrpos hJ]
+    have hfac : 0 < 4 * Real.exp 2 * (r : ℝ) * Jsite := by positivity
+    calc 8 * Real.exp 2 * (r : ℝ) * Jsite
+        = (4 * Real.exp 2 * (r : ℝ) * Jsite) * 2 := by ring
+      _ ≤ (4 * Real.exp 2 * (r : ℝ) * Jsite) * (6 : ℝ) ^ r :=
+          mul_le_mul_of_nonneg_left h2_le hfac.le
+      _ = 4 * Real.exp 2 * (r : ℝ) * (6 : ℝ) ^ r * Jsite := by ring
   have hβ_le_wc : β ≤ betaWC_concrete r Jsite := by
     refine le_trans hβ_le_8e2 ?_
     unfold betaWC_concrete
@@ -97,7 +103,12 @@ theorem highTempBetaWC_discharges_params {N r : ℕ} (hr : 2 ≤ r)
     have hr1_le : ((r - 1 : ℕ) : ℝ) ≤ (r : ℝ) := by exact_mod_cast (by omega : r - 1 ≤ r)
     have he2_ge1 : (1 : ℝ) ≤ Real.exp 2 := Real.one_le_exp (by norm_num)
     apply one_div_le_one_div_of_le (by positivity)
-    nlinarith
+    have h8e : (1 : ℝ) ≤ 8 * Real.exp 2 := by linarith
+    calc ((r - 1 : ℕ) : ℝ) * Jsite
+        ≤ (r : ℝ) * Jsite := mul_le_mul_of_nonneg_right hr1_le hJ.le
+      _ = 1 * ((r : ℝ) * Jsite) := (one_mul _).symm
+      _ ≤ (8 * Real.exp 2) * ((r : ℝ) * Jsite) := mul_le_mul_of_nonneg_right h8e (by positivity)
+      _ = 8 * Real.exp 2 * (r : ℝ) * Jsite := by ring
   have hβJ_le1 : (β / 2) * Jsite ≤ 1 := by
     have h1 : (β / 2) * Jsite ≤ (1 / (8 * Real.exp 2 * (r : ℝ) * Jsite) / 2) * Jsite := by
       nlinarith
@@ -105,7 +116,9 @@ theorem highTempBetaWC_discharges_params {N r : ℕ} (hr : 2 ≤ r)
       field_simp [hJ.ne', (Real.exp_pos 2).ne', hrpos.ne']; ring
     have he2_ge1 : (1 : ℝ) ≤ Real.exp 2 := Real.one_le_exp (by norm_num)
     have h3 : 1 / (16 * Real.exp 2 * (r : ℝ)) ≤ 1 := by
-      rw [div_le_one (by positivity)]; nlinarith
+      rw [div_le_one (by positivity)]
+      have h16 : (1 : ℝ) ≤ 16 * Real.exp 2 := by linarith
+      nlinarith
     linarith
   have hsite_kp : ∀ x : Fin N,
       ∑ X ∈ E.filter (fun X ↦ x ∈ X),
@@ -138,8 +151,13 @@ theorem highTempBetaWC_discharges_params {N r : ℕ} (hr : 2 ≤ r)
       _ ≤ (6 : ℝ) ^ r * Real.exp 1 * (β / 2) * Jsite :=
           mul_le_mul_of_nonneg_left (hsite x) (by positivity)
       _ ≤ (6 : ℝ) ^ r * Real.exp 1 * (highTempBetaWC r Jsite / 2) * Jsite := by
-          have : 0 ≤ (6 : ℝ) ^ r * Real.exp 1 := by positivity
-          nlinarith
+          have hfac : 0 ≤ (6 : ℝ) ^ r * Real.exp 1 * Jsite := by positivity
+          have hβ2 : β / 2 ≤ highTempBetaWC r Jsite / 2 := by linarith
+          calc (6 : ℝ) ^ r * Real.exp 1 * (β / 2) * Jsite
+              = ((6 : ℝ) ^ r * Real.exp 1 * Jsite) * (β / 2) := by ring
+            _ ≤ ((6 : ℝ) ^ r * Real.exp 1 * Jsite) * (highTempBetaWC r Jsite / 2) :=
+                mul_le_mul_of_nonneg_left hβ2 hfac
+            _ = (6 : ℝ) ^ r * Real.exp 1 * (highTempBetaWC r Jsite / 2) * Jsite := by ring
       _ = 1 / (8 * Real.exp 1 * (r : ℝ)) := by
           unfold highTempBetaWC; rw [he2_eq]
           field_simp [h6r_pos.ne', he1_pos.ne', hrpos.ne', hJ.ne']; ring
@@ -201,7 +219,8 @@ theorem theorem_1_3a_high_temp {N r : ℕ} (hr : 2 ≤ r)
       9 * (gibbsWightmanInner G A (wightmanQ G A)).re := by
   rcases highTempBetaWC_discharges_params hr E hcard h hJ hsite hβ0 hβ with
     ⟨hc, hsite_kp, hkp, _, _, _⟩
-  exact theorem_1_3a_unconditional E hne hcard h hsupp hH hβ0 hc hsite_kp hkp A
+  have h13a := theorem_1_3a_unconditional E hne hcard h hsupp hH hβ0 hc hsite_kp hkp A
+  exact le_trans h13a.1 h13a.2
 
 /-- **Theorem 1.3(b) (Unconditional High-Temperature OTOC–Krylov Bound, Eq. 1.22)**:
 Proves both `otocCW ≤ 54 * ((r - 1) K_β^W(t) + s₀)` and `otocI ≤ 216 * ((r - 1) K_β^W(t) + s₀)`

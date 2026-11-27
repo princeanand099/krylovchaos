@@ -85,7 +85,7 @@ theorem concreteOTOC_norm_le_timeOrderedT {N : ℕ} {H W V : QubitOp N}
         gibbsRhoQuarter hH β := by
     rw [hB_adj]
     unfold B jBeta
-    have hq : G.ρQuarter * G.ρQuarter = gibbsRhoHalf hH β := G.sq_quarter
+    have hq : gibbsRhoQuarter hH β * gibbsRhoQuarter hH β = gibbsRhoHalf hH β := G.sq_quarter
     change (gibbsRhoQuarter hH β * heisenbergEvol hH ((t : ℂ) - Complex.I * (τ : ℂ)) W * gibbsRhoQuarter hH β) *
       (gibbsRhoQuarter hH β * heisenbergEvol hH z W * gibbsRhoQuarter hH β) = _
     calc (gibbsRhoQuarter hH β * heisenbergEvol hH ((t : ℂ) - Complex.I * (τ : ℂ)) W * gibbsRhoQuarter hH β) *
@@ -99,7 +99,7 @@ theorem concreteOTOC_norm_le_timeOrderedT {N : ℕ} {H W V : QubitOp N}
   have hT_eq : concreteTimeOrderedT hH β W V t τ = hsNormSq (B * V) := by
     unfold concreteTimeOrderedT hsNormSq hsInner
     rw [← hBB]
-    congr 1
+    apply congrArg Complex.re
     rw [Matrix.conjTranspose_mul, hV.eq]
     calc (Bᴴ * B * (V * V)).trace
         = ((Bᴴ * B * V) * V).trace := by simp only [Matrix.mul_assoc]

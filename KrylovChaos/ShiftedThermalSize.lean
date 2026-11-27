@@ -81,7 +81,7 @@ lemma gibbsRhoQuarter_conj_eq_heisenbergEvol_both {N : ℕ} {H : QubitOp N} (hH 
   refine ⟨h.1, ?_⟩
   rw [h.2]; congr 1; ring
 
-/-- Helper: `ρ_β^{-1/2} * M * ρ_β^{1/2} = M(-iβ/2)` written as `M * ρ_β^{1/2} = ρ_β^{1/2} * M(-iβ/2)`. -/
+/-- Helper: `M * ρ_β^{1/2} = ρ_β^{1/2} * M(-iβ/2)`. -/
 lemma mul_gibbsRhoHalf_eq_gibbsRhoHalf_mul_evol {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (M : QubitOp N) :
     let G := concreteGibbsData hH β
@@ -108,15 +108,17 @@ lemma mul_gibbsRhoHalf_eq_gibbsRhoHalf_mul_evol {N : ℕ} {H : QubitOp N} (hH : 
       funext x; rw [← Complex.exp_add]; congr 1; push_cast; ring
     rw [hL, hR]; simp only [Matrix.mul_assoc]
   rw [← hadd, ← h2, ← h1]
+  have hL1 : (G.ρQuarter * G.ρQuarter) * (G.ρQuarterInv * G.ρQuarterInv) = 1 := by
+    calc (G.ρQuarter * G.ρQuarter) * (G.ρQuarterInv * G.ρQuarterInv)
+        = G.ρQuarter * (G.ρQuarter * G.ρQuarterInv) * G.ρQuarterInv := by simp only [Matrix.mul_assoc]
+      _ = G.ρQuarter * G.ρQuarterInv := by rw [G.inv_right, Matrix.mul_one]
+      _ = 1 := G.inv_right
   calc M * G.ρHalf
-      = (G.ρQuarter * G.ρQuarterInv) * M * (G.ρQuarter * G.ρQuarter) := by
-          rw [G.inv_right, Matrix.one_mul, G.sq_quarter]
+      = 1 * M * (G.ρQuarter * G.ρQuarter) := by rw [Matrix.one_mul, G.sq_quarter]
+    _ = ((G.ρQuarter * G.ρQuarter) * (G.ρQuarterInv * G.ρQuarterInv)) * M * (G.ρQuarter * G.ρQuarter) := by
+          rw [hL1]
     _ = (G.ρQuarter * G.ρQuarter) * (G.ρQuarterInv * (G.ρQuarterInv * M * G.ρQuarter) * G.ρQuarter) := by
-          calc (G.ρQuarter * G.ρQuarterInv) * M * (G.ρQuarter * G.ρQuarter)
-              = G.ρQuarter * (G.ρQuarter * G.ρQuarterInv) * G.ρQuarterInv * M * (G.ρQuarter * G.ρQuarter) := by
-                  rw [G.inv_right, Matrix.mul_one]
-            _ = (G.ρQuarter * G.ρQuarter) * (G.ρQuarterInv * (G.ρQuarterInv * M * G.ρQuarter) * G.ρQuarter) := by
-                  simp only [Matrix.mul_assoc]
+          simp only [Matrix.mul_assoc]
     _ = G.ρHalf * (G.ρQuarterInv * (G.ρQuarterInv * M * G.ρQuarter) * G.ρQuarter) := by
           rw [G.sq_quarter]
 
@@ -130,8 +132,10 @@ theorem matComm_jBeta_eq_shiftedCommX_add_thermalDressY {N : ℕ} {H : QubitOp N
   have hP := (gibbsRhoQuarter_conj_eq_heisenbergEvol_both hH β P).2
   have hA := (gibbsRhoQuarter_conj_eq_heisenbergEvol_both hH β A).1
   unfold shiftedCommX thermalDressY thermalDiffD
+  symm
   change jBeta G.ρQuarter (matComm (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) P) A) +
-    heisenbergEvol hH (Complex.I * ((β / 4 : ℝ) : ℂ)) A * matComm P G.ρHalf = _
+    heisenbergEvol hH (Complex.I * ((β / 4 : ℝ) : ℂ)) A * matComm P G.ρHalf =
+    matComm P (jBeta G.ρQuarter A)
   rw [← hP, ← hA]
   unfold jBeta matComm
   simp only [Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_assoc]
@@ -180,16 +184,16 @@ lemma sum_hsNormSq_thermalDressY_eq_trace_rhoO_B {N : ℕ} {H : QubitOp N}
     (hH : H.IsHermitian) (β : ℝ) (A : QubitOp N) :
     (1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3, hsNormSq (thermalDressY hH β A x α) =
       ((rhoO_op hH β A * thermalBackgroundOp hH β).trace).re := by
-  unfold thermalBackgroundOp rhoO_op
+  dsimp only [thermalBackgroundOp]
   rw [Matrix.mul_smul, Matrix.trace_smul, smul_eq_mul, Complex.re_ofReal_mul,
     Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum]
-  congr 1
+  apply congrArg ((1 / 8 : ℝ) * ·)
   apply Finset.sum_congr rfl; intro x _
   rw [Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum]
   apply Finset.sum_congr rfl; intro α _
   rw [thermalDressY_eq_jBeta_mul_diff]
-  unfold hsNormSq hsInner
-  congr 1
+  dsimp only [hsNormSq, hsInner, rhoO_op]
+  apply congrArg Complex.re
   set J := jBeta (concreteGibbsData hH β).ρQuarter A
   set Δ := heisenbergEvol hH (-Complex.I * ((β / 2 : ℝ) : ℂ)) (pauliSite x α.succ) -
     pauliSite x α.succ
@@ -214,7 +218,7 @@ lemma backgroundSizeB_eq_trace_gibbs_B {N : ℕ} {H : QubitOp N} (hH : H.IsHermi
       (((concreteGibbsData hH β).ρβ * thermalBackgroundOp hH β).trace).re := by
   set G := concreteGibbsData hH β
   have h1 : rhoO_op hH β (1 : QubitOp N) = G.ρβ := by
-    unfold rhoO_op jBeta
+    dsimp only [rhoO_op, jBeta]
     change (G.ρQuarter * 1 * G.ρQuarter)ᴴ * (G.ρQuarter * 1 * G.ρQuarter) = G.ρβ
     rw [Matrix.mul_one, G.sq_quarter, G.ρHalf_herm, G.sq_half]
   have hY1 : ∀ (x : Fin N) (α : Fin 3),
@@ -246,7 +250,7 @@ lemma backgroundSizeB_eq_trace_gibbs_B {N : ℕ} {H : QubitOp N} (hH : H.IsHermi
       (G.ρHalfᴴ * siteSizeOp x G.ρHalf).trace := by
     rw [hsa, hidem]
   rw [← heq, hsite]
-  congr 1
+  apply congrArg ((1 / 8 : ℝ) * ·)
   exact Finset.sum_congr rfl fun α _ ↦ hsNormSq_matComm_comm _ _
 
 /-- For Hermitian `A`, `ρ_A = (𝒥_β(A))²`. -/
@@ -254,13 +258,66 @@ lemma rhoO_op_eq_sq_of_herm {N : ℕ} {H A : QubitOp N} (hH : H.IsHermitian) (hA
     (β : ℝ) :
     rhoO_op hH β A = jBeta (concreteGibbsData hH β).ρQuarter A *
       jBeta (concreteGibbsData hH β).ρQuarter A := by
-  unfold rhoO_op jBeta
+  dsimp only [rhoO_op, jBeta]
   set G := concreteGibbsData hH β
   have hjh : (G.ρQuarter * A * G.ρQuarter)ᴴ = G.ρQuarter * A * G.ρQuarter := by
     rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, G.ρQuarter_herm, hA.eq, Matrix.mul_assoc]
   rw [hjh]
 
-set_option maxHeartbeats 800000 in
+/-- Helper: `Re ⟨M, 𝒮(M)⟩_HS = (1/8) ∑_{x,α} ‖[σ_x^α, M]‖_HS²`. -/
+lemma hsInner_totalSizeOp_eq_comm_sum {N : ℕ} (M : QubitOp N) :
+    (hsInner M (totalSizeOp M)).re =
+      (1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3, hsNormSq (matComm (pauliSite x α.succ) M) := by
+  unfold totalSizeOp hsInner
+  rw [Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum, Finset.mul_sum]
+  apply Finset.sum_congr rfl; intro x _
+  have hsite := hsNormSq_siteSizeOp_eq_comm_avg x M
+  have hidem := siteSizeOp_idem x M
+  have hsa := siteSizeOp_self_adj x M (siteSizeOp x M)
+  unfold hsNormSq hsInner at hsite hsa
+  have heq : ((siteSizeOp x M)ᴴ * siteSizeOp x M).trace = (Mᴴ * siteSizeOp x M).trace := by
+    rw [hsa, hidem]
+  rw [← heq, hsite]
+  apply congrArg ((1 / 8 : ℝ) * ·)
+  exact Finset.sum_congr rfl fun α _ ↦ hsNormSq_matComm_comm _ _
+
+/-- Helper: `‖U + V‖_HS² = ‖U‖_HS² + 2 Re ⟨U, V⟩_HS + ‖V‖_HS²`. -/
+lemma hsNormSq_add_eq {N : ℕ} (U V : QubitOp N) :
+    hsNormSq (U + V) = hsNormSq U + 2 * (hsInner U V).re + hsNormSq V := by
+  unfold hsNormSq hsInner
+  simp only [Matrix.conjTranspose_add, Matrix.add_mul, Matrix.mul_add, Matrix.trace_add, Complex.add_re]
+  have hsym : (Vᴴ * U).trace.re = (Uᴴ * V).trace.re := by
+    have hc : (Vᴴ * U).trace = starRingEnd ℂ (Uᴴ * V).trace := by
+      rw [← Complex.star_def, ← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+    rw [hc, Complex.conj_re]
+  linarith
+
+/-- Helper: `(1/8) ∑_{x,α} ‖X_{x,α}(A)‖_HS² = otocI hH β A`. -/
+lemma sum_hsNormSq_shiftedCommX_eq_otocI {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
+    (β : ℝ) (A : QubitOp N) :
+    (1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3, hsNormSq (shiftedCommX hH β A x α) =
+      otocI hH β A := by
+  set G := concreteGibbsData hH β
+  have hpt : ∀ (x : Fin N) (α : Fin 3),
+      hsNormSq (shiftedCommX hH β A x α) =
+        gibbsWightmanNormSq G (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ))) := by
+    intro x α
+    unfold shiftedCommX
+    have hiso : hsNormSq (jBeta G.ρQuarter (matComm (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)) A)) =
+        gibbsWightmanNormSq G (matComm (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)) A) :=
+      congrArg Complex.re
+        (prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter)
+    rw [hiso]
+    have hneg : matComm (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)) A =
+        -matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)) := by
+      unfold matComm; abel
+    rw [hneg]
+    unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
+    simp only [Matrix.conjTranspose_neg, Matrix.mul_neg, Matrix.neg_mul, neg_neg]
+  unfold otocI
+  apply congrArg ((1 / 8 : ℝ) * ·)
+  exact Finset.sum_congr rfl fun x _ ↦ Finset.sum_congr rfl fun α _ ↦ hpt x α
+
 /-- **Proposition 6.4(1) (Exact Shifted-Commutator Thermal-Size Decomposition, Eqs. 6.4–6.6)**:
 For ANY Hermitian `H : QubitOp N`, `β : ℝ`, and `A : QubitOp N`:
 1. `mssThermalSize G A = otocI hH β A + shiftedThermalSizeII hH β A + shiftedThermalSizeIII hH β A`
@@ -274,59 +331,14 @@ theorem prop_6_4_part1_shifted_eq_6_4 {N : ℕ} {H : QubitOp N} (hH : H.IsHermit
       2 * Real.sqrt (otocI hH β A) *
         Real.sqrt (((G.ρβ * thermalBackgroundOp hH β).trace).re + shiftedThermalSizeIII hH β A) := by
   intro G
-  have htot : (hsInner (jBeta G.ρQuarter A) (totalSizeOp (jBeta G.ρQuarter A))).re =
-      (1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3,
-        hsNormSq (matComm (pauliSite x α.succ) (jBeta G.ρQuarter A)) := by
-    unfold totalSizeOp hsInner
-    rw [Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum, Finset.mul_sum]
-    apply Finset.sum_congr rfl; intro x _
-    have hsite := hsNormSq_siteSizeOp_eq_comm_avg x (jBeta G.ρQuarter A)
-    have hidem := siteSizeOp_idem x (jBeta G.ρQuarter A)
-    have hsa := siteSizeOp_self_adj x (jBeta G.ρQuarter A) (siteSizeOp x (jBeta G.ρQuarter A))
-    unfold hsNormSq hsInner at hsite hsa
-    have heq : ((siteSizeOp x (jBeta G.ρQuarter A))ᴴ * siteSizeOp x (jBeta G.ρQuarter A)).trace =
-        ((jBeta G.ρQuarter A)ᴴ * siteSizeOp x (jBeta G.ρQuarter A)).trace := by
-      rw [hsa, hidem]
-    rw [← heq, hsite]
-    congr 1
-    exact Finset.sum_congr rfl fun α _ ↦ hsNormSq_matComm_comm _ _
-  have hx_eq : (1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3, hsNormSq (shiftedCommX hH β A x α) =
-      otocI hH β A := by
-    have hpt : ∀ (x : Fin N) (α : Fin 3),
-        hsNormSq (shiftedCommX hH β A x α) =
-          gibbsWightmanNormSq G (matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ))) := by
-      intro x α
-      unfold shiftedCommX
-      have hiso : hsNormSq (jBeta G.ρQuarter (matComm (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)) A)) =
-          gibbsWightmanNormSq G (matComm (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)) A) :=
-        congrArg Complex.re
-          (prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter)
-      rw [hiso]
-      have hneg : matComm (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)) A =
-          -matComm A (heisenbergEvol hH (-Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)) := by
-        unfold matComm; abel
-      rw [hneg]
-      unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
-      simp only [Matrix.conjTranspose_neg, Matrix.mul_neg, Matrix.neg_mul, neg_neg]
-    unfold otocI
-    apply congrArg ((1 / 8 : ℝ) * ·)
-    exact Finset.sum_congr rfl fun x _ ↦ Finset.sum_congr rfl fun α _ ↦ hpt x α
+  have htot := hsInner_totalSizeOp_eq_comm_sum (jBeta G.ρQuarter A)
+  have hx_eq := sum_hsNormSq_shiftedCommX_eq_otocI hH β A
   have hy_eq : (1 / 8 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3, hsNormSq (thermalDressY hH β A x α) =
       ((G.ρβ * thermalBackgroundOp hH β).trace).re + shiftedThermalSizeIII hH β A := by
     rw [sum_hsNormSq_thermalDressY_eq_trace_rhoO_B]
     unfold shiftedThermalSizeIII
     rw [Matrix.sub_mul, Matrix.trace_sub, Complex.sub_re]
     ring
-  have hexp : ∀ (U V : QubitOp N),
-      hsNormSq (U + V) = hsNormSq U + 2 * (hsInner U V).re + hsNormSq V := by
-    intro U V
-    unfold hsNormSq hsInner
-    simp only [Matrix.conjTranspose_add, Matrix.add_mul, Matrix.mul_add, Matrix.trace_add, Complex.add_re]
-    have hsym : (Vᴴ * U).trace.re = (Uᴴ * V).trace.re := by
-      have hc : (Vᴴ * U).trace = starRingEnd ℂ (Uᴴ * V).trace := by
-        rw [← Complex.star_def, ← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-      rw [hc, Complex.conj_re]
-    linarith
   have hdecomp : mssThermalSize G A =
       otocI hH β A + shiftedThermalSizeII hH β A + shiftedThermalSizeIII hH β A := by
     have hpt : ∀ (x : Fin N) (α : Fin 3),
@@ -334,17 +346,16 @@ theorem prop_6_4_part1_shifted_eq_6_4 {N : ℕ} {H : QubitOp N} (hH : H.IsHermit
         hsNormSq (shiftedCommX hH β A x α) +
         2 * (hsInner (shiftedCommX hH β A x α) (thermalDressY hH β A x α)).re +
         hsNormSq (thermalDressY hH β A x α) := fun x α ↦ by
-      rw [matComm_jBeta_eq_shiftedCommX_add_thermalDressY, hexp]
+      rw [matComm_jBeta_eq_shiftedCommX_add_thermalDressY, hsNormSq_add_eq]
     have hsum_eq : (∑ x : Fin N, ∑ α : Fin 3, hsNormSq (matComm (pauliSite x α.succ) (jBeta G.ρQuarter A))) =
         (∑ x : Fin N, ∑ α : Fin 3, hsNormSq (shiftedCommX hH β A x α)) +
         2 * (∑ x : Fin N, ∑ α : Fin 3, (hsInner (shiftedCommX hH β A x α) (thermalDressY hH β A x α)).re) +
         (∑ x : Fin N, ∑ α : Fin 3, hsNormSq (thermalDressY hH β A x α)) := by
       simp_rw [hpt, Finset.sum_add_distrib, ← Finset.mul_sum]
-    have hbg := backgroundSizeB_eq_trace_gibbs_B hH β
+    have hbg : (hsInner G.ρHalf (totalSizeOp G.ρHalf)).re =
+        ((G.ρβ * thermalBackgroundOp hH β).trace).re := backgroundSizeB_eq_trace_gibbs_B hH β
     unfold mssThermalSize shiftedThermalSizeII
-    have hbg' : (hsInner G.ρHalf (totalSizeOp G.ρHalf)).re =
-        ((G.ρβ * thermalBackgroundOp hH β).trace).re := hbg
-    rw [htot, hsum_eq, hbg']
+    rw [htot, hsum_eq, hbg]
     linarith [hx_eq, hy_eq]
   refine ⟨hdecomp, ?_⟩
   rw [← hy_eq, ← hx_eq]
@@ -365,7 +376,7 @@ theorem prop_6_4_part1_shifted_eq_6_4 {N : ℕ} {H : QubitOp N} (hH : H.IsHermit
       simp only [Matrix.conjTranspose_smul, Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_smul,
         smul_smul, smul_eq_mul, Complex.star_def, Complex.conj_ofReal]
       rw [← Complex.ofReal_mul, Complex.re_ofReal_mul, sq]
-    rw [hexp U ((t : ℂ) • V), h1, h2]; ring
+    rw [hsNormSq_add_eq U ((t : ℂ) • V), h1, h2]; ring
   have hquad : ∀ t : ℝ, 0 ≤ SX + 2 * t * SXY + t ^ 2 * SY := by
     intro t
     have hsum_nn : 0 ≤ ∑ x : Fin N, ∑ α : Fin 3,
