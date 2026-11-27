@@ -96,8 +96,8 @@ private lemma trace_herm_mul_hermFunc_re {N : ℕ} {ρ A : QubitOp N}
     Finset.sum_ite_eq, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte, Complex.re_sum]
   apply Finset.sum_congr rfl; intro i _
   apply Finset.sum_congr rfl; intro j _
-  have hnorm : W i j * star (W i j) = ((‖W i j‖ ^ 2 : ℝ) : ℂ) := by
-    rw [Complex.star_def, Complex.mul_conj', Complex.ofReal_pow]
+  have hnorm : W i j * star (W i j) = (‖W i j‖ : ℂ) ^ 2 := by
+    rw [Complex.star_def, Complex.mul_conj']
   have hrew : (hρ.eigenvalues i : ℂ) * W i j * (f (hA.eigenvalues j) : ℂ) * star (W i j) =
       (((‖W i j‖ ^ 2 * (hρ.eigenvalues i * f (hA.eigenvalues j)) : ℝ) : ℂ)) := by
     push_cast; linear_combination (hρ.eigenvalues i : ℂ) * (f (hA.eigenvalues j) : ℂ) * hnorm
@@ -331,8 +331,10 @@ theorem hsNormSq_siteSizeOp_eq_comm_avg {N : ℕ} (x : Fin N) (M : QubitOp N) :
       (1 / 8 : ℝ) * ∑ α : Fin 3, hsNormSq (matComm M (pauliSite x α.succ)) := by
   have hp0 : pauliMat 0 = (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
     ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat]
+  -- Expand M in the orthogonal Pauli string basis
   set c : (Fin N → Fin 4) → ℂ := fun a ↦ (1 / (2 : ℂ) ^ N) * (pauliString a * M).trace
   have hM : M = ∑ a : Fin N → Fin 4, c a • pauliString a := pauli_expansion_concrete M
+  -- On each Pauli string P_a, siteSizeOp x P_a = if a x ≠ 0 then P_a else 0
   have hsite_pauli : ∀ a : Fin N → Fin 4,
       siteSizeOp x (pauliString a) = if a x ≠ 0 then pauliString a else 0 := by
     intro a
@@ -365,6 +367,8 @@ theorem hsNormSq_siteSizeOp_eq_comm_avg {N : ℕ} (x : Fin N) (M : QubitOp N) :
     · rw [if_pos hax, if_neg (not_not.mpr hax), Matrix.zero_apply]
       rw [← Finset.mul_prod_erase Finset.univ (fun y ↦ pauliMat (a y) (p y) (q y)) (Finset.mem_univ x), sub_self]
     · rw [if_neg hax, if_pos hax, zero_mul, sub_zero]; rfl
+  -- Also compute HS norm of any commutator [M, P] via Pauli unitarity:
+  -- ‖[M, P]‖_HS² = 2 ‖M‖_HS² - 2 Re Tr(Mᴴ P M P)
   have hcomm_hs : ∀ α : Fin 3,
       hsNormSq (matComm M (pauliSite x α.succ)) =
       2 * hsNormSq M - 2 * (Matrix.trace (Mᴴ * pauliSite x α.succ * M * pauliSite x α.succ)).re := by
@@ -397,6 +401,7 @@ theorem hsNormSq_siteSizeOp_eq_comm_avg {N : ℕ} (x : Fin N) (M : QubitOp N) :
         _ = (Mᴴ * P * M * P).trace := Matrix.trace_mul_comm _ _
     have ht4 : (Mᴴ * P * (M * P)).trace = (Mᴴ * P * M * P).trace := by simp only [Matrix.mul_assoc]
     rw [ht1, ht2, ht3, ht4]; ring
+  -- Now sum over α : Fin 3: ∑_{α=1}^3 P_α M P_α = 4 partialTraceSite x M - M!
   have hsum_twirl : (∑ α : Fin 3, pauliSite x α.succ * M * pauliSite x α.succ) =
       (4 : ℂ) • partialTraceSite x M - M := by
     unfold partialTraceSite
@@ -411,6 +416,7 @@ theorem hsNormSq_siteSizeOp_eq_comm_avg {N : ℕ} (x : Fin N) (M : QubitOp N) :
     rw [h4]
     symm
     rw [Fin.sum_univ_succ, h0, Matrix.one_mul, Matrix.mul_one, add_sub_cancel_left]
+  -- And hsNormSq (siteSizeOp x M) = hsNormSq M - Re Tr(Mᴴ * partialTraceSite x M)
   have hsite_hs : hsNormSq (siteSizeOp x M) =
       hsNormSq M - (Matrix.trace (Mᴴ * partialTraceSite x M)).re := by
     have hidem := siteSizeOp_idem x M
@@ -438,7 +444,7 @@ theorem hsNormSq_siteSizeOp_eq_comm_avg {N : ℕ} (x : Fin N) (M : QubitOp N) :
   rw [← Finset.mul_sum, htr_sum, hsite_hs]
   ring
 
-/-- **Concrete Operator-Level Lemma 6.1 HS Identity on `QubitOp N`**:
+/-- **Concrete Operator-Level Lemma 6.1 on `QubitOp N`**:
 For ANY `G : GibbsData N`, site `x : Fin N`, and operator `A : QubitOp N`:
 `hsNormSq (siteSizeOp x (jBeta G.ρQuarter A)) = (1 / 8) ∑_{α=1}^3 hsNormSq (matComm (jBeta G.ρQuarter A) (pauliSite x α.succ))`. -/
 theorem lemma_6_1_concrete_operator {N : ℕ} (G : GibbsData N) (x : Fin N) (A : QubitOp N) :
