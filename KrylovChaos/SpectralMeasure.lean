@@ -501,13 +501,13 @@ lemma hasDerivAt_secTan (k : ℕ) {t : ℝ} (hcos : Real.cos t ≠ 0) :
       funext x; simp [secTan]
     rw [hfun]
     convert hmul using 1
-    simp only [Nat.add_sub_cancel, secTan, Real.tan_eq_sin_div_cos]
-    have hsc := Real.sin_sq_add_cos_sq t
-    have htan_id : (Real.cos t ^ 2)⁻¹ = 1 + (Real.sin t / Real.cos t) ^ 2 := by
-      field_simp [hcos]; linarith
-    rw [htan_id]
+    have htan_id : (Real.cos t ^ 2)⁻¹ = 1 + Real.tan t ^ 2 := by
+      rw [Real.tan_eq_sin_div_cos, div_pow]; field_simp [hcos]; linarith [Real.sin_sq_add_cos_sq t]
+    have hsin_div : Real.sin t / Real.cos t ^ 2 = (Real.cos t)⁻¹ * Real.tan t := by
+      rw [Real.tan_eq_sin_div_cos]; field_simp [hcos]
+    simp only [Nat.add_sub_cancel, secTan]
+    rw [htan_id, hsin_div]
     push_cast
-    field_simp [hcos]
     ring
 
 /-- Tridiagonal light-cone: `((jacobiMat D b)^m) i j = 0` whenever `i + m < j`. -/
@@ -632,7 +632,7 @@ theorem iteratedDeriv_inv_cos_eq_jacobi_sum (m D : ℕ) (hD : m < D) :
             have h1 : ¬(j₂.1 = k.1 + 1) := by dsimp [j₂]; omega
             have h2 : k.1 = j₂.1 + 1 := by dsimp [j₂]; omega
             simp only [J, jacobiMat, Matrix.of_apply, h1, ↓reduceIte, h2]
-            rw [← h2]
+            rw [if_neg h1]
           rw [hJ1, hJ2]
           dsimp [j₁, j₂]; ring
     simp_rw [hmul_sum]
@@ -789,7 +789,7 @@ lemma sec_cos_leibniz_zero (m : ℕ) :
         symm
         rw [Finset.sum_range_succ']
         simp only [↓reduceIte, add_zero, Nat.add_eq_zero_iff, one_ne_zero, and_false,
-          Nat.add_sub_cancel, Nat.succ_sub_succ_eq_sub]
+          Nat.add_sub_cancel, Nat.succ_sub_succ_eq_sub, Nat.sub_zero]
       have h2 : (∑ k ∈ Finset.range (n + 1), (n.choose k : ℝ) * S k * C (n - k + 1)) =
           ∑ k ∈ Finset.range (n + 2),
             (if k = n + 1 then (0 : ℝ) else (n.choose k : ℝ) * S k * C (n + 1 - k)) := by
@@ -818,7 +818,7 @@ lemma sec_cos_leibniz_zero (m : ℕ) :
           have hchoose : ((n + 1).choose k : ℝ) = (n.choose (k - 1) : ℝ) + (n.choose k : ℝ) := by
             have hk_eq : k = (k - 1) + 1 := by omega
             have hnat : (n + 1).choose k = n.choose (k - 1) + n.choose k := by
-              conv_lhs => rw [hk_eq, Nat.choose_succ_succ, ← hk_eq]
+              conv_lhs => rw [hk_eq, Nat.choose_succ_succ, Nat.succ_eq_add_one, ← hk_eq]
             exact_mod_cast hnat
           rw [hchoose]; dsimp only [S, C]; ring
   have h0 : (0 : ℝ) ∈ Set.Ioo (-(Real.pi / 2)) (Real.pi / 2) :=
@@ -1139,8 +1139,9 @@ theorem meixner_euler_moment_rate_ge_two_div_pi {C R : ℝ} (hC : 0 < C) (hR0 : 
       (Real.summable_pow_div_factorial (Real.pi / 2))
     intro m
     dsimp only [g]
-    rw [abs_mul, abs_div, abs_of_nonneg (Nat.cast_nonneg m.factorial), abs_of_nonneg (pow_nonneg (by positivity) m),
-      iteratedDeriv_cos_zero]
+    have hfac_abs : |(m.factorial : ℝ)| = (m.factorial : ℝ) := abs_of_nonneg (Nat.cast_nonneg m.factorial)
+    have hpow_abs : |(Real.pi / 2) ^ m| = (Real.pi / 2) ^ m := abs_of_nonneg (pow_nonneg (by positivity) m)
+    rw [abs_mul, abs_div, hfac_abs, hpow_abs, iteratedDeriv_cos_zero]
     have h1 : |if Even m then (-1 : ℝ) ^ (m / 2) else 0| ≤ 1 := by
       split_ifs <;> simp
     calc |if Even m then (-1 : ℝ) ^ (m / 2) else 0| / (m.factorial : ℝ) * (Real.pi / 2) ^ m

@@ -494,7 +494,7 @@ theorem majoranaParitySizeOp_on_string (n : ℕ) (Q : Finset (Fin (2 * n))) :
 
 private lemma hsNormSq_nonneg_maj {n : ℕ} (X : QubitOp n) : 0 ≤ hsNormSq X := by
   unfold hsNormSq hsInner
-  rw [Matrix.trace, Matrix.diag, Complex.re_sum]
+  simp only [Matrix.trace, Matrix.diag_apply, Complex.re_sum]
   apply Finset.sum_nonneg; intro i _
   rw [Matrix.mul_apply, Complex.re_sum]
   apply Finset.sum_nonneg; intro j _
