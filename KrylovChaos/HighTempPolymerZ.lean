@@ -439,7 +439,7 @@ lemma polymerZ_siteSlice_step {N : ℕ} (w : Polymer N → ℂ) (Γ : Finset (Po
   rw [hunion] at hres
   exact hres
 
-/-- For `z : ℂ` with `‖z - 1‖ ≤ 1 / 4`, `z ∈ Complex.slitPlane` and `‖Complex.log z‖ ≤ 1`. -/
+/-- For `z : ℂ` with `‖z - 1‖ ≤ 1 / 4`, `z ∈ Complex.slitPlane` and `‖Complex.log z‖ ≤ 2 / 3`. -/
 lemma complex_log_bound_of_norm_sub_one_le {z : ℂ} (hz : ‖z - 1‖ ≤ 1 / 4) :
     z ∈ Complex.slitPlane ∧ ‖Complex.log z‖ ≤ 2 / 3 := by
   have hre_sub : |z.re - 1| ≤ 1 / 4 := by
@@ -831,9 +831,10 @@ theorem normalizedTrace_tsum_exp_eq_polymerZ {N : ℕ}
   rcases compatible_connectedPolymers_bijection E hne with ⟨hinj, hsurj⟩
   unfold polymerZ
   symm
-  have hmem_filt : ∀ {α : Type*} {s : Finset α} {p : α → Prop} {inst : DecidablePred p} {a : α},
-      a ∈ @Finset.filter α p inst s ↔ a ∈ s ∧ p a :=
-    fun {_ _ _ _ _} ↦ Finset.mem_filter
+  have hmem_filt : ∀ {s : Finset (Finset (Polymer N))} {p : Finset (Polymer N) → Prop}
+      {inst : DecidablePred p} {a : Finset (Polymer N)},
+      a ∈ @Finset.filter (Finset (Polymer N)) p inst s ↔ a ∈ s ∧ p a :=
+    fun {_ _ _ _} ↦ Finset.mem_filter
   refine Finset.sum_bij (fun I _ ↦ I.biUnion id) ?_ ?_ ?_ ?_
   · intro I hI
     have hI' := hmem_filt.mp hI
