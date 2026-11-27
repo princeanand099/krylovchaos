@@ -67,7 +67,7 @@ lemma LocalTerm.in_filtration {N r : ℕ} (t : LocalTerm N r) :
 structure LocalHamiltonian (N r : ℕ) where
   terms : List (LocalTerm N r)
 
-/-- Total Hamiltonian matrix `H = ∑_{X ∈ E} h_X`. -/\n
+/-- Total Hamiltonian matrix `H = ∑_{X ∈ E} h_X`. -/
 def LocalHamiltonian.totalOp {N r : ℕ} (ham : LocalHamiltonian N r) : QubitOp N :=
   (ham.terms.map (·.op)).sum
 
@@ -160,8 +160,8 @@ theorem prop_2_3_full_qubit_thermal_size {N : ℕ} (G : GibbsData N) (A : QubitO
         (hsNormSq (matComm (jBeta G.ρQuarter A) (pauliSite x α.succ)) -
          hsNormSq (matComm G.ρHalf (pauliSite x α.succ))) := by
   unfold mssThermalSize
-  rw [eq_2_8_hs_commutator_size_identity (jBeta G.ρQuarter A),
-      eq_2_8_hs_commutator_size_identity G.ρHalf]
+  rw [← eq_2_8_hs_commutator_size_identity (jBeta G.ρQuarter A),
+      ← eq_2_8_hs_commutator_size_identity G.ρHalf]
   rw [← mul_sub]
   congr 1
   rw [← Finset.sum_sub_distrib]
@@ -195,30 +195,23 @@ theorem prop_2_3_part1_qubit_eq_2_9 {N : ℕ} (G : GibbsData N) {A : QubitOp N}
       hsNormSq (matComm G.ρHalf (pauliSite x α.succ)) =
       2 * (qubitCW0 G x α - qubitFMSS G A x α) := by
     intro x α
-    have hPh : (pauliSite x α.succ)ᴴ = pauliSite x α.succ := pauliSite_herm x α.succ
-    have hPsq : pauliSite x α.succ * pauliSite x α.succ = 1 := pauliSite_sq x α.succ
-    have h1 := congrArg Complex.re
-      (prop_2_3_commutator_size_identity (jBeta G.ρQuarter A) (pauliSite x α.succ) hJA_herm hPh hPsq)
-    have h2 := congrArg Complex.re
-      (prop_2_3_commutator_size_identity G.ρHalf (pauliSite x α.succ) G.ρHalf_herm hPh hPsq)
-    have hcw : (Matrix.trace (pauliSite x α.succ * G.ρHalf * pauliSite x α.succ * G.ρHalf)).re =
-        qubitCW0 G x α := by
+    set P := pauliSite x α.succ
+    set M := jBeta G.ρQuarter A
+    have hPh : Pᴴ = P := pauliSite_herm x α.succ
+    have hPsq : P * P = 1 := pauliSite_sq x α.succ
+    have h1 := congrArg Complex.re (prop_2_3_commutator_size_identity M P hJA_herm hPh hPsq)
+    have h2 := congrArg Complex.re (prop_2_3_commutator_size_identity G.ρHalf P G.ρHalf_herm hPh hPsq)
+    have hcw : (Matrix.trace (P * G.ρHalf * P * G.ρHalf)).re = qubitCW0 G x α := by
       unfold qubitCW0 gibbsWightmanNormSq gibbsWightmanInner wightmanInner
-      congr 1
       rw [hPh]
-      calc Matrix.trace (pauliSite x α.succ * G.ρHalf * pauliSite x α.succ * G.ρHalf)
-          = Matrix.trace (G.ρHalf * (pauliSite x α.succ * G.ρHalf * pauliSite x α.succ)) :=
-            Matrix.trace_mul_comm _ _
-        _ = Matrix.trace (G.ρHalf * pauliSite x α.succ * G.ρHalf * pauliSite x α.succ) := by
-            simp only [Matrix.mul_assoc]
+      congr 1
+      calc Matrix.trace (P * G.ρHalf * P * G.ρHalf)
+          = Matrix.trace (G.ρHalf * (P * G.ρHalf * P)) := Matrix.trace_mul_comm _ _
+        _ = Matrix.trace (G.ρHalf * P * G.ρHalf * P) := by simp only [Matrix.mul_assoc]
     simp only [Complex.sub_re, Complex.mul_re, Complex.re_ofNat, Complex.im_ofNat, zero_mul,
       sub_zero] at h1 h2
-    change (Matrix.trace ((jBeta G.ρQuarter A * pauliSite x α.succ - pauliSite x α.succ * jBeta G.ρQuarter A)ᴴ *
-      (jBeta G.ρQuarter A * pauliSite x α.succ - pauliSite x α.succ * jBeta G.ρQuarter A))).re -
-      (Matrix.trace ((G.ρHalf * pauliSite x α.succ - pauliSite x α.succ * G.ρHalf)ᴴ *
-        (G.ρHalf * pauliSite x α.succ - pauliSite x α.succ * G.ρHalf))).re = _
+    unfold hsNormSq hsInner matComm qubitFMSS
     rw [h1, h2, hJA_sq, hρ_sq, hcw]
-    unfold qubitFMSS
     ring
   simp_rw [hterm, ← Finset.mul_sum]
   ring
