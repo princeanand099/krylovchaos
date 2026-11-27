@@ -192,10 +192,10 @@ lemma biUnion_shellEdges_eq {N r : ℕ} (hr : 1 ≤ r)
     refine ⟨⟨k₀, Nat.lt_succ_of_le hk₀_le⟩, ?_⟩
     dsimp only
     rcases Nat.eq_zero_or_pos k₀ with h0 | hpos
-    · rw [h0]; exact Finset.mem_filter.mpr ⟨hXE, h0 ▸ hk₀_sub⟩
+    · rw [h0]; exact Finset.mem_filter.mpr ⟨hXE, by rw [← h0]; exact hk₀_sub⟩
     · obtain ⟨m, hm⟩ := Nat.exists_eq_succ_of_ne_zero (Nat.pos_iff_ne_zero.mp hpos)
       rw [hm]
-      exact Finset.mem_filter.mpr ⟨hXE, hm ▸ hk₀_sub, Nat.find_min hex (by omega)⟩
+      exact Finset.mem_filter.mpr ⟨hXE, by rw [← hm]; exact hk₀_sub, Nat.find_min hex (by omega)⟩
 
 /-- Exact shell partition of the Hamiltonian: `∑ X ∈ E, h X = ∑ k : Fin (N + 1), shellOp E h r x k.val`. -/
 lemma sum_h_eq_sum_shellOp {N r : ℕ} (hr : 1 ≤ r)
@@ -365,7 +365,8 @@ lemma adPowMat_sum_eq_sum_iterShellComm {N : ℕ} (W : Fin (N + 1) → QubitOp N
         · simp [Fin.snoc_last]
         · simp [Fin.snoc_castSucc, Fin.init]⟩⟩) _ _ fun p ↦ ?_
     change matComm (W p.2) (iterShellComm W p.1 O) =
-      matComm (W (Fin.snoc p.1 p.2 (Fin.last m))) (iterShellComm W (Fin.init (Fin.snoc p.1 p.2)) O)
+      matComm (W ((Fin.snoc p.1 p.2 : Fin (m + 1) → Fin (N + 1)) (Fin.last m)))
+        (iterShellComm W (Fin.init (Fin.snoc p.1 p.2 : Fin (m + 1) → Fin (N + 1))) O)
     rw [Fin.snoc_last, Fin.init_snoc]
 
 /-- Support preservation and vanishing outside causally valid 1D words. -/

@@ -26,6 +26,7 @@ Hermitian observable `X = ∑ Z ∈ E_X, x Z` with `x Z ∈ supportedOn Z`, `Z.N
 For EVERY real `lam` with `|lam| ≤ Λ₀' / 2`:
 `Real.log (gibbsPartitionFn hK (-1) / gibbsPartitionFn hH β) ≤ 8 * (N : ℝ) * lam ^ 2 / (Λ₀') ^ 2`,
 where `K = (-β) • H + lam • X̃`. -/
+set_option maxHeartbeats 800000 in
 theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     (hr : 2 ≤ r) (hkX : 1 ≤ k_X)
     (E : Finset (Finset (Fin N))) (hE_ne : ∀ Z ∈ E, Z.Nonempty) (hE_card : ∀ Z ∈ E, Z.card ≤ r)
@@ -345,7 +346,8 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       have hxδ : x ∈ polySupp δ := Finset.mem_biUnion.mpr ⟨Z, hZδ, hxZ⟩
       have h1 : ‖tracePolyWeight (g_tot ζ) 1 δ‖ * Real.exp (a δ) ≤
           ∑ γ ∈ Γ.filter (fun γ ↦ x ∈ polySupp γ), ‖tracePolyWeight (g_tot ζ) 1 γ‖ * Real.exp (a γ) :=
-        Finset.single_le_sum (fun _ _ ↦ by positivity) (Finset.mem_filter.mpr ⟨hδ, hxδ⟩)
+        Finset.single_le_sum (f := fun γ ↦ ‖tracePolyWeight (g_tot ζ) 1 γ‖ * Real.exp (a γ))
+          (fun _ _ ↦ by positivity) (Finset.mem_filter.mpr ⟨hδ, hxδ⟩)
       linarith [hsite_pin ζ hζ x, hc_le]
   -- Site-by-site ratio and telescoping logarithm `L(ζ)`.
   let Zslice : ℕ → ℂ → ℂ := fun k ζ ↦ polymerZ polyIncompat (tracePolyWeight (g_tot ζ) 1) (siteSlice Γ k)
@@ -410,7 +412,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     have hpow : ((-β : ℂ) • H + ζ • X) ^ m = (-(1 : ℝ) : ℂ) ^ m • (∑ Z ∈ E_tot, g_tot ζ Z) ^ m := by
       rw [hg_sum ζ]
       have hneg : (-β : ℂ) • H + ζ • X = (-(1 : ℝ) : ℂ) • ((β : ℂ) • H - ζ • X) := by
-        simp only [Complex.ofReal_one, neg_one_smul, neg_sub, sub_eq_add_neg, neg_smul]; abel
+        ext i j; simp; ring
       rw [hneg, smul_pow]
     rw [hpow, normalizedTrace_smul]
     ring
@@ -438,16 +440,21 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     have hZ0 : Zslice 0 ζ = 1 := by
       dsimp only [Zslice]; rw [siteSlice_zero hEtot_ne]
       unfold polymerZ
-      have : (∅ : Finset (Polymer N)).powerset.filter
-          (fun I ↦ isCompatPolymer polyIncompat I) = {∅} := by ext I; simp [isCompatPolymer]
-      rw [this, Finset.sum_singleton, Finset.prod_empty]
+      rw [Finset.sum_eq_single (∅ : Finset (Polymer N))]
+      · exact Finset.prod_empty
+      · intro I hI hne
+        exfalso; apply hne
+        exact Finset.subset_empty.mp (Finset.mem_powerset.mp (Finset.mem_filter.mp hI).1)
+      · intro hnot; exfalso; apply hnot
+        refine Finset.mem_filter.mpr ⟨Finset.mem_powerset.mpr (Finset.empty_subset _), ?_⟩
+        intro u hu; exact absurd hu (Finset.notMem_empty u)
     rw [htel N le_rfl, hZ0, div_one]
   -- Differentiability of `Zslice k` and `L` on `closedBall 0 Λ₀'`.
   have hZslice_diff : ∀ k : ℕ, Differentiable ℂ (Zslice k) := by
     intro k
     dsimp only [Zslice]
     unfold polymerZ
-    refine Differentiable.fun_sum fun I _ ↦ Differentiable.finset_prod fun γ _ ↦ ?_
+    refine Differentiable.fun_sum fun I _ ↦ Differentiable.fun_finset_prod fun γ _ ↦ ?_
     exact differentiable_tracePolyWeight_affine A_op B_op γ
   have hL_diffAt : ∀ ζ ∈ Metric.closedBall (0 : ℂ) Λ₀', DifferentiableAt ℂ L ζ := by
     intro ζ hζ
@@ -473,11 +480,8 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     rw [trace_hermFunc_exp_eq_tsum hH (-(β : ℂ))]
     dsimp only [Zfn]
     apply tsum_congr; intro m
-    simp only [zero_smul, add_zero, neg_smul, smul_pow, normalizedTrace_smul]
-    have hpow : (-(β : ℂ)) ^ m = (-1 : ℂ) ^ m * (β : ℂ) ^ m := by rw [← mul_pow]; congr 1; ring
-    have hsm : (-(β : ℂ) • H) ^ m = (-(β : ℂ)) ^ m • H ^ m := smul_pow _ _ _
-    simp only [neg_smul] at hsm
-    rw [← neg_smul, hsm, normalizedTrace_smul]
+    rw [zero_smul, add_zero, smul_pow, normalizedTrace_smul]
+    change (m.factorial : ℂ)⁻¹ * ((-(β : ℂ)) ^ m * normalizedTrace ((∑ Z ∈ E, h Z) ^ m)) = _
     ring
   have hZ0_re : Zfn 0 = (((2 : ℝ) ^ N : ℂ)⁻¹) * (gibbsPartitionFn hH β : ℂ) := by
     rw [hZ0_eq]; unfold normalizedTrace gibbsPartitionFn hermFunc
@@ -498,8 +502,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
         _ = Matrix.trace (Matrix.diagonal (fun i ↦ Complex.exp (-(β : ℂ) * (hH.eigenvalues i : ℂ)))) := by
             rw [← Matrix.mul_assoc, hU, Matrix.one_mul]
         _ = ∑ i : QubitIdx N, Complex.exp (-(β : ℂ) * (hH.eigenvalues i : ℂ)) := Matrix.trace_diagonal _
-    rw [htr]; push_cast
-    apply Finset.sum_congr rfl; intro i _; rw [Complex.ofReal_exp]; congr 1; push_cast; ring
+    rw [htr]; push_cast; rfl
   have hZ'0 : HasDerivAt Zfn (normalizedTrace (hermFunc hH (fun e ↦ Complex.exp (-(β : ℂ) * (e : ℂ))) * X)) 0 := by
     have hd := hasDerivAt_normalizedTrace_exp_affine ((-β : ℂ) • H) X
     refine hd.congr_deriv ?_
@@ -510,9 +513,10 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
           map_add' := fun M₁ M₂ ↦ by rw [Matrix.add_mul, normalizedTrace_add]
           map_smul' := fun α M ↦ by simp [Matrix.smul_mul, normalizedTrace_smul] }
     have hΨ := hsum.map Ψ Ψ.continuous
-    have hrew : (fun m : ℕ ↦ Ψ (((-(β : ℂ)) ^ m / (m.factorial : ℂ)) • H ^ m)) =
+    have hrew : (⇑Ψ ∘ fun m : ℕ ↦ ((-(β : ℂ)) ^ m / (m.factorial : ℂ)) • (∑ Z ∈ E, h Z) ^ m) =
         fun m : ℕ ↦ (m.factorial : ℂ)⁻¹ * normalizedTrace (((-β : ℂ) • H) ^ m * X) := by
-      funext m; dsimp only [Ψ]
+      funext m
+      change normalizedTrace ((((-(β : ℂ)) ^ m / (m.factorial : ℂ)) • H ^ m) * X) = _
       rw [smul_pow, Matrix.smul_mul, Matrix.smul_mul, normalizedTrace_smul, normalizedTrace_smul]
       ring
     rw [hrew] at hΨ
@@ -521,7 +525,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     have htr_re : (gibbsRho hH β * X).trace.im = 0 := by
       have hconj : star (gibbsRho hH β * X).trace = (gibbsRho hH β * X).trace := by
         rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, hX.eq,
-          (gibbsRho_isHermitian hH β).eq, Matrix.trace_mul_comm]
+          (concreteGibbsData hH β).ρ_herm, Matrix.trace_mul_comm]
       exact Complex.conj_eq_iff_im.mp hconj
     exact Complex.ext rfl (by simp [htr_re])
   have hg'0 : deriv g 0 = 0 := by
@@ -633,7 +637,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
           rw [← Matrix.mul_assoc, hU, Matrix.one_mul]
       _ = ∑ i : QubitIdx N, Complex.exp ((1 : ℂ) * (hK₀.eigenvalues i : ℂ)) := Matrix.trace_diagonal _
       _ = ((∑ i : QubitIdx N, Real.exp (-(-1 : ℝ) * hK₀.eigenvalues i) : ℝ) : ℂ) := by
-          push_cast; apply Finset.sum_congr rfl; intro i _; rw [Complex.ofReal_exp]; congr 1; simp
+          push_cast; apply Finset.sum_congr rfl; intro i _; congr 1; simp
   have hK_part : gibbsPartitionFn hK (-1) = Real.exp (-lam * μ) * gibbsPartitionFn hK₀ (-1) := by
     -- `exp(K) = exp(-lam * μ) • exp(K₀)` since `K = K₀ + (-lam * μ) • 1`.
     have hK_eq : K = K₀ + ((-lam * μ : ℝ) : ℂ) • (1 : QubitOp N) := by
@@ -722,7 +726,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
             rw [← Matrix.mul_assoc, hU, Matrix.one_mul]
         _ = ∑ i : QubitIdx N, Complex.exp (hK.eigenvalues i : ℂ) := Matrix.trace_diagonal _
         _ = ((∑ i : QubitIdx N, Real.exp (-(-1 : ℝ) * hK.eigenvalues i) : ℝ) : ℂ) := by
-            push_cast; apply Finset.sum_congr rfl; intro i _; rw [Complex.ofReal_exp]; congr 1; simp
+            push_cast; apply Finset.sum_congr rfl; intro i _; congr 1; simp
     have htrK₀ : (hermFunc hK₀ (fun e ↦ Complex.exp (e : ℂ))).trace = (gibbsPartitionFn hK₀ (-1) : ℂ) := by
       unfold gibbsPartitionFn hermFunc
       have hU : (hK₀.eigenvectorUnitary : QubitOp N)ᴴ * (hK₀.eigenvectorUnitary : QubitOp N) = 1 :=
@@ -738,7 +742,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
             rw [← Matrix.mul_assoc, hU, Matrix.one_mul]
         _ = ∑ i : QubitIdx N, Complex.exp (hK₀.eigenvalues i : ℂ) := Matrix.trace_diagonal _
         _ = ((∑ i : QubitIdx N, Real.exp (-(-1 : ℝ) * hK₀.eigenvalues i) : ℝ) : ℂ) := by
-            push_cast; apply Finset.sum_congr rfl; intro i _; rw [Complex.ofReal_exp]; congr 1; simp
+            push_cast; apply Finset.sum_congr rfl; intro i _; congr 1; simp
     have htr_eq := congrArg Matrix.trace hexp_shift
     rw [Matrix.trace_smul, smul_eq_mul, htrK, htrK₀, ← Complex.ofReal_exp] at htr_eq
     have hre := congrArg Complex.re htr_eq
