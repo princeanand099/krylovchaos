@@ -196,7 +196,7 @@ private lemma adPowOp_step_lanczos {N D : ℕ} {H O : QubitOp N}
             rw [hO_eq]
             unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
             simp only [Matrix.conjTranspose_smul, Matrix.mul_smul, Matrix.smul_mul,
-              Matrix.trace_smul, smul_smul, Complex.star_def, Complex.conj_ofReal]
+              Matrix.trace_smul, smul_smul, smul_eq_mul, Complex.star_def, Complex.conj_ofReal]
             rw [← Complex.ofReal_mul, Complex.re_ofReal_mul]
             change (b (m + 1))⁻¹ * (b (m + 1))⁻¹ * gibbsWightmanNormSq G A = 1
             rw [hA_norm]; field_simp [hne]
@@ -241,7 +241,7 @@ private lemma adPowOp_step_lanczos {N D : ℕ} {H O : QubitOp N}
         have h1 : gibbsWightmanNormSq G (lanczosOp G H O (k.1 + 1)) = 1 := by
           rw [hO_eq]; unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
           simp only [Matrix.conjTranspose_smul, Matrix.mul_smul, Matrix.smul_mul,
-            Matrix.trace_smul, smul_smul, Complex.star_def, Complex.conj_ofReal]
+            Matrix.trace_smul, smul_smul, smul_eq_mul, Complex.star_def, Complex.conj_ofReal]
           rw [← Complex.ofReal_mul, Complex.re_ofReal_mul]
           change (b (k.1 + 1))⁻¹ * (b (k.1 + 1))⁻¹ * gibbsWightmanNormSq G A = 1
           rw [hA_norm]; field_simp [hbn]
@@ -293,8 +293,8 @@ theorem adPowOp_eq_jacobi_lanczos_sum {N D : ℕ} {H O : QubitOp N}
             (if k.1 = j.1 + 1 then b k.1 else 0) := by
         intro j; unfold jacobiMat
         simp only [Matrix.of_apply]
-        split_ifs with h1 h2 h3 h4
-        all_goals first | rfl | omega | (ring_nf; try simp only [Nat.add_comm]) | (congr 1; omega)
+        split_ifs with h1 h2 h3
+        all_goals first | rfl | omega | ring | (rw [add_zero]; congr 1; omega) | (rw [zero_add]; congr 1; omega)
       simp_rw [hjac, Complex.ofReal_add, add_smul, Finset.sum_add_distrib]
       congr 1
       · by_cases hk1 : k.1 + 1 < D
@@ -315,7 +315,7 @@ theorem adPowOp_eq_jacobi_lanczos_sum {N D : ℕ} {H O : QubitOp N}
           have hkm : k.1 - 1 < D := by omega
           rw [Finset.sum_eq_single ⟨k.1 - 1, hkm⟩]
           · have hkk : k.1 = (⟨k.1 - 1, hkm⟩ : Fin D).1 + 1 := by dsimp; omega
-            rw [if_pos hkk]; rfl
+            rw [if_pos hkk]
           · intro j _ hj
             have hneq : k.1 ≠ j.1 + 1 := fun h ↦ hj (Fin.ext (show j.1 = k.1 - 1 by omega))
             simp only [hneq, ↓reduceIte, Complex.ofReal_zero, zero_smul]
@@ -372,7 +372,9 @@ theorem concrete_lanczos_moment_eq_jacobi {N D : ℕ} {H O : QubitOp N}
 If `μ : Measure ℝ` satisfies `Integrable (fun ω ↦ Real.cosh (r * ω)) μ` with `∫ cosh(r ω) ∂μ ≤ M`
 (`0 < r`, `0 < M`), and the Lanczos coefficients `b` (`0 < b h` for `h ≥ 1`) match the moments
 `((jacobiMat (2*n+1) b)^(2*n)) 0 0 = ∫ ω, ω^(2*n) ∂μ`, then:
-`2 * liminf_{n → ∞} (b n / n) ≤ π / r`. -/
+`2 * liminf_{n → ∞} (b n / n) ≤ π / r`.
+In particular, for `r ≥ β / 2 + κ` (`β > 0`, `κ > 0`):
+`2 * liminf_{n → ∞} (b n / n) ≤ 2 * π / (β + 2 * κ) < 2 * π / β`. -/
 theorem theorem_1_2b_from_strip_measure (μ : Measure ℝ) {r M : ℝ} (b : ℕ → ℝ)
     (hr : 0 < r) (hM : 0 < M)
     (hcosh : Integrable (fun ω : ℝ ↦ Real.cosh (r * ω)) μ)
@@ -428,7 +430,9 @@ noncomputable def concreteWightmanNormAtShift {N : ℕ} {H : QubitOp N} (hH : H.
   gibbsWightmanNormSq (concreteGibbsData hH β)
     (heisenbergEvol hH ((t : ℂ) + Complex.I * (τ : ℂ)) W)
 
-/-- **Item #14 — Time-Translation Invariance `T_{τ,N}(t) = T_{τ,N}(0)`**. -/
+/-- **Item #14 — Time-Translation Invariance `T_{τ,N}(t) = T_{τ,N}(0)`**:
+Because real-time Heisenberg evolution `e^{i t H} (·) e^{-i t H}` is unitary in the Wightman
+inner product, `‖W(t + i τ)‖_{β,W}² = ‖W(i τ)‖_{β,W}²` for all `t, τ : ℝ`. -/
 theorem concreteWightmanNormAtShift_time_invariant {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (W : QubitOp N) (τ t : ℝ) :
     concreteWightmanNormAtShift hH β W τ t = concreteWightmanNormAtShift hH β W τ 0 := by
@@ -437,7 +441,9 @@ theorem concreteWightmanNormAtShift_time_invariant {N : ℕ} {H : QubitOp N} (hH
   rw [heisenbergEvol_real_wightmanNormSq hH β t _]
   simp
 
-/-- **Item #14 — `W ↔ V` Swap Symmetry of the Regularized OTOC (`F_N^{W,V}(z) = F_N^{V,W}(-z)`)**. -/
+/-- **Item #14 — `W ↔ V` Swap Symmetry of the Regularized OTOC (`F_N^{W,V}(z) = F_N^{V,W}(-z)`)**:
+By cyclicity of trace and `[e^{i z H}, ρ_β^{1/4}] = 0`:
+`Tr(ρ^{1/4} W(z) ρ^{1/4} V ρ^{1/4} W(z) ρ^{1/4} V) = Tr(ρ^{1/4} V(-z) ρ^{1/4} W ρ^{1/4} V(-z) ρ^{1/4} W)`. -/
 theorem concreteOTOC_swap_symmetry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (W V : QubitOp N) (z : ℂ) :
     concreteOTOC hH β W V z = concreteOTOC hH β V W (-z) := by
@@ -474,7 +480,7 @@ theorem concreteOTOC_swap_symmetry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian
   set X := R * (Uinv * V * U) * R * W
   have htr_conj : (X * X).trace = ((U * X * Uinv) * (U * X * Uinv)).trace := by
     have hXX_eq : X * X = Uinv * (U * (X * X)) := by
-      rw [← Matrix.mul_assoc, hUinvU, Matrix.one_mul]
+      rw [← Matrix.mul_assoc Uinv U, hUinvU, Matrix.one_mul]
     calc (X * X).trace
         = (Uinv * (U * (X * X))).trace := congrArg Matrix.trace hXX_eq
       _ = ((U * (X * X)) * Uinv).trace := Matrix.trace_mul_comm _ _
@@ -489,7 +495,11 @@ theorem concreteOTOC_swap_symmetry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian
     _ = ((R * V * R * (U * W * Uinv)) * (R * V * R * (U * W * Uinv))).trace := by
           simp only [Matrix.mul_assoc]
 
-/-- **Item #14 — 3-Way Concrete OTOC Dominance Inequality (Eq. 1.17)**. -/
+/-- **Item #14 — 3-Way Concrete OTOC Dominance Inequality (Eq. 1.17)**:
+For ANY Hermitian `H, W, V : QubitOp N`, `β, t, τ : ℝ`, `z = t + i τ`:
+1. `‖F_N(z)‖ ≤ ‖V‖_∞² * T_{τ,N}^W(0)`,
+2. `‖F_N(z)‖ ≤ ‖W‖_∞² * T_{-τ,N}^V(0)`,
+3. `‖F_N(z)‖ ≤ ‖W‖_∞ * ‖V‖_∞ * √(T_{τ,N}^W(0) * T_{-τ,N}^V(0))`. -/
 theorem concreteOTOC_three_way_eq_1_17 {N : ℕ} {H W V : QubitOp N}
     (hH : H.IsHermitian) (hW : W.IsHermitian) (hV : V.IsHermitian) (β t τ : ℝ) :
     let z : ℂ := (t : ℂ) + Complex.I * (τ : ℂ)
@@ -564,7 +574,9 @@ private lemma openStrip_isPreconnected (S : ℝ) : IsPreconnected {z : ℂ | |z.
           linarith
     _ = S := by rw [← add_mul, hab, one_mul]
 
-/-- Cauchy Lipschitz estimate on half-radius balls inside the strip. -/
+/-- Cauchy Lipschitz estimate on half-radius balls inside the strip: if `f` is holomorphic on
+`Ω = {|Im z| < S}` and `‖f w‖ ≤ M` on `closedBall z₀ (2 * δ) ⊆ Ω`, then for all
+`w₁, w₂ ∈ closedBall z₀ δ`, `‖f w₂ - f w₁‖ ≤ (2 * M / δ) * ‖w₂ - w₁‖`. -/
 private lemma cauchy_lipschitz_on_half_ball {S δ M : ℝ} (hδ : 0 < δ) (hM : 0 ≤ M)
     {f : ℂ → ℂ} {z₀ : ℂ}
     (hholo : DifferentiableOn ℂ f {z : ℂ | |z.im| < S})
@@ -588,15 +600,13 @@ private lemma cauchy_lipschitz_on_half_ball {S δ M : ℝ} (hδ : 0 < δ) (hM : 
     Set.countable_empty hw1_ball hcont hdiff_ball
   have hc2 := Complex.two_pi_I_inv_smul_circleIntegral_sub_inv_smul_of_differentiable_on_off_countable
     Set.countable_empty hw2_ball hcont hdiff_ball
-  have hf_int : CircleIntegrable f z₀ (2 * δ) :=
-    (hcont.mono Metric.sphere_subset_closedBall).circleIntegrable h2δ.le
   have hci1 : CircleIntegrable (fun z ↦ (z - w₁)⁻¹ • f z) z₀ (2 * δ) := by
-    refine hf_int.continuousOn_smul ?_
+    refine (ContinuousOn.smul ?_ (hcont.mono Metric.sphere_subset_closedBall)).circleIntegrable h2δ.le
     refine ContinuousOn.inv₀ (continuousOn_id.sub continuousOn_const) ?_
     intro z hz; rw [sub_ne_zero]; intro heq; subst heq
     rw [Metric.mem_sphere] at hz; rw [Metric.mem_closedBall] at hw₁; linarith
   have hci2 : CircleIntegrable (fun z ↦ (z - w₂)⁻¹ • f z) z₀ (2 * δ) := by
-    refine hf_int.continuousOn_smul ?_
+    refine (ContinuousOn.smul ?_ (hcont.mono Metric.sphere_subset_closedBall)).circleIntegrable h2δ.le
     refine ContinuousOn.inv₀ (continuousOn_id.sub continuousOn_const) ?_
     intro z hz; rw [sub_ne_zero]; intro heq; subst heq
     rw [Metric.mem_sphere] at hz; rw [Metric.mem_closedBall] at hw₂; linarith
@@ -654,7 +664,15 @@ private lemma cauchy_lipschitz_on_half_ball {S δ M : ℝ} (hδ : 0 < δ) (hM : 
     _ = (2 * M / δ) * ‖w₂ - w₁‖ := by
         field_simp [hδ.ne', Real.pi_pos.ne']
 
-/-- **Item #15 — Genuine Montel + Vitali Strip Extension Theorem (Zero Hypothesis Laundering)**. -/
+/-- **Item #15 — Genuine Montel + Vitali Strip Extension Theorem (Zero Hypothesis Laundering)**:
+Let `Ω = {z : ℂ | |z.im| < S}` (`0 < S`), and let `F_N : ℕ → ℂ → ℂ` be a sequence of holomorphic
+functions on `Ω` that is:
+1. Uniformly bounded on every compact `K ⊆ Ω`: `∀ K, IsCompact K → K ⊆ Ω → ∃ M, ∀ N, ∀ z ∈ K, ‖F_N N z‖ ≤ M`,
+2. Pointwise convergent on the real axis `ℝ`: `∀ t : ℝ, Tendsto (fun N ↦ F_N N (t : ℂ)) atTop (nhds (f t))`.
+Then there exists a unique holomorphic function `F : ℂ → ℂ` on `Ω` such that:
+- `DifferentiableOn ℂ F Ω`,
+- `TendstoLocallyUniformlyOn F_N F atTop Ω`,
+- `∀ t : ℝ, F (t : ℂ) = f t`. -/
 theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
     (F_N : ℕ → ℂ → ℂ) (f : ℝ → ℂ)
     (hholo : ∀ N, DifferentiableOn ℂ (F_N N) {z : ℂ | |z.im| < S})
@@ -805,14 +823,6 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
       have hL_pos : 0 < L := by positivity
       set η : ℝ := min (δ / 2) (ε / (3 * L))
       have hη_pos : 0 < η := lt_min (by linarith) (by positivity)
-      have hcover : Metric.closedBall z₀ δ ⊆ ⋃ k : ℕ, Metric.ball (q k) η := by
-        intro w hw
-        have hwΩ : w ∈ Ω := hsub2 (Metric.closedBall_subset_closedBall (by linarith) hw)
-        obtain ⟨p, hp⟩ := hembedQ_dense w hwΩ η hη_pos
-        obtain ⟨k, hk⟩ := he_surj p
-        exact Set.mem_iUnion.mpr ⟨k, by simp [q, hk, Metric.mem_ball, hp]⟩
-      obtain ⟨F_idx, hF_cover⟩ := (isCompact_closedBall z₀ δ).elim_finite_subcover
-        (fun k ↦ Metric.ball (q k) η) (fun _ ↦ Metric.isOpen_ball) hcover
       have hcover_in : Metric.closedBall z₀ δ ⊆
           ⋃ k ∈ { k : ℕ | q k ∈ Metric.closedBall z₀ δ }, Metric.ball (q k) η := by
         intro w hw
