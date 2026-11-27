@@ -458,14 +458,15 @@ end PSDGibbsVariational
 
 section ThermalBackgroundShells
 
+set_option maxHeartbeats 400000 in
 /-- Heisenberg evolution invariance of `rhoO_op`:
 `rhoO_op hH β (heisenbergEvol hH (t : ℂ) O) = U(t) * rhoO_op hH β O * U(t)ᴴ`. -/
 lemma rhoO_op_heisenbergEvol_eq_conj {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β t : ℝ) (O : QubitOp N) :
     rhoO_op hH β (heisenbergEvol hH (t : ℂ) O) =
       complexPropagator hH (t : ℂ) * rhoO_op hH β O * (complexPropagator hH (t : ℂ))ᴴ := by
-  set U := complexPropagator hH (t : ℂ)
-  set G := concreteGibbsData hH β
+  let U := complexPropagator hH (t : ℂ)
+  let Q := (concreteGibbsData hH β).ρQuarter
   have hU_unit : Uᴴ * U = 1 := by
     dsimp only [U, complexPropagator]
     rw [hermFunc_conjTranspose, hermFunc_mul]
@@ -484,30 +485,40 @@ lemma rhoO_op_heisenbergEvol_eq_conj {N : ℕ} {H : QubitOp N} (hH : H.IsHermiti
     congr 1; funext x
     rw [Complex.star_def, ← Complex.exp_conj]
     simp only [map_mul, Complex.conj_I, Complex.conj_ofReal]; congr 1; ring
-  have hcomm_Q : G.ρQuarter * U = U * G.ρQuarter := by
-    dsimp only [G, concreteGibbsData, gibbsRhoQuarter, U, complexPropagator]
+  have hcomm_Q : Q * U = U * Q := by
+    change gibbsRhoQuarter hH β * complexPropagator hH (t : ℂ) =
+      complexPropagator hH (t : ℂ) * gibbsRhoQuarter hH β
+    unfold gibbsRhoQuarter complexPropagator
     rw [Matrix.smul_mul, Matrix.mul_smul, hermFunc_mul, hermFunc_mul]
-    congr 2; funext x; ring
-  have hcomm_QH : G.ρQuarter * Uᴴ = Uᴴ * G.ρQuarter := by
+    have hfn : (fun x : ℝ ↦ Complex.exp ((-(β / 4) * x : ℝ) : ℂ) * Complex.exp (Complex.I * (t : ℂ) * (x : ℂ))) =
+        (fun x : ℝ ↦ Complex.exp (Complex.I * (t : ℂ) * (x : ℂ)) * Complex.exp ((-(β / 4) * x : ℝ) : ℂ)) := by
+      funext x; ring
+    rw [hfn]
+  have hcomm_QH : Q * Uᴴ = Uᴴ * Q := by
     rw [← hU_neg]
-    dsimp only [G, concreteGibbsData, gibbsRhoQuarter, complexPropagator]
+    change gibbsRhoQuarter hH β * complexPropagator hH (-(t : ℂ)) =
+      complexPropagator hH (-(t : ℂ)) * gibbsRhoQuarter hH β
+    unfold gibbsRhoQuarter complexPropagator
     rw [Matrix.smul_mul, Matrix.mul_smul, hermFunc_mul, hermFunc_mul]
-    congr 2; funext x; ring
-  have hj : jBeta G.ρQuarter (heisenbergEvol hH (t : ℂ) O) = U * jBeta G.ρQuarter O * Uᴴ := by
+    have hfn : (fun x : ℝ ↦ Complex.exp ((-(β / 4) * x : ℝ) : ℂ) * Complex.exp (Complex.I * -(t : ℂ) * (x : ℂ))) =
+        (fun x : ℝ ↦ Complex.exp (Complex.I * -(t : ℂ) * (x : ℂ)) * Complex.exp ((-(β / 4) * x : ℝ) : ℂ)) := by
+      funext x; ring
+    rw [hfn]
+  have hj : jBeta Q (heisenbergEvol hH (t : ℂ) O) = U * jBeta Q O * Uᴴ := by
     unfold jBeta heisenbergEvol
     rw [hU_neg]
-    calc G.ρQuarter * (U * O * Uᴴ) * G.ρQuarter
-        = (G.ρQuarter * U) * O * (Uᴴ * G.ρQuarter) := by simp only [Matrix.mul_assoc]
-      _ = (U * G.ρQuarter) * O * (G.ρQuarter * Uᴴ) := by rw [hcomm_Q, ← hcomm_QH]
-      _ = U * (G.ρQuarter * O * G.ρQuarter) * Uᴴ := by simp only [Matrix.mul_assoc]
-  unfold rhoO_op
-  dsimp only
+    calc Q * (U * O * Uᴴ) * Q
+        = (Q * U) * O * (Uᴴ * Q) := by simp only [Matrix.mul_assoc]
+      _ = (U * Q) * O * (Q * Uᴴ) := by rw [hcomm_Q, ← hcomm_QH]
+      _ = U * (Q * O * Q) * Uᴴ := by simp only [Matrix.mul_assoc]
+  change (jBeta Q (heisenbergEvol hH (t : ℂ) O))ᴴ * jBeta Q (heisenbergEvol hH (t : ℂ) O) =
+    U * ((jBeta Q O)ᴴ * jBeta Q O) * Uᴴ
   rw [hj]
   simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-  calc U * (jBeta G.ρQuarter O)ᴴ * Uᴴ * (U * jBeta G.ρQuarter O * Uᴴ)
-      = U * (jBeta G.ρQuarter O)ᴴ * (Uᴴ * U) * jBeta G.ρQuarter O * Uᴴ := by
+  calc U * (jBeta Q O)ᴴ * Uᴴ * (U * jBeta Q O * Uᴴ)
+      = U * (jBeta Q O)ᴴ * (Uᴴ * U) * jBeta Q O * Uᴴ := by
         simp only [Matrix.mul_assoc]
-    _ = U * ((jBeta G.ρQuarter O)ᴴ * jBeta G.ρQuarter O) * Uᴴ := by
+    _ = U * ((jBeta Q O)ᴴ * jBeta Q O) * Uᴴ := by
         rw [hU_unit, Matrix.mul_one]; simp only [Matrix.mul_assoc]
 
 /-- The `m`-th imaginary-time commutator shell of
@@ -570,7 +581,7 @@ lemma hasSum_shellDelta {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
   rw [hsum_eq] at hadd
   refine hadd.congr_fun fun m ↦ ?_
   cases m with
-  | zero => simp [shellDelta, h0]
+  | zero => simp [shellDelta, adPowMat]
   | succ m => simp [shellDelta]
 
 /-- Operator-norm bound on `shellDelta`: `opNorm (shellDelta β x α m) ≤ (2 * |β / 2| * opNorm H) ^ m / m!`. -/
@@ -597,7 +608,12 @@ lemma opNorm_shellDelta_le {N : ℕ} {H : QubitOp N} (β : ℝ) (x : Fin N) (α 
           have hsub : opNorm (H * adPowMat H k (pauliSite x α.succ) - adPowMat H k (pauliSite x α.succ) * H) ≤
               opNorm (H * adPowMat H k (pauliSite x α.succ)) +
                 opNorm (adPowMat H k (pauliSite x α.succ) * H) := by
-            unfold opNorm; rw [map_sub]; exact norm_sub_le _ _
+            unfold opNorm
+            have hclm : opToCLM (H * adPowMat H k (pauliSite x α.succ) - adPowMat H k (pauliSite x α.succ) * H) =
+                opToCLM (H * adPowMat H k (pauliSite x α.succ)) -
+                  opToCLM (adPowMat H k (pauliSite x α.succ) * H) := by
+              ext v i; simp [opToCLM, Matrix.sub_mulVec]
+            rw [hclm]; exact norm_sub_le _ _
           calc opNorm (H * adPowMat H k (pauliSite x α.succ) - adPowMat H k (pauliSite x α.succ) * H)
               ≤ opNorm (H * adPowMat H k (pauliSite x α.succ)) +
                   opNorm (adPowMat H k (pauliSite x α.succ) * H) := hsub
@@ -616,6 +632,91 @@ lemma opNorm_shellDelta_le {N : ℕ} {H : QubitOp N} (β : ℝ) (x : Fin N) (α 
           mul_le_mul_of_nonneg_left h1 (by positivity)
       _ = (2 * |β / 2| * opNorm H) ^ (m + 1) / ((m + 1).factorial : ℝ) := by
           rw [mul_pow, mul_pow, mul_pow]; ring
+
+private lemma hasSum_cauchy_product_complex_bg {a b : ℕ → ℂ} {A B : ℂ}
+    (ha : HasSum a A) (hb : HasSum b B)
+    (hsa : Summable (fun k ↦ ‖a k‖)) (hsb : Summable (fun k ↦ ‖b k‖)) :
+    HasSum (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2) (A * B) := by
+  have hprod_norm : Summable (fun p : ℕ × ℕ ↦ ‖a p.1 * b p.2‖) := by
+    have h1 : Summable (fun p : ℕ × ℕ ↦ ‖a p.1‖ * ‖b p.2‖) :=
+      Summable.mul_of_nonneg hsa hsb (fun _ ↦ norm_nonneg _) (fun _ ↦ norm_nonneg _)
+    exact h1.congr fun p ↦ (norm_mul _ _).symm
+  have hanti_norm : Summable (fun m : ℕ ↦ ‖∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2‖) := by
+    have h1 : Summable (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, ‖a p.1 * b p.2‖) := by
+      have hfib : ∀ n : ℕ, ∑ m ∈ Finset.range n, ∑ p ∈ Finset.antidiagonal m, ‖a p.1 * b p.2‖ ≤
+          ∑' p : ℕ × ℕ, ‖a p.1 * b p.2‖ := by
+        intro n
+        have hdisj : (Finset.range n : Set ℕ).PairwiseDisjoint Finset.antidiagonal := by
+          intro i _ j _ hij
+          rw [Finset.disjoint_left]
+          intro p hp1 hp2
+          exact hij ((Finset.mem_antidiagonal.mp hp1).symm.trans (Finset.mem_antidiagonal.mp hp2))
+        rw [← Finset.sum_biUnion hdisj]
+        exact hprod_norm.sum_le_tsum _ fun _ _ ↦ norm_nonneg _
+      exact summable_of_sum_range_le (fun _ ↦ Finset.sum_nonneg fun _ _ ↦ norm_nonneg _) hfib
+    exact Summable.of_nonneg_of_le (fun _ ↦ norm_nonneg _) (fun _ ↦ norm_sum_le _ _) h1
+  have hanti_summ : Summable (fun m : ℕ ↦ ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2) :=
+    hanti_norm.of_norm
+  suffices hlim : Filter.Tendsto
+      (fun n : ℕ ↦ ∑ m ∈ Finset.range (2 * n), ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2)
+      Filter.atTop (nhds (A * B)) by
+    have hsubseq : Filter.Tendsto
+        (fun n : ℕ ↦ ∑ m ∈ Finset.range (2 * n), ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2)
+        Filter.atTop (nhds (∑' m : ℕ, ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2)) :=
+      hanti_summ.hasSum.tendsto_sum_nat.comp
+        (Filter.tendsto_atTop_mono (fun n ↦ by omega) Filter.tendsto_id)
+    rw [tendsto_nhds_unique hsubseq hlim]
+    exact hanti_summ.hasSum
+  have hsq_lim : Filter.Tendsto
+      (fun n : ℕ ↦ (∑ i ∈ Finset.range n, a i) * (∑ j ∈ Finset.range n, b j))
+      Filter.atTop (nhds (A * B)) :=
+    ha.tendsto_sum_nat.mul hb.tendsto_sum_nat
+  have hdiff_zero : Filter.Tendsto
+      (fun n : ℕ ↦ (∑ m ∈ Finset.range (2 * n), ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2) -
+        (∑ i ∈ Finset.range n, a i) * (∑ j ∈ Finset.range n, b j))
+      Filter.atTop (nhds 0) := by
+    rw [Metric.tendsto_atTop]
+    intro ε hε
+    have htail := hprod_norm.hasSum
+    rw [HasSum, Metric.tendsto_atTop] at htail
+    rcases htail ε hε with ⟨S, hS⟩
+    let N₀ := S.sup (fun p : ℕ × ℕ ↦ max p.1 p.2 + 1)
+    refine ⟨N₀, fun n hn ↦ ?_⟩
+    have hsub_S : S ⊆ Finset.range n ×ˢ Finset.range n := by
+      intro p hp
+      have h1 : max p.1 p.2 + 1 ≤ N₀ := Finset.le_sup (f := fun q : ℕ × ℕ ↦ max q.1 q.2 + 1) hp
+      rw [Finset.mem_product, Finset.mem_range, Finset.mem_range]
+      omega
+    let T := (Finset.range (2 * n)).biUnion Finset.antidiagonal
+    have hdisj : (Finset.range (2 * n) : Set ℕ).PairwiseDisjoint Finset.antidiagonal := by
+      intro i _ j _ hij
+      rw [Finset.disjoint_left]; intro p hp1 hp2
+      exact hij ((Finset.mem_antidiagonal.mp hp1).symm.trans (Finset.mem_antidiagonal.mp hp2))
+    have hT_eq : ∑ m ∈ Finset.range (2 * n), ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2 =
+        ∑ p ∈ T, a p.1 * b p.2 := (Finset.sum_biUnion hdisj).symm
+    have hsq_eq : (∑ i ∈ Finset.range n, a i) * (∑ j ∈ Finset.range n, b j) =
+        ∑ p ∈ Finset.range n ×ˢ Finset.range n, a p.1 * b p.2 := by
+      rw [Finset.sum_mul_sum, ← Finset.sum_product']
+    have hsq_sub_T : Finset.range n ×ˢ Finset.range n ⊆ T := by
+      intro p hp
+      rcases Finset.mem_product.mp hp with ⟨hp1, hp2⟩
+      rw [Finset.mem_range] at hp1 hp2
+      exact Finset.mem_biUnion.mpr ⟨p.1 + p.2, Finset.mem_range.mpr (by omega),
+        Finset.mem_antidiagonal.mpr rfl⟩
+    rw [dist_zero_right, hT_eq, hsq_eq, ← Finset.sum_sdiff hsq_sub_T]
+    have hnorm_le : ‖∑ p ∈ T \ (Finset.range n ×ˢ Finset.range n), a p.1 * b p.2‖ ≤
+        ∑ p ∈ T \ (Finset.range n ×ˢ Finset.range n), ‖a p.1 * b p.2‖ := norm_sum_le _ _
+    have hsdiff_eq : ∑ p ∈ T \ (Finset.range n ×ˢ Finset.range n), ‖a p.1 * b p.2‖ =
+        (∑ p ∈ T, ‖a p.1 * b p.2‖) - ∑ p ∈ Finset.range n ×ˢ Finset.range n, ‖a p.1 * b p.2‖ :=
+      eq_sub_of_add_eq (Finset.sum_sdiff hsq_sub_T)
+    have hle_tsum : ∑ p ∈ T, ‖a p.1 * b p.2‖ ≤ ∑' p : ℕ × ℕ, ‖a p.1 * b p.2‖ :=
+      hprod_norm.sum_le_tsum T fun _ _ ↦ norm_nonneg _
+    have hclose := hS (Finset.range n ×ˢ Finset.range n) hsub_S
+    rw [Real.dist_eq, abs_lt] at hclose
+    linarith
+  have hadd := hdiff_zero.add hsq_lim
+  simp only [zero_add, sub_add_cancel] at hadd
+  exact hadd
 
 /-- Entrywise Cauchy-product convergence:
 `HasSum (fun k ↦ (M * bgShell H β k).trace.re) ((M * thermalBackgroundOp hH β).trace.re)`. -/
@@ -659,8 +760,7 @@ theorem hasSum_trace_bgShell {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
         have hb : HasSum (fun m : ℕ ↦ star (f m j c)) (star (Δ j c)) := (hent_has j c).star
         have ha_abs : Summable (fun m : ℕ ↦ ‖f m i c‖) := hf_summ_norm i c
         have hb_abs : Summable (fun m : ℕ ↦ ‖star (f m j c)‖) := by simpa using hf_summ_norm j c
-        have hanti := hasSum_sum_antidiagonal_of_summable_norm ha_abs hb_abs
-        rw [ha.tsum_eq, hb.tsum_eq] at hanti
+        have hanti := hasSum_cauchy_product_complex_bg ha hb ha_abs hb_abs
         refine hanti.congr_fun fun k ↦ ?_
         rw [Finset.Nat.sum_antidiagonal_eq_sum_range_succ (fun m n ↦ f m i c * star (f n j c)) k]
       have htot := hasSum_sum (s := Finset.univ) (fun c _ ↦ hsum_c c)
@@ -693,7 +793,9 @@ private lemma supportedOn_conjTranspose_mem {N : ℕ} {U : Finset (Fin N)} {A : 
     (hA : A ∈ supportedOn U) : Aᴴ ∈ supportedOn U := by
   refine Submodule.span_induction ?_ ?_ ?_ ?_ hA
   · rintro _ ⟨a, ha, rfl⟩
-    rw [(pauliString_isHermitian a).eq]
+    have hherm : (pauliString a)ᴴ = pauliString a := by
+      unfold pauliString; rw [kronOp_conjTranspose]; congr 1; funext y; exact pauliMat_herm (a y)
+    rw [hherm]
     exact pauliString_mem_supportedOn a ha
   · rw [Matrix.conjTranspose_zero]; exact (supportedOn U).zero_mem
   · intro x y _ _ hx hy; rw [Matrix.conjTranspose_add]; exact (supportedOn U).add_mem hx hy
@@ -1006,9 +1108,8 @@ theorem bgShell_local_decomp {N r : ℕ} (hr : 2 ≤ r)
                      (if y ∈ causalUnionOp {x} f₂ then (∏ j, w (f₁ j)) * (∏ j, w (f₂ j)) else 0)) :=
           Finset.sum_le_sum fun x _ ↦ Finset.sum_le_sum fun f₁ _ ↦
             Finset.sum_le_sum fun f₂ _ ↦ hsplit_y x f₁ f₂
-        simp_rw [Finset.mul_sum, Finset.sum_add_distrib] at hle1
-        rw [← Finset.mul_sum, ← Finset.mul_sum, ← Finset.mul_sum, ← Finset.mul_sum, ← Finset.mul_sum,
-          ← Finset.mul_sum] at hle1
+        simp_rw [mul_add, Finset.sum_add_distrib, ← Finset.mul_sum] at hle1
+        rw [← mul_add] at hle1
         have hA : (∑ x : Fin N, ∑ f₁ ∈ cSeq x m, ∑ f₂ ∈ cSeq x (k - m),
               if y ∈ causalUnionOp {x} f₁ then (∏ j, w (f₁ j)) * (∏ j, w (f₂ j)) else 0) ≤
             ((m + 1).factorial : ℝ) * ((k - m).factorial : ℝ) * ((r : ℝ) * Jsite) ^ k := by
@@ -1103,6 +1204,7 @@ series `∑' k ≥ 2, (1 / Λ₀'(k))` and `opNorm (thermalBackgroundOp hH β) /
 noncomputable def bgDecouplingC2 (r s₀ : ℕ) (C_O : ℝ) : ℝ :=
   4 * Real.sqrt 2 * (2 * Real.log (C_O * (2 : ℝ) ^ (s₀ + 1)) + 1) * (12 * Real.exp 1 * (r : ℝ))
 
+set_option maxHeartbeats 800000 in
 /-- **Proposition 6.4(2) (Unconditional Concrete High-Temperature Entropic Background Decoupling,
 Eq. 6.7 — Zero `hcum` Hypothesis)**:
 For any `N ≥ 1`, `r`-local Hermitian Hamiltonian `H = ∑ Z ∈ E, h Z` (`r ≥ 2`, site strength
@@ -1115,7 +1217,6 @@ For any `N ≥ 1`, `r`-local Hermitian Hamiltonian `H = ∑ Z ∈ E, h Z` (`r �
      otocI hH β (heisenbergEvol hH (t : ℂ) O) +
      2 * √(otocI hH β (heisenbergEvol hH (t : ℂ) O)) * √(N + bgDecouplingC2 r s₀ C_O * √N) +
      bgDecouplingC2 r s₀ C_O * √N`. -/
-set_option maxHeartbeats 800000 in
 theorem prop_6_4_part2_unconditional {N r s₀ : ℕ}
     (hN : 1 ≤ N) (hr : 2 ≤ r)
     (E : Finset (Finset (Fin N))) (hE_ne : ∀ Z ∈ E, Z.Nonempty) (hE_card : ∀ Z ∈ E, Z.card ≤ r)
@@ -1443,7 +1544,10 @@ theorem prop_6_4_part2_unconditional {N r s₀ : ℕ}
                 pow_le_pow_left₀ (by positivity) hq1 k
               gcongr; norm_num
           _ ≤ (k : ℝ) ^ 3 * (1 / 288 : ℝ) ^ k := by
-              have hk23 : 1 * (k : ℝ) * (k : ℝ) ≤ (k : ℝ) ^ 3 := by nlinarith
+              have hk23 : 1 * (k : ℝ) * (k : ℝ) ≤ (k : ℝ) ^ 3 := by
+                calc 1 * (k : ℝ) * (k : ℝ) = (k : ℝ) ^ 2 * 1 := by ring
+                  _ ≤ (k : ℝ) ^ 2 * (k : ℝ) := mul_le_mul_of_nonneg_left h1k (sq_nonneg _)
+                  _ = (k : ℝ) ^ 3 := by ring
               exact mul_le_mul_of_nonneg_right hk23 (by positivity)
       · rw [if_neg hk, mul_zero]
         have hk01 : k = 0 ∨ k = 1 := by omega
