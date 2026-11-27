@@ -383,7 +383,7 @@ private lemma singleSite_spectral_eq_rotated {ρ : Mat2} (hρ : ρ.IsHermitian)
         _ = ((hρ.eigenvectorUnitary : Mat2) *
               (Matrix.diagonal (fun i ↦ (hρ.eigenvalues i : ℂ)) * (hρ.eigenvectorUnitary : Mat2)ᴴ)).trace :=
               Matrix.trace_mul_comm _ _
-        _ = ρ.trace := by rw [h1]; simp only [Matrix.mul_assoc]
+        _ = ρ.trace := congrArg Matrix.trace (by rw [← Matrix.mul_assoc]; exact h1.symm)
     rw [htr, Fin.sum_univ_two] at htr_eig
     have hre := congrArg Complex.re htr_eig
     simpa using hre

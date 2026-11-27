@@ -688,11 +688,11 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
   have heven_add : ∀ X Y : QubitOp n, evenPart n (X + Y) = evenPart n X + evenPart n Y := by
     intro X Y; unfold evenPart; simp only [Matrix.mul_add, Matrix.add_mul, smul_add]; abel
   have hodd_add : ∀ X Y : QubitOp n, oddPart n (X + Y) = oddPart n X + oddPart n Y := by
-    intro X Y; unfold oddPart; simp only [Matrix.mul_add, Matrix.add_mul, smul_add]; abel
+    intro X Y; unfold oddPart; simp only [Matrix.mul_add, Matrix.add_mul, smul_add, smul_sub]; abel
   have htot_add : ∀ X Y : QubitOp n, majoranaTotalSizeOp n (X + Y) = majoranaTotalSizeOp n X + majoranaTotalSizeOp n Y := by
     intro X Y; unfold majoranaTotalSizeOp majoranaModeSizeOp
     rw [← Finset.sum_add_distrib]; apply Finset.sum_congr rfl; intro j _
-    simp only [Matrix.mul_add, Matrix.add_mul, smul_add]; abel
+    simp only [Matrix.mul_add, Matrix.add_mul, smul_add, smul_sub]; abel
   have hoddtot_add : ∀ X Y : QubitOp n, majoranaOddTotalSizeOp n (X + Y) = majoranaOddTotalSizeOp n X + majoranaOddTotalSizeOp n Y := by
     intro X Y; unfold majoranaOddTotalSizeOp majoranaOddModeSizeOp
     rw [← Finset.sum_add_distrib]; apply Finset.sum_congr rfl; intro j _
@@ -726,21 +726,19 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
       fermionParityOp_anticomm_probe n j
     have hPjr : majoranaProbe n j * fermionParityOp n = -(fermionParityOp n * majoranaProbe n j) := by
       rw [hPjm, neg_neg]
-    have hPe := heven_par X
-    unfold isEvenParity at hPe
-    rw [Matrix.mul_smul, Matrix.smul_mul]
-    congr 1
-    rw [Matrix.mul_sub, Matrix.sub_mul]
-    congr 1
-    · exact hPe
-    · calc fermionParityOp n * (majoranaProbe n j * evenPart n X * majoranaProbe n j) * fermionParityOp n
-          = (fermionParityOp n * majoranaProbe n j) * evenPart n X * (majoranaProbe n j * fermionParityOp n) := by
+    set E := evenPart n X
+    have hPe : fermionParityOp n * E * fermionParityOp n = E := heven_par X
+    have h2 : fermionParityOp n * (majoranaProbe n j * E * majoranaProbe n j) * fermionParityOp n =
+        majoranaProbe n j * E * majoranaProbe n j := by
+      calc fermionParityOp n * (majoranaProbe n j * E * majoranaProbe n j) * fermionParityOp n
+          = (fermionParityOp n * majoranaProbe n j) * E * (majoranaProbe n j * fermionParityOp n) := by
               simp only [Matrix.mul_assoc]
-        _ = (-(majoranaProbe n j * fermionParityOp n)) * evenPart n X * (-(fermionParityOp n * majoranaProbe n j)) := by
+        _ = (-(majoranaProbe n j * fermionParityOp n)) * E * (-(fermionParityOp n * majoranaProbe n j)) := by
               rw [hPjm, hPjr]
-        _ = majoranaProbe n j * (fermionParityOp n * evenPart n X * fermionParityOp n) * majoranaProbe n j := by
+        _ = majoranaProbe n j * (fermionParityOp n * E * fermionParityOp n) * majoranaProbe n j := by
               simp only [Matrix.neg_mul, Matrix.mul_neg, neg_neg, Matrix.mul_assoc]
-        _ = majoranaProbe n j * evenPart n X * majoranaProbe n j := by rw [hPe]
+        _ = majoranaProbe n j * E * majoranaProbe n j := by rw [hPe]
+    rw [Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_sub, Matrix.sub_mul, hPe, h2]
   have hpar_odd_pres : ∀ X : QubitOp n, isOddParity (majoranaOddTotalSizeOp n (oddPart n X)) := by
     intro X
     unfold isOddParity majoranaOddTotalSizeOp majoranaOddModeSizeOp
