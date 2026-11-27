@@ -222,7 +222,7 @@ theorem opNorm_le_add_integral_of_deriv_comm_herm {N : ℕ}
           ((Complex.I • matComm (M s₀) (K s₀) + R s₀) i j) (s₀ + 0) := by
         simpa using hK_deriv s₀ i j
       have h2 := hK_s0.scomp (0 : ℝ) h1
-      simpa using h2
+      simpa [Function.comp_def] using h2
     have hE_deriv : HasDerivAt (fun δ : ℝ ↦ heisenbergEvol (hM_herm s₀) (δ : ℂ) (K s₀) i j)
         ((Complex.I • matComm (M s₀) (K s₀)) i j) 0 := by
       have h1 := heisenbergEvol_entry_hasDerivAt (hM_herm s₀) (K s₀) 0 i j

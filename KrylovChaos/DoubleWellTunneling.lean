@@ -60,7 +60,7 @@ theorem integral_gaussianKernel_eq_one {σ : ℝ} (hσ : 0 < σ) :
     funext s; congr 1; ring
   rw [hrew, integral_gaussian (1 / (2 * σ ^ 2))]
   have hpi : Real.sqrt (Real.pi / (1 / (2 * σ ^ 2))) = Real.sqrt (2 * Real.pi) * σ := by
-    rw [div_one_div, show Real.pi * (2 * σ ^ 2) = (2 * Real.pi) * σ ^ 2 by ring,
+    rw [div_div_eq_mul_div, div_one, show Real.pi * (2 * σ ^ 2) = (2 * Real.pi) * σ ^ 2 by ring,
       Real.sqrt_mul (by positivity), Real.sqrt_sq hσ.le]
   rw [hpi, div_self (by positivity)]
 
@@ -74,14 +74,14 @@ theorem integral_gaussianKernel_mul_exp {σ : ℝ} (hσ : 0 < σ) (a : ℝ) :
       fun s : ℝ ↦ (Real.exp (σ ^ 2 * a ^ 2 / 2) / (Real.sqrt (2 * Real.pi) * σ)) *
         Real.exp (-(1 / (2 * σ ^ 2)) * (s - a * σ ^ 2) ^ 2) := by
     funext s
-    rw [div_mul_eq_mul_div, ← Real.exp_add, mul_div_right_comm, ← Real.exp_add]
+    rw [div_mul_eq_mul_div, ← Real.exp_add, div_mul_eq_mul_div, ← Real.exp_add]
     congr 1; congr 1
     field_simp [hσ.ne']; ring
   rw [hrew, integral_const_mul, integral_sub_right_eq_self
     (fun s : ℝ ↦ Real.exp (-(1 / (2 * σ ^ 2)) * s ^ 2)) (a * σ ^ 2),
     integral_gaussian (1 / (2 * σ ^ 2))]
   have hpi : Real.sqrt (Real.pi / (1 / (2 * σ ^ 2))) = Real.sqrt (2 * Real.pi) * σ := by
-    rw [div_one_div, show Real.pi * (2 * σ ^ 2) = (2 * Real.pi) * σ ^ 2 by ring,
+    rw [div_div_eq_mul_div, div_one, show Real.pi * (2 * σ ^ 2) = (2 * Real.pi) * σ ^ 2 by ring,
       Real.sqrt_mul (by positivity), Real.sqrt_sq hσ.le]
   rw [hpi, div_mul_cancel₀ _ (by positivity)]
 
@@ -92,7 +92,7 @@ lemma integrable_gaussianKernel_mul_exp {σ : ℝ} (hσ : 0 < σ) (a : ℝ) :
       fun s : ℝ ↦ (Real.exp (σ ^ 2 * a ^ 2 / 2) / (Real.sqrt (2 * Real.pi) * σ)) *
         Real.exp (-(1 / (2 * σ ^ 2)) * (s - a * σ ^ 2) ^ 2) := by
     funext s; unfold gaussianKernel
-    rw [div_mul_eq_mul_div, ← Real.exp_add, mul_div_right_comm, ← Real.exp_add]
+    rw [div_mul_eq_mul_div, ← Real.exp_add, div_mul_eq_mul_div, ← Real.exp_add]
     congr 1; congr 1; field_simp [hσ.ne']; ring
   rw [hrew]
   have hb : 0 < 1 / (2 * σ ^ 2) := by positivity
@@ -139,7 +139,9 @@ theorem prop_9_1_part1_fixed_sigma_otoc_lyapunov {σ : ℝ} (hσ : 0 < σ)
   have hdiff_int : Integrable (fun s : ℝ ↦ gaussianKernel σ s * (F (t + s) - model s)) := by
     refine (hg_int.const_mul C_R).mono' ?_ (Filter.Eventually.of_forall fun s ↦ ?_)
     · have h1 : AEStronglyMeasurable (fun s : ℝ ↦ F (t + s)) volume := by
-        simpa [add_comm] using hF_meas.comp_add_right t
+        have hmp : MeasurePreserving (fun s : ℝ ↦ t + s) volume volume :=
+          measurePreserving_add_left volume t
+        exact hF_meas.comp_measurePreserving hmp
       have h2 : AEStronglyMeasurable model volume :=
         (continuous_const.sub (continuous_const.mul
           (Real.continuous_exp.comp (continuous_const.mul (continuous_const.add continuous_id))))).aestronglyMeasurable
@@ -177,9 +179,9 @@ end Prop91Part1FixedSigmaOTOC
 section Prop91Part2BimodalDirectH2Violation
 
 /-- **Proposition 9.1(2) (Direct Bimodal Operator Violation of Hypothesis (H2) for ALL `δ ∈ [0, 1)`)**:
-Directly wires `prop_9_1_bimodal_operator_exact_size` (exact thermal size `N - 1` of the 1-local
-bimodal operator) to prove that for EVERY `δ ∈ [0, 1)` and ANY constants `C₁, C₂ ≥ 0`, there exists
-`N₀ ≥ 2` such that for all `N ≥ N₀`:
+Directly wires `prop_9_1_bimodal_operator_exact_size` (exact thermal size `(N - 1)/4 + (√(2^(N+1)))⁻¹`
+of the 1-local bimodal operator) to prove that for EVERY `δ ∈ [0, 1)` and ANY constants `C₁, C₂ ≥ 0`,
+there exists `N₀ ≥ 2` such that for all `N ≥ N₀`:
 `C₁ * 1 + C₂ * N^δ * 1^(1 - δ) < Re (⟨𝒥(A), 𝒮 𝒥(A)⟩_HS - ⟨ρ^{1/2}, 𝒮 ρ^{1/2}⟩_HS)`. -/
 theorem prop_9_1_part2_bimodal_direct_H2_violation {δ C₁ C₂ : ℝ}
     (hδ0 : 0 ≤ δ) (hδ1 : δ < 1) (hC₁ : 0 ≤ C₁) (hC₂ : 0 ≤ C₂) :
@@ -187,25 +189,29 @@ theorem prop_9_1_part2_bimodal_direct_H2_violation {δ C₁ C₂ : ℝ}
       have hN2 : 2 ≤ N := le_trans hN₀ hN
       pauliSite x 3 ∈ filtrationSubmodule N 1 ∧
       C₁ * (1 : ℝ) + C₂ * (N : ℝ) ^ δ * (1 : ℝ) ^ (1 - δ) <
-        (hsInner (bimodalJADiag hN2) (totalSizeOp (bimodalJADiag hN2)) -
-          hsInner (bimodalRhoHalfDiag hN2) (totalSizeOp (bimodalRhoHalfDiag hN2))).re := by
-  rcases prop_9_1_part2_violates_H2_all_delta hδ0 hδ1 hC₁ hC₂ with ⟨N₀, hN₀, hmain⟩
+        (hsInner (Matrix.diagonal (fun s ↦ (bimodalJADiag hN2 s : ℂ)))
+          (totalSizeOp (Matrix.diagonal (fun s ↦ (bimodalJADiag hN2 s : ℂ))))).re -
+        (hsInner (Matrix.diagonal (fun s ↦ (bimodalRhoHalfDiag hN2 s : ℂ)))
+          (totalSizeOp (Matrix.diagonal (fun s ↦ (bimodalRhoHalfDiag hN2 s : ℂ))))).re := by
+  rcases prop_9_1_part2_violates_H2_all_delta hδ0 hδ1 (by positivity : 0 ≤ 4 * C₁)
+    (by positivity : 0 ≤ 4 * C₂) with ⟨N₀, hN₀, hmain⟩
   refine ⟨N₀, hN₀, fun N hN x ↦ ?_⟩
   have hN2 : 2 ≤ N := le_trans hN₀ hN
   rcases hmain N hN x with ⟨hmem, S, hS_eq, hlt⟩
   have hexact := prop_9_1_bimodal_operator_exact_size (N := N) hN2
-  have hre : (hsInner (bimodalJADiag hN2) (totalSizeOp (bimodalJADiag hN2)) -
-      hsInner (bimodalRhoHalfDiag hN2) (totalSizeOp (bimodalRhoHalfDiag hN2))).re = S := by
-    have h1 := congrArg Complex.re (hexact.trans hS_eq.symm)
-    simpa using h1
-  exact ⟨hmem, hre ▸ hlt⟩
+  have hS : S = (N : ℝ) - 1 := by exact_mod_cast hS_eq
+  rw [hS] at hlt
+  have hpos : 0 < (Real.sqrt ((2 : ℝ) ^ (N + 1)))⁻¹ := by positivity
+  refine ⟨hmem, ?_⟩
+  rw [hexact]
+  linarith
 
 end Prop91Part2BimodalDirectH2Violation
 
 section LemmaB1DoubleWellTridiagonal
 
 /-- Actual `D × D` real symmetric tridiagonal double-well matrix `ℒ(E_B)` from Appendix B:
-diagonal `(0, E_B, ..., E_B, 0)` and unit super-/sub-diagonals `b_j = 1`. -/
+diagonal `(0, E_B, ..., E_B, 0)` and unit super- and sub-diagonals `b_j = 1`. -/
 def doubleWellTridiag (D : ℕ) (E_B : ℝ) : Matrix (Fin D) (Fin D) ℝ :=
   Matrix.of fun i j ↦
     if i = j then (if i.val = 0 ∨ i.val = D - 1 then 0 else E_B)
@@ -273,7 +279,9 @@ lemma doubleWellTridiag_comm_parityMat (D : ℕ) (E_B : ℝ) :
       simp only [heq, heq', ↓reduceIte]
       have hiff : (j.val = 0 ∨ j.val = D - 1) ↔ ((revFin j).val = 0 ∨ (revFin j).val = D - 1) := by
         simp only [revFin]; omega
-      simp [hiff]
+      by_cases hj0 : (revFin j).val = 0 ∨ (revFin j).val = D - 1
+      · rw [if_pos (hiff.mpr hj0), if_pos hj0]
+      · rw [if_neg (fun h ↦ hj0 (hiff.mp h)), if_neg hj0]
     · have heq' : i ≠ revFin j := fun h ↦ heq (by rw [h, revFin_revFin])
       simp only [heq, heq', ↓reduceIte]
       have hiff : ((revFin i).val + 1 = j.val ∨ j.val + 1 = (revFin i).val) ↔
@@ -319,8 +327,8 @@ lemma doubleWellTridiag_mulVec_apply {D : ℕ} (hD : 2 ≤ D) (E_B : ℝ) (v : F
     set ip : Fin D := ⟨i.val + 1, h1⟩
     have hS : S = {i, im, ip} := by ext j; simp [S, h0, h1, im, ip]; tauto
     have him_ne : i ≠ im := by intro h; have := congrArg Fin.val h; simp [im] at this; omega
-    have hip_ne : i ≠ ip := by intro h; have := congrArg Fin.val h; simp [ip] at this; omega
-    have hmp_ne : im ≠ ip := by intro h; have := congrArg Fin.val h; simp [im, ip] at this; omega
+    have hip_ne : i ≠ ip := by intro h; have := congrArg Fin.val h; simp [ip] at this
+    have hmp_ne : im ≠ ip := by intro h; have := congrArg Fin.val h; simp [im, ip] at this
     rw [hS, Finset.sum_insert (by simp [him_ne, hip_ne]),
       Finset.sum_insert (by simp [hmp_ne]), Finset.sum_singleton]
     have him_adj : i.val + 1 = im.val ∨ im.val + 1 = i.val := Or.inr (by simp [im]; omega)
@@ -328,17 +336,17 @@ lemma doubleWellTridiag_mulVec_apply {D : ℕ} (hD : 2 ≤ D) (E_B : ℝ) (v : F
     simp only [↓reduceIte, him_ne, hip_ne, him_adj, hip_adj, one_mul, h0, h1, ↓reduceDIte]
     ring
   · set im : Fin D := ⟨i.val - 1, by omega⟩
-    have hS : S = {i, im} := by ext j; simp [S, h0, h1, im]; tauto
+    have hS : S = {i, im} := by ext j; simp [S, h0, h1, im]
     have him_ne : i ≠ im := by intro h; have := congrArg Fin.val h; simp [im] at this; omega
     rw [hS, Finset.sum_insert (by simp [him_ne]), Finset.sum_singleton]
     have him_adj : i.val + 1 = im.val ∨ im.val + 1 = i.val := Or.inr (by simp [im]; omega)
-    simp only [↓reduceIte, him_ne, him_adj, one_mul, h0, h1, ↓reduceDIte, add_zero]
+    simp only [↓reduceIte, him_ne, him_adj, one_mul, h0, h1, ↓reduceDIte, add_zero]; rfl
   · set ip : Fin D := ⟨i.val + 1, h1⟩
-    have hS : S = {i, ip} := by ext j; simp [S, h0, h1, ip]; tauto
-    have hip_ne : i ≠ ip := by intro h; have := congrArg Fin.val h; simp [ip] at this; omega
+    have hS : S = {i, ip} := by ext j; simp [S, h0, h1, ip]
+    have hip_ne : i ≠ ip := by intro h; have := congrArg Fin.val h; simp [ip] at this
     rw [hS, Finset.sum_insert (by simp [hip_ne]), Finset.sum_singleton]
     have hip_adj : i.val + 1 = ip.val ∨ ip.val + 1 = i.val := Or.inl (by simp [ip])
-    simp only [↓reduceIte, hip_ne, hip_adj, one_mul, h0, h1, ↓reduceDIte, add_zero]
+    simp only [↓reduceIte, hip_ne, hip_adj, one_mul, h0, h1, ↓reduceDIte, add_zero]; rfl
   · omega
 
 /-- **Sturm Simplicity (Lemma B.1)**: If `(doubleWellTridiag D E_B) *ᵥ v = E • v` and `v 0 = 0`,
@@ -363,7 +371,7 @@ theorem doubleWellTridiag_sturm_zero {D : ℕ} (hD : 2 ≤ D) (E_B E : ℝ) (v :
           split_ifs with h0
           · exact ih (m - 1) (by omega) (by omega)
           · rfl
-        rw [hvm, mul_zero, hprev, add_zero, zero_add, dif_pos hk] at hstep
+        rw [hvm, mul_zero, mul_zero, hprev, add_zero, zero_add, dif_pos hk] at hstep
         exact hstep
   ext ⟨k, hk⟩
   exact hall k hk
@@ -722,19 +730,23 @@ theorem lemma_B_1_eigenvec_decay_eq_B2_B3 {D : ℕ} (hD : 4 ≤ D) {E_B E : ℝ}
       dsimp only [f]
       have hq_sum : 1 + q ^ 2 = E_B * q := by linarith [hq_quad]
       have ha : q ^ (j.val - 1) + q ^ (j.val + 1) = E_B * q ^ j.val := by
+        have h1 : j.val = (j.val - 1) + 1 := by omega
+        have h2 : j.val + 1 = (j.val - 1) + 2 := by omega
         calc q ^ (j.val - 1) + q ^ (j.val + 1)
-            = q ^ (j.val - 1) * (1 + q ^ 2) := by
-                rw [show j.val + 1 = (j.val - 1) + 2 by omega, pow_add]; ring
+            = q ^ (j.val - 1) + q ^ ((j.val - 1) + 2) := by rw [h2]
+          _ = q ^ (j.val - 1) * (1 + q ^ 2) := by rw [pow_add]; ring
           _ = q ^ (j.val - 1) * (E_B * q) := by rw [hq_sum]
-          _ = E_B * q ^ j.val := by
-                rw [show j.val = (j.val - 1) + 1 by omega, pow_succ]; ring
+          _ = E_B * q ^ ((j.val - 1) + 1) := by rw [pow_succ]; ring
+          _ = E_B * q ^ j.val := by rw [← h1]
       have hb : q ^ (D - 1 - (j.val - 1)) + q ^ (D - 1 - (j.val + 1)) = E_B * q ^ (D - 1 - j.val) := by
+        have h1 : D - 1 - j.val = (D - 1 - (j.val + 1)) + 1 := by omega
+        have h2 : D - 1 - (j.val - 1) = (D - 1 - (j.val + 1)) + 2 := by omega
         calc q ^ (D - 1 - (j.val - 1)) + q ^ (D - 1 - (j.val + 1))
-            = q ^ (D - 1 - (j.val + 1)) * (1 + q ^ 2) := by
-                rw [show D - 1 - (j.val - 1) = (D - 1 - (j.val + 1)) + 2 by omega, pow_add]; ring
+            = q ^ ((D - 1 - (j.val + 1)) + 2) + q ^ (D - 1 - (j.val + 1)) := by rw [h2]
+          _ = q ^ (D - 1 - (j.val + 1)) * (1 + q ^ 2) := by rw [pow_add]; ring
           _ = q ^ (D - 1 - (j.val + 1)) * (E_B * q) := by rw [hq_sum]
-          _ = E_B * q ^ (D - 1 - j.val) := by
-                rw [show D - 1 - j.val = (D - 1 - (j.val + 1)) + 1 by omega, pow_succ]; ring
+          _ = E_B * q ^ ((D - 1 - (j.val + 1)) + 1) := by rw [pow_succ]; ring
+          _ = E_B * q ^ (D - 1 - j.val) := by rw [← h1]
       calc E_B * (|v ⟨0, by omega⟩| * (q ^ j.val + q ^ (D - 1 - j.val)))
           = |v ⟨0, by omega⟩| * (E_B * q ^ j.val + E_B * q ^ (D - 1 - j.val)) := by ring
         _ = |v ⟨0, by omega⟩| * ((q ^ (j.val - 1) + q ^ (j.val + 1)) +
