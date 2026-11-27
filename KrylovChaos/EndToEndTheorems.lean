@@ -123,7 +123,7 @@ private lemma hermFunc_pow_smul {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (
   | zero => simp [hermFunc_one]
   | succ k ih =>
     rw [pow_succ, ih, hermFunc_smul_id hH α, hermFunc_mul]
-    congr 1; funext E; ring
+    congr 1
 
 /-- **Item #27 (Exact `NormedSpace.exp` Bridge for Spectral Exponentials on `QubitOp N`)**:
 For ANY Hermitian `H : QubitOp N` and ANY `α : ℂ`:
@@ -154,7 +154,11 @@ theorem qubitOpToCLM_hermFunc_exp {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
   have hΦ : ((∑' k : ℕ, (k.factorial : ℂ)⁻¹ • (α • qubitOpToCLM H) ^ k) v) i =
       ∑' k : ℕ, (k.factorial : ℂ)⁻¹ * (((α • qubitOpToCLM H) ^ k) v) i := by
     have h1 := Φ.map_tsum hsumm
-    simpa [Φ, ContinuousLinearMap.smul_apply] using h1
+    change ((∑' k : ℕ, (k.factorial : ℂ)⁻¹ • (α • qubitOpToCLM H) ^ k) v) i =
+      ∑' k : ℕ, (((k.factorial : ℂ)⁻¹ • (α • qubitOpToCLM H) ^ k) v) i at h1
+    rw [h1]
+    apply tsum_congr; intro k
+    rfl
   rw [hΦ]
   have hclm_herm : ∀ f : ℝ → ℂ, (qubitOpToCLM (hermFunc hH f) v) i =
       ∑ r : QubitIdx N, ∑ m : QubitIdx N,
@@ -192,7 +196,7 @@ theorem qubitOpToCLM_hermFunc_exp {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
   rw [tsum_mul_left]
   have hexp : ∑' x : ℕ, (α * (hH.eigenvalues m : ℂ)) ^ x / (x.factorial : ℂ) =
       Complex.exp (α * (hH.eigenvalues m : ℂ)) := by
-    rw [Complex.exp_eq_exp_ℂ, NormedSpace.exp_eq_tsum_div (𝕂 := ℂ)]
+    rw [Complex.exp_eq_exp_ℂ, NormedSpace.exp_eq_tsum_div (𝔸 := ℂ)]
   rw [hexp]
   ring
 

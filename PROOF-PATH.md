@@ -1,27 +1,13 @@
-# Proof Dependency Path (`KrylovChaos`)
+# Proof Path & Module Architecture (`KrylovChaos`)
 
-## Module DAG (19 Library Modules, Zero Orphans)
+This repository formalizes *Finite-Temperature Bounds on Operator Growth and Quantum Chaos* (`finite_temp_krylov_chaos.tex`, Prince Anand, 2026) across **52** Lean 4 (`v4.35.0`) modules strictly on top of Mathlib `v4.35.0`.
 
-```
-KrylovChaos.Basic
-├── KrylovChaos.QubitAlgebra         (Concrete N-qubit QubitOp N, Pauli strings, Eq. 2.8, filtration_comm_step)
-│   └── KrylovChaos.ManyBodySetup    (LocalHamiltonian, GibbsData, Prop 2.2(3), Prop 2.3 Eq. 2.9, bimodalState, doubleWellMatrix)
-├── KrylovChaos.WightmanIsometry     (Sec. 2: Prop 2.2, Prop 2.3, Lemma 2.1)
-├── KrylovChaos.CarlemanJacobi       (Ground-up Carleman criterion & zero deficiency indices)
-├── KrylovChaos.KrylovTail           (Sec. 3: Thm 1.1(a) method of characteristics & tail bounds)
-├── KrylovChaos.Filtration           (Sec. 4.1–4.2: Prop 4.1, Lemma 4.2, Thm 1.1(b))
-├── KrylovChaos.ProductState         (Sec. 4.3: Prop 4.3 product-state static bound)
-├── KrylovChaos.VitaliAnalytic       (Ground-up Vitali/Montel power-series convergence)
-├── KrylovChaos.SpectralDyck         (Sec. 5: Thm 1.2(a)–(c), Lemma 5.1, shiftDyckPath_injective) [imports VitaliAnalytic]
-├── KrylovChaos.KoteckyPreiss        (Ground-up Kotecký–Preiss polymer cluster expansion)
-├── KrylovChaos.PolymerTrees         (App. A: Lemma A.1, A.2, Prop A.3)
-├── KrylovChaos.GlauberDecoupling    (Sec. 6: Lemma 6.1, Prop 6.2, Prop 6.4)
-├── KrylovChaos.DepolarizedFrame     (Sec. 7: Lemma 7.1, 7.3, Thm 1.3)
-├── KrylovChaos.ArakiOneDim          (Ground-up Araki 1D boundary-commutator expansional)
-├── KrylovChaos.ClassicalIsing       (Sec. 8: Prop 8.1, Lemma 8.2, Prop 8.3)
-├── KrylovChaos.StructuralNecessity  (Sec. 9 & App. B: Prop 9.1(1)–(3))
-└── KrylovChaos.OperatorBridges      (Unified bridge DAG: limsup rate, Carleman ESA, concrete N-qubit filtration, Corollary 6.5 Eq. 6.11, global N-qubit 2-design frame, Lemma 7.1(3b), multi-edge HS)
-    └── KrylovChaos.SanityChecks
-```
+## Dependency Layers
 
-All 23 locked theorems in `comparator/Challenge.lean` are verified by `lake comparator` with zero `sorry`s and zero custom axioms (`⊆ [propext, Classical.choice, Quot.sound]`).
+1. **Core Algebra & Parameters**: `Basic`, `QubitAlgebra`, `MajoranaAlgebra`, `WightmanIsometry`, `ManyBodySetup`, `GibbsConstruction`, `WightmanProjectors`, `EndToEndTheorems` (`NormedSpace.exp` bridge & `LocalInteractionDecomp`).
+2. **Section 3 & 4 — Krylov Tail, Filtration, Product States & Thm. 1.1(a)–(b)**: `KrylovTail`, `JacobiSemigroup`, `InfiniteChainLimit`, `CarlemanJacobi`, `Filtration`, `OperatorGlauberAndLanczosFiltration`, `ConcreteEndToEndWiring`, `Theorem11bConcrete`, `ProductState`, `ProductStateDerivation`, `ProductStateMultiSite`, `ProductStateLambdaMSS`.
+3. **Section 5 — Spectral Decay, Dyck Paths, Meixner/Sech & OTOC Strip Analyticity (Thm. 1.2(a)–(c))**: `SpectralDyck`, `SpectralMeasure`, `CausalNormBounds`, `VitaliAnalytic`, `Theorem12Concrete`, `Milestone2AnalyticFoundations`.
+4. **Section 6, 7 & Appendix A — High-Temperature Cluster Expansions, Dual Frame & Reverse Poincaré (Thm. 1.3(a)–(c))**: `KoteckyPreiss`, `ConcreteCombinatorics`, `PolymerTrees`, `SupportAndDualFrame`, `PolymerExpansionConcrete`, `Lemma72Concrete`, `DepolarizedFrame`, `HighTempConditioning`, `HighTempReversePoincare`, `MultiSiteCommutator`, `CausalExpansion`, `GlauberDecoupling`, `ClusterCumulantAndDecoupling`, `ShiftedCommutatorAndThm13c`, `OperatorBridges`, `Milestone3Bridges`.
+5. **Section 8 — 1D Araki Expansional & Classical Ising**: `ArakiOneDim`, `Araki1DConcrete`, `ThermodynamicKMS`, `ClassicalIsing`, `ClassicalIsingConcrete`, `Milestone3Bridges`.
+6. **Section 9 & Appendix B — Structural Necessity, Bimodal Counterexample & Double Well**: `StructuralNecessity`, `BimodalExact`, `SpectralSmearingAndDoubleWell`, `Milestone4StructuralNecessity`.
+7. **Verification Gates**: `SanityChecks`, `AuditAxioms` (`#print axioms` on 142 headline theorems), and `comparator/{ChallengeDefs,Challenge,Solution}.lean` (23 locked headline theorems verified by `lake comparator`).

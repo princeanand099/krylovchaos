@@ -178,26 +178,28 @@ lemma trace_gibbsRho_mul_evol_eq {N : ℕ} {H W : QubitOp N}
     ext i j
     simp only [Dρ, Matrix.smul_apply, Matrix.diagonal_apply, smul_eq_mul]
     split_ifs <;> simp [Z, Complex.ofReal_exp]
-  have hcyc : Matrix.trace (gibbsRho hH β * W * heisenbergEvol hH (-(Complex.I * (κ' : ℂ))) W) =
-      Matrix.trace (Dρ * (Uᴴ * W * U) * (Uᴴ * heisenbergEvol hH (-(Complex.I * (κ' : ℂ))) W * U)) := by
+  set E : QubitOp N := heisenbergEvol hH (-(Complex.I * (κ' : ℂ))) W
+  have hcyc : Matrix.trace (gibbsRho hH β * W * E) =
+      Matrix.trace (Dρ * (Uᴴ * W * U) * (Uᴴ * E * U)) := by
     rw [hρ_eq]
-    have h1 : U * Dρ * Uᴴ * W * heisenbergEvol hH (-(Complex.I * (κ' : ℂ))) W =
-        U * (Dρ * Uᴴ * W * (1 * heisenbergEvol hH (-(Complex.I * (κ' : ℂ))) W)) := by
-      simp only [Matrix.one_mul, Matrix.mul_assoc]
-    rw [h1, Matrix.trace_mul_comm, ← eigU_mul_star_t12 hH]
-    congr 1
-    simp only [Matrix.mul_assoc]
+    calc Matrix.trace (U * Dρ * Uᴴ * W * E)
+        = Matrix.trace (U * (Dρ * Uᴴ * W * E)) := by simp only [Matrix.mul_assoc]
+      _ = Matrix.trace ((Dρ * Uᴴ * W * E) * U) := Matrix.trace_mul_comm _ _
+      _ = Matrix.trace (Dρ * Uᴴ * W * (1 * E) * U) := by simp only [Matrix.one_mul, Matrix.mul_assoc]
+      _ = Matrix.trace (Dρ * Uᴴ * W * ((U * Uᴴ) * E) * U) := by rw [eigU_mul_star_t12 hH]
+      _ = Matrix.trace (Dρ * (Uᴴ * W * U) * (Uᴴ * E * U)) := by simp only [Matrix.mul_assoc]
   rw [hcyc]
-  have htr_Dρ : Matrix.trace (Dρ * (Uᴴ * W * U) * (Uᴴ * heisenbergEvol hH (-(Complex.I * (κ' : ℂ))) W * U)) =
+  have htr_Dρ : Matrix.trace (Dρ * (Uᴴ * W * U) * (Uᴴ * E * U)) =
       ∑ a : QubitIdx N, ∑ b : QubitIdx N,
         ((Z⁻¹ * Real.exp (-β * hH.eigenvalues a) : ℝ) : ℂ) * (Uᴴ * W * U) a b *
-          (Uᴴ * heisenbergEvol hH (-(Complex.I * (κ' : ℂ))) W * U) b a := by
+          (Uᴴ * E * U) b a := by
     simp only [Dρ, Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.diagonal_apply,
       ite_mul, zero_mul, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
   rw [htr_Dρ, Complex.re_sum]
   apply Finset.sum_congr rfl; intro a _
   rw [Complex.re_sum]
   apply Finset.sum_congr rfl; intro b _
+  dsimp only [E]
   rw [heisenbergEvol_eigen_entry hH (-(Complex.I * (κ' : ℂ))) W b a]
   have hexp_c : Complex.I * -(Complex.I * (κ' : ℂ)) * ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ) =
       ((κ' * (hH.eigenvalues b - hH.eigenvalues a) : ℝ) : ℂ) := by
@@ -363,9 +365,10 @@ lemma norm_trace_gibbsRho_mul_le_opNorm {N : ℕ} {H : QubitOp N} (hH : H.IsHerm
     split_ifs <;> simp [Z, Complex.ofReal_exp]
   have hcyc : Matrix.trace (gibbsRho hH β * X) = Matrix.trace (Dρ * (Uᴴ * X * U)) := by
     rw [hρ_eq]
-    have h1 : U * Dρ * Uᴴ * X = U * (Dρ * Uᴴ * X) := by simp only [Matrix.mul_assoc]
-    rw [h1, Matrix.trace_mul_comm]
-    congr 1; simp only [Matrix.mul_assoc]
+    calc Matrix.trace (U * Dρ * Uᴴ * X)
+        = Matrix.trace (U * (Dρ * Uᴴ * X)) := by simp only [Matrix.mul_assoc]
+      _ = Matrix.trace ((Dρ * Uᴴ * X) * U) := Matrix.trace_mul_comm _ _
+      _ = Matrix.trace (Dρ * (Uᴴ * X * U)) := by simp only [Matrix.mul_assoc]
   rw [hcyc]
   have htr : Matrix.trace (Dρ * (Uᴴ * X * U)) =
       ∑ a : QubitIdx N, ((Z⁻¹ * Real.exp (-β * hH.eigenvalues a) : ℝ) : ℂ) * (Uᴴ * X * U) a a := by
@@ -471,8 +474,7 @@ lemma risingBinom_tsum_le_rpow {α q : ℝ} (hα : 0 ≤ α) (hq0 : 0 ≤ q) (hq
       intro x hx
       have h1x : 0 < 1 - x := by linarith [hx.2]
       have hd1 : HasDerivAt (fun t : ℝ ↦ (1 - t) ^ α) (α * (1 - x) ^ (α - 1) * (-1)) x := by
-        have hsub : HasDerivAt (fun t : ℝ ↦ 1 - t) (-1) x := by
-          simpa using (hasDerivAt_const x (1 : ℝ)).sub (hasDerivAt_id x)
+        have hsub : HasDerivAt (fun t : ℝ ↦ 1 - t) (-1) x := (hasDerivAt_id x).const_sub (1 : ℝ)
         have hr := hsub.rpow_const (p := α) (Or.inl h1x.ne')
         have heq : (-1 : ℝ) * α * (1 - x) ^ (α - 1) = α * (1 - x) ^ (α - 1) * (-1) := by ring
         rwa [heq] at hr
@@ -766,35 +768,6 @@ lemma hsNormSq_mul_le_opNorm_sq_left {N : ℕ} (B M : QubitOp N) :
         pow_le_pow_left₀ (norm_nonneg _) hle 2
     _ = (opNorm B) ^ 2 * ‖opToCLM M (WithLp.toLp 2 (Pi.single j (1 : ℂ)))‖ ^ 2 := by ring
 
-private lemma opNorm_conjTranspose_le_t12 {N : ℕ} (B : QubitOp N) : opNorm Bᴴ ≤ opNorm B := by
-  unfold opNorm
-  apply ContinuousLinearMap.opNorm_le_bound _ (opNorm_nonneg B)
-  intro v
-  by_cases hv : ‖opToCLM Bᴴ v‖ = 0
-  · rw [hv]; exact mul_nonneg (opNorm_nonneg B) (norm_nonneg v)
-  · have hpos : 0 < ‖opToCLM Bᴴ v‖ := lt_of_le_of_ne (norm_nonneg _) (Ne.symm hv)
-    have hadj : inner ℂ (opToCLM Bᴴ v) (opToCLM Bᴴ v) =
-        inner ℂ v (opToCLM B (opToCLM Bᴴ v)) := by
-      simp only [EuclideanSpace.inner_eq_star_dotProduct, dotProduct, opToCLM,
-        LinearMap.coe_toContinuousLinearMap', LinearMap.coe_mk, AddHom.coe_mk,
-        WithLp.ofLp_toLp, Matrix.mulVec, Matrix.conjTranspose_apply, Pi.star_apply,
-        star_sum, star_mul', star_star, Finset.sum_mul, Finset.mul_sum]
-      rw [Finset.sum_comm]
-      apply Finset.sum_congr rfl; intro i _
-      apply Finset.sum_congr rfl; intro j _
-      ring
-    have hsq : ‖opToCLM Bᴴ v‖ ^ 2 ≤ ‖v‖ * (opNorm B * ‖opToCLM Bᴴ v‖) := by
-      have h1 : ‖opToCLM Bᴴ v‖ ^ 2 = ‖inner ℂ (opToCLM Bᴴ v) (opToCLM Bᴴ v)‖ := by
-        rw [inner_self_eq_norm_sq_to_K]
-        simp [norm_pow, Complex.norm_real, Real.norm_eq_abs]
-      rw [h1, hadj]
-      have h2 := norm_inner_le_norm v (opToCLM B (opToCLM Bᴴ v))
-      have h3 := ContinuousLinearMap.le_opNorm (opToCLM B) (opToCLM Bᴴ v)
-      exact le_trans h2 (mul_le_mul_of_nonneg_left h3 (norm_nonneg v))
-    have hsq' : ‖opToCLM Bᴴ v‖ * ‖opToCLM Bᴴ v‖ ≤ (opNorm B * ‖v‖) * ‖opToCLM Bᴴ v‖ := by
-      nlinarith
-    exact le_of_mul_le_mul_right hsq' hpos
-
 private lemma hsNormSq_conjTranspose_t12 {N : ℕ} (X : QubitOp N) : hsNormSq Xᴴ = hsNormSq X := by
   unfold hsNormSq hsInner
   rw [Matrix.conjTranspose_conjTranspose, Matrix.trace_mul_comm]
@@ -805,7 +778,7 @@ lemma hsNormSq_mul_le_opNorm_sq_right {N : ℕ} (M B : QubitOp N) :
   have h1 := hsNormSq_mul_le_opNorm_sq_left Bᴴ Mᴴ
   rw [hsNormSq_conjTranspose_t12] at h1
   have h2 : (opNorm Bᴴ) ^ 2 ≤ (opNorm B) ^ 2 :=
-    pow_le_pow_left₀ (opNorm_nonneg _) (opNorm_conjTranspose_le_t12 B) 2
+    pow_le_pow_left₀ (opNorm_nonneg _) (opNorm_conjTranspose_le B) 2
   exact le_trans h1 (mul_le_mul_of_nonneg_right h2 (hsNormSq_nonneg M))
 
 lemma singleSiteTrivialSubmodule_le_supportedOn_compl {N : ℕ} (x : Fin N) :
@@ -932,12 +905,10 @@ theorem lemma_6_1_concrete_wightman_commutator {N : ℕ} (G : GibbsData N)
   have hpart2 : Real.sqrt (gibbsWightmanNormSq G A') ≤
       Real.sqrt (gibbsWightmanNormSq G (siteSizeOp x A)) := by
     apply Real.sqrt_le_sqrt
-    -- `gibbsWightmanNormSq G A' = wightmanDistSq G (singleSiteTrivialSubmodule N x) A ≤ gibbsWightmanNormSq G (siteSizeOp x A)`
     have hdist_eq : gibbsWightmanNormSq G A' = wightmanDistSq G (singleSiteTrivialSubmodule N x) A := by
       have h1 := wightmanSubspaceProj_eq_distSq G (singleSiteTrivialSubmodule N x) A
       have h2 : gibbsWightmanNormSq G A' =
           (gibbsWightmanInner G A (A - singleSiteWightmanProj G x A)).re := by
-        -- Orthogonal projection: `‖A - P A‖² = Re ⟨A, A - P A⟩`
         have horth : (gibbsWightmanInner G (singleSiteWightmanProj G x A) A').re = 0 := by
           unfold gibbsWightmanInner
           rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter]
@@ -987,7 +958,6 @@ theorem lemma_6_1_concrete_wightman_commutator {N : ℕ} (G : GibbsData N)
         linarith
       rw [h2, ← h1]; rfl
     rw [hdist_eq]
-    -- `partialTraceSite x A ∈ singleSiteTrivialSubmodule N x`, so `wightmanDistSq ≤ ‖A - partialTraceSite x A‖²`
     have hpt_mem : partialTraceSite x A ∈ singleSiteTrivialSubmodule N x := by
       have hexp : A = ∑ a : Fin N → Fin 4,
           (((1 / (2 : ℂ) ^ N) * (pauliString a * A).trace) • pauliString a) := by

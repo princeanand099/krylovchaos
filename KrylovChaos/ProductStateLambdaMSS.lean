@@ -399,7 +399,6 @@ lemma partialTraceSite_localUnitary_conj {N : ℕ}
     (x : Fin N) (M : QubitOp N) :
     partialTraceSite x ((kronOp u)ᴴ * M * kronOp u) =
       (kronOp u)ᴴ * partialTraceSite x M * kronOp u := by
-  -- Both sides are ℂ-linear in `M`; check on Pauli string basis `pauliString a`!
   have hspan : M ∈ Submodule.span ℂ { P : QubitOp N | ∃ a : Fin N → Fin 4, P = pauliString a } := by
     rw [Matrix.matrix_eq_sum_single M]
     refine Submodule.sum_mem _ fun σ _ ↦ Submodule.sum_mem _ fun τ _ ↦ ?_
@@ -498,31 +497,14 @@ lemma totalSizeOp_localUnitary_conj {N : ℕ}
   apply Finset.sum_congr rfl; intro x _
   rw [partialTraceSite_localUnitary_conj u huL huR x M]
 
-private lemma rotatedProdGibbsData_ρHalf {N : ℕ}
+/-- Abstract local-unitary invariance of `lambdaMSS`: if `G'` is obtained from `G` by
+conjugating `ρHalf` and `ρQuarter` by `U = kronOp u`, then `lambdaMSS G' s ≤ lambdaMSS G s`. -/
+private lemma lambdaMSS_le_of_localUnitary_conj {N s : ℕ}
     (u : Fin N → Mat2) (huL : ∀ x, (u x)ᴴ * u x = 1) (huR : ∀ x, u x * (u x)ᴴ = 1)
-    (m : Fin N → ℝ) (hm : ∀ x, |m x| < 1) :
-    (rotatedProdGibbsData u huL huR m hm).ρHalf =
-      kronOp u * (prodGibbsData m hm).ρHalf * (kronOp u)ᴴ := rfl
-
-private lemma rotatedProdGibbsData_ρQuarter {N : ℕ}
-    (u : Fin N → Mat2) (huL : ∀ x, (u x)ᴴ * u x = 1) (huR : ∀ x, u x * (u x)ᴴ = 1)
-    (m : Fin N → ℝ) (hm : ∀ x, |m x| < 1) :
-    (rotatedProdGibbsData u huL huR m hm).ρQuarter =
-      kronOp u * (prodGibbsData m hm).ρQuarter * (kronOp u)ᴴ := rfl
-
-/-- **Proposition 4.3 — Full General Product-State Bound via Local Unitary Invariance (Item #13)**:
-For ANY local unitary `U = ⨂_{x=1}^N u_x` and ANY Bloch-vector magnitudes `|m_x| ≤ mmax < 1`,
-the rotated product state `ρ = U (⨂_x (I + m_x Z_x)/2) Uᴴ` satisfies
-`lambdaMSS (rotatedProdGibbsData u huL huR m hm) s ≤ (s : ℝ) + mmax * Real.sqrt ((N : ℝ) * (s : ℝ))`. -/
-set_option maxHeartbeats 400000 in
-theorem prop_4_3_lambdaMSS_general_product_state {N s : ℕ} {mmax : ℝ}
-    (u : Fin N → Mat2) (huL : ∀ x, (u x)ᴴ * u x = 1) (huR : ∀ x, u x * (u x)ᴴ = 1)
-    (m : Fin N → ℝ) (hm_le : ∀ x, |m x| ≤ mmax) (hmmax : mmax < 1) :
-    lambdaMSS (rotatedProdGibbsData u huL huR m (fun x ↦ lt_of_le_of_lt (hm_le x) hmmax)) s ≤
-      (s : ℝ) + mmax * Real.sqrt ((N : ℝ) * (s : ℝ)) := by
-  have hm : ∀ x, |m x| < 1 := fun x ↦ lt_of_le_of_lt (hm_le x) hmmax
-  set G := prodGibbsData m hm
-  set G' := rotatedProdGibbsData u huL huR m hm
+    (G G' : GibbsData N)
+    (hG'half : G'.ρHalf = kronOp u * G.ρHalf * (kronOp u)ᴴ)
+    (hG'quarter : G'.ρQuarter = kronOp u * G.ρQuarter * (kronOp u)ᴴ) :
+    lambdaMSS G' s ≤ lambdaMSS G s := by
   set U : QubitOp N := kronOp u
   have hUL : Uᴴ * U = 1 := by
     dsimp only [U]; rw [kronOp_conjTranspose, kronOp_mul]
@@ -532,22 +514,22 @@ theorem prop_4_3_lambdaMSS_general_product_state {N s : ℕ} {mmax : ℝ}
     dsimp only [U]; rw [kronOp_conjTranspose, kronOp_mul]
     have : (fun x ↦ u x * (u x)ᴴ) = fun _ ↦ 1 := funext huR
     rw [this, kronOp_one]
-  have hG'half : G'.ρHalf = U * G.ρHalf * Uᴴ := rotatedProdGibbsData_ρHalf u huL huR m hm
-  have hG'quarter : G'.ρQuarter = U * G.ρQuarter * Uᴴ := rotatedProdGibbsData_ρQuarter u huL huR m hm
   have hnorm_eq : ∀ A : QubitOp N,
       gibbsWightmanNormSq G' A = gibbsWightmanNormSq G (Uᴴ * A * U) := by
     intro A
     unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
     rw [hG'half]
-    congr 1
-    rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-    calc Matrix.trace (U * G.ρHalf * Uᴴ * Aᴴ * (U * G.ρHalf * Uᴴ) * A)
-        = Matrix.trace (U * (G.ρHalf * (Uᴴ * (Aᴴ * U)) * G.ρHalf * (Uᴴ * A))) := by
-            simp only [Matrix.mul_assoc]
-      _ = Matrix.trace ((G.ρHalf * (Uᴴ * (Aᴴ * U)) * G.ρHalf * (Uᴴ * A)) * U) :=
-            Matrix.trace_mul_comm _ _
-      _ = Matrix.trace (G.ρHalf * (Uᴴ * (Aᴴ * U)) * G.ρHalf * (Uᴴ * A * U)) := by
-            simp only [Matrix.mul_assoc]
+    have htr : Matrix.trace (U * G.ρHalf * Uᴴ * Aᴴ * (U * G.ρHalf * Uᴴ) * A) =
+        Matrix.trace (G.ρHalf * (Uᴴ * A * U)ᴴ * G.ρHalf * (Uᴴ * A * U)) := by
+      rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+      calc Matrix.trace (U * G.ρHalf * Uᴴ * Aᴴ * (U * G.ρHalf * Uᴴ) * A)
+          = Matrix.trace (U * (G.ρHalf * (Uᴴ * (Aᴴ * U)) * G.ρHalf * (Uᴴ * A))) := by
+              simp only [Matrix.mul_assoc]
+        _ = Matrix.trace ((G.ρHalf * (Uᴴ * (Aᴴ * U)) * G.ρHalf * (Uᴴ * A)) * U) :=
+              Matrix.trace_mul_comm _ _
+        _ = Matrix.trace (G.ρHalf * (Uᴴ * (Aᴴ * U)) * G.ρHalf * (Uᴴ * A * U)) := by
+              simp only [Matrix.mul_assoc]
+    rw [htr]
   have hS_eq : ∀ A : QubitOp N,
       mssThermalSize G' A = mssThermalSize G (Uᴴ * A * U) := by
     intro A
@@ -580,36 +562,49 @@ theorem prop_4_3_lambdaMSS_general_product_state {N s : ℕ} {mmax : ℝ}
       simp only [Matrix.mul_assoc]
     unfold mssThermalSize
     rw [hj_eq, hG'half, hhs_unit, hhs_unit]
-  have hle_G : lambdaMSS G' s ≤ lambdaMSS G s := by
-    unfold lambdaMSS
-    apply csSup_le
-    · refine ⟨0, 1, ?_, ?_, (mssThermalSize_one G').symm⟩
-      · have h1 : (1 : QubitOp N) = pauliString (fun _ ↦ 0) := by
-          unfold pauliString
-          have h0 : (fun _ : Fin N ↦ pauliMat 0) = (fun _ : Fin N ↦ (1 : Mat2)) := by
-            funext _; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat]
-          rw [h0, kronOp_one]
-        rw [h1]
-        exact Submodule.subset_span ⟨fun _ ↦ 0, by simp [stringWeight], rfl⟩
-      · unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
-        rw [Matrix.conjTranspose_one, Matrix.mul_one, Matrix.mul_one, G'.sq_half, G'.trace_one,
-          Complex.one_re]
-    · rintro r ⟨A, hA_mem, hA_norm, rfl⟩
-      rw [hS_eq A]
-      apply le_csSup
-      · refine ⟨(N : ℝ), ?_⟩
-        rintro x ⟨B, _, hBnorm, rfl⟩
-        unfold mssThermalSize
-        have hle := (totalSizeOp_bounds (jBeta G.ρQuarter B)).2
-        have hbg := (totalSizeOp_bounds G.ρHalf).1
-        have hhs : hsNormSq (jBeta G.ρQuarter B) = 1 := by
-          unfold gibbsWightmanNormSq gibbsWightmanInner at hBnorm
-          rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter] at hBnorm
-          exact hBnorm
-        unfold hsNormSq at hhs; rw [hhs, mul_one] at hle; linarith
-      · exact ⟨Uᴴ * A * U, localUnitary_conj_mem_filtration u huL hA_mem,
-          (hnorm_eq A).symm.trans hA_norm, rfl⟩
-  exact le_trans hle_G (prop_4_3_lambdaMSS_product_state m hm_le hmmax)
+  unfold lambdaMSS
+  apply csSup_le
+  · refine ⟨0, 1, ?_, ?_, (mssThermalSize_one G').symm⟩
+    · have h1 : (1 : QubitOp N) = pauliString (fun _ ↦ 0) := by
+        unfold pauliString
+        have h0 : (fun _ : Fin N ↦ pauliMat 0) = (fun _ : Fin N ↦ (1 : Mat2)) := by
+          funext _; ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat]
+        rw [h0, kronOp_one]
+      rw [h1]
+      exact Submodule.subset_span ⟨fun _ ↦ 0, by simp [stringWeight], rfl⟩
+    · unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
+      rw [Matrix.conjTranspose_one, Matrix.mul_one, Matrix.mul_one, G'.sq_half, G'.trace_one,
+        Complex.one_re]
+  · rintro r ⟨A, hA_mem, hA_norm, rfl⟩
+    rw [hS_eq A]
+    apply le_csSup
+    · refine ⟨(N : ℝ), ?_⟩
+      rintro x ⟨B, _, hBnorm, rfl⟩
+      unfold mssThermalSize
+      have hle := (totalSizeOp_bounds (jBeta G.ρQuarter B)).2
+      have hbg := (totalSizeOp_bounds G.ρHalf).1
+      have hhs : hsNormSq (jBeta G.ρQuarter B) = 1 := by
+        unfold gibbsWightmanNormSq gibbsWightmanInner at hBnorm
+        rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter] at hBnorm
+        exact hBnorm
+      unfold hsNormSq at hhs; rw [hhs, mul_one] at hle; linarith
+    · exact ⟨Uᴴ * A * U, localUnitary_conj_mem_filtration u huL hA_mem,
+        (hnorm_eq A).symm.trans hA_norm, rfl⟩
+
+/-- **Proposition 4.3 — Full General Product-State Bound via Local Unitary Invariance (Item #13)**:
+For ANY local unitary `U = ⨂_{x=1}^N u_x` and ANY Bloch-vector magnitudes `|m_x| ≤ mmax < 1`,
+the rotated product state `ρ = U (⨂_x (I + m_x Z_x)/2) Uᴴ` satisfies
+`lambdaMSS (rotatedProdGibbsData u huL huR m hm) s ≤ (s : ℝ) + mmax * Real.sqrt ((N : ℝ) * (s : ℝ))`. -/
+theorem prop_4_3_lambdaMSS_general_product_state {N s : ℕ} {mmax : ℝ}
+    (u : Fin N → Mat2) (huL : ∀ x, (u x)ᴴ * u x = 1) (huR : ∀ x, u x * (u x)ᴴ = 1)
+    (m : Fin N → ℝ) (hm_le : ∀ x, |m x| ≤ mmax) (hmmax : mmax < 1) :
+    lambdaMSS (rotatedProdGibbsData u huL huR m (fun x ↦ lt_of_le_of_lt (hm_le x) hmmax)) s ≤
+      (s : ℝ) + mmax * Real.sqrt ((N : ℝ) * (s : ℝ)) := by
+  have hm : ∀ x, |m x| < 1 := fun x ↦ lt_of_le_of_lt (hm_le x) hmmax
+  exact le_trans
+    (lambdaMSS_le_of_localUnitary_conj u huL huR (prodGibbsData m hm)
+      (rotatedProdGibbsData u huL huR m hm) rfl rfl)
+    (prop_4_3_lambdaMSS_product_state m hm_le hmmax)
 
 end LocalUnitaryInvarianceLift
 

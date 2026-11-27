@@ -30,7 +30,7 @@ Strictly Mathlib-only, complete proofs, zero custom axioms, zero hypothesis laun
    - `pauliSite_mem_filtration_one`: `pauliSite x α.succ ∈ filtrationSubmodule N 1`.
    - `prop_9_1_part2_bimodal_theta_N`: wires `pauliSite_mem_filtration_one` with
      `BimodalExact.prop_9_1_bimodal_operator_exact_size` to exhibit a concrete 1-local
-     observable with `Θ(N)` thermal size (`= N - 1` at `N ≥ 2`).
+     observable with `Θ(N)` thermal size (`= (N - 1)/4 + (√(2^(N+1)))⁻¹` at `N ≥ 2`).
 3. **Item #23 (Proposition 9.1(3) & Lemma B.1 — Two-Level Unitary Tunneling `K(t_*) = 1` & Eq. 9.3)**:
    - `twoLevel_tunneling_complexity`: for the exact 2-level tunneling pair with splitting
      `Δ > 0`, proves `φ_0(t)² + φ_1(t)² = 1`, `K(t) = Real.sin (Δ * t / 2) ^ 2`, and
@@ -55,7 +55,7 @@ private lemma differentiable_complexPropagator_entry {N : ℕ} {H : QubitOp N} (
     funext z
     unfold complexPropagator hermFunc
     simp only [Matrix.mul_apply, Matrix.diagonal_apply, mul_ite, mul_zero,
-      Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
+      Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
     apply Finset.sum_congr rfl; intro k _; ring
   rw [heq]
   refine Differentiable.fun_sum fun k _ ↦ Differentiable.const_mul ?_ _
@@ -85,8 +85,6 @@ theorem prop_9_1_part1_entire_autocorr {N : ℕ} {H : QubitOp N} (hH : H.IsHermi
     congr 1
     simp only [Finset.sum_mul]
     rw [Finset.sum_comm]
-    apply Finset.sum_congr rfl; intro k _
-    apply Finset.sum_congr rfl; intro l _; ring
   rw [heq]
   refine Differentiable.fun_sum fun i _ ↦ Differentiable.fun_sum fun j _ ↦
     Differentiable.const_mul ?_ _
@@ -117,10 +115,13 @@ theorem prop_9_1_part1_liminf_eq_zero (b : ℕ → ℝ) (hb_nn : ∀ n, 0 ≤ b 
   have hL_ge : 0 ≤ L := by
     have hnn : ∀ᶠ n : ℕ in Filter.atTop, (0 : ℝ) ≤ b n / (n : ℝ) :=
       Eventually.of_forall fun n ↦ div_nonneg (hb_nn n) (Nat.cast_nonneg n)
-    exact Filter.le_liminf_of_le (by
-      exact ⟨0, fun a ha ↦ by
-        rcases (Filter.eventually_map.mp ha).exists with ⟨n, hn⟩
-        exact le_trans (div_nonneg (hb_nn n) (Nat.cast_nonneg n)) hn⟩) hnn
+    by_cases hcb : Filter.IsCoboundedUnder (· ≥ ·) Filter.atTop (fun n : ℕ ↦ b n / (n : ℝ))
+    · exact Filter.le_liminf_of_le hcb hnn
+    · dsimp only [L]
+      unfold Filter.liminf Filter.limsInf
+      rw [Real.sSup_of_not_bddAbove]
+      intro ⟨M, hM⟩
+      exact hcb ⟨M, fun a ha ↦ hM (by simpa [Filter.eventually_map] using ha)⟩
   exact le_antisymm hL_le hL_ge
 
 end Item21GaussianSmearingEntireAndLiminf
@@ -145,16 +146,16 @@ lemma pauliSite_mem_filtration_one {N : ℕ} (x : Fin N) (α : Fin 3) :
 
 /-- **Item #22 (Proposition 9.1(2) — 1-Local Observable with `Θ(N)` Bimodal Thermal Size)**:
 For every `N ≥ 2` and `x : Fin N`, the 1-local Pauli operator `Z_x ∈ filtrationSubmodule N 1`
-together with the bimodal GHZ-mixture state achieves exact operator thermal size `= N - 1`
-(scaling linearly as `Θ(N)`). -/
+together with the bimodal GHZ-mixture state achieves exact operator thermal size
+`= (N - 1) / 4 + (√(2^(N+1)))⁻¹` (scaling linearly as `Θ(N)`). -/
 theorem prop_9_1_part2_bimodal_theta_N {N : ℕ} (hN : 2 ≤ N) (x : Fin N) :
     pauliSite x 3 ∈ filtrationSubmodule N 1 ∧
-    hsInner (bimodalJADiag hN) (totalSizeOp (bimodalJADiag hN)) -
-      hsInner (bimodalRhoHalfDiag hN) (totalSizeOp (bimodalRhoHalfDiag hN)) =
-      (((N : ℝ) - 1 : ℝ) : ℂ) := by
-  refine ⟨pauliSite_mem_filtration_one x 2, ?_⟩
-  have h := prop_9_1_bimodal_operator_exact_size (N := N) (by omega)
-  exact h
+    (hsInner (Matrix.diagonal (fun s ↦ (bimodalJADiag hN s : ℂ)))
+      (totalSizeOp (Matrix.diagonal (fun s ↦ (bimodalJADiag hN s : ℂ))))).re -
+    (hsInner (Matrix.diagonal (fun s ↦ (bimodalRhoHalfDiag hN s : ℂ)))
+      (totalSizeOp (Matrix.diagonal (fun s ↦ (bimodalRhoHalfDiag hN s : ℂ))))).re =
+      ((N : ℝ) - 1) / 4 + (Real.sqrt ((2 : ℝ) ^ (N + 1)))⁻¹ :=
+  ⟨pauliSite_mem_filtration_one x 2, prop_9_1_bimodal_operator_exact_size hN⟩
 
 end Item22BimodalLocalObservable
 
