@@ -497,6 +497,23 @@ lemma totalSizeOp_localUnitary_conj {N : ℕ}
   apply Finset.sum_congr rfl; intro x _
   rw [partialTraceSite_localUnitary_conj u huL huR x M]
 
+private lemma trace_unitary_conj_wightman {N : ℕ} (U ρH A : QubitOp N) :
+    Matrix.trace (U * ρH * Uᴴ * Aᴴ * (U * ρH * Uᴴ) * A) =
+      Matrix.trace (ρH * (Uᴴ * A * U)ᴴ * ρH * (Uᴴ * A * U)) := by
+  rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+  have hL : U * ρH * Uᴴ * Aᴴ * (U * ρH * Uᴴ) * A =
+      U * (ρH * Uᴴ * Aᴴ * U * ρH * Uᴴ * A) := by simp only [Matrix.mul_assoc]
+  have hR : ρH * (Uᴴ * (Aᴴ * U)) * ρH * (Uᴴ * A * U) =
+      (ρH * Uᴴ * Aᴴ * U * ρH * Uᴴ * A) * U := by simp only [Matrix.mul_assoc]
+  rw [hL, hR, Matrix.trace_mul_comm]
+
+private lemma trace_unitary_conj_hs {N : ℕ} (U M S : QubitOp N) (hUL : Uᴴ * U = 1) :
+    Matrix.trace ((U * M * Uᴴ)ᴴ * (U * S * Uᴴ)) = Matrix.trace (Mᴴ * S) := by
+  rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+  have h1 : U * (Mᴴ * Uᴴ) * (U * S * Uᴴ) = U * (Mᴴ * (Uᴴ * U) * S) * Uᴴ := by
+    simp only [Matrix.mul_assoc]
+  rw [h1, hUL, Matrix.mul_one, Matrix.trace_mul_cycle, hUL, Matrix.one_mul]
+
 /-- Abstract local-unitary invariance of `lambdaMSS`: if `G'` is obtained from `G` by
 conjugating `ρHalf` and `ρQuarter` by `U = kronOp u`, then `lambdaMSS G' s ≤ lambdaMSS G s`. -/
 private lemma lambdaMSS_le_of_localUnitary_conj {N s : ℕ}
@@ -505,58 +522,44 @@ private lemma lambdaMSS_le_of_localUnitary_conj {N s : ℕ}
     (hG'half : G'.ρHalf = kronOp u * G.ρHalf * (kronOp u)ᴴ)
     (hG'quarter : G'.ρQuarter = kronOp u * G.ρQuarter * (kronOp u)ᴴ) :
     lambdaMSS G' s ≤ lambdaMSS G s := by
-  set U : QubitOp N := kronOp u
-  have hUL : Uᴴ * U = 1 := by
-    dsimp only [U]; rw [kronOp_conjTranspose, kronOp_mul]
+  have hUL : (kronOp u)ᴴ * kronOp u = 1 := by
+    rw [kronOp_conjTranspose, kronOp_mul]
     have : (fun x ↦ (u x)ᴴ * u x) = fun _ ↦ 1 := funext huL
     rw [this, kronOp_one]
-  have hUR : U * Uᴴ = 1 := by
-    dsimp only [U]; rw [kronOp_conjTranspose, kronOp_mul]
+  have hUR : kronOp u * (kronOp u)ᴴ = 1 := by
+    rw [kronOp_conjTranspose, kronOp_mul]
     have : (fun x ↦ u x * (u x)ᴴ) = fun _ ↦ 1 := funext huR
     rw [this, kronOp_one]
   have hnorm_eq : ∀ A : QubitOp N,
-      gibbsWightmanNormSq G' A = gibbsWightmanNormSq G (Uᴴ * A * U) := by
+      gibbsWightmanNormSq G' A = gibbsWightmanNormSq G ((kronOp u)ᴴ * A * kronOp u) := by
     intro A
     unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
-    rw [hG'half]
-    have htr : Matrix.trace (U * G.ρHalf * Uᴴ * Aᴴ * (U * G.ρHalf * Uᴴ) * A) =
-        Matrix.trace (G.ρHalf * (Uᴴ * A * U)ᴴ * G.ρHalf * (Uᴴ * A * U)) := by
-      rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-      calc Matrix.trace (U * G.ρHalf * Uᴴ * Aᴴ * (U * G.ρHalf * Uᴴ) * A)
-          = Matrix.trace (U * (G.ρHalf * (Uᴴ * (Aᴴ * U)) * G.ρHalf * (Uᴴ * A))) := by
-              simp only [Matrix.mul_assoc]
-        _ = Matrix.trace ((G.ρHalf * (Uᴴ * (Aᴴ * U)) * G.ρHalf * (Uᴴ * A)) * U) :=
-              Matrix.trace_mul_comm _ _
-        _ = Matrix.trace (G.ρHalf * (Uᴴ * (Aᴴ * U)) * G.ρHalf * (Uᴴ * A * U)) := by
-              simp only [Matrix.mul_assoc]
-    rw [htr]
+    rw [hG'half, trace_unitary_conj_wightman (kronOp u) G.ρHalf A]
   have hS_eq : ∀ A : QubitOp N,
-      mssThermalSize G' A = mssThermalSize G (Uᴴ * A * U) := by
+      mssThermalSize G' A = mssThermalSize G ((kronOp u)ᴴ * A * kronOp u) := by
     intro A
     have hhs_unit : ∀ M : QubitOp N,
-        hsInner (U * M * Uᴴ) (totalSizeOp (U * M * Uᴴ)) = hsInner M (totalSizeOp M) := by
+        hsInner (kronOp u * M * (kronOp u)ᴴ) (totalSizeOp (kronOp u * M * (kronOp u)ᴴ)) =
+          hsInner M (totalSizeOp M) := by
       intro M
-      have hconj := totalSizeOp_localUnitary_conj u huL huR (U * M * Uᴴ)
-      have hback : Uᴴ * (U * M * Uᴴ) * U = M := by
-        calc Uᴴ * (U * M * Uᴴ) * U = (Uᴴ * U) * M * (Uᴴ * U) := by simp only [Matrix.mul_assoc]
+      have hconj := totalSizeOp_localUnitary_conj u huL huR (kronOp u * M * (kronOp u)ᴴ)
+      have hback : (kronOp u)ᴴ * (kronOp u * M * (kronOp u)ᴴ) * kronOp u = M := by
+        calc (kronOp u)ᴴ * (kronOp u * M * (kronOp u)ᴴ) * kronOp u
+            = ((kronOp u)ᴴ * kronOp u) * M * ((kronOp u)ᴴ * kronOp u) := by simp only [Matrix.mul_assoc]
           _ = M := by rw [hUL, Matrix.one_mul, Matrix.mul_one]
-      have hts : totalSizeOp (U * M * Uᴴ) = U * totalSizeOp M * Uᴴ := by
-        have h1 : totalSizeOp M = Uᴴ * totalSizeOp (U * M * Uᴴ) * U := by
+      have hts : totalSizeOp (kronOp u * M * (kronOp u)ᴴ) = kronOp u * totalSizeOp M * (kronOp u)ᴴ := by
+        have h1 : totalSizeOp M = (kronOp u)ᴴ * totalSizeOp (kronOp u * M * (kronOp u)ᴴ) * kronOp u := by
           rw [← hback]; exact hconj
-        calc totalSizeOp (U * M * Uᴴ)
-            = (U * Uᴴ) * totalSizeOp (U * M * Uᴴ) * (U * Uᴴ) := by rw [hUR, Matrix.one_mul, Matrix.mul_one]
-          _ = U * (Uᴴ * totalSizeOp (U * M * Uᴴ) * U) * Uᴴ := by simp only [Matrix.mul_assoc]
-          _ = U * totalSizeOp M * Uᴴ := by rw [← h1]
+        calc totalSizeOp (kronOp u * M * (kronOp u)ᴴ)
+            = (kronOp u * (kronOp u)ᴴ) * totalSizeOp (kronOp u * M * (kronOp u)ᴴ) * (kronOp u * (kronOp u)ᴴ) := by
+                rw [hUR, Matrix.one_mul, Matrix.mul_one]
+          _ = kronOp u * ((kronOp u)ᴴ * totalSizeOp (kronOp u * M * (kronOp u)ᴴ) * kronOp u) * (kronOp u)ᴴ := by
+                simp only [Matrix.mul_assoc]
+          _ = kronOp u * totalSizeOp M * (kronOp u)ᴴ := by rw [← h1]
       rw [hts]
       unfold hsInner
-      rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-      calc Matrix.trace (U * (Mᴴ * Uᴴ) * (U * totalSizeOp M * Uᴴ))
-          = Matrix.trace (U * (Mᴴ * (Uᴴ * U) * totalSizeOp M) * Uᴴ) := by simp only [Matrix.mul_assoc]
-        _ = Matrix.trace (U * (Mᴴ * totalSizeOp M) * Uᴴ) := by rw [hUL, Matrix.mul_one]
-        _ = Matrix.trace (Uᴴ * U * (Mᴴ * totalSizeOp M)) := by
-              rw [Matrix.trace_mul_cycle]; simp only [Matrix.mul_assoc]
-        _ = Matrix.trace (Mᴴ * totalSizeOp M) := by rw [hUL, Matrix.one_mul]
-    have hj_eq : jBeta G'.ρQuarter A = U * jBeta G.ρQuarter (Uᴴ * A * U) * Uᴴ := by
+      exact trace_unitary_conj_hs (kronOp u) M (totalSizeOp M) hUL
+    have hj_eq : jBeta G'.ρQuarter A = kronOp u * jBeta G.ρQuarter ((kronOp u)ᴴ * A * kronOp u) * (kronOp u)ᴴ := by
       unfold jBeta
       rw [hG'quarter]
       simp only [Matrix.mul_assoc]
@@ -588,7 +591,7 @@ private lemma lambdaMSS_le_of_localUnitary_conj {N s : ℕ}
         rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter] at hBnorm
         exact hBnorm
       unfold hsNormSq at hhs; rw [hhs, mul_one] at hle; linarith
-    · exact ⟨Uᴴ * A * U, localUnitary_conj_mem_filtration u huL hA_mem,
+    · exact ⟨(kronOp u)ᴴ * A * kronOp u, localUnitary_conj_mem_filtration u huL hA_mem,
         (hnorm_eq A).symm.trans hA_norm, rfl⟩
 
 /-- **Proposition 4.3 — Full General Product-State Bound via Local Unitary Invariance (Item #13)**:

@@ -213,7 +213,7 @@ lemma trace_gibbsRho_mul_evol_eq {N : ℕ} {H W : QubitOp N}
     have hh : (Uᴴ * W * U)ᴴ = Uᴴ * W * U := by
       rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
         hW.eq, Matrix.mul_assoc]
-    have := congrFun (congrFun hh a) b
+    have := congrFun (congrFun hh b) a
     simpa [Matrix.conjTranspose_apply] using this.symm
   rw [hWherm]
   have hmul_star : (Uᴴ * W * U) a b * star ((Uᴴ * W * U) a b) = ((‖(Uᴴ * W * U) a b‖ ^ 2 : ℝ) : ℂ) := by
