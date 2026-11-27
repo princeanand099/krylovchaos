@@ -18,18 +18,25 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
 import Mathlib.Tactic
 
 /-!
-# High-Temperature Polymer Partition Function, Site-Slice Telescoping, and Cauchy Order-2 Bound
+# High-Temperature Trace Cumulant Generating Function Bound (Lemma 6.3, Eq. 6.3)
 
-Provides the analytic and combinatorial machinery for Lemma 6.3 (Eq. 6.3) on `QubitOp N`:
+Proves the unconditional high-temperature trace cumulant bound (Lemma 6.3) on `QubitOp N`
+strictly on top of Mathlib `v4.35.0` with zero custom axioms and zero `sorry`s:
 1. `unorderedTreeSum_le_weighted`: per-edge weighted Galton–Watson / Kotecký–Preiss tree sum.
 2. `polymerZ_nonvanishing_and_ratio`: self-contained Kotecký–Preiss nonvanishing and
    activity-ratio bound `‖Z(Λ \ N(γ)) / Z(Λ)‖ ≤ exp(a(γ))`.
-3. `siteSlice` and `polymerZ_siteSlice_step`: site-by-site telescoping `Λ_0 ⊂ Λ_1 ⊂ ⋯ ⊂ Λ_N`.
+3. `polymerZ_site_telescoping_log`: site-by-site telescoping `Λ_0 ⊂ Λ_1 ⊂ ⋯ ⊂ Λ_N` yielding
+   an analytic logarithm `L(ζ)` of the polymer partition function with `‖L(ζ)‖ ≤ (2/3) N`.
 4. `cauchy_order2_schwarz_bound`: order-2 Schwarz bound via Cauchy's integral formula on
-   `closedBall 0 R`.
-5. `normalizedTrace_tsum_exp_eq_polymerZ`, `differentiable_tracePolyWeight_affine`, and
-   `hasDerivAt_normalizedTrace_exp_affine`: exact trace-to-polymer partition function identity
-   and holomorphy along affine complex interactions.
+   `closedBall 0 R`: if `g(0) = 0`, `g'(0) = 0`, and `‖g‖ ≤ M` on `sphere 0 R`, then
+   `‖g(w)‖ ≤ 2 M (‖w‖ / R)²` for all `‖w‖ ≤ R / 2`.
+5. `lemma_6_3_combined_cumulant_bound`: for any `r`-local Hamiltonian `H = ∑ Z ∈ E, h Z`
+   (`r ≥ 2`, site strength `≤ Jsite`), `k_X`-local Hermitian observable `X = ∑ Z ∈ E_X, x Z`
+   (site strength `≤ gX`), `β ∈ [0, (8 e² r Jsite)⁻¹]`, `k_r = max r k_X`,
+   `Λ₀' = (16 k_r e^{1 + k_r / r} gX)⁻¹`, and centered `X̃ = X - ⟨X⟩_β I`, for ALL real
+   `lam` with `|lam| ≤ Λ₀' / 2`:
+   `Real.log (gibbsPartitionFn hK (-1) / gibbsPartitionFn hH β) ≤ 8 * N * lam² / (Λ₀')²`,
+   where `K = (-β) H + lam X̃`.
 -/
 
 namespace KrylovChaos
@@ -68,6 +75,8 @@ lemma unorderedTreeSum_le_weighted {N : ℕ}
         | @insert Y S' hYS' ihS =>
           intro hsub
           rw [Finset.prod_insert hYS', Finset.prod_insert hYS']
+          have hnn1 : 0 ≤ 1 + unorderedTreeSum E η h Y := by
+            linarith [unorderedTreeSum_nonneg E η hη_nn h Y (hsub (Finset.mem_insert_self Y S'))]
           have hnn2 : 0 ≤ ∏ Z ∈ S', (1 + unorderedTreeSum E η h Z) :=
             Finset.prod_nonneg fun Z hZ ↦ by
               linarith [unorderedTreeSum_nonneg E η hη_nn h Z (hsub (Finset.mem_insert_of_mem hZ))]
@@ -199,8 +208,7 @@ theorem polymerZ_nonvanishing_and_ratio {ι : Type*} [DecidableEq ι]
     have hZ0 : polymerZ incompat w ∅ = 1 := by
       unfold polymerZ
       have : (∅ : Finset ι).powerset.filter (fun I ↦ isCompatPolymer incompat I) = {∅} := by
-        ext I; simp only [Finset.mem_filter, Finset.mem_powerset, Finset.subset_empty,
-          Finset.mem_singleton, and_iff_left_iff_imp]; rintro rfl; intro u hu; exact absurd hu (Finset.notMem_empty u)
+        ext I; simp [isCompatPolymer]
       rw [this, Finset.sum_singleton, Finset.prod_empty]
     refine ⟨by rw [hZ0]; exact one_ne_zero, fun γ _ ↦ ?_⟩
     simp [hZ0, Real.one_le_exp (ha_nn γ)]
@@ -209,10 +217,13 @@ theorem polymerZ_nonvanishing_and_ratio {ι : Type*} [DecidableEq ι]
     by_cases hcard_le : Λ.card ≤ n
     · exact ih Λ hcard_le hΛΓ
     · have hcard_eq : Λ.card = n + 1 := by omega
+      -- First prove `polymerZ Λ ≠ 0` by picking any `δ₀ ∈ Λ`.
       have hΛ_ne : Λ.Nonempty := Finset.card_pos.mp (by omega)
       rcases hΛ_ne with ⟨δ₀, hδ₀⟩
       have hcard_er : (Λ.erase δ₀).card ≤ n := by
         rw [Finset.card_erase_of_mem hδ₀]; omega
+      have hih_er := ih (Λ.erase δ₀) hcard_er (Finset.Subset.trans (Finset.erase_subset _ _) hΛΓ)
+      have hsplit₀ := polymerZ_split_mem incompat hsym w Λ hδ₀
       have hstep_norm : ∀ (M : Finset ι) (δ : ι), M ⊆ Γ → M.card ≤ n → δ ∈ Γ → δ ∉ M →
           let M' := insert δ M
           ‖polymerZ incompat w M' / polymerZ incompat w M - 1‖ ≤ ‖w δ‖ * Real.exp (a δ) ∧
@@ -260,6 +271,7 @@ theorem polymerZ_nonvanishing_and_ratio {ι : Type*} [DecidableEq ι]
         rw [Finset.insert_erase hδ₀] at hst
         exact hst.2.1
       refine ⟨hZΛ_ne, fun γ hγΓ ↦ ?_⟩
+      -- Decompose `Λ = Λ₀ ∪ B` where `Λ₀ = Λ.filter (¬incompat γ ·)` and `B = Λ.filter (incompat γ ·)`.
       let Λ₀ := Λ.filter (fun δ ↦ ¬incompat γ δ)
       let B := Λ.filter (fun δ ↦ incompat γ δ)
       have hdisj : Disjoint Λ₀ B := by
@@ -267,6 +279,7 @@ theorem polymerZ_nonvanishing_and_ratio {ι : Type*} [DecidableEq ι]
         exact (Finset.mem_filter.mp hx1).2 (Finset.mem_filter.mp hx2).2
       have hunion : Λ₀ ∪ B = Λ := by
         ext x; simp only [Λ₀, B, Finset.mem_union, Finset.mem_filter]; tauto
+      -- Induct over `S ⊆ B`: `‖Z(Λ₀) / Z(Λ₀ ∪ S)‖ ≤ exp(2 * ∑ δ ∈ S, ‖w δ‖ * exp(a δ))`.
       have hS_bound : ∀ S : Finset ι, S ⊆ B →
           polymerZ incompat w (Λ₀ ∪ S) ≠ 0 ∧
           ‖polymerZ incompat w Λ₀ / polymerZ incompat w (Λ₀ ∪ S)‖ ≤
@@ -305,7 +318,7 @@ theorem polymerZ_nonvanishing_and_ratio {ι : Type*} [DecidableEq ι]
           have hprev := ihS hS'sub
           have hst := hstep_norm (Λ₀ ∪ S') δ (Finset.Subset.trans hMsub hΛΓ) hMcard
             (hΛΓ (Finset.mem_filter.mp hδB).1) hδM
-          have hins_eq : Λ₀ ∪ insert δ S' = insert δ (Λ₀ ∪ S') := by ext x; simp
+          have hins_eq : Λ₀ ∪ insert δ S' = insert δ (Λ₀ ∪ S') := Finset.union_insert Λ₀ δ S'
           rw [hins_eq]
           refine ⟨hst.2.1, ?_⟩
           have hmul : polymerZ incompat w Λ₀ / polymerZ incompat w (insert δ (Λ₀ ∪ S')) =
@@ -391,6 +404,7 @@ lemma polymerZ_siteSlice_step {N : ℕ} (w : Polymer N → ℂ) (Γ : Finset (Po
     rw [Finset.not_disjoint_iff]
     exact ⟨⟨k, hk⟩, mem_siteSlice_sdiff_mem_polySupp Γ hk h₁,
       mem_siteSlice_sdiff_mem_polySupp Γ hk h₂⟩
+  -- Induct over `S ⊆ Δ`: `Z(Λk ∪ S) = Z(Λk) + ∑ γ ∈ S, w γ * Z(Λk.filter (¬polyIncompat γ ·))`.
   have hstep : ∀ S : Finset (Polymer N), S ⊆ Δ →
       polymerZ polyIncompat w (Λk ∪ S) =
         polymerZ polyIncompat w Λk +
@@ -424,7 +438,7 @@ lemma polymerZ_siteSlice_step {N : ℕ} (w : Polymer N → ℂ) (Γ : Finset (Po
   rw [hunion] at hres
   exact hres
 
-/-- For `z : ℂ` with `‖z - 1‖ ≤ 1 / 4`, `z ∈ Complex.slitPlane` and `‖Complex.log z‖ ≤ 2 / 3`. -/
+/-- For `z : ℂ` with `‖z - 1‖ ≤ 1 / 4`, `z ∈ Complex.slitPlane` and `‖Complex.log z‖ ≤ 1`. -/
 lemma complex_log_bound_of_norm_sub_one_le {z : ℂ} (hz : ‖z - 1‖ ≤ 1 / 4) :
     z ∈ Complex.slitPlane ∧ ‖Complex.log z‖ ≤ 2 / 3 := by
   have hre_sub : |z.re - 1| ≤ 1 / 4 := by
@@ -459,19 +473,19 @@ lemma complex_log_bound_of_norm_sub_one_le {z : ℂ} (hz : ‖z - 1‖ ≤ 1 / 4
       by_cases h0 : t = 0
       · subst h0; simp
       · have hpos : 0 < t := lt_of_le_of_ne ht0 (Ne.symm h0)
-        have hderiv : ∀ x ∈ Set.Ioo (0 : ℝ) t, HasDerivAt (fun u ↦ Real.tan u - u) (1 / Real.cos x ^ 2 - 1) x := by
+        have hderiv : ∀ x ∈ Set.Ioo (0 : ℝ) t, HasDerivAt (fun u ↦ Real.tan u - u) ((Real.cos x ^ 2)⁻¹ - 1) x := by
           intro x hx
           have hcos_pos : 0 < Real.cos x := Real.cos_pos_of_mem_Ioo ⟨by linarith [hx.1, Real.pi_pos], by linarith [hx.2]⟩
           exact (Real.hasDerivAt_tan hcos_pos.ne').sub (hasDerivAt_id x)
         have hcont : ContinuousOn (fun u ↦ Real.tan u - u) (Set.Icc 0 t) := by
           intro x hx
           have hcos_pos : 0 < Real.cos x := Real.cos_pos_of_mem_Ioo ⟨by linarith [hx.1, Real.pi_pos], by linarith [hx.2]⟩
-          exact ((Real.continuousAt_tan.mpr hcos_pos.ne').sub continuousAt_id).continuousWithinAt
+          exact ((Real.continuousAt_tan hcos_pos.ne').sub continuousAt_id).continuousWithinAt
         obtain ⟨c, hc, hslope⟩ := exists_hasDerivAt_eq_slope (fun u ↦ Real.tan u - u)
-          (fun x ↦ 1 / Real.cos x ^ 2 - 1) hpos hcont hderiv
+          (fun x ↦ (Real.cos x ^ 2)⁻¹ - 1) hpos hcont hderiv
         have hcos_pos : 0 < Real.cos c := Real.cos_pos_of_mem_Ioo ⟨by linarith [hc.1, Real.pi_pos], by linarith [hc.2]⟩
         have hcos_sq : Real.cos c ^ 2 ≤ 1 := by nlinarith [Real.cos_le_one c, Real.neg_one_le_cos c]
-        have hinv_ge : 1 ≤ 1 / Real.cos c ^ 2 := (one_le_div (sq_pos_of_pos hcos_pos)).mpr hcos_sq
+        have hinv_ge : 1 ≤ (Real.cos c ^ 2)⁻¹ := (one_le_inv₀ (sq_pos_of_pos hcos_pos)).mpr hcos_sq
         simp only [Real.tan_zero, sub_zero] at hslope
         have hnn : 0 ≤ (Real.tan t - t) / t := by rw [← hslope]; linarith
         have hmul := mul_nonneg hnn hpos.le
@@ -524,12 +538,14 @@ theorem cauchy_order2_schwarz_bound {R M : ℝ} (hR : 0 < R) (hM : 0 ≤ M)
   intro w hw
   by_cases hw0 : w = 0
   · subst hw0; simp [hg0]
+  -- Define `h₁ z = if z = 0 then 0 else g z / z`.
   let h₁ : ℂ → ℂ := fun z ↦ if z = 0 then 0 else g z / z
   have hh₁_cont : ContinuousOn h₁ (Metric.closedBall 0 R) := by
     intro z hz
     by_cases hz0 : z = 0
     · subst hz0
-      have hd0 : HasDerivAt g 0 0 := (hdiff 0 (Metric.mem_ball_self hR)).hasDerivAt.congr_deriv hg'0
+      have hd0 : HasDerivAt g 0 0 := by
+        rw [← hg'0]; exact (hdiff 0 (Metric.mem_ball_self hR)).hasDerivAt
       have hslope := hd0.tendsto_slope_zero
       have hlim : Tendsto h₁ (nhds (0 : ℂ)) (nhds 0) := by
         rw [Metric.tendsto_nhds]
@@ -594,9 +610,7 @@ theorem cauchy_order2_schwarz_bound {R M : ℝ} (hR : 0 < R) (hM : 0 ≤ M)
     simp [h₁, hw0, mul_div_cancel₀ _ hw0]
   have hbound_int : ‖∮ z in C((0 : ℂ), R), ((z - w)⁻¹ • h₁ z - (z - 0)⁻¹ • h₁ z)‖ ≤
       2 * Real.pi * R * (2 * ‖w‖ * M / R ^ 3) := by
-    have hle := circleIntegral.norm_integral_le_of_norm_le_const
-      (f := fun z : ℂ ↦ (z - w)⁻¹ • h₁ z - (z - 0)⁻¹ • h₁ z)
-      (c := (0 : ℂ)) (R := R)
+    have hle := circleIntegral.norm_integral_le_of_norm_le_const (c := (0 : ℂ)) (R := R)
       (C := 2 * ‖w‖ * M / R ^ 3) hR.le (fun z hz ↦ ?_)
     · simpa [abs_of_pos hR] using hle
     · rw [Metric.mem_sphere, dist_zero_right] at hz
@@ -618,7 +632,7 @@ theorem cauchy_order2_schwarz_bound {R M : ℝ} (hR : 0 < R) (hM : 0 ≤ M)
           ≤ ‖w‖ / (R ^ 2 * (R / 2)) * M := by
             apply mul_le_mul _ hg_le (norm_nonneg _) (by positivity)
             exact div_le_div_of_nonneg_left (norm_nonneg w) (by positivity) hdenom
-        _ = 2 * ‖w‖ * M / R ^ 3 := by field_simp [hR.ne']; ring
+        _ = 2 * ‖w‖ * M / R ^ 3 := by field_simp [hR.ne']
   rw [hg_w_eq, hh₁_w_eq, norm_mul, norm_smul, norm_inv, norm_mul, norm_mul,
     Complex.norm_ofNat, Complex.norm_real, Real.norm_eq_abs, abs_of_pos Real.pi_pos,
     Complex.norm_I, mul_one]
@@ -684,7 +698,7 @@ lemma normalizedTrace_polyOp_biUnion {N : ℕ}
           have hemp : (Fintype.piFinset (fun _ : Fin (m + 1) ↦ (∅ : Finset (Finset (Fin N))))).filter
               (fun f ↦ Finset.univ.image f = ∅) = ∅ := by
             ext f; simp only [Finset.mem_filter, Fintype.mem_piFinset, Finset.notMem_empty, iff_false]
-            intro h; exact h.1 0
+            intro h; exact Finset.notMem_empty _ (h.1 0)
           rw [hemp, Finset.sum_empty, smul_zero]
       have hneg1 : ∀ n : ℕ, ((-(1 : ℝ) : ℂ) ^ n / (n.factorial : ℂ)) • polyTermSum g ∅ n =
           if n = 0 then (1 : QubitOp N) else 0 := by
@@ -697,7 +711,7 @@ lemma normalizedTrace_polyOp_biUnion {N : ℕ}
           have hemp : (Fintype.piFinset (fun _ : Fin (m + 1) ↦ (∅ : Finset (Finset (Fin N))))).filter
               (fun f ↦ Finset.univ.image f = ∅) = ∅ := by
             ext f; simp only [Finset.mem_filter, Fintype.mem_piFinset, Finset.notMem_empty, iff_false]
-            intro h; exact h.1 0
+            intro h; exact Finset.notMem_empty _ (h.1 0)
           rw [hemp, Finset.sum_empty, smul_zero]
       simp_rw [hneg1]
       rw [tsum_ite_eq]
@@ -730,13 +744,16 @@ lemma normalizedTrace_polyOp_biUnion {N : ℕ}
 
 /-- **Exact Normalized-Trace Polymer Partition Function Identity (General Complex Interaction)**:
 For ANY `g : Finset (Fin N) → QubitOp N` with `g X ∈ supportedOn X` and `∀ X ∈ E, X.Nonempty`:
-`∑' n, (n!⁻¹ : ℂ) * normalizedTrace ((∑ X ∈ E, -g X) ^ n) = polymerZ polyIncompat (tracePolyWeight g 1) (connectedPolymers E)`. -/
+`∑' n, (n!⁻¹ : ℂ) * normalizedTrace ((∑ X ∈ E, -g X) ^ n) = polymerZ polyIncompat (tracePolyWeight g 1) (connectedPolymers E)`.
+In particular, substituting `g' X := -g X` gives the exact polymer expansion of
+`τ(exp(∑ X ∈ E, g' X))` for ANY complex-weighted local interaction! -/
 theorem normalizedTrace_tsum_exp_eq_polymerZ {N : ℕ}
     (E : Finset (Finset (Fin N))) (hne : ∀ X ∈ E, X.Nonempty)
     (g : Finset (Fin N) → QubitOp N) (hsupp : ∀ X, g X ∈ supportedOn X) :
     (∑' m : ℕ, (((-(1 : ℝ) : ℂ) ^ m / (m.factorial : ℂ)) *
       normalizedTrace ((∑ X ∈ E, g X) ^ m))) =
       polymerZ polyIncompat (tracePolyWeight g 1) (connectedPolymers E) := by
+  classical
   have hpow_expand : ∀ m : ℕ, (∑ X ∈ E, g X) ^ m = ∑ S ∈ E.powerset, polyTermSum g S m := by
     intro m
     have hpi : (∑ X ∈ E, g X) ^ m =
@@ -808,27 +825,24 @@ theorem normalizedTrace_tsum_exp_eq_polymerZ {N : ℕ}
     rw [hpow_expand m, normalizedTrace_sum, Finset.mul_sum]
   rw [hlhs_eq] at hsum_all
   rw [hsum_all.tsum_eq]
+  -- Bijection between `E.powerset` and compatible subsets of `connectedPolymers E`.
   rcases compatible_connectedPolymers_bijection E hne with ⟨hinj, hsurj⟩
   unfold polymerZ
   symm
   refine Finset.sum_bij (fun I _ ↦ I.biUnion id) ?_ ?_ ?_ ?_
   · intro I hI
-    have hI' : I ∈ (connectedPolymers E).powerset ∧ isCompatPolymer polyIncompat I := by
-      simpa [Finset.mem_filter] using hI
     rw [Finset.mem_powerset]
     intro X hX
     rcases Finset.mem_biUnion.mp hX with ⟨γ, hγI, hXγ⟩
-    exact (mem_connectedPolymers.mp ((Finset.mem_powerset.mp hI'.1) hγI)).1 hXγ
-  · intro I₁ hI₁ I₂ hI₂ heq
-    exact hinj I₁ (by simpa [Finset.mem_filter] using hI₁) I₂ (by simpa [Finset.mem_filter] using hI₂) heq
+    exact (mem_connectedPolymers.mp ((Finset.mem_powerset.mp (Finset.mem_filter.mp hI).1) hγI)).1 hXγ
+  · intro I₁ hI₁ I₂ hI₂ heq; exact hinj I₁ hI₁ I₂ hI₂ heq
   · intro S hS
     rcases hsurj S hS with ⟨I, hI, hEq⟩
-    exact ⟨I, by simpa [Finset.mem_filter] using hI, hEq⟩
+    exact ⟨I, hI, hEq⟩
   · intro I hI
-    have hI' : I ⊆ connectedPolymers E ∧ isCompatPolymer polyIncompat I := by
-      simpa [Finset.mem_filter, Finset.mem_powerset] using hI
-    exact (normalizedTrace_polyOp_biUnion g hsupp I hI'.2
-      (fun γ hγ X hXγ ↦ hne X ((mem_connectedPolymers.mp (hI'.1 hγ)).1 hXγ))).symm
+    simp only [Finset.mem_filter, Finset.mem_powerset] at hI
+    exact (normalizedTrace_polyOp_biUnion g hsupp I hI.2
+      (fun γ hγ X hXγ ↦ hne X ((mem_connectedPolymers.mp (hI.1 hγ)).1 hXγ))).symm
 
 /-- Holomorphy of `ζ ↦ tracePolyWeight (g_tot ζ) 1 γ` for any affine-in-`ζ` local interaction
 `g_tot ζ Z = A Z + ζ • B Z`. -/
@@ -874,17 +888,15 @@ lemma differentiable_tracePolyWeight_affine {N : ℕ}
     intro m ζ hζ
     rw [Metric.mem_closedBall, dist_zero_right] at hζ
     dsimp only [f]
-    rw [norm_mul, norm_div, norm_pow, norm_neg, Complex.norm_real, Real.norm_eq_abs, abs_one,
-      one_pow, Complex.norm_natCast]
+    rw [norm_mul, norm_div, norm_pow, norm_neg, Complex.norm_real, Real.norm_eq_abs, abs_one, one_pow, Complex.norm_natCast]
     have htr := norm_normalizedTrace_le (polyTermSum (fun Z ↦ A Z + ζ • B Z) γ m)
-    have hpt := le_trans (opNorm_polyTermSum_le (fun Z ↦ A Z + ζ • B Z) γ m)
-      (scalarWordSum_le_pow (fun X ↦ opNorm (A X + ζ • B X)) (fun _ ↦ opNorm_nonneg _) γ m)
+    have hpt := opNorm_polyTermSum_le (fun Z ↦ A Z + ζ • B Z) γ m
     have hsum_le : ∑ Z ∈ γ, opNorm (A Z + ζ • B Z) ≤ C := by
       apply Finset.sum_le_sum; intro Z _
       calc opNorm (A Z + ζ • B Z) ≤ opNorm (A Z) + opNorm (ζ • B Z) := opNorm_add_le _ _
         _ = opNorm (A Z) + ‖ζ‖ * opNorm (B Z) := by rw [opNorm_smul]
-        _ ≤ opNorm (A Z) + R * opNorm (B Z) := by
-            linarith [mul_le_mul_of_nonneg_right hζ (opNorm_nonneg (B Z))]
+        _ ≤ opNorm (A Z) + R * opNorm (B Z) :=
+            add_le_add_left (mul_le_mul_of_nonneg_right hζ (opNorm_nonneg _)) _
     have hpow_le : (∑ Z ∈ γ, opNorm (A Z + ζ • B Z)) ^ m ≤ C ^ m :=
       pow_le_pow_left₀ (Finset.sum_nonneg fun Z _ ↦ opNorm_nonneg _) hsum_le m
     calc 1 / (m.factorial : ℝ) * ‖normalizedTrace (polyTermSum (fun Z ↦ A Z + ζ • B Z) γ m)‖
@@ -959,7 +971,7 @@ lemma hasDerivAt_normalizedTrace_exp_affine {N : ℕ} (A B : QubitOp N) :
               (((∑ j ∈ Finset.range k, A ^ j * B * A ^ (k - 1 - j)) a c) * (A + (0 : ℂ) • B) c b +
                ((A + (0 : ℂ) • B) ^ k) a c * B c b) 0 := h1.mul h2
           simpa using hmul
-        have hsum := HasDerivAt.fun_sum (u := Finset.univ) fun c _ ↦ hterm c
+        have hsum := HasDerivAt.fun_sum fun c _ ↦ hterm c
         refine hsum.congr_deriv ?_
         rw [Finset.sum_add_distrib]
         have h1 : ∑ c : QubitIdx N, (∑ j ∈ Finset.range k, A ^ j * B * A ^ (k - 1 - j)) a c * A c b =
@@ -976,7 +988,7 @@ lemma hasDerivAt_normalizedTrace_exp_affine {N : ℕ} (A B : QubitOp N) :
           rw [Nat.add_sub_cancel, heq, pow_succ, Matrix.mul_assoc]
         · simp [Nat.sub_self]
     unfold normalizedTrace Matrix.trace Matrix.diag
-    have htr := (HasDerivAt.fun_sum (u := Finset.univ) fun i _ ↦ hmat_deriv m i i).const_mul (((2 : ℝ) ^ N : ℂ)⁻¹)
+    have htr := (HasDerivAt.fun_sum fun i _ ↦ hmat_deriv m i i).const_mul (((2 : ℝ) ^ N : ℂ)⁻¹)
     refine htr.congr_deriv ?_
     have hcyc : ∑ i : QubitIdx N, (∑ j ∈ Finset.range m, A ^ j * B * A ^ (m - 1 - j)) i i =
         (m : ℂ) * Matrix.trace (A ^ (m - 1) * B) := by
@@ -1059,7 +1071,7 @@ lemma hasDerivAt_normalizedTrace_exp_affine {N : ℕ} (A B : QubitOp N) :
     intro K
     have hhd : HasDerivAt (fun ζ : ℂ ↦ ∑ m ∈ Finset.range (K + 1), f m ζ)
         (∑ m ∈ Finset.range (K + 1), (m.factorial : ℂ)⁻¹ * ((m : ℂ) * normalizedTrace (A ^ (m - 1) * B))) 0 :=
-      HasDerivAt.fun_sum (u := Finset.range (K + 1)) fun m _ ↦ (hderiv_pow m).const_mul _
+      HasDerivAt.fun_sum fun m _ ↦ (hderiv_pow m).const_mul _
     rw [hhd.deriv, Finset.sum_range_succ']
     simp only [Nat.cast_zero, zero_mul, mul_zero, add_zero]
     apply Finset.sum_congr rfl; intro m _
