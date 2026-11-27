@@ -14,13 +14,14 @@ import Mathlib.Tactic
 # Concrete Many-Body Quantum Setup (Sections 1.2, 2.1, 2.2, 9)
 
 Provides concrete finite-dimensional `N`-qubit definitions and proofs on `QubitOp N`:
-1. `LocalTerm` and `LocalHamiltonian N r` (`H = ∑_{X ∈ E} h_X`, Hermitian, `H ∈ filtrationSubmodule N r`).
+1. `supportedSubmodule`, `LocalTerm` (strictly supported on `support` with `support.card ≤ r`),
+   and `LocalHamiltonian N r` (`H = ∑_{X ∈ E} h_X`, Hermitian, `H ∈ filtrationSubmodule N r`).
 2. `GibbsData N` (Hermitian `ρ_β, ρ_β^{1/2}, ρ_β^{1/4}, ρ_β^{-1/4}` with `Tr(ρ_β) = 1`) and concrete
-   Wightman inner product, MSS-OTOCs (`otocCW`, `mssThermalSize`).
+   Wightman inner product, MSS-OTOCs (`otocCW`, `mssThermalSize`, `qubitCW0`, `qubitFMSS`).
 3. **Proposition 2.2(3)**: Unitary equivalence via `jBeta` preserves inner products and intertwines
-   the Liouvillian `[H, ·]`, preserving all Lanczos recursion norms.
-4. **Proposition 2.3 (Full N-Qubit Eq. 2.9)**: Full `N`-qubit thermal-subtracted operator-size
-   identity derived directly from `eq_2_8_hs_commutator_size_identity`.
+   the Liouvillian `[H, ·]`.
+4. **Proposition 2.3(1) (Full N-Qubit Eq. 2.9)**: Both the commutator-difference form and the
+   exact `C_W^0 - F_MSS` identity `S_β(A) = (1/4) ∑_{x,α} (C_{β,σ_x^α}^W(0) - F_MSS(A, σ_x^α))`.
 5. **Section 9 Concrete Counterexamples**: Explicit `N`-qubit bimodal density matrix `bimodalState N`
    (Eq. 9.1) and explicit `D × D` symmetric 1-banded tridiagonal double-well matrix `doubleWellMatrix`.
 -/
@@ -31,19 +32,42 @@ open Matrix
 
 section LocalHamiltonians
 
-/-- A single Hermitian `r`-local interaction term `h_X` on `N` qubits. -/
+/-- Subspace of `N`-qubit operators supported on a subset `U : Finset (Fin N)` (acting as the
+identity on all sites outside `U`). -/
+def supportedSubmodule (N : ℕ) (U : Finset (Fin N)) : Submodule ℂ (QubitOp N) :=
+  Submodule.span ℂ { P : QubitOp N | ∃ a : Fin N → Fin 4, (∀ x ∉ U, a x = 0) ∧ P = pauliString a }
+
+/-- Any operator supported on `U` with `U.card ≤ r` lies in `filtrationSubmodule N r`. -/
+lemma supportedSubmodule_le_filtration {N r : ℕ} {U : Finset (Fin N)} (hU : U.card ≤ r) :
+    supportedSubmodule N U ≤ filtrationSubmodule N r := by
+  apply Submodule.span_le.mpr
+  rintro _ ⟨a, ha, rfl⟩
+  apply Submodule.subset_span
+  refine ⟨a, ?_, rfl⟩
+  have hsub : Finset.univ.filter (fun x : Fin N ↦ a x ≠ 0) ⊆ U := by
+    intro x hx
+    by_contra hxU
+    exact (Finset.mem_filter.mp hx).2 (ha x hxU)
+  exact le_trans (Finset.card_le_card hsub) hU
+
+/-- A single Hermitian `r`-local interaction term `h_X` on `N` qubits, strictly supported on `support`. -/
 structure LocalTerm (N r : ℕ) where
   support : Finset (Fin N)
   card_le : support.card ≤ r
   op : QubitOp N
   herm : opᴴ = op
-  in_filtration : op ∈ filtrationSubmodule N r
+  in_support : op ∈ supportedSubmodule N support
+
+/-- Every `LocalTerm N r` lies in `filtrationSubmodule N r`. -/
+lemma LocalTerm.in_filtration {N r : ℕ} (t : LocalTerm N r) :
+    t.op ∈ filtrationSubmodule N r :=
+  supportedSubmodule_le_filtration t.card_le t.in_support
 
 /-- An `r`-local Hermitian Hamiltonian `H = ∑_{X ∈ E} h_X` on `N` qubits. -/
 structure LocalHamiltonian (N r : ℕ) where
   terms : List (LocalTerm N r)
 
-/-- Total Hamiltonian matrix `H = ∑_{X ∈ E} h_X`. -/
+/-- Total Hamiltonian matrix `H = ∑_{X ∈ E} h_X`. -/\n
 def LocalHamiltonian.totalOp {N r : ℕ} (ham : LocalHamiltonian N r) : QubitOp N :=
   (ham.terms.map (·.op)).sum
 
@@ -106,11 +130,18 @@ noncomputable def mssThermalSize {N : ℕ} (G : GibbsData N) (A : QubitOp N) : �
   (hsInner (jBeta G.ρQuarter A) (totalSizeOp (jBeta G.ρQuarter A))).re -
   (hsInner G.ρHalf (totalSizeOp G.ρHalf)).re
 
+/-- Concrete equal-time Wightman probe two-point function
+`C_{β, σ_x^α}^W(0) = Re Tr(ρ_β^{1/2} σ_x^α ρ_β^{1/2} σ_x^α)` (Eq. 2.9). -/
+noncomputable def qubitCW0 {N : ℕ} (G : GibbsData N) (x : Fin N) (α : Fin 3) : ℝ :=
+  gibbsWightmanNormSq G (pauliSite x α.succ)
+
+/-- Concrete MSS four-point OTOC `F_MSS(A, σ_x^α) = Re Tr(σ_x^α 𝒥_β(A) σ_x^α 𝒥_β(A))` (Eq. 2.9). -/
+noncomputable def qubitFMSS {N : ℕ} (G : GibbsData N) (A : QubitOp N) (x : Fin N) (α : Fin 3) : ℝ :=
+  (Matrix.trace (pauliSite x α.succ * jBeta G.ρQuarter A * pauliSite x α.succ * jBeta G.ρQuarter A)).re
+
 /-- **Proposition 2.2(3) (Wightman–Hilbert–Schmidt Unitary Equivalence & Lanczos Invariance)**:
 `jBeta G.ρQuarter` is an exact isometry `(A | B)_β^W = ⟨𝒥_β(A), 𝒥_β(B)⟩_HS` and intertwines
-the Liouvillian `[H, ·]` whenever `[H, ρ_β^{1/4}] = 0`, so every Krylov inner product and
-Lanczos coefficient `b_n` computed in `(H_op, (·|·)_β^W)` equals the corresponding Hilbert–Schmidt
-quantity for the image sequence `𝒥_β(O_n)`. -/
+the Liouvillian `[H, ·]` whenever `[H, ρ_β^{1/4}] = 0`. -/
 theorem prop_2_2_lanczos_invariance {N : ℕ} (G : GibbsData N) (H : QubitOp N)
     (hcomm : H * G.ρQuarter = G.ρQuarter * H) :
     (∀ A B : QubitOp N, gibbsWightmanInner G A B = hsInner (jBeta G.ρQuarter A) (jBeta G.ρQuarter B)) ∧
@@ -120,7 +151,7 @@ theorem prop_2_2_lanczos_invariance {N : ℕ} (G : GibbsData N) (H : QubitOp N)
     exact (prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf A B G.ρQuarter_herm G.sq_quarter).symm
   · exact prop_2_2_wightman_isometry_commutes_liouvillian G.ρQuarter H A hcomm
 
-/-- **Proposition 2.3 (Full N-Qubit Thermal-Subtracted Size Identity, Eq. 2.9)**:
+/-- **Proposition 2.3 (Full N-Qubit Thermal-Subtracted Size Commutator Form)**:
 For any `N`-qubit thermal state `G : GibbsData N` and operator `A : QubitOp N`,
 `S_β(A) = (1/8) ∑_{x=1}^N ∑_{α=1}^3 (‖[𝒥_β(A), σ_x^α]‖_HS² - ‖[ρ_β^{1/2}, σ_x^α]‖_HS²)`. -/
 theorem prop_2_3_full_qubit_thermal_size {N : ℕ} (G : GibbsData N) (A : QubitOp N) :
@@ -129,13 +160,68 @@ theorem prop_2_3_full_qubit_thermal_size {N : ℕ} (G : GibbsData N) (A : QubitO
         (hsNormSq (matComm (jBeta G.ρQuarter A) (pauliSite x α.succ)) -
          hsNormSq (matComm G.ρHalf (pauliSite x α.succ))) := by
   unfold mssThermalSize
-  rw [← eq_2_8_hs_commutator_size_identity (jBeta G.ρQuarter A),
-      ← eq_2_8_hs_commutator_size_identity G.ρHalf]
+  rw [eq_2_8_hs_commutator_size_identity (jBeta G.ρQuarter A),
+      eq_2_8_hs_commutator_size_identity G.ρHalf]
   rw [← mul_sub]
   congr 1
   rw [← Finset.sum_sub_distrib]
   apply Finset.sum_congr rfl; intro x _
   rw [← Finset.sum_sub_distrib]
+
+/-- **Proposition 2.3(1) (Full N-Qubit MSS-OTOC Identity, Eq. 2.9)**:
+For ANY `N`-qubit Gibbs state `G : GibbsData N` and Hermitian normalized operator `A : QubitOp N`
+(`Aᴴ = A`, `gibbsWightmanNormSq G A = 1`):
+`S_β(A) = (1 / 4) ∑_{x=1}^N ∑_{α=1}^3 (C_{β, σ_x^α}^W(0) - F_MSS(A, σ_x^α))`. -/
+theorem prop_2_3_part1_qubit_eq_2_9 {N : ℕ} (G : GibbsData N) {A : QubitOp N}
+    (hA : Aᴴ = A) (hAnorm : gibbsWightmanNormSq G A = 1) :
+    mssThermalSize G A =
+      (1 / 4 : ℝ) * ∑ x : Fin N, ∑ α : Fin 3,
+        (qubitCW0 G x α - qubitFMSS G A x α) := by
+  rw [prop_2_3_full_qubit_thermal_size]
+  have hJA_herm : (jBeta G.ρQuarter A)ᴴ = jBeta G.ρQuarter A := by
+    unfold jBeta
+    rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, G.ρQuarter_herm, hA, Matrix.mul_assoc]
+  have hJA_sq : (Matrix.trace (jBeta G.ρQuarter A * jBeta G.ρQuarter A)).re = 1 := by
+    have h1 : hsNormSq (jBeta G.ρQuarter A) = 1 := by
+      unfold gibbsWightmanNormSq gibbsWightmanInner at hAnorm
+      rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter] at hAnorm
+      exact hAnorm
+    unfold hsNormSq hsInner at h1
+    rwa [hJA_herm] at h1
+  have hρ_sq : (Matrix.trace (G.ρHalf * G.ρHalf)).re = 1 := by
+    rw [G.sq_half, G.trace_one, Complex.one_re]
+  have hterm : ∀ (x : Fin N) (α : Fin 3),
+      hsNormSq (matComm (jBeta G.ρQuarter A) (pauliSite x α.succ)) -
+      hsNormSq (matComm G.ρHalf (pauliSite x α.succ)) =
+      2 * (qubitCW0 G x α - qubitFMSS G A x α) := by
+    intro x α
+    have hPh : (pauliSite x α.succ)ᴴ = pauliSite x α.succ := pauliSite_herm x α.succ
+    have hPsq : pauliSite x α.succ * pauliSite x α.succ = 1 := pauliSite_sq x α.succ
+    have h1 := congrArg Complex.re
+      (prop_2_3_commutator_size_identity (jBeta G.ρQuarter A) (pauliSite x α.succ) hJA_herm hPh hPsq)
+    have h2 := congrArg Complex.re
+      (prop_2_3_commutator_size_identity G.ρHalf (pauliSite x α.succ) G.ρHalf_herm hPh hPsq)
+    have hcw : (Matrix.trace (pauliSite x α.succ * G.ρHalf * pauliSite x α.succ * G.ρHalf)).re =
+        qubitCW0 G x α := by
+      unfold qubitCW0 gibbsWightmanNormSq gibbsWightmanInner wightmanInner
+      congr 1
+      rw [hPh]
+      calc Matrix.trace (pauliSite x α.succ * G.ρHalf * pauliSite x α.succ * G.ρHalf)
+          = Matrix.trace (G.ρHalf * (pauliSite x α.succ * G.ρHalf * pauliSite x α.succ)) :=
+            Matrix.trace_mul_comm _ _
+        _ = Matrix.trace (G.ρHalf * pauliSite x α.succ * G.ρHalf * pauliSite x α.succ) := by
+            simp only [Matrix.mul_assoc]
+    simp only [Complex.sub_re, Complex.mul_re, Complex.re_ofNat, Complex.im_ofNat, zero_mul,
+      sub_zero] at h1 h2
+    change (Matrix.trace ((jBeta G.ρQuarter A * pauliSite x α.succ - pauliSite x α.succ * jBeta G.ρQuarter A)ᴴ *
+      (jBeta G.ρQuarter A * pauliSite x α.succ - pauliSite x α.succ * jBeta G.ρQuarter A))).re -
+      (Matrix.trace ((G.ρHalf * pauliSite x α.succ - pauliSite x α.succ * G.ρHalf)ᴴ *
+        (G.ρHalf * pauliSite x α.succ - pauliSite x α.succ * G.ρHalf))).re = _
+    rw [h1, h2, hJA_sq, hρ_sq, hcw]
+    unfold qubitFMSS
+    ring
+  simp_rw [hterm, ← Finset.mul_sum]
+  ring
 
 end GibbsAndOTOCs
 
@@ -162,8 +248,7 @@ theorem bimodalState_herm (N : ℕ) (hN : 0 < N) :
   unfold bimodalState
   have hp0 : proj0ᴴ = proj0 := by ext i j; fin_cases i <;> fin_cases j <;> simp [proj0]
   have hp1 : proj1ᴴ = proj1 := by ext i j; fin_cases i <;> fin_cases j <;> simp [proj1]
-  have hhalf : ((1 / 2 : ℂ) • (1 : Matrix (Fin 2) (Fin 2) ℂ))ᴴ =
-      (1 / 2 : ℂ) • (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
+  have hhalf : ((1 / 2 : ℂ) • (1 : Matrix (Fin 2) (Fin 2) ℂ))ᴴ = (1 / 2 : ℂ) • (1 : Matrix (Fin 2) (Fin 2) ℂ) := by
     ext i j; fin_cases i <;> fin_cases j <;> simp
   simp only [Matrix.conjTranspose_add, Matrix.conjTranspose_smul, kronOp_conjTranspose]
   have hs : star (1 / 2 : ℂ) = (1 / 2 : ℂ) := by simp
