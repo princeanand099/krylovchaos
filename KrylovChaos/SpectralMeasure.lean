@@ -631,8 +631,8 @@ theorem iteratedDeriv_inv_cos_eq_jacobi_sum (m D : ℕ) (hD : m < D) :
           have hJ2 : J k j₂ = (k.1 : ℝ) := by
             have h1 : ¬(j₂.1 = k.1 + 1) := by dsimp [j₂]; omega
             have h2 : k.1 = j₂.1 + 1 := by dsimp [j₂]; omega
-            simp only [J, jacobiMat, Matrix.of_apply, h1, ↓reduceIte, h2]
-            rw [if_neg h1]
+            have h3 : ¬(j₂.1 = j₂.1 + 1 + 1) := by omega
+            simp only [J, jacobiMat, Matrix.of_apply, h1, ↓reduceIte, h2, h3]
           rw [hJ1, hJ2]
           dsimp [j₁, j₂]; ring
     simp_rw [hmul_sum]

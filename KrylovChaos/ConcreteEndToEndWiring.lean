@@ -543,7 +543,7 @@ theorem lanczosOp_parity {N : ℕ} (G : GibbsData N) {H O : QubitOp N}
           _ = (-1 : ℂ) ^ n • (lanczosOp G H O n * H - H * lanczosOp G H O n) := by
               rw [Matrix.smul_mul, Matrix.mul_smul, ← smul_sub]
           _ = (-1 : ℂ) ^ (n + 1) • (H * lanczosOp G H O n - lanczosOp G H O n * H) := by
-              rw [pow_succ, mul_comm, ← smul_smul, neg_one_smul, neg_sub]
+              rw [pow_succ, mul_comm, ← smul_smul, neg_one_smul, ← smul_neg, neg_sub]
       have hprev_par : (((lanczosCoeff G H O n : ℝ) : ℂ) • (lanczosState G H O n).2.1)ᴴ =
           ((-1 : ℂ) ^ (n + 1)) • (((lanczosCoeff G H O n : ℝ) : ℂ) • (lanczosState G H O n).2.1) := by
         by_cases hn0 : n = 0
@@ -745,7 +745,7 @@ theorem lanczosOp_orthonormal {N : ℕ} {H O : QubitOp N} (hH : H.IsHermitian)
                       exact this
                     rw [hA0] at hnorm1
                     simp [gibbsWightmanNormSq, gibbsWightmanInner, wightmanInner] at hnorm1
-                    exact hbk1 hnorm1
+                    exact hbk1 (sq_eq_zero_iff.mp hnorm1.symm)
                   have hOk_ne : lanczosOp G H O k ≠ 0 := by
                     intro h0
                     cases k with
@@ -780,10 +780,10 @@ theorem lanczosOp_orthonormal {N : ℕ} {H O : QubitOp N} (hH : H.IsHermitian)
                           exact this
                         rw [hA0] at hnorm1
                         simp [gibbsWightmanNormSq, gibbsWightmanInner, wightmanInner] at hnorm1
-                        exact hne hnorm1
+                        exact hne (sq_eq_zero_iff.mp hnorm1.symm)
                       exact hbk1 (lanczos_stays_zero G H O (j + 1) h0 hbj 1).2
                   rw [ih (k + 1) (by omega) (k + 1) le_rfl, if_pos ⟨rfl, hOk1_ne⟩,
-                    ih k (by omega) k le_rfl, if_pos ⟨rfl, hOk_ne⟩, mul_one, mul_one, sub_self]
+                    ih k (by omega) k le_rfl, if_pos ⟨rfl, hOk_ne⟩, mul_one, sub_self]
               · have hm_lt_k : m < k := by omega
                 have h2nd : gibbsWightmanInner G (lanczosOp G H O m) (lanczosOp G H O k) = 0 := by
                   rw [ih k (by omega) m (by omega), if_neg (by omega)]
@@ -863,26 +863,20 @@ theorem heisenbergEvol_real_wightmanNormSq {N : ℕ} {H : QubitOp N} (hH : H.IsH
     have hneg : (complexPropagator hH (-(t : ℂ)))ᴴ = complexPropagator hH (t : ℂ) := by
       have := complexPropagator_real_conjTranspose hH (-t); simpa using this
     rw [hneg]
-    calc Matrix.trace (G.ρHalf * (complexPropagator hH (t : ℂ) * Oᴴ * complexPropagator hH (-(t : ℂ))) *
-            G.ρHalf * (complexPropagator hH (t : ℂ) * O * complexPropagator hH (-(t : ℂ))))
-        = Matrix.trace ((G.ρHalf * complexPropagator hH (t : ℂ)) * Oᴴ *
-            (complexPropagator hH (-(t : ℂ)) * G.ρHalf) * complexPropagator hH (t : ℂ) * O *
-            complexPropagator hH (-(t : ℂ))) := by simp only [Matrix.mul_assoc]
-      _ = Matrix.trace ((complexPropagator hH (t : ℂ) * G.ρHalf) * Oᴴ *
-            (G.ρHalf * complexPropagator hH (-(t : ℂ))) * complexPropagator hH (t : ℂ) * O *
-            complexPropagator hH (-(t : ℂ))) := by rw [← hU_comm, hU_comm]
-      _ = Matrix.trace (complexPropagator hH (t : ℂ) *
-            (G.ρHalf * Oᴴ * G.ρHalf * (complexPropagator hH (-(t : ℂ)) * complexPropagator hH (t : ℂ)) *
-              O * complexPropagator hH (-(t : ℂ)))) := by simp only [Matrix.mul_assoc]
-      _ = Matrix.trace (complexPropagator hH (t : ℂ) *
-            (G.ρHalf * Oᴴ * G.ρHalf * O * complexPropagator hH (-(t : ℂ)))) := by
-          rw [hU_unit1, Matrix.mul_one]
-      _ = Matrix.trace ((G.ρHalf * Oᴴ * G.ρHalf * O * complexPropagator hH (-(t : ℂ))) *
-            complexPropagator hH (t : ℂ)) := Matrix.trace_mul_comm _ _
-      _ = Matrix.trace (G.ρHalf * Oᴴ * G.ρHalf * O *
-            (complexPropagator hH (-(t : ℂ)) * complexPropagator hH (t : ℂ))) := by
-          simp only [Matrix.mul_assoc]
-      _ = Matrix.trace (G.ρHalf * Oᴴ * G.ρHalf * O) := by rw [hU_unit1, Matrix.mul_one])
+    set U := complexPropagator hH (t : ℂ)
+    set V := complexPropagator hH (-(t : ℂ))
+    set R := G.ρHalf
+    have hUR : U * R = R * U := hU_comm (t : ℂ)
+    have hVR : V * R = R * V := hU_comm (-(t : ℂ))
+    have hVU : V * U = 1 := hU_unit1
+    calc Matrix.trace (R * (U * (Oᴴ * V)) * R * (U * O * V))
+        = Matrix.trace ((R * U) * Oᴴ * (V * R) * U * O * V) := by simp only [Matrix.mul_assoc]
+      _ = Matrix.trace ((U * R) * Oᴴ * (R * V) * U * O * V) := by rw [← hUR, hVR]
+      _ = Matrix.trace (U * (R * Oᴴ * R * (V * U) * O * V)) := by simp only [Matrix.mul_assoc]
+      _ = Matrix.trace (U * (R * Oᴴ * R * O * V)) := by rw [hVU, Matrix.mul_one]
+      _ = Matrix.trace ((R * Oᴴ * R * O * V) * U) := Matrix.trace_mul_comm _ _
+      _ = Matrix.trace (R * Oᴴ * R * O * (V * U)) := by simp only [Matrix.mul_assoc]
+      _ = Matrix.trace (R * Oᴴ * R * O) := by rw [hVU, Matrix.mul_one])
 
 /-- **Item #2 (Real-Valuedness of Concrete Krylov Wavefunction)**:
 For Hermitian `H, O : QubitOp N`, `φ_n^{(β)}(t) = (-i)^n (𝒪_n^{(β)} | 𝒪(t))_β^W` is real-valued! -/
@@ -949,7 +943,8 @@ theorem concreteKrylovWavefn_hasDerivAt {N : ℕ} {H O : QubitOp N} (hH : H.IsHe
       (-Complex.I) ^ n * ∑ i : QubitIdx N, ∑ j : QubitIdx N, M i j * heisenbergEvol hH (s : ℂ) O j i := by
     intro s
     unfold concreteKrylovWavefn gibbsWightmanInner wightmanInner
-    simp only [M, Matrix.trace, Matrix.diag_apply, Matrix.mul_apply]
+    simp only [Matrix.trace, Matrix.diag_apply, Matrix.mul_apply]
+    rfl
   have hd : HasDerivAt (fun s : ℝ ↦
       (-Complex.I) ^ n * ∑ i : QubitIdx N, ∑ j : QubitIdx N, M i j * heisenbergEvol hH (s : ℂ) O j i)
       ((-Complex.I) ^ n * ∑ i : QubitIdx N, ∑ j : QubitIdx N,
@@ -1286,7 +1281,7 @@ theorem heisenbergEvol_eq_lanczosTrunc_full {N : ℕ} {H O : QubitOp N} (hH : H.
         apply HasDerivAt.fun_sum; intro j _
         have hd1 : HasDerivAt (fun u : ℝ ↦ star (R u k j))
             (star ((Complex.I • matComm H (R s)) k j)) s := by
-          simpa only [Complex.star_def] using Complex.conjCLE.hasFDerivAt.comp_hasDerivAt s (hR_deriv s k j)
+          simpa only [Function.comp_def, Complex.conjCLE_apply, Complex.star_def] using Complex.conjCLE.hasFDerivAt.comp_hasDerivAt s (hR_deriv s k j)
         have hd2 := hR_deriv s l i
         exact ((hd1.const_mul (G.ρHalf i j)).mul_const (G.ρHalf k l)).mul hd2
       have hsum_eq : (∑ i : QubitIdx N, ∑ l : QubitIdx N, ∑ k : QubitIdx N, ∑ j : QubitIdx N,
