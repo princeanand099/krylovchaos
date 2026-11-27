@@ -9,32 +9,28 @@ import KrylovChaos.ManyBodySetup
 import KrylovChaos.GibbsConstruction
 import KrylovChaos.SpectralSmearingAndDoubleWell
 import KrylovChaos.SpectralDyck
+import KrylovChaos.HighTempConditioning
+import KrylovChaos.HighTempReversePoincare
 import KrylovChaos.CausalExpansion
 import Mathlib.Analysis.Calculus.MeanValue
 import Mathlib.Analysis.SpecialFunctions.Pow.Deriv
 import Mathlib.Tactic
 
 /-!
-# Concrete Operator-Level Theorem 1.2(a) on `QubitOp N` (Eqs. 5.2–5.4)
+# Concrete Operator-Level Theorem 1.2(a) (Eqs. 5.2–5.4), Lemma 6.1 & Proposition 6.2 on `QubitOp N`
 
 Connects the concrete Hermitian operator algebra `QubitOp N` and Gibbs state
-`concreteGibbsData hH β` directly to the exact asymmetric strip-analyticity chain of
-Theorem 1.2(a) (Eqs. 5.2–5.4 of `finite_temp_krylov_chaos.tex`):
-1. **`theorem_1_2a_concrete_eq52_trace_bound`**: For Hermitian `H, W : QubitOp N` and any
-   `β, κ' : ℝ`, proves Eq. (5.2):
-   `∑ a b, wightmanSpectralWeight hH β W a b * exp ((β / 2 + κ') * |E_a - E_b|) ≤
-      2 * Re Tr(ρ_β W W(-i κ'))`.
-2. **`theorem_1_2a_concrete_eq53_opNorm_bound`**: Proves Eq. (5.3):
-   `Re Tr(ρ_β W W(-i κ')) ≤ ‖W‖_∞ * ‖W(-i κ')‖_∞`.
-3. **`theorem_1_2a_concrete_eq54_r_local_bound`**: For any `r`-local Hamiltonian (`r ≥ 2`) with
-   site norm `≤ Jsite` and Hermitian `W ∈ supportedOn U₀` (`U₀.card ≤ sW`), proves the exact
-   generalized-binomial rising-factorial bound for `0 ≤ κ' < κ = 1 / (2 (r - 1) Jsite)`:
-   `‖W(-i κ')‖_∞ ≤ ‖W‖_∞ * (1 - κ' / κ)^(-sW / (r - 1))`,
-   and combines Eqs. (5.2)–(5.4) into the full concrete finite-volume Theorem 1.2(a) bound:
-   `∑ a b, wightmanSpectralWeight hH β W a b * exp ((β / 2 + κ') * |E_a - E_b|) ≤
-      2 * ‖W‖_∞^2 * (1 - κ' / κ)^(-sW / (r - 1))`.
-4. **`theorem_1_2a_concrete_strip_cosh`** & **`theorem_1_2a_concrete_exp_moment`**:
-   Symmetric imaginary-time cosh identity for arbitrary `O : QubitOp N` and `y : ℝ`.
+`concreteGibbsData hH β` directly to:
+1. **`theorem_1_2a_concrete_eq52_trace_bound`**: Exact Eq. (5.2) asymmetric exponential spectral
+   moment bound `∑ w_{a,b} exp((β/2 + κ') |E_a - E_b|) ≤ 2 Re Tr(ρ_β W W(-i κ'))`.
+2. **`theorem_1_2a_concrete_eq53_opNorm_bound`**: Exact Eq. (5.3) trace norm bound
+   `Re Tr(ρ_β W W(-i κ')) ≤ ‖W‖_∞ ‖W(-i κ')‖_∞`.
+3. **`theorem_1_2a_concrete_eq54_r_local_bound`**: Exact Eq. (5.4) `r`-local generalized binomial
+   bound `‖W(-i κ')‖_∞ ≤ ‖W‖_∞ (1 - κ'/κ)^{-s_W/(r-1)}` and full finite-volume Theorem 1.2(a).
+4. **`lemma_6_1_concrete_wightman_commutator`**: Genuine operator-level Lemma 6.1 on `QubitOp N`:
+   `‖[V_x, A]‖_{β,W} ≤ 2 M_β(V_x) ‖(1 - P_{x,0}^{(β)}) A‖_{β,W} ≤ 2 M_β(V_x) ‖𝒮_x(A)‖_{β,W}`.
+5. **`prop_6_2_concrete_high_temp_glauber`**: Genuine operator-level Proposition 6.2 on `QubitOp N`:
+   `otocCW G A ≤ 12 (1 - β/(4κ))^{-2/(r-1)} Re (A | 𝒬̃^{(β)} A)_β^W`.
 -/
 
 namespace KrylovChaos
@@ -73,9 +69,7 @@ lemma heisenbergEvol_eigen_entry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
   rw [mul_right_comm, ← Complex.exp_add]
   congr 2; push_cast; ring
 
-/-- Symmetric imaginary-time strip-cosh identity on `QubitOp N`:
-`∑ a b, wightmanSpectralWeight hH β O a b * Real.cosh (2 * y * (E_a - E_b)) =
-  (1 / 2) * (‖O(i y)‖_{β,W}² + ‖O(-i y)‖_{β,W}²)`. -/
+/-- Symmetric imaginary-time strip-cosh identity on `QubitOp N`. -/
 theorem theorem_1_2a_concrete_strip_cosh {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β y : ℝ) (O : QubitOp N) :
     ∑ a : QubitIdx N, ∑ b : QubitIdx N,
@@ -419,9 +413,7 @@ lemma risingBinomCoeff_succ (α : ℝ) (k : ℕ) :
   field_simp [hk1, hkf]
 
 /-- Generalized negative-binomial series bound proved via finite-sum differentiation of
-`g_M(x) = (1 - x)^α * ∑_{k=0}^M c(α, k) x^k`:
-for every `α ≥ 0` and `0 ≤ q < 1`, the series `∑' k, risingBinomCoeff α k * q^k` is summable
-and bounded above by `(1 - q) ^ (-α)`. -/
+`g_M(x) = (1 - x)^α * ∑_{k=0}^M c(α, k) x^k`. -/
 lemma risingBinom_tsum_le_rpow {α q : ℝ} (hα : 0 ≤ α) (hq0 : 0 ≤ q) (hq1 : q < 1) :
     Summable (fun k : ℕ ↦ risingBinomCoeff α k * q ^ k) ∧
     (∑' k : ℕ, risingBinomCoeff α k * q ^ k) ≤ (1 - q) ^ (-α) := by
@@ -547,12 +539,9 @@ lemma risingBinom_tsum_le_rpow {α q : ℝ} (hα : 0 ≤ α) (hq0 : 0 ≤ q) (hq
   exact ⟨hsumm, hsumm.tsum_le_of_sum_range_le hpart_all⟩
 
 /-- **Theorem 1.2(a), Eq. (5.4) (Concrete `r`-Local Imaginary-Time Operator Norm Bound)**:
-For ANY `r`-local Hamiltonian `H = ∑ X ∈ E, h X` (`2 ≤ r`, `∀ X ∈ E, X.card ≤ r`,
-`∀ X, h X ∈ supportedOn X`, `hH : H.IsHermitian`, `∀ x, ∑_{X ∋ x} opNorm (h X) ≤ Jsite`,
-`0 < Jsite`), ANY `W ∈ supportedOn U₀` (`U₀.card ≤ sW`), and ANY `0 ≤ κ' < κ` where
-`κ = 1 / (2 * ((r - 1 : ℕ) : ℝ) * Jsite)`:
-`opNorm (heisenbergEvol hH (-(Complex.I * (κ' : ℂ))) W) ≤
-  opNorm W * (1 - κ' / κ) ^ (-((sW : ℝ) / ((r - 1 : ℕ) : ℝ)))`. -/
+For ANY `r`-local Hamiltonian `H = ∑ X ∈ E, h X` (`2 ≤ r`), `W ∈ supportedOn U₀` (`U₀.card ≤ sW`),
+and `0 ≤ κ' < κ = 1 / (2 (r - 1) Jsite)`:
+`opNorm (heisenbergEvol hH (-i κ') W) ≤ opNorm W * (1 - κ' / κ)^(-sW / (r - 1))`. -/
 theorem theorem_1_2a_concrete_eq54_r_local_norm_bound {N r sW : ℕ} (hr : 2 ≤ r)
     (E : Finset (Finset (Fin N))) (hcard : ∀ X ∈ E, X.card ≤ r)
     (h : Finset (Fin N) → QubitOp N) (hsupp : ∀ X, h X ∈ supportedOn X)
@@ -668,12 +657,7 @@ theorem theorem_1_2a_concrete_eq54_r_local_norm_bound {N r sW : ℕ} (hr : 2 ≤
     _ = opNorm W * ∑' k : ℕ, risingBinomCoeff α k * q ^ k := tsum_mul_left
     _ ≤ opNorm W * (1 - q) ^ (-α) := mul_le_mul_of_nonneg_left hrb.2 (opNorm_nonneg _)
 
-/-- **Concrete End-to-End Finite-Volume Theorem 1.2(a) (Eqs. 5.2–5.4 Combined)**:
-For ANY `r`-local Hamiltonian `H = ∑ X ∈ E, h X` (`2 ≤ r`) with site norm `≤ Jsite`, ANY inverse
-temperature `β : ℝ`, ANY Hermitian `W ∈ supportedOn U₀` (`U₀.card ≤ sW`), and ANY `0 ≤ κ' < κ`
-where `κ = 1 / (2 * (r - 1) * Jsite)`:
-`∑ a b, wightmanSpectralWeight hH β W a b * exp ((β / 2 + κ') * |E_a - E_b|) ≤
-  2 * (opNorm W) ^ 2 * (1 - κ' / κ) ^ (-((sW : ℝ) / ((r - 1 : ℕ) : ℝ)))`. -/
+/-- **Concrete End-to-End Finite-Volume Theorem 1.2(a) (Eqs. 5.2–5.4 Combined)**. -/
 theorem theorem_1_2a_concrete_eq54_r_local_bound {N r sW : ℕ} (hr : 2 ≤ r)
     (E : Finset (Finset (Fin N))) (hcard : ∀ X ∈ E, X.card ≤ r)
     (h : Finset (Fin N) → QubitOp N) (hsupp : ∀ X, h X ∈ supportedOn X)
@@ -704,5 +688,518 @@ theorem theorem_1_2a_concrete_eq54_r_local_bound {N r sW : ℕ} (hr : 2 ≤ r)
     _ = 2 * (opNorm W) ^ 2 * (1 - κ' / κ) ^ (-((sW : ℝ) / ((r - 1 : ℕ) : ℝ))) := by ring
 
 end AsymmetricEq52To54
+
+section ConcreteLemma61AndProp62
+
+/-- Hilbert–Schmidt norm squared equals the sum of squared Euclidean norms of columns. -/
+lemma hsNormSq_eq_sum_col_norm_sq {N : ℕ} (X : QubitOp N) :
+    hsNormSq X = ∑ j : QubitIdx N, ‖opToCLM X (WithLp.toLp 2 (Pi.single j (1 : ℂ)))‖ ^ 2 := by
+  have hcol : ∀ j : QubitIdx N,
+      ‖opToCLM X (WithLp.toLp 2 (Pi.single j (1 : ℂ)))‖ ^ 2 = ∑ i : QubitIdx N, ‖X i j‖ ^ 2 := by
+    intro j
+    rw [EuclideanSpace.norm_eq, Real.sq_sqrt (Finset.sum_nonneg fun i _ ↦ sq_nonneg _)]
+    apply Finset.sum_congr rfl; intro i _
+    have hentry : (opToCLM X (WithLp.toLp 2 (Pi.single j (1 : ℂ)))) i = X i j := by
+      simp only [opToCLM, LinearMap.coe_toContinuousLinearMap', LinearMap.coe_mk, AddHom.coe_mk,
+        WithLp.ofLp_toLp, Matrix.mulVec, dotProduct]
+      rw [Finset.sum_eq_single j]
+      · simp
+      · intro k _ hkj; simp [Pi.single_eq_of_ne hkj]
+      · intro hj; exact absurd (Finset.mem_univ j) hj
+    rw [hentry]
+  simp_rw [hcol]
+  unfold hsNormSq hsInner
+  simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply, Complex.re_sum]
+  rw [Finset.sum_comm]
+  apply Finset.sum_congr rfl; intro i _
+  apply Finset.sum_congr rfl; intro j _
+  rw [Complex.star_def, Complex.conj_mul', Complex.normSq_eq_norm_sq, Complex.ofReal_re]
+
+lemma hsNormSq_mul_le_opNorm_sq_left {N : ℕ} (B M : QubitOp N) :
+    hsNormSq (B * M) ≤ (opNorm B) ^ 2 * hsNormSq M := by
+  rw [hsNormSq_eq_sum_col_norm_sq (B * M), hsNormSq_eq_sum_col_norm_sq M, Finset.mul_sum]
+  apply Finset.sum_le_sum; intro j _
+  have hmul : opToCLM (B * M) (WithLp.toLp 2 (Pi.single j (1 : ℂ))) =
+      opToCLM B (opToCLM M (WithLp.toLp 2 (Pi.single j (1 : ℂ)))) := by
+    ext i
+    simp only [opToCLM, LinearMap.coe_toContinuousLinearMap', LinearMap.coe_mk, AddHom.coe_mk,
+      WithLp.ofLp_toLp, Matrix.mulVec_mulVec]
+  rw [hmul]
+  have hle : ‖opToCLM B (opToCLM M (WithLp.toLp 2 (Pi.single j (1 : ℂ))))‖ ≤
+      opNorm B * ‖opToCLM M (WithLp.toLp 2 (Pi.single j (1 : ℂ)))‖ :=
+    ContinuousLinearMap.le_opNorm (opToCLM B) _
+  calc ‖opToCLM B (opToCLM M (WithLp.toLp 2 (Pi.single j (1 : ℂ))))‖ ^ 2
+      ≤ (opNorm B * ‖opToCLM M (WithLp.toLp 2 (Pi.single j (1 : ℂ)))‖) ^ 2 :=
+        pow_le_pow_left₀ (norm_nonneg _) hle 2
+    _ = (opNorm B) ^ 2 * ‖opToCLM M (WithLp.toLp 2 (Pi.single j (1 : ℂ)))‖ ^ 2 := by ring
+
+lemma opNorm_conjTranspose_le {N : ℕ} (B : QubitOp N) : opNorm Bᴴ ≤ opNorm B := by
+  unfold opNorm
+  apply ContinuousLinearMap.opNorm_le_bound _ (opNorm_nonneg B)
+  intro v
+  by_cases hv : ‖opToCLM Bᴴ v‖ = 0
+  · rw [hv]; exact mul_nonneg (opNorm_nonneg B) (norm_nonneg v)
+  · have hpos : 0 < ‖opToCLM Bᴴ v‖ := lt_of_le_of_ne (norm_nonneg _) (Ne.symm hv)
+    have hadj : inner ℂ (opToCLM Bᴴ v) (opToCLM Bᴴ v) =
+        inner ℂ v (opToCLM B (opToCLM Bᴴ v)) := by
+      simp only [EuclideanSpace.inner_eq_star_dotProduct, dotProduct, opToCLM,
+        LinearMap.coe_toContinuousLinearMap', LinearMap.coe_mk, AddHom.coe_mk,
+        WithLp.ofLp_toLp, Matrix.mulVec, Matrix.conjTranspose_apply, Pi.star_apply,
+        star_sum, star_mul', star_star, Finset.sum_mul, Finset.mul_sum]
+      rw [Finset.sum_comm]
+      apply Finset.sum_congr rfl; intro i _
+      apply Finset.sum_congr rfl; intro j _
+      ring
+    have hsq : ‖opToCLM Bᴴ v‖ ^ 2 ≤ ‖v‖ * (opNorm B * ‖opToCLM Bᴴ v‖) := by
+      have h1 : ‖opToCLM Bᴴ v‖ ^ 2 = ‖inner ℂ (opToCLM Bᴴ v) (opToCLM Bᴴ v)‖ := by
+        rw [inner_self_eq_norm_sq_to_K]
+        simp [norm_pow, Complex.norm_real, Real.norm_eq_abs]
+      rw [h1, hadj]
+      have h2 := norm_inner_le_norm v (opToCLM B (opToCLM Bᴴ v))
+      have h3 := ContinuousLinearMap.le_opNorm (opToCLM B) (opToCLM Bᴴ v)
+      exact le_trans h2 (mul_le_mul_of_nonneg_left h3 (norm_nonneg v))
+    have hsq' : ‖opToCLM Bᴴ v‖ * ‖opToCLM Bᴴ v‖ ≤ (opNorm B * ‖v‖) * ‖opToCLM Bᴴ v‖ := by
+      nlinarith
+    exact le_of_mul_le_mul_right hsq' hpos
+
+lemma hsNormSq_conjTranspose {N : ℕ} (X : QubitOp N) : hsNormSq Xᴴ = hsNormSq X := by
+  unfold hsNormSq hsInner
+  rw [Matrix.conjTranspose_conjTranspose, Matrix.trace_mul_comm]
+
+lemma hsNormSq_mul_le_opNorm_sq_right {N : ℕ} (M B : QubitOp N) :
+    hsNormSq (M * B) ≤ (opNorm B) ^ 2 * hsNormSq M := by
+  rw [← hsNormSq_conjTranspose (M * B), Matrix.conjTranspose_mul]
+  have h1 := hsNormSq_mul_le_opNorm_sq_left Bᴴ Mᴴ
+  rw [hsNormSq_conjTranspose] at h1
+  have h2 : (opNorm Bᴴ) ^ 2 ≤ (opNorm B) ^ 2 :=
+    pow_le_pow_left₀ (opNorm_nonneg _) (opNorm_conjTranspose_le B) 2
+  exact le_trans h1 (mul_le_mul_of_nonneg_right h2 (hsNormSq_nonneg M))
+
+lemma singleSiteTrivialSubmodule_le_supportedOn_compl {N : ℕ} (x : Fin N) :
+    singleSiteTrivialSubmodule N x ≤ supportedOn ({x}ᶜ : Finset (Fin N)) := by
+  unfold singleSiteTrivialSubmodule
+  rw [Submodule.span_le]
+  rintro _ ⟨a, ha, rfl⟩
+  exact pauliString_mem_supportedOn a fun y hy ↦ by
+    have hyx : y = x := by
+      simp only [Finset.mem_compl, Finset.mem_singleton, not_not] at hy
+      exact hy
+    subst hyx; exact ha
+
+/-- **Concrete Operator-Level Lemma 6.1 (Wightman Single-Site Commutator Inequality on `QubitOp N`)**:
+For ANY `G : GibbsData N`, site `x : Fin N`, single-site operator `V_x ∈ supportedOn {x}`, and
+ANY operator `A : QubitOp N`, letting
+`M_β := max (opNorm (G.ρQuarter * V_x * G.ρQuarterInv)) (opNorm (G.ρQuarterInv * V_x * G.ρQuarter))`:
+1. `√(‖[V_x, A]‖_{β,W}²) ≤ 2 * M_β * √(‖(1 - P_{x,0}^{(β)}) A‖_{β,W}²)`,
+2. `√(‖(1 - P_{x,0}^{(β)}) A‖_{β,W}²) ≤ √(‖𝒮_x(A)‖_{β,W}²)`. -/
+theorem lemma_6_1_concrete_wightman_commutator {N : ℕ} (G : GibbsData N)
+    (x : Fin N) {V_x : QubitOp N} (hVx : V_x ∈ supportedOn {x}) (A : QubitOp N) :
+    let M_β : ℝ :=
+      max (opNorm (G.ρQuarter * V_x * G.ρQuarterInv))
+          (opNorm (G.ρQuarterInv * V_x * G.ρQuarter))
+    Real.sqrt (gibbsWightmanNormSq G (matComm V_x A)) ≤
+      2 * M_β * Real.sqrt (gibbsWightmanNormSq G (A - singleSiteWightmanProj G x A)) ∧
+    Real.sqrt (gibbsWightmanNormSq G (A - singleSiteWightmanProj G x A)) ≤
+      Real.sqrt (gibbsWightmanNormSq G (siteSizeOp x A)) := by
+  intro M_β
+  have hP_mem : singleSiteWightmanProj G x A ∈ singleSiteTrivialSubmodule N x := by
+    unfold singleSiteWightmanProj wightmanSubspaceProj
+    set jLin : QubitOp N →ₗ[ℂ] QubitOp N :=
+      { toFun := fun X ↦ jBeta G.ρQuarter X
+        map_add' := fun X Y ↦ by unfold jBeta; simp [Matrix.mul_add, Matrix.add_mul]
+        map_smul' := fun c X ↦ by unfold jBeta; simp [Matrix.mul_smul, Matrix.smul_mul] }
+    set K : Submodule ℂ (EuclideanSpace ℂ (QubitIdx N × QubitIdx N)) :=
+      (singleSiteTrivialSubmodule N x).map ((qubitOpToHS N).toLinearMap.comp jLin)
+    letI : K.HasOrthogonalProjection := Submodule.HasOrthogonalProjection.ofCompleteSpace K
+    have hmemK : (K.starProjection (qubitOpToHS N (jBeta G.ρQuarter A)) :
+        EuclideanSpace ℂ (QubitIdx N × QubitIdx N)) ∈ K := Submodule.coe_mem _
+    rcases Submodule.mem_map.mp hmemK with ⟨B, hB, hBeq⟩
+    have hEq : jBeta G.ρQuarterInv ((qubitOpToHS N).symm
+        (K.starProjection (qubitOpToHS N (jBeta G.ρQuarter A)))) = B := by
+      rw [← hBeq]
+      change jBeta G.ρQuarterInv ((qubitOpToHS N).symm (qubitOpToHS N (jBeta G.ρQuarter B))) = B
+      rw [LinearIsometryEquiv.symm_apply_apply]
+      unfold jBeta
+      calc G.ρQuarterInv * (G.ρQuarter * B * G.ρQuarter) * G.ρQuarterInv
+          = (G.ρQuarterInv * G.ρQuarter) * B * (G.ρQuarter * G.ρQuarterInv) := by
+            simp only [Matrix.mul_assoc]
+        _ = B := by rw [G.inv_left, G.inv_right, Matrix.one_mul, Matrix.mul_one]
+    rwa [hEq]
+  have hP_supp : singleSiteWightmanProj G x A ∈ supportedOn ({x}ᶜ : Finset (Fin N)) :=
+    singleSiteTrivialSubmodule_le_supportedOn_compl x hP_mem
+  have hcomm_P : matComm V_x (singleSiteWightmanProj G x A) = 0 := by
+    unfold matComm
+    rw [supportedOn_comm_of_disjoint (Finset.disjoint_compl_right (s := ({x} : Finset (Fin N))))
+      hVx hP_supp, sub_self]
+  set A' : QubitOp N := A - singleSiteWightmanProj G x A
+  have hcomm_eq : matComm V_x A = matComm V_x A' := by
+    have hlin : matComm V_x A' = matComm V_x A - matComm V_x (singleSiteWightmanProj G x A) := by
+      unfold A' matComm; rw [Matrix.mul_sub, Matrix.sub_mul]; abel
+    rw [hlin, hcomm_P, sub_zero]
+  have hj_comm : jBeta G.ρQuarter (matComm V_x A') =
+      (G.ρQuarter * V_x * G.ρQuarterInv) * jBeta G.ρQuarter A' -
+      jBeta G.ρQuarter A' * (G.ρQuarterInv * V_x * G.ρQuarter) := by
+    unfold jBeta matComm
+    rw [Matrix.mul_sub, Matrix.sub_mul]
+    congr 1
+    · calc G.ρQuarter * (V_x * A') * G.ρQuarter
+          = G.ρQuarter * V_x * (1 * A') * G.ρQuarter := by simp only [Matrix.one_mul, Matrix.mul_assoc]
+        _ = G.ρQuarter * V_x * ((G.ρQuarterInv * G.ρQuarter) * A') * G.ρQuarter := by rw [G.inv_left]
+        _ = (G.ρQuarter * V_x * G.ρQuarterInv) * (G.ρQuarter * A' * G.ρQuarter) := by
+            simp only [Matrix.mul_assoc]
+    · calc G.ρQuarter * (A' * V_x) * G.ρQuarter
+          = G.ρQuarter * A' * (1 * V_x) * G.ρQuarter := by simp only [Matrix.one_mul, Matrix.mul_assoc]
+        _ = G.ρQuarter * A' * ((G.ρQuarter * G.ρQuarterInv) * V_x) * G.ρQuarter := by rw [G.inv_right]
+        _ = (G.ρQuarter * A' * G.ρQuarter) * (G.ρQuarterInv * V_x * G.ρQuarter) := by
+            simp only [Matrix.mul_assoc]
+  have hnorm_eq : ∀ Z : QubitOp N,
+      Real.sqrt (gibbsWightmanNormSq G Z) = ‖qubitOpToHS N (jBeta G.ρQuarter Z)‖ := by
+    intro Z
+    unfold gibbsWightmanNormSq gibbsWightmanInner
+    rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter]
+    have h1 : (hsInner (jBeta G.ρQuarter Z) (jBeta G.ρQuarter Z)).re =
+        ‖qubitOpToHS N (jBeta G.ρQuarter Z)‖ ^ 2 := by
+      rw [← qubitOpToHS_inner, inner_self_eq_norm_sq_to_K]; simp
+    rw [h1, Real.sqrt_sq (norm_nonneg _)]
+  have hhs_norm : ∀ X : QubitOp N, ‖qubitOpToHS N X‖ = Real.sqrt (hsNormSq X) := by
+    intro X
+    have h1 : hsNormSq X = ‖qubitOpToHS N X‖ ^ 2 := by
+      unfold hsNormSq; rw [← qubitOpToHS_inner, inner_self_eq_norm_sq_to_K]; simp
+    rw [h1, Real.sqrt_sq (norm_nonneg _)]
+  have hpart1 : Real.sqrt (gibbsWightmanNormSq G (matComm V_x A)) ≤
+      2 * M_β * Real.sqrt (gibbsWightmanNormSq G A') := by
+    rw [hcomm_eq, hnorm_eq (matComm V_x A'), hnorm_eq A', hj_comm, map_sub]
+    have htri := norm_sub_le
+      (qubitOpToHS N ((G.ρQuarter * V_x * G.ρQuarterInv) * jBeta G.ρQuarter A'))
+      (qubitOpToHS N (jBeta G.ρQuarter A' * (G.ρQuarterInv * V_x * G.ρQuarter)))
+    rw [hhs_norm, hhs_norm, hhs_norm] at htri ⊢
+    have hL : Real.sqrt (hsNormSq ((G.ρQuarter * V_x * G.ρQuarterInv) * jBeta G.ρQuarter A')) ≤
+        opNorm (G.ρQuarter * V_x * G.ρQuarterInv) * Real.sqrt (hsNormSq (jBeta G.ρQuarter A')) := by
+      calc Real.sqrt (hsNormSq ((G.ρQuarter * V_x * G.ρQuarterInv) * jBeta G.ρQuarter A'))
+          ≤ Real.sqrt ((opNorm (G.ρQuarter * V_x * G.ρQuarterInv)) ^ 2 * hsNormSq (jBeta G.ρQuarter A')) :=
+            Real.sqrt_le_sqrt (hsNormSq_mul_le_opNorm_sq_left _ _)
+        _ = opNorm (G.ρQuarter * V_x * G.ρQuarterInv) * Real.sqrt (hsNormSq (jBeta G.ρQuarter A')) := by
+            rw [Real.sqrt_mul (sq_nonneg _), Real.sqrt_sq (opNorm_nonneg _)]
+    have hR : Real.sqrt (hsNormSq (jBeta G.ρQuarter A' * (G.ρQuarterInv * V_x * G.ρQuarter))) ≤
+        opNorm (G.ρQuarterInv * V_x * G.ρQuarter) * Real.sqrt (hsNormSq (jBeta G.ρQuarter A')) := by
+      calc Real.sqrt (hsNormSq (jBeta G.ρQuarter A' * (G.ρQuarterInv * V_x * G.ρQuarter)))
+          ≤ Real.sqrt ((opNorm (G.ρQuarterInv * V_x * G.ρQuarter)) ^ 2 * hsNormSq (jBeta G.ρQuarter A')) :=
+            Real.sqrt_le_sqrt (hsNormSq_mul_le_opNorm_sq_right _ _)
+        _ = opNorm (G.ρQuarterInv * V_x * G.ρQuarter) * Real.sqrt (hsNormSq (jBeta G.ρQuarter A')) := by
+            rw [Real.sqrt_mul (sq_nonneg _), Real.sqrt_sq (opNorm_nonneg _)]
+    have hML : opNorm (G.ρQuarter * V_x * G.ρQuarterInv) ≤ M_β := le_max_left _ _
+    have hMR : opNorm (G.ρQuarterInv * V_x * G.ρQuarter) ≤ M_β := le_max_right _ _
+    have hnn := Real.sqrt_nonneg (hsNormSq (jBeta G.ρQuarter A'))
+    nlinarith
+  have hpart2 : Real.sqrt (gibbsWightmanNormSq G A') ≤
+      Real.sqrt (gibbsWightmanNormSq G (siteSizeOp x A)) := by
+    apply Real.sqrt_le_sqrt
+    have hdist_eq : gibbsWightmanNormSq G A' = wightmanDistSq G (singleSiteTrivialSubmodule N x) A := by
+      have h1 := wightmanSubspaceProj_eq_distSq G (singleSiteTrivialSubmodule N x) A
+      have h2 : gibbsWightmanNormSq G A' =
+          (gibbsWightmanInner G A (A - singleSiteWightmanProj G x A)).re := by
+        have horth : (gibbsWightmanInner G (singleSiteWightmanProj G x A) A').re = 0 := by
+          unfold gibbsWightmanInner
+          rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter,
+            ← qubitOpToHS_inner]
+          set jLin : QubitOp N →ₗ[ℂ] QubitOp N :=
+            { toFun := fun X ↦ jBeta G.ρQuarter X
+              map_add' := fun X Y ↦ by unfold jBeta; simp [Matrix.mul_add, Matrix.add_mul]
+              map_smul' := fun c X ↦ by unfold jBeta; simp [Matrix.mul_smul, Matrix.smul_mul] }
+          set K : Submodule ℂ (EuclideanSpace ℂ (QubitIdx N × QubitIdx N)) :=
+            (singleSiteTrivialSubmodule N x).map ((qubitOpToHS N).toLinearMap.comp jLin)
+          letI : K.HasOrthogonalProjection := Submodule.HasOrthogonalProjection.ofCompleteSpace K
+          have hjP : qubitOpToHS N (jBeta G.ρQuarter (singleSiteWightmanProj G x A)) =
+              (K.starProjection (qubitOpToHS N (jBeta G.ρQuarter A)) :
+                EuclideanSpace ℂ (QubitIdx N × QubitIdx N)) := by
+            unfold singleSiteWightmanProj wightmanSubspaceProj
+            have hjinv : ∀ X, jBeta G.ρQuarter (jBeta G.ρQuarterInv X) = X := fun X ↦ by
+              unfold jBeta
+              calc G.ρQuarter * (G.ρQuarterInv * X * G.ρQuarterInv) * G.ρQuarter
+                  = (G.ρQuarter * G.ρQuarterInv) * X * (G.ρQuarterInv * G.ρQuarter) := by
+                    simp only [Matrix.mul_assoc]
+                _ = X := by rw [G.inv_right, G.inv_left, Matrix.one_mul, Matrix.mul_one]
+            rw [hjinv, LinearIsometryEquiv.apply_symm_apply]
+          have hjA' : qubitOpToHS N (jBeta G.ρQuarter A') =
+              qubitOpToHS N (jBeta G.ρQuarter A) -
+              (K.starProjection (qubitOpToHS N (jBeta G.ρQuarter A)) :
+                EuclideanSpace ℂ (QubitIdx N × QubitIdx N)) := by
+            have hsub : jBeta G.ρQuarter A' =
+                jBeta G.ρQuarter A - jBeta G.ρQuarter (singleSiteWightmanProj G x A) := by
+              unfold A' jBeta; rw [Matrix.mul_sub, Matrix.sub_mul]
+            rw [hsub, map_sub, hjP]
+          rw [hjP, hjA']
+          have hmem_orth : qubitOpToHS N (jBeta G.ρQuarter A) -
+              (K.starProjection (qubitOpToHS N (jBeta G.ρQuarter A)) :
+                EuclideanSpace ℂ (QubitIdx N × QubitIdx N)) ∈ Kᗮ :=
+            Submodule.sub_starProjection_mem_orthogonal _
+          rw [Submodule.inner_right_of_mem_orthogonal (Submodule.coe_mem _) hmem_orth, Complex.zero_re]
+        have hlin : gibbsWightmanNormSq G A' =
+            (gibbsWightmanInner G A A').re -
+            (gibbsWightmanInner G (singleSiteWightmanProj G x A) A').re := by
+          unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner A'
+          rw [Matrix.conjTranspose_sub, Matrix.mul_sub, Matrix.sub_mul, Matrix.sub_mul,
+            Matrix.trace_sub, Complex.sub_re]
+        linarith
+      rw [h2, ← h1]; rfl
+    rw [hdist_eq]
+    have hpt_mem : partialTraceSite x A ∈ singleSiteTrivialSubmodule N x := by
+      have hexp : A = ∑ a : Fin N → Fin 4,
+          (((1 / (2 : ℂ) ^ N) * (pauliString a * A).trace) • pauliString a) := by
+        have hcoeff : ∀ b : Fin N → Fin 4,
+            (pauliString b * (∑ a : Fin N → Fin 4,
+              (((1 / (2 : ℂ) ^ N) * (pauliString a * A).trace) • pauliString a))).trace =
+            (pauliString b * A).trace := by
+          intro b
+          simp only [Matrix.mul_sum, Matrix.mul_smul, Matrix.trace_sum, Matrix.trace_smul, smul_eq_mul]
+          rw [Finset.sum_eq_single b]
+          · rw [pauliString_trace_orth b b, if_pos rfl]
+            have h2N : ((2 : ℂ) ^ N) ≠ 0 := pow_ne_zero N (by norm_num)
+            field_simp [h2N]
+          · intro a _ hab; rw [pauliString_trace_orth b a, if_neg (Ne.symm hab), mul_zero]
+          · intro hb; exact absurd (Finset.mem_univ b) hb
+        have hdiff : ∀ b : Fin N → Fin 4,
+            (pauliString b * (A - ∑ a : Fin N → Fin 4,
+              (((1 / (2 : ℂ) ^ N) * (pauliString a * A).trace) • pauliString a))).trace = 0 := by
+          intro b; rw [Matrix.mul_sub, Matrix.trace_sub, hcoeff b, sub_self]
+        exact sub_eq_zero.mp (eq_zero_of_pauliString_trace_eq_zero _ hdiff)
+      conv_lhs => rw [hexp]
+      unfold partialTraceSite
+      have hlin : (1 / 4 : ℂ) • ∑ k : Fin 4,
+          pauliSite x k * (∑ a : Fin N → Fin 4,
+            (((1 / (2 : ℂ) ^ N) * (pauliString a * A).trace) • pauliString a)) * pauliSite x k =
+          ∑ a : Fin N → Fin 4, (((1 / (2 : ℂ) ^ N) * (pauliString a * A).trace) •
+            partialTraceSite x (pauliString a)) := by
+        simp only [Matrix.mul_sum, Matrix.sum_mul, Matrix.mul_smul, Matrix.smul_mul]
+        rw [Finset.sum_comm, Finset.smul_sum]
+        apply Finset.sum_congr rfl; intro a _
+        rw [← Finset.smul_sum, smul_comm]; rfl
+      rw [hlin]
+      apply Submodule.sum_mem; intro a _
+      apply Submodule.smul_mem
+      rw [partialTraceSite_pauliString]
+      split_ifs with hax
+      · exact Submodule.subset_span ⟨a, hax, rfl⟩
+      · exact Submodule.zero_mem _
+    unfold wightmanDistSq
+    apply csInf_le
+    · refine ⟨0, ?_⟩
+      rintro r ⟨B, _, rfl⟩
+      unfold gibbsWightmanNormSq gibbsWightmanInner
+      rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter]
+      exact hsNormSq_nonneg _
+    · exact ⟨partialTraceSite x A, hpt_mem, rfl⟩
+  exact ⟨hpart1, hpart2⟩
+
+/-- Conjugation by `gibbsRhoQuarter hH β` equals complex-time Heisenberg evolution by `±i β / 4`. -/
+lemma gibbsRhoQuarter_conj_eq_heisenbergEvol {N : ℕ} {H : QubitOp N}
+    (hH : H.IsHermitian) (β : ℝ) (V : QubitOp N) :
+    (concreteGibbsData hH β).ρQuarter * V * (concreteGibbsData hH β).ρQuarterInv =
+      heisenbergEvol hH (Complex.I * ((β / 4 : ℝ) : ℂ)) V ∧
+    (concreteGibbsData hH β).ρQuarterInv * V * (concreteGibbsData hH β).ρQuarter =
+      heisenbergEvol hH (-(Complex.I * ((β / 4 : ℝ) : ℂ))) V := by
+  have h1 : Complex.I * (Complex.I * ((β / 4 : ℝ) : ℂ)) = -((β / 4 : ℝ) : ℂ) := by
+    calc Complex.I * (Complex.I * ((β / 4 : ℝ) : ℂ))
+        = (Complex.I * Complex.I) * ((β / 4 : ℝ) : ℂ) := by ring
+      _ = (-1 : ℂ) * ((β / 4 : ℝ) : ℂ) := by rw [Complex.I_mul_I]
+      _ = -((β / 4 : ℝ) : ℂ) := by ring
+  have h2 : Complex.I * -(Complex.I * ((β / 4 : ℝ) : ℂ)) = ((β / 4 : ℝ) : ℂ) := by
+    calc Complex.I * -(Complex.I * ((β / 4 : ℝ) : ℂ))
+        = -(Complex.I * Complex.I) * ((β / 4 : ℝ) : ℂ) := by ring
+      _ = -(-1 : ℂ) * ((β / 4 : ℝ) : ℂ) := by rw [Complex.I_mul_I]
+      _ = ((β / 4 : ℝ) : ℂ) := by ring
+  have hZpos : 0 < gibbsPartitionFn hH β := gibbsPartitionFn_pos hH β
+  have hqpos : 0 < Real.sqrt (Real.sqrt (gibbsPartitionFn hH β)) :=
+    Real.sqrt_pos.mpr (Real.sqrt_pos.mpr hZpos)
+  constructor
+  · change gibbsRhoQuarter hH β * V * gibbsRhoQuarterInv hH β = _
+    unfold gibbsRhoQuarter gibbsRhoQuarterInv heisenbergEvol complexPropagator
+    simp only [Matrix.smul_mul, Matrix.mul_smul, smul_smul]
+    have hsc : ((Real.sqrt (Real.sqrt (gibbsPartitionFn hH β)))⁻¹ : ℂ) *
+        (Real.sqrt (Real.sqrt (gibbsPartitionFn hH β)) : ℂ) = 1 :=
+      inv_mul_cancel₀ (Complex.ofReal_ne_zero.mpr hqpos.ne')
+    rw [hsc, one_smul]
+    congr 2
+    · congr 1; funext e; rw [h1, Complex.ofReal_exp]; congr 1; push_cast; ring
+    · congr 1; funext e; rw [h2, Complex.ofReal_exp]; congr 1; push_cast; ring
+  · change gibbsRhoQuarterInv hH β * V * gibbsRhoQuarter hH β = _
+    unfold gibbsRhoQuarter gibbsRhoQuarterInv heisenbergEvol complexPropagator
+    simp only [Matrix.smul_mul, Matrix.mul_smul, smul_smul]
+    have hsc : (Real.sqrt (Real.sqrt (gibbsPartitionFn hH β)) : ℂ) *
+        ((Real.sqrt (Real.sqrt (gibbsPartitionFn hH β)))⁻¹ : ℂ) = 1 :=
+      mul_inv_cancel₀ (Complex.ofReal_ne_zero.mpr hqpos.ne')
+    rw [hsc, one_smul]
+    congr 2
+    · congr 1; funext e; rw [h2, Complex.ofReal_exp]; congr 1; push_cast; ring
+    · congr 1; funext e; rw [neg_neg, h1, Complex.ofReal_exp]; congr 1; push_cast; ring
+
+/-- **Concrete Operator-Level Proposition 6.2 (High-Temperature Glauber Decoupling on `QubitOp N`)**:
+For ANY `r`-local Hamiltonian `H = ∑ X ∈ E, h X` (`2 ≤ r`) with site norm `≤ Jsite`, `0 ≤ β`,
+and `β / 4 < κ = 1 / (2 * (r - 1) * Jsite)`, letting `G := concreteGibbsData hH β`, EVERY
+`A : QubitOp N` satisfies:
+`otocCW G A ≤ 12 * (1 - β / (4 * κ)) ^ (-2 / ((r - 1 : ℕ) : ℝ)) * Re (A | 𝒬̃^{(β)} A)_β^W`. -/
+theorem prop_6_2_concrete_high_temp_glauber {N r : ℕ} (hr : 2 ≤ r)
+    (E : Finset (Finset (Fin N))) (hcard : ∀ X ∈ E, X.card ≤ r)
+    (h : Finset (Fin N) → QubitOp N) (hsupp : ∀ X, h X ∈ supportedOn X)
+    (hH : (∑ X ∈ E, h X).IsHermitian)
+    {Jsite : ℝ} (hJ : 0 < Jsite)
+    (hsite : ∀ x : Fin N, ∑ X ∈ E.filter (fun X ↦ x ∈ X), opNorm (h X) ≤ Jsite)
+    {β : ℝ} (hβ0 : 0 ≤ β)
+    (hβ_lt : β / 4 < 1 / (2 * ((r - 1 : ℕ) : ℝ) * Jsite))
+    (A : QubitOp N) :
+    let G := concreteGibbsData hH β
+    let κ : ℝ := 1 / (2 * ((r - 1 : ℕ) : ℝ) * Jsite)
+    otocCW G A ≤
+      12 * (1 - β / (4 * κ)) ^ (-(2 : ℝ) / ((r - 1 : ℕ) : ℝ)) *
+        (gibbsWightmanInner G A (quantumGlauberGen G A)).re := by
+  intro G κ
+  have hr1_pos : (0 : ℝ) < ((r - 1 : ℕ) : ℝ) := by
+    have : 1 ≤ r - 1 := by omega
+    exact_mod_cast this
+  have hκ_pos : 0 < κ := by dsimp only [κ]; positivity
+  have hq_eq : (β / 4) / κ = β / (4 * κ) := by ring
+  have h1q_pos : 0 < 1 - β / (4 * κ) := by
+    have hlt : β / (4 * κ) < 1 := by
+      rw [← hq_eq]; exact (div_lt_one hκ_pos).mpr hβ_lt
+    linarith
+  have hM_bound : ∀ (x : Fin N) (α : Fin 3),
+      max (opNorm (G.ρQuarter * pauliSite x α.succ * G.ρQuarterInv))
+          (opNorm (G.ρQuarterInv * pauliSite x α.succ * G.ρQuarter)) ≤
+        (1 - β / (4 * κ)) ^ (-(1 : ℝ) / ((r - 1 : ℕ) : ℝ)) := by
+    intro x α
+    have hconj := gibbsRhoQuarter_conj_eq_heisenbergEvol hH β (pauliSite x α.succ)
+    rw [hconj.1, hconj.2]
+    have hneg_le : opNorm (heisenbergEvol hH (-(Complex.I * ((β / 4 : ℝ) : ℂ))) (pauliSite x α.succ)) ≤
+        (1 - β / (4 * κ)) ^ (-(1 : ℝ) / ((r - 1 : ℕ) : ℝ)) := by
+      have h54 := theorem_1_2a_concrete_eq54_r_local_norm_bound hr E hcard h hsupp hH hJ hsite
+        (U₀ := {x}) (sW := 1) (by simp) (pauliSite_mem_supportedOn x α) (by linarith) hβ_lt
+      have hop1 := opNorm_pauliSite_le x α
+      have hrp_nn : 0 ≤ (1 - (β / 4) / κ) ^ (-((1 : ℕ) : ℝ) / ((r - 1 : ℕ) : ℝ)) :=
+        (Real.rpow_pos_of_pos (by rwa [hq_eq]) _).le
+      calc opNorm (heisenbergEvol hH (-(Complex.I * ((β / 4 : ℝ) : ℂ))) (pauliSite x α.succ))
+          ≤ opNorm (pauliSite x α.succ) * (1 - (β / 4) / κ) ^ (-((1 : ℕ) : ℝ) / ((r - 1 : ℕ) : ℝ)) := h54
+        _ ≤ 1 * (1 - (β / 4) / κ) ^ (-((1 : ℕ) : ℝ) / ((r - 1 : ℕ) : ℝ)) :=
+            mul_le_mul_of_nonneg_right hop1 hrp_nn
+        _ = (1 - β / (4 * κ)) ^ (-(1 : ℝ) / ((r - 1 : ℕ) : ℝ)) := by
+            rw [one_mul, hq_eq]; simp
+    have hpos_eq : opNorm (heisenbergEvol hH (Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ)) ≤
+        opNorm (heisenbergEvol hH (-(Complex.I * ((β / 4 : ℝ) : ℂ))) (pauliSite x α.succ)) := by
+      have hVherm : (pauliSite x α.succ)ᴴ = pauliSite x α.succ := by
+        unfold pauliSite pauliString
+        rw [kronOp_conjTranspose]
+        congr 1; funext y
+        by_cases hy : y = x
+        · simp only [hy, Function.update_self]
+          fin_cases α <;> ext i j <;> fin_cases i <;> fin_cases j <;>
+            simp [pauliMat, pauliX, pauliY, pauliZ, Matrix.conjTranspose_apply, Complex.star_def]
+        · simp only [Function.update_of_ne hy]
+          ext i j; fin_cases i <;> fin_cases j <;>
+            simp [pauliMat, Matrix.conjTranspose_apply]
+      have hstar : (heisenbergEvol hH (-(Complex.I * ((β / 4 : ℝ) : ℂ))) (pauliSite x α.succ))ᴴ =
+          heisenbergEvol hH (Complex.I * ((β / 4 : ℝ) : ℂ)) (pauliSite x α.succ) := by
+        rw [← hconj.2, ← hconj.1]
+        rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hVherm, G.ρQuarter_herm]
+        have hinv_herm : G.ρQuarterInvᴴ = G.ρQuarterInv := by
+          change (gibbsRhoQuarterInv hH β)ᴴ = gibbsRhoQuarterInv hH β
+          unfold gibbsRhoQuarterInv hermFunc
+          simp only [Matrix.conjTranspose_smul, Matrix.conjTranspose_mul,
+            Matrix.conjTranspose_conjTranspose, Matrix.diagonal_conjTranspose, Matrix.mul_assoc]
+          congr 2
+          · simp [Complex.star_def]
+          · ext i j; simp [Matrix.diagonal_apply, Pi.star_apply, Complex.star_def]
+        rw [hinv_herm, Matrix.mul_assoc]
+      rw [← hstar]
+      exact opNorm_conjTranspose_le _
+    exact max_le (le_trans hpos_eq hneg_le) hneg_le
+  have hglauber_eq : (gibbsWightmanInner G A (quantumGlauberGen G A)).re =
+      ∑ x : Fin N, gibbsWightmanNormSq G (A - singleSiteWightmanProj G x A) := by
+    unfold quantumGlauberGen
+    simp only [LinearMap.sum_apply, LinearMap.sub_apply, LinearMap.id_apply]
+    have hsum : gibbsWightmanInner G A (∑ x : Fin N, (A - singleSiteWightmanProj G x A)) =
+        ∑ x : Fin N, gibbsWightmanInner G A (A - singleSiteWightmanProj G x A) := by
+      unfold gibbsWightmanInner wightmanInner
+      rw [Matrix.mul_sum, Matrix.trace_sum]
+    rw [hsum, Complex.re_sum]
+    apply Finset.sum_congr rfl; intro x _
+    have horth : (gibbsWightmanInner G (singleSiteWightmanProj G x A) (A - singleSiteWightmanProj G x A)).re = 0 := by
+      unfold gibbsWightmanInner
+      rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter,
+        ← qubitOpToHS_inner]
+      set jLin : QubitOp N →ₗ[ℂ] QubitOp N :=
+        { toFun := fun X ↦ jBeta G.ρQuarter X
+          map_add' := fun X Y ↦ by unfold jBeta; simp [Matrix.mul_add, Matrix.add_mul]
+          map_smul' := fun c X ↦ by unfold jBeta; simp [Matrix.mul_smul, Matrix.smul_mul] }
+      set K : Submodule ℂ (EuclideanSpace ℂ (QubitIdx N × QubitIdx N)) :=
+        (singleSiteTrivialSubmodule N x).map ((qubitOpToHS N).toLinearMap.comp jLin)
+      letI : K.HasOrthogonalProjection := Submodule.HasOrthogonalProjection.ofCompleteSpace K
+      have hjP : qubitOpToHS N (jBeta G.ρQuarter (singleSiteWightmanProj G x A)) =
+          (K.starProjection (qubitOpToHS N (jBeta G.ρQuarter A)) :
+            EuclideanSpace ℂ (QubitIdx N × QubitIdx N)) := by
+        unfold singleSiteWightmanProj wightmanSubspaceProj
+        have hjinv : ∀ X, jBeta G.ρQuarter (jBeta G.ρQuarterInv X) = X := fun X ↦ by
+          unfold jBeta
+          calc G.ρQuarter * (G.ρQuarterInv * X * G.ρQuarterInv) * G.ρQuarter
+              = (G.ρQuarter * G.ρQuarterInv) * X * (G.ρQuarterInv * G.ρQuarter) := by
+                simp only [Matrix.mul_assoc]
+            _ = X := by rw [G.inv_right, G.inv_left, Matrix.one_mul, Matrix.mul_one]
+        rw [hjinv, LinearIsometryEquiv.apply_symm_apply]
+      have hjA' : qubitOpToHS N (jBeta G.ρQuarter (A - singleSiteWightmanProj G x A)) =
+          qubitOpToHS N (jBeta G.ρQuarter A) -
+          (K.starProjection (qubitOpToHS N (jBeta G.ρQuarter A)) :
+            EuclideanSpace ℂ (QubitIdx N × QubitIdx N)) := by
+        have hsub : jBeta G.ρQuarter (A - singleSiteWightmanProj G x A) =
+            jBeta G.ρQuarter A - jBeta G.ρQuarter (singleSiteWightmanProj G x A) := by
+          unfold jBeta; rw [Matrix.mul_sub, Matrix.sub_mul]
+        rw [hsub, map_sub, hjP]
+      rw [hjP, hjA']
+      rw [Submodule.inner_right_of_mem_orthogonal (Submodule.coe_mem _)
+        (Submodule.sub_starProjection_mem_orthogonal _), Complex.zero_re]
+    have hlin : gibbsWightmanNormSq G (A - singleSiteWightmanProj G x A) =
+        (gibbsWightmanInner G A (A - singleSiteWightmanProj G x A)).re -
+        (gibbsWightmanInner G (singleSiteWightmanProj G x A) (A - singleSiteWightmanProj G x A)).re := by
+      unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
+      rw [Matrix.conjTranspose_sub, Matrix.mul_sub, Matrix.sub_mul, Matrix.sub_mul,
+        Matrix.trace_sub, Complex.sub_re]
+    linarith
+  rw [hglauber_eq, Finset.mul_sum]
+  unfold otocCW
+  apply Finset.sum_le_sum; intro x _
+  have hsq_exp : ((1 - β / (4 * κ)) ^ (-(1 : ℝ) / ((r - 1 : ℕ) : ℝ))) ^ 2 =
+      (1 - β / (4 * κ)) ^ (-(2 : ℝ) / ((r - 1 : ℕ) : ℝ)) := by
+    rw [← Real.rpow_natCast, ← Real.rpow_mul h1q_pos.le]
+    congr 1; push_cast; ring
+  have hterm : ∀ α : Fin 3,
+      gibbsWightmanNormSq G (matComm (pauliSite x α.succ) A) ≤
+        4 * (1 - β / (4 * κ)) ^ (-(2 : ℝ) / ((r - 1 : ℕ) : ℝ)) *
+          gibbsWightmanNormSq G (A - singleSiteWightmanProj G x A) := by
+    intro α
+    have h61 := (lemma_6_1_concrete_wightman_commutator G x (pauliSite_mem_supportedOn x α) A).1
+    have hM := hM_bound x α
+    have hnn_comm : 0 ≤ gibbsWightmanNormSq G (matComm (pauliSite x α.succ) A) := by
+      unfold gibbsWightmanNormSq gibbsWightmanInner
+      rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter]
+      exact hsNormSq_nonneg _
+    have hnn_A' : 0 ≤ gibbsWightmanNormSq G (A - singleSiteWightmanProj G x A) := by
+      unfold gibbsWightmanNormSq gibbsWightmanInner
+      rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter]
+      exact hsNormSq_nonneg _
+    have hle_sqrt : Real.sqrt (gibbsWightmanNormSq G (matComm (pauliSite x α.succ) A)) ≤
+        2 * (1 - β / (4 * κ)) ^ (-(1 : ℝ) / ((r - 1 : ℕ) : ℝ)) *
+          Real.sqrt (gibbsWightmanNormSq G (A - singleSiteWightmanProj G x A)) := by
+      refine le_trans h61 ?_
+      apply mul_le_mul_of_nonneg_right _ (Real.sqrt_nonneg _)
+      linarith
+    have hsq := pow_le_pow_left₀ (Real.sqrt_nonneg _) hle_sqrt 2
+    rw [Real.sq_sqrt hnn_comm, mul_pow, mul_pow, Real.sq_sqrt hnn_A', hsq_exp] at hsq
+    linarith
+  calc ∑ α : Fin 3, gibbsWightmanNormSq G (matComm (pauliSite x α.succ) A)
+      ≤ ∑ _α : Fin 3, (4 * (1 - β / (4 * κ)) ^ (-(2 : ℝ) / ((r - 1 : ℕ) : ℝ)) *
+          gibbsWightmanNormSq G (A - singleSiteWightmanProj G x A)) := Finset.sum_le_sum fun α _ ↦ hterm α
+    _ = 12 * (1 - β / (4 * κ)) ^ (-(2 : ℝ) / ((r - 1 : ℕ) : ℝ)) *
+          gibbsWightmanNormSq G (A - singleSiteWightmanProj G x A) := by
+        simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+        norm_num; ring
+
+end ConcreteLemma61AndProp62
 
 end KrylovChaos
