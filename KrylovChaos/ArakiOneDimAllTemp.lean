@@ -187,14 +187,14 @@ lemma biUnion_shellEdges_eq {N r : ℕ} (hr : 1 ≤ r)
     have hk₀_sub : X ⊆ oneDimBall N r x k₀ := Nat.find_spec hex
     have hk₀_le : k₀ ≤ N := Nat.find_min' hex (by rw [oneDimBall_full N r hr x]; exact Finset.subset_univ X)
     refine ⟨⟨k₀, Nat.lt_succ_of_le hk₀_le⟩, ?_⟩
-    cases hk : k₀ with
-    | zero =>
-      simp only [shellEdges, Finset.mem_filter]
-      exact ⟨hXE, hk ▸ hk₀_sub⟩
-    | succ m =>
-      simp only [shellEdges, Finset.mem_filter]
-      refine ⟨hXE, hk ▸ hk₀_sub, ?_⟩
-      exact Nat.find_min hex (by omega)
+    dsimp only
+    rcases Nat.eq_zero_or_pos k₀ with hk0 | hkpos
+    · rw [hk0] at hk₀_sub ⊢
+      exact Finset.mem_filter.mpr ⟨hXE, hk₀_sub⟩
+    · obtain ⟨m, hm⟩ := Nat.exists_eq_succ_of_ne_zero (by omega : k₀ ≠ 0)
+      rw [hm] at hk₀_sub ⊢
+      refine Finset.mem_filter.mpr ⟨hXE, hk₀_sub, ?_⟩
+      exact Nat.find_min hex (by dsimp only [k₀] at hm; omega)
 
 /-- Exact shell partition of the Hamiltonian: `∑ X ∈ E, h X = ∑ k : Fin (N + 1), shellOp E h r x k.val`. -/
 lemma sum_h_eq_sum_shellOp {N r : ℕ} (hr : 1 ≤ r)
@@ -341,12 +341,22 @@ lemma adPowMat_sum_eq_sum_iterShellComm {N : ℕ} (W : Fin (N + 1) → QubitOp N
     have hcomm_sum : matComm (∑ k : Fin (N + 1), W k) (∑ w : Fin m → Fin (N + 1), iterShellComm W w O) =
         ∑ p : (Fin m → Fin (N + 1)) × Fin (N + 1), matComm (W p.2) (iterShellComm W p.1 O) := by
       unfold matComm
-      rw [Finset.sum_mul, Finset.mul_sum, ← Finset.sum_sub_distrib]
-      trans ∑ k : Fin (N + 1), ∑ w : Fin m → Fin (N + 1),
-          (W k * iterShellComm W w O - iterShellComm W w O * W k)
-      · apply Finset.sum_congr rfl; intro k _
-        rw [Finset.mul_sum, Finset.sum_mul, ← Finset.sum_sub_distrib]
-      · rw [Finset.sum_comm, ← Fintype.sum_prod_type]
+      calc (∑ k : Fin (N + 1), W k) * (∑ w : Fin m → Fin (N + 1), iterShellComm W w O) -
+              (∑ w : Fin m → Fin (N + 1), iterShellComm W w O) * (∑ k : Fin (N + 1), W k)
+          = (∑ k : Fin (N + 1), ∑ w : Fin m → Fin (N + 1), W k * iterShellComm W w O) -
+            (∑ k : Fin (N + 1), ∑ w : Fin m → Fin (N + 1), iterShellComm W w O * W k) := by
+              congr 1
+              · rw [Finset.sum_mul]; apply Finset.sum_congr rfl; intro k _; rw [Finset.mul_sum]
+              · rw [Finset.mul_sum]; apply Finset.sum_congr rfl; intro k _; rw [Finset.sum_mul]
+        _ = ∑ k : Fin (N + 1), ∑ w : Fin m → Fin (N + 1),
+              (W k * iterShellComm W w O - iterShellComm W w O * W k) := by
+              rw [← Finset.sum_sub_distrib]
+              apply Finset.sum_congr rfl; intro k _; rw [← Finset.sum_sub_distrib]
+        _ = ∑ w : Fin m → Fin (N + 1), ∑ k : Fin (N + 1),
+              (W k * iterShellComm W w O - iterShellComm W w O * W k) := Finset.sum_comm
+        _ = ∑ p : (Fin m → Fin (N + 1)) × Fin (N + 1),
+              (W p.2 * iterShellComm W p.1 O - iterShellComm W p.1 O * W p.2) := by
+              rw [← Fintype.sum_prod_type]
     rw [hcomm_sum]
     refine Fintype.sum_equiv (Equiv.ofBijective (fun p : (Fin m → Fin (N + 1)) × Fin (N + 1) ↦ Fin.snoc p.1 p.2)
       ⟨fun p₁ p₂ heq ↦ by
@@ -605,8 +615,8 @@ lemma araki1D_series_summable_and_le {a : ℝ} (ha : 0 ≤ a) :
         _ = a ^ k / (k.factorial : ℝ) * (a ^ (m - k) * (k + 1 : ℝ) ^ (m - k) / ((m - k).factorial : ℝ)) := by ring
     let g : ℕ × ℕ → ℝ := fun p ↦
       (a ^ p.1 / (p.1.factorial : ℝ)) * ((a * (p.1 + 1 : ℝ)) ^ p.2 / (p.2.factorial : ℝ))
-    let T : Finset (ℕ × ℕ) := (Finset.range M).sigma (fun m ↦ Finset.range (m + 1)) |>.image
-      (fun p ↦ (p.2, p.1 - p.2))
+    let T : Finset (ℕ × ℕ) :=
+      ((Finset.range M).sigma (fun m ↦ Finset.range (m + 1))).image (fun p ↦ (p.2, p.1 - p.2))
     have hsum_eq_T : ∑ m ∈ Finset.range M, f m = ∑ p ∈ T, g p := by
       have h1 : ∑ m ∈ Finset.range M, f m =
           ∑ p ∈ (Finset.range M).sigma (fun m ↦ Finset.range (m + 1)), g (p.2, p.1 - p.2) := by
@@ -758,7 +768,7 @@ theorem heisenbergEvol_1d_all_temp_bound {N r : ℕ} (hr : 1 ≤ r)
   have hhas_clm := hhas.map φ φ.continuous
   calc opNorm (heisenbergEvol hH z O)
       = ‖∑' m : ℕ, opToCLM (((Complex.I * z) ^ m / (m.factorial : ℂ)) • adPowMat (∑ X ∈ E, h X) m O)‖ := by
-        unfold opNorm; rw [hhas_clm.tsum_eq]
+        unfold opNorm; rw [← hhas_clm.tsum_eq]
     _ ≤ ∑' m : ℕ, opNorm (((Complex.I * z) ^ m / (m.factorial : ℂ)) • adPowMat (∑ X ∈ E, h X) m O) :=
         norm_tsum_le_tsum_norm hsumm_norm
     _ ≤ ∑' m : ℕ, opNorm O * f m :=

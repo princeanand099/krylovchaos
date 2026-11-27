@@ -203,7 +203,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
             have hnn : 0 ≤ β * opNorm (h Z) := mul_nonneg hβ0 (opNorm_nonneg _)
             calc β * opNorm (h Z) * (Real.exp 1 * Real.exp (2 * c * (Z.card : ℝ)))
                 ≤ β * opNorm (h Z) * Real.exp 2 := mul_le_mul_of_nonneg_left hexp2 hnn
-          · simp only [zero_mul, le_refl]
+          · rw [zero_mul]
         · dsimp only [u2]; split_ifs with hZEX
           · have h2c : 2 * c * (Z.card : ℝ) ≤ (kr : ℝ) / (r : ℝ) := by
               dsimp only [c]
@@ -216,7 +216,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
               rw [← Real.exp_add]; exact Real.exp_le_exp.mpr (by linarith)
             have hnn : 0 ≤ Λ₀' * opNorm (xOp Z) := mul_nonneg hΛ_pos.le (opNorm_nonneg _)
             exact mul_le_mul_of_nonneg_left hexp2 hnn
-          · simp only [zero_mul, le_refl]
+          · rw [zero_mul]
       have hsum := Finset.sum_le_sum hterm_le
       rw [Finset.sum_add_distrib] at hsum
       have hsumE : ∑ Z ∈ E_tot.filter (fun Z ↦ y ∈ Z), (if Z ∈ E then β * opNorm (h Z) * Real.exp 2 else 0) ≤
