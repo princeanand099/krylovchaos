@@ -494,8 +494,12 @@ lemma hasDerivAt_secTan (k : ℕ) {t : ℝ} (hcos : Real.cos t ≠ 0) :
     have htan : HasDerivAt (fun x ↦ (Real.tan x) ^ (k + 1))
         (((k + 1 : ℕ) : ℝ) * (Real.tan t) ^ k * (Real.cos t ^ 2)⁻¹) t := by
       have h1 := (Real.hasDerivAt_tan hcos).pow (k + 1)
-      convert h1 using 1; ring
+      convert h1 using 1
+      simp only [Nat.add_sub_cancel]; ring
     have hmul := hsec.mul htan
+    have hfun : secTan (k + 1) = (fun x ↦ (Real.cos x)⁻¹) * (fun x ↦ (Real.tan x) ^ (k + 1)) := by
+      funext x; simp [secTan]
+    rw [hfun]
     convert hmul using 1
     simp only [Nat.add_sub_cancel, secTan, Real.tan_eq_sin_div_cos]
     have hsc := Real.sin_sq_add_cos_sq t
@@ -523,8 +527,7 @@ lemma jacobiMat_pow_eq_zero_of_gt {D : ℕ} (b : ℕ → ℝ) (m : ℕ) :
     · rw [ih i k hk, zero_mul]
     · have hkj : k.1 + 1 < j.1 := by omega
       have hJ : jacobiMat D b k j = 0 := by
-        unfold jacobiMat Matrix.of
-        simp only [Matrix.of_apply]
+        simp only [jacobiMat, Matrix.of_apply]
         have h1 : ¬(j.1 = k.1 + 1) := by omega
         have h2 : ¬(k.1 = j.1 + 1) := by omega
         simp [h1, h2]
@@ -547,8 +550,7 @@ lemma jacobiMat_pow_eq_zero_of_odd_parity {D : ℕ} (b : ℕ → ℝ) (m : ℕ) 
     · have hodd' : (i.1 + k.1 + m) % 2 = 1 := by omega
       rw [ih i k hodd', zero_mul]
     · have hJ : jacobiMat D b k j = 0 := by
-        unfold jacobiMat Matrix.of
-        simp only [Matrix.of_apply]
+        simp only [jacobiMat, Matrix.of_apply]
         have h1 : ¬(j.1 = k.1 + 1) := fun h ↦ hadj (Or.inl h)
         have h2 : ¬(k.1 = j.1 + 1) := fun h ↦ hadj (Or.inr h)
         simp [h1, h2]
@@ -588,6 +590,7 @@ theorem iteratedDeriv_inv_cos_eq_jacobi_sum (m D : ℕ) (hD : m < D) :
       convert h1 using 1
       ext x; simp [Finset.sum_apply]
     rw [hderiv_sum.deriv]
+    -- Match with `∑ j : Fin D, ((J^m * J) 0 j) * secTan j t`
     set J := jacobiMat D (fun h ↦ (h : ℝ))
     have hmul_sum : ∀ k : Fin D,
         (J ^ m) ⟨0, by omega⟩ k *
@@ -598,9 +601,10 @@ theorem iteratedDeriv_inv_cos_eq_jacobi_sum (m D : ℕ) (hD : m < D) :
       · have hz : (J ^ m) ⟨0, by omega⟩ k = 0 := jacobiMat_pow_eq_zero_of_gt _ m ⟨0, by omega⟩ k (by simpa using hkm)
         simp [hz]
       · have hk_lt : k.1 + 1 < D := by omega
+        -- Split `J k j`: nonzero only at `j = k + 1` (value `k + 1`) and, if `k ≥ 1`, `j = k - 1` (value `k`)
         by_cases hk0 : k.1 = 0
         · rw [Finset.sum_eq_single ⟨1, by omega⟩]
-          · simp [J, jacobiMat, hk0]; ring
+          · simp [J, jacobiMat, hk0]
           · intro j _ hj
             have hjne : j.1 ≠ 1 := fun h ↦ hj (Fin.ext h)
             have hJ0 : J k j = 0 := by
@@ -628,8 +632,7 @@ theorem iteratedDeriv_inv_cos_eq_jacobi_sum (m D : ℕ) (hD : m < D) :
             have h1 : ¬(j₂.1 = k.1 + 1) := by dsimp [j₂]; omega
             have h2 : k.1 = j₂.1 + 1 := by dsimp [j₂]; omega
             simp only [J, jacobiMat, Matrix.of_apply, h1, ↓reduceIte, h2]
-            have : j₂.1 + 1 = k.1 := h2.symm
-            rw [this]
+            rw [← h2]
           rw [hJ1, hJ2]
           dsimp [j₁, j₂]; ring
     simp_rw [hmul_sum]
@@ -650,7 +653,7 @@ theorem iteratedDeriv_inv_cos_zero (m : ℕ) :
   · intro k _ hk
     have hk0 : k.1 ≠ 0 := fun h ↦ hk (Fin.ext h)
     have htan0 : (Real.tan 0) ^ k.1 = 0 := by rw [Real.tan_zero]; exact zero_pow hk0
-    simp [secTan, htan0]
+    rw [secTan, htan0, mul_zero, mul_zero]
   · intro h; exact absurd (Finset.mem_univ _) h
 
 /-- Scaling of `jacobiMat`: `jacobiMat D (fun h ↦ α * h) = α • jacobiMat D (fun h ↦ h)`. -/
@@ -704,6 +707,8 @@ lemma sec_cos_leibniz_zero (m : ℕ) :
       (m.choose k : ℝ) * iteratedDeriv k (fun x ↦ (Real.cos x)⁻¹) 0 *
         iteratedDeriv (m - k) Real.cos 0 =
     if m = 0 then 1 else 0 := by
+  -- Prove by induction on `n` that `iteratedDeriv n (fun x ↦ (Real.cos x)⁻¹ * Real.cos x) t`
+  -- equals the Leibniz sum on `Ioo (-π/2) (π/2)`!
   have hleib : ∀ n : ℕ, ∀ t ∈ Set.Ioo (-(Real.pi / 2)) (Real.pi / 2),
       iteratedDeriv n (fun x ↦ (Real.cos x)⁻¹ * Real.cos x) t =
         ∑ k ∈ Finset.range (n + 1),
@@ -737,7 +742,9 @@ lemma sec_cos_leibniz_zero (m : ℕ) :
           have hs := HasDerivAt.sum (u := Finset.univ) (fun (j : Fin (k + 1)) _ ↦
             (hasDerivAt_secTan j.1 hcos).const_mul (((jacobiMat (k + 1) (fun h ↦ (h : ℝ))) ^ k) ⟨0, Nat.succ_pos k⟩ j))
           have h2 : HasDerivAt (fun x ↦ ∑ j : Fin (k + 1),
-              ((jacobiMat (k + 1) (fun h ↦ (h : ℝ))) ^ k) ⟨0, Nat.succ_pos k⟩ j * secTan j.1 x) _ t := by
+              ((jacobiMat (k + 1) (fun h ↦ (h : ℝ))) ^ k) ⟨0, Nat.succ_pos k⟩ j * secTan j.1 x)
+              (∑ j : Fin (k + 1), ((jacobiMat (k + 1) (fun h ↦ (h : ℝ))) ^ k) ⟨0, Nat.succ_pos k⟩ j *
+                (((j.1 + 1 : ℕ) : ℝ) * secTan (j.1 + 1) t + (j.1 : ℝ) * secTan (j.1 - 1) t)) t := by
             convert hs using 1; ext x; simp [Finset.sum_apply]
           exact h2.differentiableAt
         have hda' : DifferentiableAt ℝ (iteratedDeriv k (fun y ↦ (Real.cos y)⁻¹)) t :=
@@ -770,7 +777,7 @@ lemma sec_cos_leibniz_zero (m : ℕ) :
               iteratedDeriv (n - k + 1) Real.cos t)) t := by
         have h1 := HasDerivAt.sum (u := Finset.range (n + 1)) (fun k _ ↦ by
           have hd := ((hdiff_sec k).const_mul (n.choose k : ℝ)).mul (hdiff_cos (n - k))
-          convert hd using 1; ring)
+          convert hd using 1)
         convert h1 using 1
         ext x; simp [Finset.sum_apply]
       rw [hsum_d.deriv, Finset.sum_add_distrib]
@@ -779,12 +786,14 @@ lemma sec_cos_leibniz_zero (m : ℕ) :
       have h1 : (∑ k ∈ Finset.range (n + 1), (n.choose k : ℝ) * S (k + 1) * C (n - k)) =
           ∑ k ∈ Finset.range (n + 2),
             (if k = 0 then (0 : ℝ) else (n.choose (k - 1) : ℝ) * S k * C (n + 1 - k)) := by
+        symm
         rw [Finset.sum_range_succ']
         simp only [↓reduceIte, add_zero, Nat.add_eq_zero_iff, one_ne_zero, and_false,
           Nat.add_sub_cancel, Nat.succ_sub_succ_eq_sub]
       have h2 : (∑ k ∈ Finset.range (n + 1), (n.choose k : ℝ) * S k * C (n - k + 1)) =
           ∑ k ∈ Finset.range (n + 2),
             (if k = n + 1 then (0 : ℝ) else (n.choose k : ℝ) * S k * C (n + 1 - k)) := by
+        symm
         rw [Finset.sum_range_succ]
         simp only [↓reduceIte, add_zero]
         apply Finset.sum_congr rfl; intro k hk
@@ -796,15 +805,22 @@ lemma sec_cos_leibniz_zero (m : ℕ) :
       apply Finset.sum_congr rfl; intro k hk
       have hk_le : k ≤ n + 1 := Nat.lt_succ_iff.mp (Finset.mem_range.mp hk)
       by_cases hk0 : k = 0
-      · subst hk0; simp
+      · subst hk0
+        simp only [↓reduceIte, Nat.succ_ne_zero, zero_add, Nat.choose_zero_right, Nat.cast_one,
+          one_mul, Nat.sub_zero]
+        rfl
       · by_cases hkn1 : k = n + 1
-        · subst hkn1; simp
+        · subst hkn1
+          simp only [Nat.succ_ne_zero, ↓reduceIte, add_zero, Nat.add_sub_cancel, Nat.choose_self,
+            Nat.cast_one, one_mul, Nat.sub_self]
+          rfl
         · rw [if_neg hk0, if_neg hkn1]
           have hchoose : ((n + 1).choose k : ℝ) = (n.choose (k - 1) : ℝ) + (n.choose k : ℝ) := by
             have hk_eq : k = (k - 1) + 1 := by omega
-            conv_lhs => rw [hk_eq, Nat.choose_succ_succ]
-            rw [← hk_eq]; push_cast; ring
-          rw [hchoose]; ring
+            have hnat : (n + 1).choose k = n.choose (k - 1) + n.choose k := by
+              conv_lhs => rw [hk_eq, Nat.choose_succ_succ, ← hk_eq]
+            exact_mod_cast hnat
+          rw [hchoose]; dsimp only [S, C]; ring
   have h0 : (0 : ℝ) ∈ Set.Ioo (-(Real.pi / 2)) (Real.pi / 2) :=
     ⟨by linarith [Real.pi_pos], by linarith [Real.pi_pos]⟩
   rw [← hleib m 0 h0]
@@ -823,7 +839,9 @@ lemma sec_cos_leibniz_zero (m : ℕ) :
     rw [iteratedDeriv_succ']
     have hconst : deriv (fun _ : ℝ ↦ (1 : ℝ)) = fun _ ↦ (0 : ℝ) := by
       funext x; exact deriv_const x (1 : ℝ)
-    rw [hconst, iteratedDeriv_const_zero]
+    rw [hconst]
+    change iteratedDeriv m (0 : ℝ → ℝ) 0 = 0
+    exact iteratedDeriv_const_zero
 
 /-- Self-contained Cauchy product of two absolutely summable real series. -/
 private lemma real_cauchy_product_tsum (f g : ℕ → ℝ)
@@ -836,6 +854,7 @@ private lemma real_cauchy_product_tsum (f g : ℕ → ℝ)
       (fun N : ℕ ↦ (∑ k ∈ Finset.range N, f k) * (∑ j ∈ Finset.range N, g j))
       Filter.atTop (nhds ((∑' n, f n) * (∑' n, g n))) :=
     hf'.hasSum.tendsto_sum_nat.mul hg'.hasSum.tendsto_sum_nat
+  -- Bound the difference between `(∑_{k<N} f k)(∑_{j<N} g j)` and `∑_{m<N} ∑_{k≤m} f k g (m-k)`
   set F : ℝ := ∑' n, |f n|
   set G : ℝ := ∑' n, |g n|
   have hF_nn : 0 ≤ F := tsum_nonneg (fun _ ↦ abs_nonneg _)
@@ -846,6 +865,7 @@ private lemma real_cauchy_product_tsum (f g : ℕ → ℝ)
       F * (G - ∑ j ∈ Finset.range (N / 2), |g j|) +
       (F - ∑ k ∈ Finset.range (N / 2), |f k|) * G := by
     intro N
+    -- Rewrite both sums over `Finset.range N ×ˢ Finset.range N`
     have hprod_eq : (∑ k ∈ Finset.range N, f k) * (∑ j ∈ Finset.range N, g j) =
         ∑ p ∈ Finset.range N ×ˢ Finset.range N, f p.1 * g p.2 := by
       rw [Finset.sum_product, Finset.sum_mul]
@@ -880,27 +900,28 @@ private lemma real_cauchy_product_tsum (f g : ℕ → ℝ)
         (fun p : ℕ × ℕ ↦ p.1 + p.2 < N) (fun p ↦ f p.1 * g p.2)
       linarith
     rw [hsub]
-    have htri : |∑ p ∈ (Finset.range N ×ˢ Finset.range N).filter (fun p ↦ ¬(p.1 + p.2 < N)), f p.1 * g p.2| ≤
-        ∑ p ∈ (Finset.range N ×ˢ Finset.range N).filter (fun p ↦ ¬(p.1 + p.2 < N)), |f p.1| * |g p.2| := by
-      calc |∑ p ∈ _, f p.1 * g p.2|
-          ≤ ∑ p ∈ _, |f p.1 * g p.2| := Finset.abs_sum_le_sum_abs _ _
-        _ = ∑ p ∈ _, |f p.1| * |g p.2| := by simp_rw [abs_mul]
-    set S₁ := Finset.range N ×ˢ (Finset.range N \ Finset.range (N / 2))
-    set S₂ := (Finset.range N \ Finset.range (N / 2)) ×ˢ Finset.range N
-    have hcov : (Finset.range N ×ˢ Finset.range N).filter (fun p ↦ ¬(p.1 + p.2 < N)) ⊆ S₁ ∪ S₂ := by
+    set T : Finset (ℕ × ℕ) := (Finset.range N ×ˢ Finset.range N).filter (fun p ↦ ¬(p.1 + p.2 < N))
+    have htri : |∑ p ∈ T, f p.1 * g p.2| ≤ ∑ p ∈ T, |f p.1| * |g p.2| := by
+      calc |∑ p ∈ T, f p.1 * g p.2|
+          ≤ ∑ p ∈ T, |f p.1 * g p.2| := Finset.abs_sum_le_sum_abs _ _
+        _ = ∑ p ∈ T, |f p.1| * |g p.2| := by simp_rw [abs_mul]
+    set S₁ : Finset (ℕ × ℕ) := Finset.range N ×ˢ (Finset.range N \ Finset.range (N / 2))
+    set S₂ : Finset (ℕ × ℕ) := (Finset.range N \ Finset.range (N / 2)) ×ˢ Finset.range N
+    have hcov : T ⊆ S₁ ∪ S₂ := by
       intro ⟨k, j⟩ hp
-      simp only [Finset.mem_filter, Finset.mem_product, Finset.mem_range, not_lt] at hp
+      simp only [T, Finset.mem_filter, Finset.mem_product, Finset.mem_range, not_lt] at hp
       simp only [S₁, S₂, Finset.mem_union, Finset.mem_product, Finset.mem_sdiff, Finset.mem_range]
       by_cases hj : j < N / 2
       · right; refine ⟨⟨hp.1.1, by omega⟩, hp.1.2⟩
       · left; refine ⟨hp.1.1, ⟨hp.1.2, hj⟩⟩
-    have hle1 : ∑ p ∈ (Finset.range N ×ˢ Finset.range N).filter (fun p ↦ ¬(p.1 + p.2 < N)), |f p.1| * |g p.2| ≤
+    have hle1 : ∑ p ∈ T, |f p.1| * |g p.2| ≤
         (∑ p ∈ S₁, |f p.1| * |g p.2|) + (∑ p ∈ S₂, |f p.1| * |g p.2|) := by
-      calc ∑ p ∈ _, |f p.1| * |g p.2|
-          ≤ ∑ p ∈ S₁ ∪ S₂, |f p.1| * |g p.2| :=
-            Finset.sum_le_sum_of_subset_of_nonneg hcov (fun _ _ _ ↦ by positivity)
-        _ ≤ (∑ p ∈ S₁, |f p.1| * |g p.2|) + (∑ p ∈ S₂, |f p.1| * |g p.2|) :=
-            Finset.sum_union_le (fun _ ↦ by positivity)
+      have hunion : ∑ p ∈ S₁ ∪ S₂, |f p.1| * |g p.2| ≤
+          (∑ p ∈ S₁, |f p.1| * |g p.2|) + (∑ p ∈ S₂, |f p.1| * |g p.2|) := by
+        have h1 := Finset.sum_union_inter (s₁ := S₁) (s₂ := S₂) (f := fun p : ℕ × ℕ ↦ |f p.1| * |g p.2|)
+        have h2 : 0 ≤ ∑ p ∈ S₁ ∩ S₂, |f p.1| * |g p.2| := Finset.sum_nonneg fun _ _ ↦ by positivity
+        linarith
+      exact le_trans (Finset.sum_le_sum_of_subset_of_nonneg hcov (fun _ _ _ ↦ by positivity)) hunion
     have hS1_eq : ∑ p ∈ S₁, |f p.1| * |g p.2| =
         (∑ k ∈ Finset.range N, |f k|) * (∑ j ∈ Finset.range N \ Finset.range (N / 2), |g j|) := by
       rw [Finset.sum_product, Finset.sum_mul]; apply Finset.sum_congr rfl; intro k _; rw [Finset.mul_sum]
@@ -931,6 +952,7 @@ private lemma real_cauchy_product_tsum (f g : ℕ → ℝ)
       exact mul_le_mul hsub_f hG_le (Finset.sum_nonneg fun _ _ ↦ abs_nonneg _)
         (by linarith [hf.sum_le_tsum (Finset.range (N / 2)) (fun _ _ ↦ abs_nonneg _)])
     linarith
+  -- Show the RHS bound tends to 0 as `N → ∞`
   have hhalf_atTop : Filter.Tendsto (fun N : ℕ ↦ N / 2) Filter.atTop Filter.atTop := by
     rw [Filter.tendsto_atTop_atTop]
     intro b; exact ⟨2 * b, fun n hn ↦ by omega⟩
@@ -958,6 +980,7 @@ private lemma real_cauchy_product_tsum (f g : ℕ → ℝ)
       Filter.atTop (nhds ((∑' n, f n) * (∑' n, g n))) := by
     have h1 := hprod_tend.sub hdiff_zero
     simpa using h1
+  -- Also the Cauchy product series is summable (bounded by `F * G`), so its `tsum` equals its limit!
   have hcauchy_summ : Summable (fun m : ℕ ↦ ∑ k ∈ Finset.range (m + 1), f k * g (m - k)) := by
     apply Summable.of_abs
     apply summable_of_sum_range_le (fun _ ↦ abs_nonneg _)
@@ -972,7 +995,10 @@ private lemma real_cauchy_product_tsum (f g : ℕ → ℝ)
           rw [Finset.sum_mul]
           have h1 : (∑ m ∈ Finset.range N, ∑ k ∈ Finset.range (m + 1), |f k| * |g (m - k)|) =
               ∑ p ∈ (Finset.range N ×ˢ Finset.range N).filter (fun p ↦ p.1 + p.2 < N), |f p.1| * |g p.2| := by
-            rw [← Finset.sum_sigma]
+            have hsig : (∑ m ∈ Finset.range N, ∑ k ∈ Finset.range (m + 1), |f k| * |g (m - k)|) =
+                ∑ p ∈ (Finset.range N).sigma (fun m ↦ Finset.range (m + 1)), |f p.2| * |g (p.1 - p.2)| := by
+              rw [Finset.sum_sigma]
+            rw [hsig]
             refine Finset.sum_bij (fun p _ ↦ (p.2, p.1 - p.2)) ?_ ?_ ?_ ?_
             · intro ⟨m, k⟩ hp; simp only [Finset.mem_sigma, Finset.mem_range] at hp
               simp only [Finset.mem_filter, Finset.mem_product, Finset.mem_range]; omega
@@ -1007,10 +1033,13 @@ private lemma real_cos_eq_tsum_iteratedDeriv (x : ℝ) :
   have hexp2 : Complex.exp (-((x : ℂ) * Complex.I)) =
       ∑' m : ℕ, (-((x : ℂ) * Complex.I)) ^ m / (m.factorial : ℂ) := by
     rw [Complex.exp_eq_exp_ℂ, NormedSpace.exp_eq_tsum_div]
+  have hs_cplx : ∀ z : ℂ, Summable (fun m : ℕ ↦ z ^ m / (m.factorial : ℂ)) := fun z ↦ by
+    apply Summable.of_norm
+    simpa [norm_div, norm_pow, Complex.norm_natCast] using Real.summable_pow_div_factorial ‖z‖
   have hs1 : Summable (fun m : ℕ ↦ ((x : ℂ) * Complex.I) ^ m / (m.factorial : ℂ)) :=
-    NormedSpace.summable_pow_div_factorial _
+    hs_cplx _
   have hs2 : Summable (fun m : ℕ ↦ (-((x : ℂ) * Complex.I)) ^ m / (m.factorial : ℂ)) :=
-    NormedSpace.summable_pow_div_factorial _
+    hs_cplx _
   have hsumC : Complex.cos (x : ℂ) =
       ∑' m : ℕ, (((x : ℂ) * Complex.I) ^ m + (-((x : ℂ) * Complex.I)) ^ m) / (2 * (m.factorial : ℂ)) := by
     rw [hcosC, hexp1, hexp2, ← hs1.tsum_add hs2, ← tsum_div_const]
@@ -1029,7 +1058,7 @@ private lemma real_cos_eq_tsum_iteratedDeriv (x : ℝ) :
     have hdiv : 2 * p / 2 = p := by omega
     rw [hdiv]
     have hIpow : ((x : ℂ) * Complex.I) ^ (2 * p) = ((((-1 : ℝ) ^ p * x ^ (2 * p) : ℝ) : ℂ)) := by
-      rw [mul_pow, pow_mul, Complex.I_sq]; push_cast; ring
+      rw [mul_pow, pow_mul, pow_mul, Complex.I_sq]; push_cast; ring
     have hneg : (-((x : ℂ) * Complex.I)) ^ (2 * p) = ((x : ℂ) * Complex.I) ^ (2 * p) := by
       rw [neg_pow, pow_mul]; norm_num
     rw [hneg, hIpow]
@@ -1060,9 +1089,10 @@ theorem meixner_euler_moment_rate_ge_two_div_pi {C R : ℝ} (hC : 0 < C) (hR0 : 
     have hpi : 0 < Real.pi := Real.pi_pos
     have h1 := mul_lt_mul_of_pos_right hR_lt (show 0 < Real.pi / 2 by positivity)
     have h2 : 2 / Real.pi * (Real.pi / 2) = 1 := by field_simp [hpi.ne']
-    linarith
+    dsimp only [q]; linarith
   set f : ℕ → ℝ := fun m ↦ (iteratedDeriv m (fun x ↦ (Real.cos x)⁻¹) 0 / (m.factorial : ℝ)) * (Real.pi / 2) ^ m
   set g : ℕ → ℝ := fun m ↦ (iteratedDeriv m Real.cos 0 / (m.factorial : ℝ)) * (Real.pi / 2) ^ m
+  -- `f` is absolutely summable (odd terms vanish, even terms dominated by `C * q ^ m` for `m ≥ 2 N₀`)
   have hf_abs : Summable (fun m ↦ |f m|) := by
     rw [← summable_nat_add_iff (2 * N₀)]
     refine Summable.of_nonneg_of_le (fun _ ↦ abs_nonneg _) ?_
@@ -1083,7 +1113,7 @@ theorem meixner_euler_moment_rate_ge_two_div_pi {C R : ℝ} (hC : 0 < C) (hR0 : 
           | succ p ih =>
             intro i j; rw [pow_succ, Matrix.mul_apply]
             refine Finset.sum_nonneg fun l _ ↦ mul_nonneg (ih i l) ?_
-            unfold jacobiMat Matrix.of; simp only [Matrix.of_apply]; split_ifs <;> positivity
+            simp only [jacobiMat, Matrix.of_apply]; split_ifs <;> positivity
         exact this (2 * n) _ _
       have hf_nn : 0 ≤ f (2 * n) := by
         dsimp only [f]; positivity
@@ -1097,26 +1127,30 @@ theorem meixner_euler_moment_rate_ge_two_div_pi {C R : ℝ} (hC : 0 < C) (hR0 : 
       calc _ ≤ (C * R ^ (2 * n)) * (Real.pi / 2) ^ (2 * n) :=
               mul_le_mul_of_nonneg_right hdiv (by positivity)
         _ = C * q ^ (2 * n) := by rw [mul_assoc, ← mul_pow]
+        _ = ((fun i ↦ C * q ^ i) ∘ fun x ↦ x + 2 * N₀) k := by rw [← hm]; rfl
     · have hodd : iteratedDeriv m (fun x ↦ (Real.cos x)⁻¹) 0 = 0 := by
         rw [iteratedDeriv_inv_cos_zero]
         exact jacobiMat_pow_eq_zero_of_odd_parity _ m ⟨0, _⟩ ⟨0, _⟩ (by dsimp; omega)
-      simp only [f, hodd, zero_div, zero_mul, abs_zero]
+      simp only [f, hodd, zero_div, zero_mul, abs_zero, Function.comp_apply]
       positivity
+  -- `g` is absolutely summable (dominated by `(π/2)^m / m!`)
   have hg_abs : Summable (fun m ↦ |g m|) := by
     refine Summable.of_nonneg_of_le (fun _ ↦ abs_nonneg _) ?_
       (Real.summable_pow_div_factorial (Real.pi / 2))
     intro m
     dsimp only [g]
-    rw [abs_mul, abs_div, abs_of_nonneg (Nat.cast_nonneg _), abs_of_nonneg (by positivity),
+    rw [abs_mul, abs_div, abs_of_nonneg (Nat.cast_nonneg m.factorial), abs_of_nonneg (pow_nonneg (by positivity) m),
       iteratedDeriv_cos_zero]
     have h1 : |if Even m then (-1 : ℝ) ^ (m / 2) else 0| ≤ 1 := by
       split_ifs <;> simp
     calc |if Even m then (-1 : ℝ) ^ (m / 2) else 0| / (m.factorial : ℝ) * (Real.pi / 2) ^ m
         ≤ 1 / (m.factorial : ℝ) * (Real.pi / 2) ^ m := by gcongr
       _ = (Real.pi / 2) ^ m / (m.factorial : ℝ) := by ring
+  -- `∑' m, g m = Real.cos (π / 2) = 0`
   have hg_sum : ∑' m, g m = 0 := by
     change ∑' m, (iteratedDeriv m Real.cos 0 / (m.factorial : ℝ)) * (Real.pi / 2) ^ m = 0
     rw [real_cos_eq_tsum_iteratedDeriv, Real.cos_pi_div_two]
+  -- Cauchy product: `0 = (∑' f) * (∑' g) = ∑' m, (if m = 0 then 1 else 0) = 1`!
   have hcp := real_cauchy_product_tsum f g hf_abs hg_abs
   rw [hg_sum, mul_zero] at hcp
   have hterm : ∀ m : ℕ,
@@ -1132,7 +1166,7 @@ theorem meixner_euler_moment_rate_ge_two_div_pi {C R : ℝ} (hC : 0 < C) (hR0 : 
       apply Finset.sum_congr rfl; intro k hk
       have hkm : k ≤ m := Nat.lt_succ_iff.mp (Finset.mem_range.mp hk)
       have hch : (m.choose k : ℝ) * ((k.factorial : ℝ) * ((m - k).factorial : ℝ)) = (m.factorial : ℝ) := by
-        exact_mod_cast Nat.choose_mul_factorial_mul_factorial hkm
+        rw [← mul_assoc]; exact_mod_cast Nat.choose_mul_factorial_mul_factorial hkm
       have hk_pos : (0 : ℝ) < (k.factorial : ℝ) := Nat.cast_pos.mpr (Nat.factorial_pos k)
       have hmk_pos : (0 : ℝ) < ((m - k).factorial : ℝ) := Nat.cast_pos.mpr (Nat.factorial_pos _)
       have hpow : (Real.pi / 2) ^ k * (Real.pi / 2) ^ (m - k) = (Real.pi / 2) ^ m := by
@@ -1179,6 +1213,7 @@ theorem theorem_1_2b_zero_laundering {α₁ r M : ℝ} (N₀ : ℕ) (b : ℕ →
   have hα_gt : Real.pi / (2 * r) < α₁ := lt_of_not_ge hlt
   set P := ∏ h ∈ Finset.Icc 1 N₀, (b h) ^ 2
   have hP_pos : 0 < P := Finset.prod_pos fun h hh ↦ pow_pos (hb_pos h (Finset.mem_Icc.mp hh).1) 2
+  -- Choose `R` strictly between `1 / (α₁ * r)` and `2 / π`
   set L₀ := (α₁ * r)⁻¹
   have hL₀_pos : 0 < L₀ := by positivity
   have hL₀_lt : L₀ < 2 / Real.pi := by
@@ -1192,6 +1227,7 @@ theorem theorem_1_2b_zero_laundering {α₁ r M : ℝ} (N₀ : ℕ) (b : ℕ →
   have hR_gt : L₀ < R := by dsimp [R]; linarith
   have hR_lt : R < 2 / Real.pi := by dsimp [R]; linarith
   have hR_pos : 0 < R := lt_trans hL₀_pos hR_gt
+  -- For all `m ≥ 1`, `((2(m+N₀))! / (2m)!) * (L₀ / R)^{2m} → 0`, hence bounded by some `C₁`!
   set q := L₀ / R
   have hq_pos : 0 < q := div_pos hL₀_pos hR_pos
   have hq_lt1 : q < 1 := (div_lt_one hR_pos).mpr hR_gt
@@ -1200,7 +1236,11 @@ theorem theorem_1_2b_zero_laundering {α₁ r M : ℝ} (N₀ : ℕ) (b : ℕ →
       Filter.atTop (nhds 0) := by
     have hq_inv : 1 < (q⁻¹) ^ 2 := one_lt_pow₀ ((one_lt_inv₀ hq_pos).mpr hq_lt1) (by norm_num)
     have hbase := tendsto_pow_const_div_const_pow_of_one_lt (2 * N₀) hq_inv
-    refine squeeze_zero_norm' ?_ (by simpa using hbase.const_mul ((4 : ℝ) ^ (2 * N₀)))
+    have hmul0 : Filter.Tendsto (fun m : ℕ ↦ (4 : ℝ) ^ (2 * N₀) * ((m : ℝ) ^ (2 * N₀) / ((q⁻¹) ^ 2) ^ m))
+        Filter.atTop (nhds 0) := by
+      have h := hbase.const_mul ((4 : ℝ) ^ (2 * N₀))
+      rwa [mul_zero] at h
+    refine squeeze_zero_norm' ?_ hmul0
     filter_upwards [Filter.eventually_ge_atTop (N₀ + 1)] with m hm
     rw [Real.norm_of_nonneg (by positivity)]
     have h4m : ((2 * (m + N₀) : ℕ) : ℝ) ≤ 4 * (m : ℝ) := by
@@ -1213,6 +1253,7 @@ theorem theorem_1_2b_zero_laundering {α₁ r M : ℝ} (N₀ : ℕ) (b : ℕ →
     rw [hqeq, ← div_eq_mul_inv, ← mul_div_assoc]
     exact div_le_div_of_nonneg_right hpow (by positivity)
   rcases (Metric.tendsto_atTop.mp htend) 1 zero_lt_one with ⟨M₁, hM₁⟩
+  -- For all `m ≥ M₁`, `((2(m+N₀))! / (2m)!) * L₀^{2m} ≤ R^{2m}`!
   set C := (2 * M * r⁻¹ ^ (2 * N₀)) / P
   have hC_pos : 0 < C := by positivity
   have hmeix_bd : ∀ m ≥ M₁,
@@ -1224,6 +1265,8 @@ theorem theorem_1_2b_zero_laundering {α₁ r M : ℝ} (N₀ : ℕ) (b : ℕ →
     have hlem := lemma_5_1_moment_lower_bound (D := 2 * n + 1) b hn (by omega) hα₁ hb_pos hb_ge
     rw [Nat.add_sub_cancel] at hlem
     have hup := hmom_ub n hn
+    -- Also `((jacobiMat (2m+1) id)^(2m)) 0 0 ≤ ((jacobiMat (2n+1) id)^(2m)) 0 0`
+    -- (monotone in matrix dimension since all entries are nonnegative!)
     have hdim_mono : ∀ (p : ℕ) (i j : Fin (2 * m + 1)),
         ((jacobiMat (2 * m + 1) (fun h ↦ (h : ℝ))) ^ p) i j ≤
         ((jacobiMat (2 * n + 1) (fun h ↦ (h : ℝ))) ^ p) ⟨i.1, by omega⟩ ⟨j.1, by omega⟩ := by
@@ -1235,7 +1278,7 @@ theorem theorem_1_2b_zero_laundering {α₁ r M : ℝ} (N₀ : ℕ) (b : ℕ →
         by_cases hij : i = j
         · subst hij; simp
         · have hij' : (⟨i.1, by omega⟩ : Fin (2 * n + 1)) ≠ ⟨j.1, by omega⟩ :=
-            fun h ↦ hij (Fin.ext (congrArg Fin.val h))
+            fun h ↦ hij (Fin.ext (congrArg (Fin.val : Fin (2 * n + 1) → ℕ) h))
           simp [hij, hij']
       | succ p ih =>
         intro i j
@@ -1251,9 +1294,9 @@ theorem theorem_1_2b_zero_laundering {α₁ r M : ℝ} (N₀ : ℕ) (b : ℕ →
             | succ q ihq =>
               intro a c; rw [pow_succ, Matrix.mul_apply]
               refine Finset.sum_nonneg fun u _ ↦ mul_nonneg (ihq a u) ?_
-              unfold jacobiMat Matrix.of; simp only [Matrix.of_apply]; split_ifs <;> positivity
+              simp only [jacobiMat, Matrix.of_apply]; split_ifs <;> positivity
           have h2 : 0 ≤ jacobiMat (2 * n + 1) (fun h ↦ (h : ℝ)) l ⟨j.1, by omega⟩ := by
-            unfold jacobiMat Matrix.of; simp only [Matrix.of_apply]; split_ifs <;> positivity
+            simp only [jacobiMat, Matrix.of_apply]; split_ifs <;> positivity
           exact mul_nonneg (h1 p _ _) h2
         calc ∑ k : Fin (2 * m + 1),
               ((jacobiMat (2 * m + 1) (fun h ↦ (h : ℝ))) ^ p) i k *
@@ -1267,20 +1310,22 @@ theorem theorem_1_2b_zero_laundering {α₁ r M : ℝ} (N₀ : ℕ) (b : ℕ →
                 simp [jacobiMat]
               rw [← hJe]
               have hJnn : 0 ≤ jacobiMat (2 * m + 1) (fun h ↦ (h : ℝ)) k j := by
-                unfold jacobiMat Matrix.of; simp only [Matrix.of_apply]; split_ifs <;> positivity
+                simp only [jacobiMat, Matrix.of_apply]; split_ifs <;> positivity
               exact mul_le_mul_of_nonneg_right (ih i k) hJnn
           _ ≤ ∑ l : Fin (2 * n + 1),
               ((jacobiMat (2 * n + 1) (fun h ↦ (h : ℝ))) ^ p) ⟨i.1, by omega⟩ l *
                 jacobiMat (2 * n + 1) (fun h ↦ (h : ℝ)) l ⟨j.1, by omega⟩ := by
               let emb : Fin (2 * m + 1) ↪ Fin (2 * n + 1) :=
-                ⟨fun k ↦ ⟨k.1, by omega⟩, fun a b h ↦ Fin.ext (congrArg Fin.val h)⟩
+                ⟨fun k ↦ ⟨k.1, by omega⟩, fun a b h ↦ Fin.ext (congrArg (Fin.val : Fin (2 * n + 1) → ℕ) h)⟩
               have himg : (∑ k : Fin (2 * m + 1),
                   ((jacobiMat (2 * n + 1) (fun h ↦ (h : ℝ))) ^ p) ⟨i.1, by omega⟩ (emb k) *
                     jacobiMat (2 * n + 1) (fun h ↦ (h : ℝ)) (emb k) ⟨j.1, by omega⟩) =
                   ∑ l ∈ Finset.univ.map emb,
                     ((jacobiMat (2 * n + 1) (fun h ↦ (h : ℝ))) ^ p) ⟨i.1, by omega⟩ l *
                       jacobiMat (2 * n + 1) (fun h ↦ (h : ℝ)) l ⟨j.1, by omega⟩ :=
-                (Finset.sum_map Finset.univ emb _).symm
+                (Finset.sum_map Finset.univ emb (fun l ↦
+                  ((jacobiMat (2 * n + 1) (fun h ↦ (h : ℝ))) ^ p) ⟨i.1, by omega⟩ l *
+                    jacobiMat (2 * n + 1) (fun h ↦ (h : ℝ)) l ⟨j.1, by omega⟩)).symm
               change (∑ k : Fin (2 * m + 1),
                   ((jacobiMat (2 * n + 1) (fun h ↦ (h : ℝ))) ^ p) ⟨i.1, by omega⟩ (emb k) *
                     jacobiMat (2 * n + 1) (fun h ↦ (h : ℝ)) (emb k) ⟨j.1, by omega⟩) ≤ _
@@ -1375,14 +1420,14 @@ theorem theorem_1_2b_liminf_unconditional {r M : ℝ} (b : ℕ → ℝ)
   rw [Filter.liminf_eq]
   apply csSup_le
   · refine ⟨0, ?_⟩
-    rw [Filter.eventually_atTop]
+    rw [Set.mem_setOf_eq, Filter.eventually_atTop]
     refine ⟨1, fun n hn ↦ ?_⟩
     exact div_nonneg (hb_pos n hn).le (Nat.cast_nonneg n)
   · intro a ha
     by_cases ha0 : a ≤ 0
     · exact le_trans ha0 (by positivity)
     · have ha_pos : 0 < a := lt_of_not_ge ha0
-      rw [Filter.eventually_atTop] at ha
+      rw [Set.mem_setOf_eq, Filter.eventually_atTop] at ha
       rcases ha with ⟨N₁, hN₁⟩
       set N₀ := max N₁ 1
       have hb_ge : ∀ h ≥ N₀, a * (h : ℝ) ≤ b h := by

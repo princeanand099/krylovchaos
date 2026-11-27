@@ -113,23 +113,23 @@ theorem majoranaProbe_anticomm {n : ℕ} {i j : Fin (2 * n)} (hij : i ≠ j) :
         · have hx : x₀.1 = i.1 / 2 := min_eq_left (le_of_lt hlt)
           have h1 : ¬(x₀.1 < i.1 / 2) := by omega
           have h2 : x₀.1 < j.1 / 2 := by omega
-          simp only [h1, ↓reduceIte, hx, h2]
+          rw [if_neg h1, if_pos hx, if_pos h2]
           split_ifs <;> decide
         · have hx : x₀.1 = i.1 / 2 := by simp [x₀, heq]
           have h1 : ¬(x₀.1 < i.1 / 2) := by omega
           have h2 : ¬(x₀.1 < j.1 / 2) := by omega
           have h3 : x₀.1 = j.1 / 2 := by omega
           have hmod : i.1 % 2 ≠ j.1 % 2 := by omega
-          simp only [h1, h2, ↓reduceIte, hx, h3]
+          rw [if_neg h1, if_pos hx, if_neg h2, if_pos h3]
           by_cases hm : i.1 % 2 = 0
           · have hm2 : ¬(j.1 % 2 = 0) := by omega
-            simp [hm, hm2]
+            rw [if_pos hm, if_neg hm2]; decide
           · have hm2 : j.1 % 2 = 0 := by omega
-            simp [hm, hm2]
+            rw [if_neg hm, if_pos hm2]; decide
         · have hx : x₀.1 = j.1 / 2 := min_eq_right (le_of_lt hgt)
           have h1 : x₀.1 < i.1 / 2 := by omega
           have h2 : ¬(x₀.1 < j.1 / 2) := by omega
-          simp only [h1, ↓reduceIte, hx, h2]
+          rw [if_pos h1, if_neg h2, if_pos hx]
           split_ifs <;> decide
       rw [if_neg hne]
     · intro x _ hne_x
@@ -140,17 +140,17 @@ theorem majoranaProbe_anticomm {n : ℕ} {i j : Fin (2 * n)} (hij : i ≠ j) :
         · right; right
           have h1 : x.1 < i.1 / 2 := lt_of_lt_of_le hlt (min_le_left _ _)
           have h2 : x.1 < j.1 / 2 := lt_of_lt_of_le hlt (min_le_right _ _)
-          simp [h1, h2]
+          rw [if_pos h1, if_pos h2]
         · have hgt : min (i.1 / 2) (j.1 / 2) < x.1 := by omega
           rcases le_total (i.1 / 2) (j.1 / 2) with hle | hle
           · left
             have h1 : ¬(x.1 < i.1 / 2) := by omega
             have h2 : ¬(x.1 = i.1 / 2) := by omega
-            simp [h1, h2]
+            rw [if_neg h1, if_neg h2]
           · right; left
             have h1 : ¬(x.1 < j.1 / 2) := by omega
             have h2 : ¬(x.1 = j.1 / 2) := by omega
-            simp [h1, h2]
+            rw [if_neg h1, if_neg h2]
       rw [if_pos hcomm]
     · intro hx; exact absurd (Finset.mem_univ x₀) hx
   rw [hprod_neg, neg_one_smul]
@@ -174,12 +174,10 @@ theorem majoranaGen_clifford (n : ℕ) (i j : Fin (2 * n)) :
   have hsq : ((Real.sqrt 2 : ℂ)⁻¹ * (Real.sqrt 2 : ℂ)⁻¹) * (2 : ℂ) = 1 := by
     have h2 : (Real.sqrt 2 : ℂ) * (Real.sqrt 2 : ℂ) = 2 := by
       exact_mod_cast Real.mul_self_sqrt (by norm_num : (0 : ℝ) ≤ 2)
-    have hne : (Real.sqrt 2 : ℂ) ≠ 0 := by
-      intro hz
-      have := congrArg (· * (Real.sqrt 2 : ℂ)) hz
-      simp [h2] at this
-    field_simp [hne]
-    rw [h2]
+    calc ((Real.sqrt 2 : ℂ)⁻¹ * (Real.sqrt 2 : ℂ)⁻¹) * (2 : ℂ)
+        = ((Real.sqrt 2 : ℂ) * (Real.sqrt 2 : ℂ))⁻¹ * (2 : ℂ) := by rw [mul_inv]
+      _ = (2 : ℂ)⁻¹ * (2 : ℂ) := by rw [h2]
+      _ = 1 := by norm_num
   split_ifs with h
   · rw [hsq]
   · simp
@@ -225,9 +223,9 @@ theorem fermionParityOp_anticomm_probe (n : ℕ) (j : Fin (2 * n)) :
     rw [Finset.prod_eq_single x₀]
     · have hne : ¬(jwWord n j x₀ = 0 ∨ (3 : Fin 4) = 0 ∨ jwWord n j x₀ = 3) := by
         unfold jwWord
-        have h1 : ¬(x₀.1 < j.1 / 2) := by omega
+        have h1 : ¬(x₀.1 < j.1 / 2) := Nat.lt_irrefl (j.1 / 2)
         have h2 : x₀.1 = j.1 / 2 := rfl
-        simp only [h1, h2, ↓reduceIte]
+        rw [if_neg h1, if_pos h2]
         split_ifs <;> decide
       rw [if_neg hne]
     · intro x _ hne_x
@@ -235,8 +233,8 @@ theorem fermionParityOp_anticomm_probe (n : ℕ) (j : Fin (2 * n)) :
         have hxv : x.1 ≠ j.1 / 2 := fun h ↦ hne_x (Fin.ext h)
         unfold jwWord
         by_cases hlt : x.1 < j.1 / 2
-        · right; right; simp [hlt]
-        · left; simp [hlt, hxv]
+        · right; right; rw [if_pos hlt]
+        · left; rw [if_neg hlt, if_neg hxv]
       rw [if_pos hcomm]
     · intro hx; exact absurd (Finset.mem_univ x₀) hx
   rw [hprod_neg, neg_one_smul]
@@ -268,18 +266,20 @@ lemma jBeta_oddParity_of_odd {n : ℕ} (G : GibbsData n) {A : QubitOp n}
     (hρ : isEvenParity G.ρQuarter) (hA : isOddParity A) :
     isOddParity (jBeta G.ρQuarter A) := by
   unfold isEvenParity at hρ; unfold isOddParity at hA ⊢; unfold jBeta
-  calc fermionParityOp n * (G.ρQuarter * A * G.ρQuarter) * fermionParityOp n
-      = (fermionParityOp n * G.ρQuarter * fermionParityOp n) *
+  have h1 : (fermionParityOp n * G.ρQuarter * fermionParityOp n) *
+      (fermionParityOp n * A * fermionParityOp n) *
+      (fermionParityOp n * G.ρQuarter * fermionParityOp n) =
+      fermionParityOp n * (G.ρQuarter * A * G.ρQuarter) * fermionParityOp n := by
+    calc (fermionParityOp n * G.ρQuarter * fermionParityOp n) *
           (fermionParityOp n * A * fermionParityOp n) *
-          (fermionParityOp n * G.ρQuarter * fermionParityOp n) := by
-        simp only [Matrix.mul_assoc]
-        have h1 : fermionParityOp n * (fermionParityOp n * A * (fermionParityOp n * (fermionParityOp n * G.ρQuarter * fermionParityOp n))) =
-            (fermionParityOp n * fermionParityOp n) * A * ((fermionParityOp n * fermionParityOp n) * G.ρQuarter * fermionParityOp n) := by
+          (fermionParityOp n * G.ρQuarter * fermionParityOp n)
+        = fermionParityOp n * G.ρQuarter * (fermionParityOp n * fermionParityOp n) * A *
+            (fermionParityOp n * fermionParityOp n) * G.ρQuarter * fermionParityOp n := by
           simp only [Matrix.mul_assoc]
-        rw [h1, fermionParityOp_sq, Matrix.one_mul, Matrix.one_mul]
-        simp only [Matrix.mul_assoc]
-    _ = G.ρQuarter * (-A) * G.ρQuarter := by rw [hρ, hA]
-    _ = -(G.ρQuarter * A * G.ρQuarter) := by simp [Matrix.mul_neg, Matrix.neg_mul]
+      _ = fermionParityOp n * (G.ρQuarter * A * G.ρQuarter) * fermionParityOp n := by
+          rw [fermionParityOp_sq, Matrix.mul_one, Matrix.mul_one]; simp only [Matrix.mul_assoc]
+  rw [← h1, hρ, hA]
+  simp [Matrix.mul_neg, Matrix.neg_mul]
 
 lemma rhoHalf_evenParity {n : ℕ} (G : GibbsData n) (hρ : isEvenParity G.ρQuarter) :
     isEvenParity G.ρHalf := by
@@ -310,7 +310,7 @@ private lemma foldr_probe_conj_parity (n : ℕ) (l : List (Fin (2 * n))) :
       _ = -(majoranaProbe n a * (((-1 : ℂ) ^ t.length) • t.foldr (fun j acc ↦ majoranaProbe n j * acc) 1)) := by
           rw [ih]
       _ = ((-1 : ℂ) ^ (t.length + 1)) • (majoranaProbe n a * t.foldr (fun j acc ↦ majoranaProbe n j * acc) 1) := by
-          rw [Matrix.mul_smul, pow_succ, mul_comm, ← smul_smul, neg_one_smul]
+          rw [Matrix.mul_smul, pow_succ', ← smul_smul, neg_one_smul]
 
 /-- Parity of any Majorana string `M_Q`: `P M_Q P = (-1)^{|Q|} M_Q`. -/
 theorem majoranaString_parity (n : ℕ) (Q : Finset (Fin (2 * n))) :
@@ -370,8 +370,8 @@ private lemma foldr_probe_conj_probe (n : ℕ) (j : Fin (2 * n)) (l : List (Fin 
             by_cases hjt : j ∈ t
             · have hpos : 1 ≤ t.length := List.length_pos_of_mem hjt
               have hsub : t.length + 1 - 1 = (t.length - 1) + 1 := by omega
-              simp only [hjt, ↓reduceIte, hsub, pow_succ, mul_comm, ← smul_smul, neg_one_smul]
-            · simp only [hjt, ↓reduceIte, Nat.sub_zero, pow_succ, mul_comm, ← smul_smul, neg_one_smul]
+              simp only [hjt, ↓reduceIte, hsub, pow_succ', ← smul_smul, neg_one_smul]
+            · simp only [hjt, ↓reduceIte, Nat.sub_zero, pow_succ', ← smul_smul, neg_one_smul]
 
 /-- Exact conjugation of any Majorana string `M_Q` by a probe `V_j`:
 `V_j M_Q V_j = (-1)^{|Q| - 1_{j ∈ Q}} M_Q`. -/
@@ -422,13 +422,15 @@ noncomputable def majoranaParitySizeOp (n : ℕ) (M : QubitOp n) : QubitOp n :=
 
 lemma evenPart_of_even {n : ℕ} {M : QubitOp n} (hM : isEvenParity M) :
     evenPart n M = M ∧ oddPart n M = 0 := by
-  unfold evenPart oddPart isEvenParity at hM ⊢
+  unfold isEvenParity at hM
+  unfold evenPart oddPart
   rw [hM, sub_self, smul_zero, ← two_smul ℂ M, smul_smul]
   exact ⟨by norm_num, rfl⟩
 
 lemma oddPart_of_odd {n : ℕ} {M : QubitOp n} (hM : isOddParity M) :
     evenPart n M = 0 ∧ oddPart n M = M := by
-  unfold evenPart oddPart isOddParity at hM ⊢
+  unfold isOddParity at hM
+  unfold evenPart oddPart
   rw [hM, add_neg_cancel, smul_zero, sub_neg_eq_add, ← two_smul ℂ M, smul_smul]
   exact ⟨rfl, by norm_num⟩
 
@@ -463,7 +465,7 @@ theorem majoranaParitySizeOp_on_string (n : ℕ) (Q : Finset (Fin (2 * n))) :
       · rw [if_neg hjQ, if_neg hjQ, Nat.sub_zero, hpow, one_smul, sub_self, smul_zero]
     simp_rw [hmode]
     rw [← Finset.sum_filter, Finset.sum_const, Finset.filter_mem_eq_inter, Finset.univ_inter]
-    rw [nsmul_eq_smul_cast ℂ]
+    exact (Nat.cast_smul_eq_nsmul ℂ Q.card (majoranaString n Q)).symm
   · have hpow : ((-1 : ℂ) ^ Q.card) = -1 := by
       rw [hk, pow_succ, pow_mul]; norm_num
     rw [hpow, neg_one_smul] at hpar
@@ -488,7 +490,17 @@ theorem majoranaParitySizeOp_on_string (n : ℕ) (Q : Finset (Fin (2 * n))) :
       · rw [if_neg hjQ, if_neg hjQ, Nat.sub_zero, hpow, neg_one_smul, add_neg_cancel, smul_zero]
     simp_rw [hmode]
     rw [← Finset.sum_filter, Finset.sum_const, Finset.filter_mem_eq_inter, Finset.univ_inter]
-    rw [nsmul_eq_smul_cast ℂ]
+    exact (Nat.cast_smul_eq_nsmul ℂ Q.card (majoranaString n Q)).symm
+
+private lemma hsNormSq_nonneg_maj {n : ℕ} (X : QubitOp n) : 0 ≤ hsNormSq X := by
+  unfold hsNormSq hsInner
+  rw [Matrix.trace, Matrix.diag, Complex.re_sum]
+  apply Finset.sum_nonneg; intro i _
+  rw [Matrix.mul_apply, Complex.re_sum]
+  apply Finset.sum_nonneg; intro j _
+  rw [Matrix.conjTranspose_apply, Complex.star_def, Complex.conj_mul', ← Complex.ofReal_pow,
+    Complex.ofReal_re]
+  exact sq_nonneg _
 
 /-- **Even-Sector Majorana Hilbert–Schmidt Size Identity**:
 For every `M : QubitOp n`,
@@ -506,25 +518,29 @@ theorem majorana_hs_commutator_size_identity {n : ℕ} (M : QubitOp n) :
     have hcomm_norm : hsNormSq (matComm M V) =
         2 * hsNormSq M - 2 * (Matrix.trace (Mᴴ * (V * M * V))).re := by
       unfold hsNormSq hsInner matComm
+      have hterm4 : Mᴴ * V * (V * M) = Mᴴ * M := by
+        calc Mᴴ * V * (V * M)
+            = Mᴴ * ((V * V) * M) := by simp only [Matrix.mul_assoc]
+          _ = Mᴴ * M := by rw [hVsq, Matrix.one_mul]
       have hadj : (M * V - V * M)ᴴ * (M * V - V * M) =
-          V * Mᴴ * M * V - V * Mᴴ * V * M - Mᴴ * V * M * V + Mᴴ * M := by
+          V * Mᴴ * (M * V) - V * Mᴴ * (V * M) - Mᴴ * V * (M * V) + Mᴴ * M := by
         rw [Matrix.conjTranspose_sub, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hVh,
-            Matrix.sub_mul, Matrix.mul_sub, Matrix.mul_sub]
-        simp only [Matrix.mul_assoc, hVsq, Matrix.mul_one]
+            Matrix.sub_mul, Matrix.mul_sub, Matrix.mul_sub, hterm4]
         abel
       rw [hadj]
       simp only [Matrix.trace_add, Matrix.trace_sub, Complex.add_re, Complex.sub_re]
-      have ht1 : Matrix.trace (V * Mᴴ * M * V) = Matrix.trace (Mᴴ * M) := by
-        calc Matrix.trace (V * Mᴴ * M * V)
-            = Matrix.trace (V * (V * Mᴴ * M)) := Matrix.trace_mul_comm _ V
-          _ = Matrix.trace ((V * V) * Mᴴ * M) := by simp only [Matrix.mul_assoc]
+      have ht1 : Matrix.trace (V * Mᴴ * (M * V)) = Matrix.trace (Mᴴ * M) := by
+        calc Matrix.trace (V * Mᴴ * (M * V))
+            = Matrix.trace ((V * Mᴴ * M) * V) := by simp only [Matrix.mul_assoc]
+          _ = Matrix.trace (V * (V * Mᴴ * M)) := Matrix.trace_mul_comm _ V
+          _ = Matrix.trace ((V * V) * (Mᴴ * M)) := by simp only [Matrix.mul_assoc]
           _ = Matrix.trace (Mᴴ * M) := by rw [hVsq, Matrix.one_mul]
-      have ht2 : Matrix.trace (V * Mᴴ * V * M) = Matrix.trace (Mᴴ * (V * M * V)) := by
-        calc Matrix.trace (V * Mᴴ * V * M)
-            = Matrix.trace (V * (Mᴴ * V * M)) := by simp only [Matrix.mul_assoc]
-          _ = Matrix.trace ((Mᴴ * V * M) * V) := Matrix.trace_mul_comm V _
+      have ht2 : Matrix.trace (V * Mᴴ * (V * M)) = Matrix.trace (Mᴴ * (V * M * V)) := by
+        calc Matrix.trace (V * Mᴴ * (V * M))
+            = Matrix.trace (V * (Mᴴ * (V * M))) := by simp only [Matrix.mul_assoc]
+          _ = Matrix.trace ((Mᴴ * (V * M)) * V) := Matrix.trace_mul_comm V _
           _ = Matrix.trace (Mᴴ * (V * M * V)) := by simp only [Matrix.mul_assoc]
-      have ht3 : Matrix.trace (Mᴴ * V * M * V) = Matrix.trace (Mᴴ * (V * M * V)) := by
+      have ht3 : Matrix.trace (Mᴴ * V * (M * V)) = Matrix.trace (Mᴴ * (V * M * V)) := by
         simp only [Matrix.mul_assoc]
       rw [ht1, ht2, ht3]
       ring
@@ -558,25 +574,29 @@ theorem majorana_hs_anticomm_size_identity {n : ℕ} (M : QubitOp n) :
     have hanti_norm : hsNormSq (matAnticomm M V) =
         2 * hsNormSq M + 2 * (Matrix.trace (Mᴴ * (V * M * V))).re := by
       unfold hsNormSq hsInner matAnticomm
+      have hterm4 : Mᴴ * V * (V * M) = Mᴴ * M := by
+        calc Mᴴ * V * (V * M)
+            = Mᴴ * ((V * V) * M) := by simp only [Matrix.mul_assoc]
+          _ = Mᴴ * M := by rw [hVsq, Matrix.one_mul]
       have hadj : (M * V + V * M)ᴴ * (M * V + V * M) =
-          V * Mᴴ * M * V + V * Mᴴ * V * M + Mᴴ * V * M * V + Mᴴ * M := by
+          V * Mᴴ * (M * V) + V * Mᴴ * (V * M) + Mᴴ * V * (M * V) + Mᴴ * M := by
         rw [Matrix.conjTranspose_add, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hVh,
-            Matrix.add_mul, Matrix.mul_add, Matrix.mul_add]
-        simp only [Matrix.mul_assoc, hVsq, Matrix.mul_one]
+            Matrix.add_mul, Matrix.mul_add, Matrix.mul_add, hterm4]
         abel
       rw [hadj]
       simp only [Matrix.trace_add, Complex.add_re]
-      have ht1 : Matrix.trace (V * Mᴴ * M * V) = Matrix.trace (Mᴴ * M) := by
-        calc Matrix.trace (V * Mᴴ * M * V)
-            = Matrix.trace (V * (V * Mᴴ * M)) := Matrix.trace_mul_comm _ V
-          _ = Matrix.trace ((V * V) * Mᴴ * M) := by simp only [Matrix.mul_assoc]
+      have ht1 : Matrix.trace (V * Mᴴ * (M * V)) = Matrix.trace (Mᴴ * M) := by
+        calc Matrix.trace (V * Mᴴ * (M * V))
+            = Matrix.trace ((V * Mᴴ * M) * V) := by simp only [Matrix.mul_assoc]
+          _ = Matrix.trace (V * (V * Mᴴ * M)) := Matrix.trace_mul_comm _ V
+          _ = Matrix.trace ((V * V) * (Mᴴ * M)) := by simp only [Matrix.mul_assoc]
           _ = Matrix.trace (Mᴴ * M) := by rw [hVsq, Matrix.one_mul]
-      have ht2 : Matrix.trace (V * Mᴴ * V * M) = Matrix.trace (Mᴴ * (V * M * V)) := by
-        calc Matrix.trace (V * Mᴴ * V * M)
-            = Matrix.trace (V * (Mᴴ * V * M)) := by simp only [Matrix.mul_assoc]
-          _ = Matrix.trace ((Mᴴ * V * M) * V) := Matrix.trace_mul_comm V _
+      have ht2 : Matrix.trace (V * Mᴴ * (V * M)) = Matrix.trace (Mᴴ * (V * M * V)) := by
+        calc Matrix.trace (V * Mᴴ * (V * M))
+            = Matrix.trace (V * (Mᴴ * (V * M))) := by simp only [Matrix.mul_assoc]
+          _ = Matrix.trace ((Mᴴ * (V * M)) * V) := Matrix.trace_mul_comm V _
           _ = Matrix.trace (Mᴴ * (V * M * V)) := by simp only [Matrix.mul_assoc]
-      have ht3 : Matrix.trace (Mᴴ * V * M * V) = Matrix.trace (Mᴴ * (V * M * V)) := by
+      have ht3 : Matrix.trace (Mᴴ * V * (M * V)) = Matrix.trace (Mᴴ * (V * M * V)) := by
         simp only [Matrix.mul_assoc]
       rw [ht1, ht2, ht3]
       ring
@@ -711,24 +731,28 @@ theorem majoranaParitySizeOp_bounds_of_parity {n : ℕ} (M : QubitOp n)
     intro V hVh hVsq
     have hsum : hsNormSq (matComm M V) + hsNormSq (matAnticomm M V) = 4 * hsNormSq M := by
       unfold hsNormSq hsInner matComm matAnticomm
+      have hterm4 : Mᴴ * V * (V * M) = Mᴴ * M := by
+        calc Mᴴ * V * (V * M)
+            = Mᴴ * ((V * V) * M) := by simp only [Matrix.mul_assoc]
+          _ = Mᴴ * M := by rw [hVsq, Matrix.one_mul]
       have h1 : (M * V - V * M)ᴴ * (M * V - V * M) + (M * V + V * M)ᴴ * (M * V + V * M) =
-          (2 : ℂ) • (V * Mᴴ * M * V + Mᴴ * M) := by
+          (2 : ℂ) • (V * Mᴴ * (M * V) + Mᴴ * M) := by
         rw [Matrix.conjTranspose_sub, Matrix.conjTranspose_add, Matrix.conjTranspose_mul,
           Matrix.conjTranspose_mul, hVh, Matrix.sub_mul, Matrix.mul_sub, Matrix.mul_sub,
-          Matrix.add_mul, Matrix.mul_add, Matrix.mul_add]
-        simp only [Matrix.mul_assoc, hVsq, Matrix.mul_one, two_smul]
+          Matrix.add_mul, Matrix.mul_add, Matrix.mul_add, hterm4, two_smul]
         abel
       rw [← Complex.add_re, ← Matrix.trace_add, h1, Matrix.trace_smul, Matrix.trace_add,
         smul_eq_mul]
-      have ht1 : Matrix.trace (V * Mᴴ * M * V) = Matrix.trace (Mᴴ * M) := by
-        calc Matrix.trace (V * Mᴴ * M * V)
-            = Matrix.trace (V * (V * Mᴴ * M)) := Matrix.trace_mul_comm _ V
-          _ = Matrix.trace ((V * V) * Mᴴ * M) := by simp only [Matrix.mul_assoc]
+      have ht1 : Matrix.trace (V * Mᴴ * (M * V)) = Matrix.trace (Mᴴ * M) := by
+        calc Matrix.trace (V * Mᴴ * (M * V))
+            = Matrix.trace ((V * Mᴴ * M) * V) := by simp only [Matrix.mul_assoc]
+          _ = Matrix.trace (V * (V * Mᴴ * M)) := Matrix.trace_mul_comm _ V
+          _ = Matrix.trace ((V * V) * (Mᴴ * M)) := by simp only [Matrix.mul_assoc]
           _ = Matrix.trace (Mᴴ * M) := by rw [hVsq, Matrix.one_mul]
       rw [ht1, Complex.mul_re, Complex.add_re]
       norm_num; ring
-    have hc := hsNormSq_nonneg (matComm M V)
-    have ha := hsNormSq_nonneg (matAnticomm M V)
+    have hc := hsNormSq_nonneg_maj (matComm M V)
+    have ha := hsNormSq_nonneg_maj (matAnticomm M V)
     exact ⟨by linarith, by linarith⟩
   rcases hpar with he | ho
   · have hS : majoranaParitySizeOp n M = majoranaTotalSizeOp n M := by
@@ -737,7 +761,7 @@ theorem majoranaParitySizeOp_bounds_of_parity {n : ℕ} (M : QubitOp n)
       have h0 : majoranaOddTotalSizeOp n 0 = 0 := by unfold majoranaOddTotalSizeOp majoranaOddModeSizeOp; simp
       rw [h0, add_zero]
     rw [hS, ← majorana_hs_commutator_size_identity M]
-    refine ⟨mul_nonneg (by norm_num) (Finset.sum_nonneg fun j _ ↦ hsNormSq_nonneg _), ?_⟩
+    refine ⟨mul_nonneg (by norm_num) (Finset.sum_nonneg fun j _ ↦ hsNormSq_nonneg_maj _), ?_⟩
     rw [Finset.mul_sum]
     calc ∑ j : Fin (2 * n), (1 / 4 : ℝ) * hsNormSq (matComm M (majoranaProbe n j))
         ≤ ∑ _j : Fin (2 * n), hsNormSq M :=
@@ -749,7 +773,7 @@ theorem majoranaParitySizeOp_bounds_of_parity {n : ℕ} (M : QubitOp n)
       have h0 : majoranaTotalSizeOp n 0 = 0 := by unfold majoranaTotalSizeOp majoranaModeSizeOp; simp
       rw [h0, zero_add]
     rw [hS, ← majorana_hs_anticomm_size_identity M]
-    refine ⟨mul_nonneg (by norm_num) (Finset.sum_nonneg fun j _ ↦ hsNormSq_nonneg _), ?_⟩
+    refine ⟨mul_nonneg (by norm_num) (Finset.sum_nonneg fun j _ ↦ hsNormSq_nonneg_maj _), ?_⟩
     rw [Finset.mul_sum]
     calc ∑ j : Fin (2 * n), (1 / 4 : ℝ) * hsNormSq (matAnticomm M (majoranaProbe n j))
         ≤ ∑ _j : Fin (2 * n), hsNormSq M :=

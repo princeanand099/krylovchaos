@@ -16,20 +16,22 @@ import Mathlib.Analysis.Calculus.MeanValue
 import Mathlib.Tactic
 
 /-!
-# Concrete Operator-Level Prop. 4.1, Lemma 4.2, Theorem 1.1(b), Krylov ODE & Prop. 2.2(3)
+# Concrete Operator-Level Prop. 4.1, Lemma 4.2, Theorem 1.1(b) & Exact Infinite-Chain Constant (Flaws #5 & #12)
 
 1. **Flaw #12 (`theorem_1_1a_infinite_exact_constant`)**:
    Specializes the infinite-chain MGF/complexity bound at `θ₀ = 4` to derive the explicit
-   closed-form prefactor `C_{1,α,γ} = exp(2 + 4 γ / α) / (4 e tanh 1)`.
-2. **Item #2 (Concrete Krylov Wavefunction & ODE, Eq. 2.7)**:
-   `concreteKrylovWavefn_im_eq_zero`, `concreteKrylovWavefn_zero`, `concreteKrylovWavefn_hasDerivAt`,
-   `heisenbergEvol_eq_lanczosTrunc_full`, and `concreteKrylovWavefn_sum_sq_eq_one`.
-3. **Item #3 (Genuine Concrete Proposition 4.1(2), Eq. 4.2)**:
-   `prop_4_1_part2_concrete_operator`: `Re (𝒪(t) | 𝒬^{(β)} 𝒪(t))_β^W ≤ (r - 1) K_β^W(t) + s₀`.
-4. **Item #4 (Genuine Concrete Lemma 4.2 on `mssThermalSize` & `lambdaMSS`, Eq. 4.3)**:
-   `lemma_4_2_mss_thermal_size_concrete`: `S_β(𝒪(t)) ≤ Λ_β^{MSS}(s_M) + 2 N ε_M + N ε_M²`.
-5. **Item #9 (Proposition 2.2(3) — Full Lanczos State, Coeff, Wavefn & Complexity Invariance under `𝒥_β`)**:
-   `prop_2_2_part3_lanczos_state_invariance` and `prop_2_2_part3_complexity_invariance`.
+   closed-form prefactor `C_{1,α,γ} = exp(2 + 4 γ / α) / (4 e tanh 1)` directly from
+   `theorem_1_1a_infinite_tail_and_complexity`.
+2. **Flaw #5 (Concrete Operator-Level Prop. 4.1, Lemma 4.2 & Theorem 1.1(b) on `QubitOp N`)**:
+   - `prop_4_1_concrete_operator`: for EVERY `G : GibbsData N` and EVERY `A ∈ filtrationSubmodule N s`,
+     `Re (A | 𝒬^{(β)} A)_β^W ≤ (s : ℝ) * gibbsWightmanNormSq G A`.
+   - `wightmanQ_le_N_normSq`: for EVERY `G : GibbsData N` and EVERY `A : QubitOp N`,
+     `Re (A | 𝒬^{(β)} A)_β^W ≤ (N : ℝ) * gibbsWightmanNormSq G A`.
+   - `wightmanQ_add_bound`: exact operator-level quadratic split bound on `QubitOp N`:
+     `Re ((A + R) | 𝒬^{(β)} (A + R))_β^W ≤ Q(A) + 2 √(Q(A)) √(Q(R)) + Q(R)`.
+   - `lemma_4_2_concrete_operator`: combines `lanczosTrunc_mem_filtration`, `prop_4_1_concrete_operator`,
+     `wightmanQ_le_N_normSq`, and `wightmanQ_add_bound` directly on `heisenbergEvol hH t O = A_M(t) + R_M(t)`
+     with zero scalar-wrapper hypotheses!
 -/
 
 namespace KrylovChaos
@@ -55,9 +57,13 @@ theorem theorem_1_1a_infinite_exact_constant {α γ : ℝ}
         Real.exp (2 * α * t)) := by
   have h1 : (1 / 2 + γ / α) * (4 : ℝ) = 2 + 4 * γ / α := by ring
   have h4 : (4 : ℝ) / 4 = 1 := by norm_num
-  have hmain := theorem_1_1a_infinite_tail_and_complexity φ hα hγ (by norm_num : (0 : ℝ) < 4) t ht
-    (by simpa [h1] using hfatou)
-  simpa [h1, h4] using hmain
+  have hfatou' : ∀ M : ℕ, ∑ m ∈ Finset.range M,
+      Real.exp (charTheta α 4 t * (m : ℝ)) * (φ m t) ^ 2 ≤
+      Real.exp ((1 / 2 + γ / α) * 4) := by
+    intro M; rw [h1]; exact hfatou M
+  have hmain := theorem_1_1a_infinite_tail_and_complexity φ hα hγ (by norm_num : (0 : ℝ) < 4) t ht hfatou'
+  rw [h1, h4] at hmain
+  exact hmain
 
 end Flaw12ExactConstant
 
@@ -109,7 +115,8 @@ lemma wightmanQ_eq_sum_distSq {N : ℕ} (G : GibbsData N) (A : QubitOp N) :
   apply Finset.sum_congr rfl; intro k _
   exact wightmanSubspaceProj_eq_distSq G (filtrationSubmodule N k) A
 
-/-- Static filtration bound on `QubitOp N`: for `A ∈ filtrationSubmodule N s`,
+/-- **Concrete Operator-Level Proposition 4.1 on `QubitOp N` (Flaw #5)**:
+For EVERY `G : GibbsData N` and EVERY `A ∈ filtrationSubmodule N s`,
 `Re (A | 𝒬^{(β)} A)_β^W ≤ (s : ℝ) * ‖A‖_{β,W}²`. -/
 theorem prop_4_1_concrete_operator {N s : ℕ} (G : GibbsData N) {A : QubitOp N}
     (hA : A ∈ filtrationSubmodule N s) :
@@ -172,8 +179,8 @@ private lemma sqrt_wightmanDistSq_add_le {N : ℕ} (G : GibbsData N)
       rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter]
       have h1 : (hsInner (jBeta G.ρQuarter Z) (jBeta G.ρQuarter Z)).re =
           ‖qubitOpToHS N (jBeta G.ρQuarter Z)‖ ^ 2 := by
-        rw [← qubitOpToHS_inner, inner_self_eq_norm_sq_to_K]
-        simp
+        rw [← qubitOpToHS_inner, inner_self_eq_norm_sq_to_K, ← Complex.ofReal_pow, Complex.ofReal_re]
+      change Real.sqrt (hsInner (jBeta G.ρQuarter Z) (jBeta G.ρQuarter Z)).re = _
       rw [h1, Real.sqrt_sq (norm_nonneg _)]
     rw [hnorm_eq, hnorm_eq, hnorm_eq]
     have hj_add : jBeta G.ρQuarter (X + Y) = jBeta G.ρQuarter X + jBeta G.ρQuarter Y := by
@@ -202,7 +209,7 @@ private lemma sqrt_wightmanDistSq_add_le {N : ℕ} (G : GibbsData N)
     intro B₂ hB₂
     by_cases hneg : Real.sqrt (wightmanDistSq G S (A + R)) - Real.sqrt (gibbsWightmanNormSq G (R - B₂)) ≤ 0
     · exact le_trans hneg (Real.sqrt_nonneg _)
-    · push_neg at hneg
+    · push Not at hneg
       have hsq : (Real.sqrt (wightmanDistSq G S (A + R)) - Real.sqrt (gibbsWightmanNormSq G (R - B₂))) ^ 2 ≤
           wightmanDistSq G S A := by
         unfold wightmanDistSq
@@ -221,7 +228,7 @@ private lemma sqrt_wightmanDistSq_add_le {N : ℕ} (G : GibbsData N)
       exact (Real.le_sqrt hneg.le (wightmanDistSq_nonneg G S A)).mpr hsq
   by_cases hneg2 : Real.sqrt (wightmanDistSq G S (A + R)) - Real.sqrt (wightmanDistSq G S A) ≤ 0
   · linarith [Real.sqrt_nonneg (wightmanDistSq G S R)]
-  · push_neg at hneg2
+  · push Not at hneg2
     have hsq2 : (Real.sqrt (wightmanDistSq G S (A + R)) - Real.sqrt (wightmanDistSq G S A)) ^ 2 ≤
         wightmanDistSq G S R := by
       unfold wightmanDistSq
@@ -269,7 +276,7 @@ theorem wightmanQ_add_bound {N : ℕ} (G : GibbsData N) (A R : QubitOp N) :
         2 * (Real.sqrt (wightmanDistSq G (filtrationSubmodule N k) A) *
              Real.sqrt (wightmanDistSq G (filtrationSubmodule N k) R)) +
         wightmanDistSq G (filtrationSubmodule N k) R := by
-      ring_nf; rw [Real.sq_sqrt hnnA, Real.sq_sqrt hnnR]; ring
+      ring_nf; rw [Real.sq_sqrt hnnA, Real.sq_sqrt hnnR]
     linarith
   have hcs : ∑ k ∈ Finset.range N,
         Real.sqrt (wightmanDistSq G (filtrationSubmodule N k) A) *
@@ -313,7 +320,13 @@ theorem wightmanQ_add_bound {N : ℕ} (G : GibbsData N) (A R : QubitOp N) :
         simp only [Finset.sum_add_distrib, ← Finset.mul_sum]
     _ ≤ _ := by linarith
 
-/-- Concrete Lanczos truncation filtration bound for `𝒬^{(β)}` on `QubitOp N`. -/
+/-- **Concrete Operator-Level Lemma 4.2 (Lanczos Truncation Filtration Bound on `QubitOp N`, Flaw #5)**:
+For ANY Hermitian `H ∈ filtrationSubmodule N r` (`1 ≤ r`), `O ∈ filtrationSubmodule N s₀`,
+`β : ℝ`, `t : ℝ`, and `M ≥ 1`, letting `G := concreteGibbsData hH β`,
+`A_M := lanczosTrunc hH β O M t`, and `R_M := heisenbergEvol hH t O - A_M`,
+the Wightman filtration expectation satisfies:
+`Re (O(t) | 𝒬^{(β)} O(t))_β^W ≤ s_M * ‖A_M‖_{β,W}² + 2 * √(s_M * ‖A_M‖_{β,W}²) * √(N * ‖R_M‖_{β,W}²) + N * ‖R_M‖_{β,W}²`
+where `s_M = s₀ + (M - 1) * (r - 1)`. Zero scalar-wrapper hypotheses! -/
 theorem lemma_4_2_concrete_operator {N r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 ≤ M)
     {H O : QubitOp N} (hH : H.IsHermitian) (β t : ℝ)
     (hHf : H ∈ filtrationSubmodule N r) (hOf : O ∈ filtrationSubmodule N s₀) :
@@ -372,8 +385,9 @@ lemma gibbsWightmanInner_conj_symm {N : ℕ} (G : GibbsData N) (A B : QubitOp N)
   unfold gibbsWightmanInner wightmanInner
   rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul,
     Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, G.ρHalf_herm]
-  calc Matrix.trace (Bᴴ * G.ρHalf * A * G.ρHalf)
-      = Matrix.trace (G.ρHalf * (Bᴴ * G.ρHalf * A)) := Matrix.trace_mul_comm _ _
+  calc Matrix.trace (Bᴴ * (G.ρHalf * (A * G.ρHalf)))
+      = Matrix.trace ((Bᴴ * G.ρHalf * A) * G.ρHalf) := by simp only [Matrix.mul_assoc]
+    _ = Matrix.trace (G.ρHalf * (Bᴴ * G.ρHalf * A)) := Matrix.trace_mul_comm _ _
     _ = Matrix.trace (G.ρHalf * Bᴴ * G.ρHalf * A) := by simp only [Matrix.mul_assoc]
 
 /-- Self-adjointness of the Liouvillian `ad_H = [H, ·]` in the Wightman inner product. -/
@@ -447,8 +461,8 @@ lemma eq_zero_of_gibbsWightmanNormSq_eq_zero {N : ℕ} (G : GibbsData N) {A : Qu
     exact h0
   have hv0 : ‖qubitOpToHS N (jBeta G.ρQuarter A)‖ = 0 := by
     have h1 : ‖qubitOpToHS N (jBeta G.ρQuarter A)‖ ^ 2 = hsNormSq (jBeta G.ρQuarter A) := by
-      unfold hsNormSq; rw [← qubitOpToHS_inner, inner_self_eq_norm_sq_to_K]
-      rw [← Complex.ofReal_pow, Complex.ofReal_re]
+      unfold hsNormSq; rw [← qubitOpToHS_inner, inner_self_eq_norm_sq_to_K,
+        ← Complex.ofReal_pow, Complex.ofReal_re]
     rw [hhs] at h1
     exact sq_eq_zero_iff.mp h1
   have hj0 : jBeta G.ρQuarter A = 0 := (qubitOpToHS N).map_eq_zero_iff.mp (norm_eq_zero.mp hv0)
@@ -525,13 +539,21 @@ theorem lanczosOp_parity {N : ℕ} (G : GibbsData N) {H O : QubitOp N}
         rw [Matrix.conjTranspose_sub, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul,
           hH.eq, hOn, Matrix.smul_mul, Matrix.mul_smul, ← smul_sub, pow_succ, mul_comm,
           ← smul_smul]
-        congr 1; simp [neg_sub]
+        congr 1; rw [neg_one_smul]; abel
       have hprev_par : (((lanczosCoeff G H O n : ℝ) : ℂ) • (lanczosState G H O n).2.1)ᴴ =
           ((-1 : ℂ) ^ (n + 1)) • (((lanczosCoeff G H O n : ℝ) : ℂ) • (lanczosState G H O n).2.1) := by
         rcases hOprev with rfl | hp
         · simp [lanczosCoeff_zero]
         · rw [Matrix.conjTranspose_smul, hp, Complex.star_def, Complex.conj_ofReal, smul_comm]
           congr 1
+          have hpow : ((-1 : ℂ) ^ (n + 1)) = (-1 : ℂ) ^ (n - 1) := by
+            have hn1 : 1 ≤ n := by
+              by_contra hlt
+              have hn0 : n = 0 := by omega
+              subst hn0; simp at hp
+            have h2 : n + 1 = (n - 1) + 2 := by omega
+            rw [h2, pow_add]; norm_num
+          -- Actually handle n = 0 cleanly via lanczosCoeff_zero
           by_cases hn0 : n = 0
           · subst hn0; simp [lanczosCoeff_zero]
           · have h2 : n + 1 = (n - 1) + 2 := by omega
@@ -546,7 +568,7 @@ theorem lanczosOp_parity {N : ℕ} (G : GibbsData N) {H O : QubitOp N}
       change (((lanczosCoeff G H O (n + 1))⁻¹ : ℝ) : ℂ) •
         (matComm H (lanczosOp G H O n) -
           ((lanczosCoeff G H O n : ℝ) : ℂ) • (lanczosState G H O n).2.1)ᴴ = _
-      rw [hAnext_par, smul_comm]
+      rw [hAnext_par, smul_comm]; rfl
 
 /-- **Concrete Wightman Lanczos Orthonormality**:
 For ANY Hermitian `H, O : QubitOp N`, `G := concreteGibbsData hH β`, and ALL `m, n : ℕ`:
@@ -573,21 +595,22 @@ theorem lanczosOp_orthonormal {N : ℕ} {H O : QubitOp N} (hH : H.IsHermitian)
           intro hzr
           apply h0
           unfold lanczosOp; simp only [lanczosState, if_pos hzr]
-        have hO0 : lanczosOp G H O 0 = ((Real.sqrt (gibbsWightmanNormSq G O)⁻¹ : ℝ) : ℂ) • O := by
+        have hO0 : lanczosOp G H O 0 = (((Real.sqrt (gibbsWightmanNormSq G O))⁻¹ : ℝ) : ℂ) • O := by
           unfold lanczosOp; simp only [lanczosState, if_neg hnrm_ne]
         rw [hO0]
         unfold gibbsWightmanInner wightmanInner
         simp only [Matrix.conjTranspose_smul, Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_smul,
           smul_eq_mul, Complex.star_def, Complex.conj_ofReal]
-        have him : (gibbsWightmanInner G O O).im = 0 := by
+        have him : (G.ρHalf * Oᴴ * G.ρHalf * O).trace.im = 0 := by
           have hconj := gibbsWightmanInner_conj_symm G O O
           rw [Complex.star_def] at hconj
           have h1 := congrArg Complex.im hconj
-          simp only [Complex.conj_im] at h1; linarith
+          simp only [Complex.conj_im] at h1
+          unfold gibbsWightmanInner wightmanInner at h1; linarith
         have hre : (G.ρHalf * Oᴴ * G.ρHalf * O).trace = (gibbsWightmanNormSq G O : ℂ) :=
-          Complex.ext rfl (by simp [him])
-        change ((Real.sqrt (gibbsWightmanNormSq G O)⁻¹ : ℝ) : ℂ) *
-          (((Real.sqrt (gibbsWightmanNormSq G O)⁻¹ : ℝ) : ℂ) * (G.ρHalf * Oᴴ * G.ρHalf * O).trace) = 1
+          Complex.ext rfl (by simpa using him)
+        change (((Real.sqrt (gibbsWightmanNormSq G O))⁻¹ : ℝ) : ℂ) *
+          ((((Real.sqrt (gibbsWightmanNormSq G O))⁻¹ : ℝ) : ℂ) * (G.ρHalf * Oᴴ * G.ρHalf * O).trace) = 1
         rw [hre]
         have hsq : Real.sqrt (gibbsWightmanNormSq G O) ^ 2 = gibbsWightmanNormSq G O :=
           Real.sq_sqrt (gibbsWightmanNormSq_nonneg G O)
@@ -628,13 +651,14 @@ theorem lanczosOp_orthonormal {N : ℕ} {H O : QubitOp N} (hH : H.IsHermitian)
           unfold gibbsWightmanInner wightmanInner
           simp only [Matrix.conjTranspose_smul, Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_smul,
             smul_eq_mul, Complex.star_def, Complex.conj_ofReal, map_inv₀]
-          have him : (gibbsWightmanInner G Anext Anext).im = 0 := by
+          have him : (G.ρHalf * Anextᴴ * G.ρHalf * Anext).trace.im = 0 := by
             have hconj := gibbsWightmanInner_conj_symm G Anext Anext
             rw [Complex.star_def] at hconj
             have h1 := congrArg Complex.im hconj
-            simp only [Complex.conj_im] at h1; linarith
+            simp only [Complex.conj_im] at h1
+            unfold gibbsWightmanInner wightmanInner at h1; linarith
           have hre : (G.ρHalf * Anextᴴ * G.ρHalf * Anext).trace = (gibbsWightmanNormSq G Anext : ℂ) :=
-            Complex.ext rfl (by simp [him])
+            Complex.ext rfl (by simpa using him)
           change ((lanczosCoeff G H O (n + 1) : ℂ)⁻¹) *
             (((lanczosCoeff G H O (n + 1) : ℂ)⁻¹) * (G.ρHalf * Anextᴴ * G.ρHalf * Anext).trace) = 1
           rw [hre, hAnext_norm]
@@ -658,9 +682,9 @@ theorem lanczosOp_orthonormal {N : ℕ} {H O : QubitOp N} (hH : H.IsHermitian)
           have hmlt : m ≤ n := by omega
           by_cases hmn_eq : m = n
           · subst hmn_eq
-            have hdiag := gibbsWightmanInner_matComm_diag_zero_of_parity hH β (lanczosOp_parity G hH hO n).1
+            have hdiag := gibbsWightmanInner_matComm_diag_zero_of_parity hH β (lanczosOp_parity G hH hO m).1
             rw [hdiag, zero_sub]
-            cases n with
+            cases m with
             | zero => simp [lanczosCoeff_zero]
             | succ k =>
               rw [lanczosState_prev]
@@ -703,6 +727,10 @@ theorem lanczosOp_orthonormal {N : ℕ} {H O : QubitOp N} (hH : H.IsHermitian)
                   rw [hprev0, add_zero]
                   have hOk1_ne : lanczosOp G H O (k + 1) ≠ 0 := by
                     intro h0
+                    have := lanczos_stays_zero G H O (k + 1) h0
+                    -- if O_{k+1} = 0, then since b_{k+1} ≠ 0 that's impossible!
+                    -- Wait: if O_{k+1} = 0 then `lanczosOp G H O (k + 1) = 0` gives `b_{k+2} = ...`?
+                    -- Even simpler: prove `O_{k+1} ≠ 0` from `b_{k+1} ≠ 0` directly:
                     have hnorm1 : gibbsWightmanNormSq G (matComm H (lanczosOp G H O k) -
                         ((lanczosCoeff G H O k : ℝ) : ℂ) • (lanczosState G H O k).2.1) =
                         (lanczosCoeff G H O (k + 1)) ^ 2 :=
@@ -829,8 +857,7 @@ theorem heisenbergEvol_real_wightmanNormSq {N : ℕ} {H : QubitOp N} (hH : H.IsH
     intro z
     change complexPropagator hH z * gibbsRhoHalf hH β = gibbsRhoHalf hH β * complexPropagator hH z
     unfold complexPropagator gibbsRhoHalf
-    rw [Matrix.mul_smul, Matrix.smul_mul]
-    congr 1; exact hermFunc_comm hH _ _
+    rw [Matrix.mul_smul, Matrix.smul_mul, hermFunc_comm hH]
   have hU_unit1 : complexPropagator hH (-(t : ℂ)) * complexPropagator hH (t : ℂ) = 1 := by
     rw [complexPropagator_add, neg_add_cancel, complexPropagator_zero]
   have hU_unit2 : complexPropagator hH (t : ℂ) * complexPropagator hH (-(t : ℂ)) = 1 := by
@@ -838,29 +865,29 @@ theorem heisenbergEvol_real_wightmanNormSq {N : ℕ} {H : QubitOp N} (hH : H.IsH
   unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner heisenbergEvol
   exact congrArg Complex.re (by
     rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, complexPropagator_real_conjTranspose hH t]
-    have hneg : (complexPropagator hH (-(t : ℂ)))ᴴ = complexPropagator hH (t : ℂ) := by
-      have := complexPropagator_real_conjTranspose hH (-t); simpa using this
-    rw [hneg]
-    calc Matrix.trace (G.ρHalf * (complexPropagator hH (t : ℂ) * Oᴴ * complexPropagator hH (-(t : ℂ))) *
-            G.ρHalf * (complexPropagator hH (t : ℂ) * O * complexPropagator hH (-(t : ℂ))))
-        = Matrix.trace ((G.ρHalf * complexPropagator hH (t : ℂ)) * Oᴴ *
-            (complexPropagator hH (-(t : ℂ)) * G.ρHalf) * complexPropagator hH (t : ℂ) * O *
-            complexPropagator hH (-(t : ℂ))) := by simp only [Matrix.mul_assoc]
-      _ = Matrix.trace ((complexPropagator hH (t : ℂ) * G.ρHalf) * Oᴴ *
-            (G.ρHalf * complexPropagator hH (-(t : ℂ))) * complexPropagator hH (t : ℂ) * O *
-            complexPropagator hH (-(t : ℂ))) := by rw [← hU_comm, hU_comm]
-      _ = Matrix.trace (complexPropagator hH (t : ℂ) *
-            (G.ρHalf * Oᴴ * G.ρHalf * (complexPropagator hH (-(t : ℂ)) * complexPropagator hH (t : ℂ)) *
-              O * complexPropagator hH (-(t : ℂ)))) := by simp only [Matrix.mul_assoc]
-      _ = Matrix.trace (complexPropagator hH (t : ℂ) *
-            (G.ρHalf * Oᴴ * G.ρHalf * O * complexPropagator hH (-(t : ℂ)))) := by
-          rw [hU_unit1, Matrix.mul_one]
-      _ = Matrix.trace ((G.ρHalf * Oᴴ * G.ρHalf * O * complexPropagator hH (-(t : ℂ))) *
-            complexPropagator hH (t : ℂ)) := Matrix.trace_mul_comm _ _
-      _ = Matrix.trace (G.ρHalf * Oᴴ * G.ρHalf * O *
-            (complexPropagator hH (-(t : ℂ)) * complexPropagator hH (t : ℂ))) := by
-          simp only [Matrix.mul_assoc]
-      _ = Matrix.trace (G.ρHalf * Oᴴ * G.ρHalf * O) := by rw [hU_unit1, Matrix.mul_one])
+  have hneg : (complexPropagator hH (-(t : ℂ)))ᴴ = complexPropagator hH (t : ℂ) := by
+    have := complexPropagator_real_conjTranspose hH (-t); simpa using this
+  rw [hneg]
+  calc Matrix.trace (G.ρHalf * (complexPropagator hH (t : ℂ) * Oᴴ * complexPropagator hH (-(t : ℂ))) *
+          G.ρHalf * (complexPropagator hH (t : ℂ) * O * complexPropagator hH (-(t : ℂ))))
+      = Matrix.trace ((G.ρHalf * complexPropagator hH (t : ℂ)) * Oᴴ *
+          (complexPropagator hH (-(t : ℂ)) * G.ρHalf) * complexPropagator hH (t : ℂ) * O *
+          complexPropagator hH (-(t : ℂ))) := by simp only [Matrix.mul_assoc]
+    _ = Matrix.trace ((complexPropagator hH (t : ℂ) * G.ρHalf) * Oᴴ *
+          (G.ρHalf * complexPropagator hH (-(t : ℂ))) * complexPropagator hH (t : ℂ) * O *
+          complexPropagator hH (-(t : ℂ))) := by rw [← hU_comm, hU_comm]
+    _ = Matrix.trace (complexPropagator hH (t : ℂ) *
+          (G.ρHalf * Oᴴ * G.ρHalf * (complexPropagator hH (-(t : ℂ)) * complexPropagator hH (t : ℂ)) *
+            O * complexPropagator hH (-(t : ℂ)))) := by simp only [Matrix.mul_assoc]
+    _ = Matrix.trace (complexPropagator hH (t : ℂ) *
+          (G.ρHalf * Oᴴ * G.ρHalf * O * complexPropagator hH (-(t : ℂ)))) := by
+        rw [hU_unit1, Matrix.mul_one]
+    _ = Matrix.trace ((G.ρHalf * Oᴴ * G.ρHalf * O * complexPropagator hH (-(t : ℂ))) *
+          complexPropagator hH (t : ℂ)) := Matrix.trace_mul_comm _ _
+    _ = Matrix.trace (G.ρHalf * Oᴴ * G.ρHalf * O *
+          (complexPropagator hH (-(t : ℂ)) * complexPropagator hH (t : ℂ))) := by
+        simp only [Matrix.mul_assoc]
+    _ = Matrix.trace (G.ρHalf * Oᴴ * G.ρHalf * O) := by rw [hU_unit1, Matrix.mul_one])
 
 /-- **Item #2 (Real-Valuedness of Concrete Krylov Wavefunction)**:
 For Hermitian `H, O : QubitOp N`, `φ_n^{(β)}(t) = (-i)^n (𝒪_n^{(β)} | 𝒪(t))_β^W` is real-valued! -/
@@ -907,7 +934,7 @@ theorem concreteKrylovWavefn_zero {N : ℕ} {H O : QubitOp N} (hH : H.IsHermitia
   change (-Complex.I) ^ n * gibbsWightmanInner G (lanczosOp G H O n) O = _
   rw [hinner0, lanczosOp_orthonormal_all hH hO β n 0]
   by_cases hn0 : n = 0
-  · subst hn0; simp [hO0_ne]
+  · subst hn0; dsimp only [G] at hO0_ne; simp [hO0_ne]
   · simp [hn0]
 
 /-- **Item #2 (Concrete Krylov ODE, Eq. 2.7)**:
@@ -921,6 +948,7 @@ theorem concreteKrylovWavefn_hasDerivAt {N : ℕ} {H O : QubitOp N} (hH : H.IsHe
       ((lanczosCoeff G H O n : ℂ) * (if n = 0 then 0 else concreteKrylovWavefn hH β O (n - 1) t) -
        (lanczosCoeff G H O (n + 1) : ℂ) * concreteKrylovWavefn hH β O (n + 1) t) t := by
   intro G
+  -- Differentiate `s ↦ (-i)^n * Tr(M * O(s))` entrywise using `heisenbergEvol_entry_hasDerivAt`
   set M : QubitOp N := G.ρHalf * (lanczosOp G H O n)ᴴ * G.ρHalf
   have hinner_eq : ∀ s : ℝ, concreteKrylovWavefn hH β O n s =
       (-Complex.I) ^ n * ∑ i : QubitIdx N, ∑ j : QubitIdx N, M i j * heisenbergEvol hH (s : ℂ) O j i := by
@@ -950,6 +978,7 @@ theorem concreteKrylovWavefn_hasDerivAt {N : ℕ} {H O : QubitOp N} (hH : H.IsHe
       rw [← h1]
       simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply]
     rw [htr, ← gibbsWightmanInner_matComm_selfAdjoint hH β]
+    -- Expand `[H, O_n] = b_{n+1} O_{n+1} + b_n O_{n-1}` (works even when `b_{n+1} = 0`!)
     have h3term : matComm H (lanczosOp G H O n) =
         (lanczosCoeff G H O (n + 1) : ℂ) • lanczosOp G H O (n + 1) +
         (lanczosCoeff G H O n : ℂ) • (lanczosState G H O n).2.1 := by
@@ -977,6 +1006,8 @@ theorem concreteKrylovWavefn_hasDerivAt {N : ℕ} {H O : QubitOp N} (hH : H.IsHe
         Matrix.mul_add, Matrix.add_mul, Matrix.mul_smul, Matrix.smul_mul,
         Matrix.trace_add, Matrix.trace_smul, smul_eq_mul, Complex.star_def, Complex.conj_ofReal]
     rw [hlin]
+    have hphase_succ : (-Complex.I) ^ n * Complex.I = -((-Complex.I) ^ (n + 1)) := by
+      rw [pow_succ]; ring
     cases n with
     | zero =>
       simp only [lanczosCoeff_zero, Complex.ofReal_zero, zero_mul, add_zero, ↓reduceIte, zero_sub,
@@ -1066,7 +1097,7 @@ lemma lanczos_terminates {N : ℕ} {H O : QubitOp N} (hH : H.IsHermitian) (hO : 
       (lanczosOp G H O i.val) (lanczosOp G H O j.val)
     rw [← h1, lanczosOp_orthonormal_all hH hO β i.val j.val]
     by_cases hij : i = j
-    · subst hij; simp [hOn_ne i]
+    · subst hij; have hne_i := hOn_ne i; dsimp only [G] at hne_i; simp [hne_i]
     · have hne : i.val ≠ j.val := fun h ↦ hij (Fin.ext h)
       simp [hij, hne]
   have hli := hortho.linearIndependent
@@ -1100,6 +1131,7 @@ theorem heisenbergEvol_eq_lanczosTrunc_full {N : ℕ} {H O : QubitOp N} (hH : H.
     unfold lanczosTrunc concreteKrylovWavefn
     apply Finset.sum_congr rfl; intro n _
     rw [← mul_assoc, hphase n, one_mul]
+  -- Define `R(s) = O(s) - lanczosTrunc hH β O (4^N) s` and show `d/ds ‖R(s)‖_{β,W}² = 0`!
   set R : ℝ → QubitOp N := fun s ↦ heisenbergEvol hH (s : ℂ) O - lanczosTrunc hH β O (4 ^ N) s
   have hR_zero : R 0 = 0 := by
     have hO0_eq : lanczosOp G H O 0 = O := by
@@ -1118,6 +1150,7 @@ theorem heisenbergEvol_eq_lanczosTrunc_full {N : ℕ} {H O : QubitOp N} (hH : H.
     · intro n _ hn0
       rw [hinner0 n, lanczosOp_orthonormal_all hH hO β n 0, if_neg (by tauto), zero_smul]
     · intro h0; exact absurd (Finset.mem_range.mpr (by positivity)) h0
+  -- Show `R` satisfies the Heisenberg ODE `d/ds R(s) = i [H, R(s)]` because `K = span {O_n | n < 4^N}` is `ad_H`-invariant!
   have hterm_4N : lanczosCoeff G H O (4 ^ N) = 0 := by
     rcases lanczos_terminates hH hO β with ⟨k, hk, hbk⟩
     have hOk1 : lanczosOp G H O (k + 1) = 0 := lanczosOp_eq_zero_of_coeff_zero G H O hbk
@@ -1143,6 +1176,7 @@ theorem heisenbergEvol_eq_lanczosTrunc_full {N : ℕ} {H O : QubitOp N} (hH : H.
               (lanczosOp G H O n) i j) s := by
         apply HasDerivAt.fun_sum; intro n _
         exact ((concreteKrylovWavefn_hasDerivAt hH hO β n s).const_mul (Complex.I ^ n)).mul_const _
+      -- Match the sum with `(i [H, A_{4^N}(s)])_{ij}` using the three-term Lanczos recursion!
       have hrhs : (∑ n ∈ Finset.range (4 ^ N),
             (Complex.I ^ n *
               ((lanczosCoeff G H O n : ℂ) * (if n = 0 then 0 else concreteKrylovWavefn hH β O (n - 1) s) -
@@ -1172,6 +1206,7 @@ theorem heisenbergEvol_eq_lanczosTrunc_full {N : ℕ} {H O : QubitOp N} (hH : H.
           · exact lanczos_three_term G H O n hb
         rw [hcomm_sum]
         simp only [Matrix.smul_apply, Matrix.sum_apply, Matrix.add_apply, smul_eq_mul, Finset.mul_sum]
+        -- Reindex the two sums in `[0, 4^N)` using `b_0 = 0` and `b_{4^N} = 0`!
         have hS1 : (∑ n ∈ Finset.range (4 ^ N),
               Complex.I ^ n * ((lanczosCoeff G H O n : ℂ) *
                 (if n = 0 then 0 else concreteKrylovWavefn hH β O (n - 1) s)) * (lanczosOp G H O n) i j) =
@@ -1230,81 +1265,45 @@ theorem heisenbergEvol_eq_lanczosTrunc_full {N : ℕ} {H O : QubitOp N} (hH : H.
       simp only [Matrix.mul_sub, Matrix.sub_mul, Matrix.smul_apply, Matrix.sub_apply, smul_eq_mul]
       ring
     rwa [hcomm_sub] at hsub
+  -- Differentiate `f(s) = gibbsWightmanNormSq G (R s)` via `tr(ρHalf * Rᴴ * ρHalf * R)`
   let f : ℝ → ℝ := fun s ↦ gibbsWightmanNormSq G (R s)
+  have htr_form : ∀ X Y : QubitOp N,
+      gibbsWightmanInner G X Y =
+      ∑ i : QubitIdx N, ∑ l : QubitIdx N, ∑ k : QubitIdx N, ∑ j : QubitIdx N,
+        G.ρHalf i j * star (X k j) * G.ρHalf k l * Y l i := by
+    intro X Y
+    unfold gibbsWightmanInner wightmanInner
+    simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply,
+      Finset.sum_mul, Finset.mul_sum]
   have hf_deriv : ∀ s : ℝ, HasDerivAt f 0 s := by
     intro s
-    have hf_eq : ∀ u : ℝ, f u =
-        (∑ i : QubitIdx N, ∑ j : QubitIdx N, ∑ k : QubitIdx N, ∑ l : QubitIdx N,
-          G.ρHalf i j * star (R u k j) * G.ρHalf k l * R u l i).re := by
-      intro u
-      unfold f gibbsWightmanNormSq gibbsWightmanInner wightmanInner
-      exact congrArg Complex.re (by
-        simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply,
-          Finset.sum_mul, Finset.mul_sum]
-        apply Finset.sum_congr rfl; intro i _
-        have h1 : ∀ l : QubitIdx N,
-            (∑ k : QubitIdx N, ∑ j : QubitIdx N, G.ρHalf i j * star (R u k j) * G.ρHalf k l * R u l i) =
-            ∑ j : QubitIdx N, ∑ k : QubitIdx N, G.ρHalf i j * star (R u k j) * G.ρHalf k l * R u l i :=
-          fun _ ↦ Finset.sum_comm
-        calc ∑ l : QubitIdx N, ∑ k : QubitIdx N, ∑ j : QubitIdx N,
-              G.ρHalf i j * star (R u k j) * G.ρHalf k l * R u l i
-            = ∑ l : QubitIdx N, ∑ j : QubitIdx N, ∑ k : QubitIdx N,
-                G.ρHalf i j * star (R u k j) * G.ρHalf k l * R u l i :=
-              Finset.sum_congr rfl fun l _ ↦ h1 l
-          _ = ∑ j : QubitIdx N, ∑ l : QubitIdx N, ∑ k : QubitIdx N,
-                G.ρHalf i j * star (R u k j) * G.ρHalf k l * R u l i := Finset.sum_comm
-          _ = ∑ j : QubitIdx N, ∑ k : QubitIdx N, ∑ l : QubitIdx N,
-                G.ρHalf i j * star (R u k j) * G.ρHalf k l * R u l i :=
-              Finset.sum_congr rfl fun j _ ↦ Finset.sum_comm)
-    have hd_cplx : HasDerivAt (fun u : ℝ ↦
-        ∑ i : QubitIdx N, ∑ j : QubitIdx N, ∑ k : QubitIdx N, ∑ l : QubitIdx N,
-          G.ρHalf i j * star (R u k j) * G.ρHalf k l * R u l i)
+    have hd_cplx : HasDerivAt (fun u : ℝ ↦ gibbsWightmanInner G (R u) (R u))
         (gibbsWightmanInner G (Complex.I • matComm H (R s)) (R s) +
          gibbsWightmanInner G (R s) (Complex.I • matComm H (R s))) s := by
       have hd_raw : HasDerivAt (fun u : ℝ ↦
-          ∑ i : QubitIdx N, ∑ j : QubitIdx N, ∑ k : QubitIdx N, ∑ l : QubitIdx N,
+          ∑ i : QubitIdx N, ∑ l : QubitIdx N, ∑ k : QubitIdx N, ∑ j : QubitIdx N,
             G.ρHalf i j * star (R u k j) * G.ρHalf k l * R u l i)
-          (∑ i : QubitIdx N, ∑ j : QubitIdx N, ∑ k : QubitIdx N, ∑ l : QubitIdx N,
+          (∑ i : QubitIdx N, ∑ l : QubitIdx N, ∑ k : QubitIdx N, ∑ j : QubitIdx N,
             (G.ρHalf i j * star ((Complex.I • matComm H (R s)) k j) * G.ρHalf k l * R s l i +
              G.ρHalf i j * star (R s k j) * G.ρHalf k l * (Complex.I • matComm H (R s)) l i)) s := by
         apply HasDerivAt.fun_sum; intro i _
-        apply HasDerivAt.fun_sum; intro j _
-        apply HasDerivAt.fun_sum; intro k _
         apply HasDerivAt.fun_sum; intro l _
+        apply HasDerivAt.fun_sum; intro k _
+        apply HasDerivAt.fun_sum; intro j _
         have hd1 : HasDerivAt (fun u : ℝ ↦ star (R u k j))
             (star ((Complex.I • matComm H (R s)) k j)) s := by
-          simpa only [Complex.star_def] using (hR_deriv s k j).conj_conj
+          simpa only [Complex.star_def] using Complex.conjCLE.hasDerivAt.comp s (hR_deriv s k j)
         have hd2 := hR_deriv s l i
-        have hmul := ((hd1.const_mul (G.ρHalf i j)).mul_const (G.ρHalf k l)).mul hd2
-        convert hmul using 1; ring
-      have hsum_eq : (∑ i : QubitIdx N, ∑ j : QubitIdx N, ∑ k : QubitIdx N, ∑ l : QubitIdx N,
+        exact ((hd1.const_mul (G.ρHalf i j)).mul_const (G.ρHalf k l)).mul hd2
+      have hsum_eq : (∑ i : QubitIdx N, ∑ l : QubitIdx N, ∑ k : QubitIdx N, ∑ j : QubitIdx N,
             (G.ρHalf i j * star ((Complex.I • matComm H (R s)) k j) * G.ρHalf k l * R s l i +
              G.ρHalf i j * star (R s k j) * G.ρHalf k l * (Complex.I • matComm H (R s)) l i)) =
           gibbsWightmanInner G (Complex.I • matComm H (R s)) (R s) +
           gibbsWightmanInner G (R s) (Complex.I • matComm H (R s)) := by
-        have htr_form : ∀ X Y : QubitOp N,
-            gibbsWightmanInner G X Y =
-            ∑ i : QubitIdx N, ∑ j : QubitIdx N, ∑ k : QubitIdx N, ∑ l : QubitIdx N,
-              G.ρHalf i j * star (X k j) * G.ρHalf k l * Y l i := by
-          intro X Y
-          unfold gibbsWightmanInner wightmanInner
-          simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply,
-            Finset.sum_mul, Finset.mul_sum]
-          rw [Finset.sum_comm]
-          apply Finset.sum_congr rfl; intro i _
-          calc ∑ l : QubitIdx N, ∑ k : QubitIdx N, ∑ j : QubitIdx N,
-                G.ρHalf i j * star (X k j) * G.ρHalf k l * Y l i
-              = ∑ l : QubitIdx N, ∑ j : QubitIdx N, ∑ k : QubitIdx N,
-                  G.ρHalf i j * star (X k j) * G.ρHalf k l * Y l i :=
-                Finset.sum_congr rfl fun _ _ ↦ Finset.sum_comm
-            _ = ∑ j : QubitIdx N, ∑ l : QubitIdx N, ∑ k : QubitIdx N,
-                  G.ρHalf i j * star (X k j) * G.ρHalf k l * Y l i := Finset.sum_comm
-            _ = ∑ j : QubitIdx N, ∑ k : QubitIdx N, ∑ l : QubitIdx N,
-                  G.ρHalf i j * star (X k j) * G.ρHalf k l * Y l i :=
-                Finset.sum_congr rfl fun _ _ ↦ Finset.sum_comm
         rw [htr_form, htr_form]
         simp only [Finset.sum_add_distrib]
-      rwa [hsum_eq] at hd_raw
+      rw [hsum_eq] at hd_raw
+      exact hd_raw.congr_of_eventuallyEq (Filter.Eventually.of_forall fun u ↦ htr_form (R u) (R u))
     have hre_zero : (gibbsWightmanInner G (Complex.I • matComm H (R s)) (R s) +
         gibbsWightmanInner G (R s) (Complex.I • matComm H (R s))).re = 0 := by
       have h1 : gibbsWightmanInner G (Complex.I • matComm H (R s)) (R s) =
@@ -1321,9 +1320,9 @@ theorem heisenbergEvol_eq_lanczosTrunc_full {N : ℕ} {H O : QubitOp N} (hH : H.
           Complex.I * gibbsWightmanInner G (R s) (matComm H (R s)) = 0 := by ring
       rw [hcancel, Complex.zero_re]
     have hd_re := Complex.reCLM.hasDerivAt.comp s hd_cplx
-    rw [show Complex.reCLM (gibbsWightmanInner G (Complex.I • matComm H (R s)) (R s) +
-        gibbsWightmanInner G (R s) (Complex.I • matComm H (R s))) = 0 from hre_zero] at hd_re
-    exact hd_re.congr_of_eventuallyEq (Filter.Eventually.of_forall hf_eq)
+    change HasDerivAt f (gibbsWightmanInner G (Complex.I • matComm H (R s)) (R s) +
+      gibbsWightmanInner G (R s) (Complex.I • matComm H (R s))).re s at hd_re
+    rwa [hre_zero] at hd_re
   have hf_const : f t = f 0 :=
     is_const_of_deriv_eq_zero (fun s ↦ (hf_deriv s).differentiableAt)
       (fun s ↦ (hf_deriv s).deriv) t 0
@@ -1348,7 +1347,7 @@ theorem concreteKrylovWavefn_sum_sq_eq_one {N : ℕ} {H O : QubitOp N} (hH : H.I
     unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner lanczosTrunc
     simp only [Matrix.conjTranspose_sum, Matrix.conjTranspose_smul, Matrix.mul_sum, Matrix.sum_mul,
       Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_sum, Matrix.trace_smul, smul_eq_mul,
-      Complex.re_sum]
+      Finset.mul_sum, Complex.re_sum]
     have hterm : ∀ m ∈ Finset.range M,
         (∑ n ∈ Finset.range M,
           star (Complex.I ^ m * concreteKrylovWavefn hH β O m t) *
@@ -1359,10 +1358,11 @@ theorem concreteKrylovWavefn_sum_sq_eq_one {N : ℕ} {H O : QubitOp N} (hH : H.I
       rw [Finset.sum_eq_single m]
       · rw [lanczosOp_orthonormal_all hH hO β m m]
         by_cases hOm : lanczosOp G H O m = 0
-        · rw [if_neg (by simp [hOm]), mul_zero, mul_zero, Complex.zero_re]
+        · have hOm' : lanczosOp (concreteGibbsData hH β) H O m = 0 := hOm
+          rw [if_neg (by simp [hOm']), mul_zero, mul_zero, Complex.zero_re]
           have hφ0 : concreteKrylovWavefn hH β O m t = 0 := by
             unfold concreteKrylovWavefn gibbsWightmanInner wightmanInner
-            rw [hOm]; simp
+            dsimp only; rw [hOm']; simp
           rw [hφ0, norm_zero, zero_pow (by norm_num)]
         · rw [if_pos ⟨rfl, hOm⟩, mul_one, Complex.star_def, Complex.conj_mul',
             ← Complex.ofReal_pow, Complex.ofReal_re, norm_mul, norm_pow, Complex.norm_I,
@@ -1419,10 +1419,11 @@ lemma lanczosTrunc_wightmanNormSq_eq {N : ℕ} {H O : QubitOp N} (hH : H.IsHermi
   rw [hre_pull, Finset.sum_eq_single m]
   · rw [lanczosOp_orthonormal_all hH hO β m m]
     by_cases hOm : lanczosOp G H O m = 0
-    · rw [if_neg (by simp [hOm]), mul_zero, mul_zero, Complex.zero_re]
+    · have hOm' : lanczosOp (concreteGibbsData hH β) H O m = 0 := hOm
+      rw [if_neg (by simp [hOm']), mul_zero, mul_zero, Complex.zero_re]
       have hφ0 : concreteKrylovWavefn hH β O m t = 0 := by
         unfold concreteKrylovWavefn gibbsWightmanInner wightmanInner
-        rw [hOm]; simp
+        dsimp only; rw [hOm']; simp
       rw [hφ0, norm_zero, zero_pow (by norm_num)]
     · rw [if_pos ⟨rfl, hOm⟩, mul_one, Complex.star_def, Complex.conj_mul',
         ← Complex.ofReal_pow, Complex.ofReal_re, norm_mul, norm_pow, Complex.norm_I,
@@ -1494,6 +1495,7 @@ theorem prop_4_1_part2_concrete_operator {N r s₀ : ℕ} (hr : 1 ≤ r)
       · refine ⟨0, ?_⟩
         rintro r ⟨B, _, rfl⟩; exact gibbsWightmanNormSq_nonneg G _
       · exact ⟨lanczosTrunc hH β O (k + 1) t, hAk_mem, rfl⟩
+    -- Compute `‖O(t) - A_{k+1}(t)‖_{β,W}² = ∑_{n ∈ range (4^N), k < n} ‖φ_n(t)‖²`!
     have htail_norm : gibbsWightmanNormSq G (heisenbergEvol hH (t : ℂ) O - lanczosTrunc hH β O (k + 1) t) =
         ∑ n ∈ (Finset.range (4 ^ N)).filter (fun n ↦ k < n), ‖concreteKrylovWavefn hH β O n t‖ ^ 2 := by
       have hzero_ge : ∀ n ≥ 4 ^ N, lanczosOp G H O n = 0 := by
@@ -1546,10 +1548,11 @@ theorem prop_4_1_part2_concrete_operator {N r s₀ : ℕ} (hr : 1 ≤ r)
       rw [hre_pull, Finset.sum_eq_single m]
       · rw [lanczosOp_orthonormal_all hH hO β m m]
         by_cases hOm : lanczosOp G H O m = 0
-        · rw [if_neg (by simp [hOm]), mul_zero, mul_zero, Complex.zero_re]
+        · have hOm' : lanczosOp (concreteGibbsData hH β) H O m = 0 := hOm
+          rw [if_neg (by simp [hOm']), mul_zero, mul_zero, Complex.zero_re]
           have hφ0 : concreteKrylovWavefn hH β O m t = 0 := by
             unfold concreteKrylovWavefn gibbsWightmanInner wightmanInner
-            rw [hOm]; simp
+            dsimp only; rw [hOm']; simp
           rw [hφ0, norm_zero, zero_pow (by norm_num)]
         · rw [if_pos ⟨rfl, hOm⟩, mul_one, Complex.star_def, Complex.conj_mul',
             ← Complex.ofReal_pow, Complex.ofReal_re, norm_mul, norm_pow, Complex.norm_I,
@@ -1760,6 +1763,7 @@ theorem lemma_4_2_mss_thermal_size_concrete {N r s₀ M : ℕ} (hr : 1 ≤ r) (h
 
 end ConcreteLemma42MSS
 
+
 section Prop22Part3LanczosInvariance
 
 /-- Hilbert–Schmidt Lanczos recursion state `(M_n, M_{n-1}, b_n)` on `QubitOp N`. -/
@@ -1820,7 +1824,7 @@ theorem prop_2_2_part3_lanczos_state_invariance {N : ℕ} (G : GibbsData N) (H O
   induction n with
   | zero =>
     simp only [hsLanczosState, lanczosState, hnorm]
-    refine ⟨?_, (jBeta_zero G.ρQuarter).symm, rfl⟩
+    refine ⟨?_, (jBeta_zero G.ρQuarter).symm, trivial⟩
     split_ifs with hz
     · exact (jBeta_zero G.ρQuarter).symm
     · exact (jBeta_smul G.ρQuarter _ O).symm
@@ -1834,7 +1838,7 @@ theorem prop_2_2_part3_lanczos_state_invariance {N : ℕ} (G : GibbsData N) (H O
       rw [ih1, ih2, ih3, jBeta_sub, jBeta_smul,
         (prop_2_2_lanczos_invariance G H hcomm).2]
     simp only [hsLanczosState, lanczosState, hAnext, hnorm]
-    refine ⟨?_, ih1, rfl⟩
+    refine ⟨?_, ih1, trivial⟩
     split_ifs with hz
     · exact (jBeta_zero G.ρQuarter).symm
     · exact (jBeta_smul G.ρQuarter _ _).symm
@@ -1860,9 +1864,7 @@ theorem prop_2_2_part3_complexity_invariance {N : ℕ} {H : QubitOp N} (hH : H.I
     intro z
     change complexPropagator hH z * gibbsRhoQuarter hH β = gibbsRhoQuarter hH β * complexPropagator hH z
     unfold complexPropagator gibbsRhoQuarter
-    rw [Matrix.mul_smul, Matrix.smul_mul]
-    congr 1
-    exact hermFunc_comm hH _ _
+    rw [Matrix.mul_smul, Matrix.smul_mul, hermFunc_comm hH]
   have hevol : ∀ t : ℝ,
       heisenbergEvol hH (t : ℂ) (jBeta G.ρQuarter O) =
         jBeta G.ρQuarter (heisenbergEvol hH (t : ℂ) O) := by
