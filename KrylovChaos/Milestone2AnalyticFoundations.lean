@@ -515,10 +515,9 @@ noncomputable def concreteOTOC {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
   Matrix.trace (A * A)
 
 private lemma hsNormSq_jBeta_eq {N : ℕ} (G : GibbsData N) (A : QubitOp N) :
-    hsNormSq (jBeta G.ρQuarter A) = gibbsWightmanNormSq G A := by
-  unfold hsNormSq gibbsWightmanNormSq gibbsWightmanInner hsInner wightmanInner jBeta
-  congr 1
-  exact prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf A A G.ρQuarter_herm G.sq_quarter
+    hsNormSq (jBeta G.ρQuarter A) = gibbsWightmanNormSq G A :=
+  congrArg Complex.re
+    (prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf A A G.ρQuarter_herm G.sq_quarter)
 
 private lemma hsNormSq_mul_herm_le {N : ℕ} (M V : QubitOp N) (hV : V.IsHermitian) :
     hsNormSq (M * V) ≤ (opNorm V) ^ 2 * hsNormSq M := by
@@ -526,8 +525,7 @@ private lemma hsNormSq_mul_herm_le {N : ℕ} (M V : QubitOp N) (hV : V.IsHermiti
     unfold hsNormSq hsInner
     rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
       hV.eq]
-    congr 1
-    exact Matrix.trace_mul_comm (V * Mᴴ) (M * V)
+    exact congrArg Complex.re (Matrix.trace_mul_comm (V * Mᴴ) (M * V))
   have hcol : ∀ X : QubitOp N, hsNormSq X =
       ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i : QubitIdx N ↦ X i j)‖ ^ 2 := by
     intro X
@@ -545,7 +543,7 @@ private lemma hsNormSq_mul_herm_le {N : ℕ} (M V : QubitOp N) (hV : V.IsHermiti
     apply Finset.sum_le_sum; intro j _
     have hvec : WithLp.toLp 2 (fun i : QubitIdx N ↦ (V * Mᴴ) i j) =
         opToCLM V (WithLp.toLp 2 (fun i : QubitIdx N ↦ Mᴴ i j)) := by
-      ext i; simp [opToCLM, Matrix.mul_apply]
+      ext i; simp [opToCLM, Matrix.mul_apply, Matrix.mulVec, dotProduct]
     rw [hvec]
     have hle := (opToCLM V).le_opNorm (WithLp.toLp 2 (fun i : QubitIdx N ↦ Mᴴ i j))
     have hsq := pow_le_pow_left₀ (norm_nonneg _) hle 2

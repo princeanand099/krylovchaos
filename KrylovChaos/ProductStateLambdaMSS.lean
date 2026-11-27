@@ -522,15 +522,15 @@ private lemma lambdaMSS_le_of_unitary_conj {N s : ℕ}
     intro A
     unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
     rw [hG'half]
-    congr 1
+    apply congrArg Complex.re
     rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
     calc Matrix.trace (U * G.ρHalf * Uᴴ * Aᴴ * (U * G.ρHalf * Uᴴ) * A)
         = Matrix.trace (U * (G.ρHalf * (Uᴴ * (Aᴴ * U)) * G.ρHalf * (Uᴴ * A))) := by
-            congr 1; simp only [mul_assoc]
+            apply congrArg Matrix.trace; simp only [mul_assoc]
       _ = Matrix.trace ((G.ρHalf * (Uᴴ * (Aᴴ * U)) * G.ρHalf * (Uᴴ * A)) * U) :=
             Matrix.trace_mul_comm _ _
       _ = Matrix.trace (G.ρHalf * (Uᴴ * (Aᴴ * U)) * G.ρHalf * (Uᴴ * A * U)) := by
-            congr 1; simp only [mul_assoc]
+            apply congrArg Matrix.trace; simp only [mul_assoc]
   have hS_eq : ∀ A : QubitOp N,
       mssThermalSize G' A = mssThermalSize G (Uᴴ * A * U) := by
     intro A
@@ -552,10 +552,11 @@ private lemma lambdaMSS_le_of_unitary_conj {N s : ℕ}
       unfold hsInner
       rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
       calc Matrix.trace (U * (Mᴴ * Uᴴ) * (U * totalSizeOp M * Uᴴ))
-          = Matrix.trace (U * (Mᴴ * (Uᴴ * U) * totalSizeOp M) * Uᴴ) := by congr 1; simp only [mul_assoc]
+          = Matrix.trace (U * (Mᴴ * (Uᴴ * U) * totalSizeOp M) * Uᴴ) := by
+              apply congrArg Matrix.trace; simp only [mul_assoc]
         _ = Matrix.trace (U * (Mᴴ * totalSizeOp M) * Uᴴ) := by rw [hUL, mul_one]
         _ = Matrix.trace (Uᴴ * U * (Mᴴ * totalSizeOp M)) := by
-              rw [Matrix.trace_mul_cycle]; congr 1; simp only [mul_assoc]
+              rw [Matrix.trace_mul_cycle]; apply congrArg Matrix.trace; simp only [mul_assoc]
         _ = Matrix.trace (Mᴴ * totalSizeOp M) := by rw [hUL, one_mul]
     have hj_eq : jBeta G'.ρQuarter A = U * jBeta G.ρQuarter (Uᴴ * A * U) * Uᴴ := by
       unfold jBeta
