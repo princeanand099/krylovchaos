@@ -10,7 +10,7 @@ import KrylovChaos
 
 Run with `lake env lean KrylovChaos/AuditAxioms.lean`.
 Every listed headline theorem must depend strictly on a subset of
-`[propext, Classical.choice, Quot.sound]` — zero `sorryAx`, zero custom axioms.
+`[propext, Classical.choice, Quot.sound]` — zero custom axioms, complete proofs.
 -/
 
 -- Original Headline & Literature Theorems
