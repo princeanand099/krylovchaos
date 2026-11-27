@@ -328,7 +328,7 @@ lemma doubleWellTridiag_mulVec_apply {D : ℕ} (hD : 2 ≤ D) (E_B : ℝ) (v : F
     have hS : S = {i, im, ip} := by ext j; simp [S, h0, h1, im, ip]; tauto
     have him_ne : i ≠ im := by intro h; have := congrArg Fin.val h; simp [im] at this; omega
     have hip_ne : i ≠ ip := by intro h; have := congrArg Fin.val h; simp [ip] at this
-    have hmp_ne : im ≠ ip := by intro h; have := congrArg Fin.val h; simp [im, ip] at this; omega
+    have hmp_ne : im ≠ ip := by intro h; have := congrArg Fin.val h; simp [im, ip] at this
     rw [hS, Finset.sum_insert (by simp [him_ne, hip_ne]),
       Finset.sum_insert (by simp [hmp_ne]), Finset.sum_singleton]
     have him_adj : i.val + 1 = im.val ∨ im.val + 1 = i.val := Or.inr (by simp [im]; omega)
@@ -538,12 +538,10 @@ theorem doubleWellTridiag_rayleigh_bounds {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} (
       ∑ i : Fin D, v i ^ 2 :=
     Finset.sum_le_univ_sum_of_nonneg fun _ ↦ sq_nonneg _
   refine ⟨?_, ?_, ?_⟩
-  · -- Upper bound `≤ (E_B + 2) ‖v‖²`
-    rw [hqf, hdot]
+  · rw [hqf, hdot]
     have h1 := (abs_le.mp hhop).2
     nlinarith
-  · -- Interior lower bound `≥ (E_B - 2) ‖v‖²`
-    intro hv0 hvD
+  · intro hv0 hvD
     rw [hqf, hdot]
     have hint_eq : ∑ i ∈ Finset.univ.filter (fun i : Fin D ↦ ¬(i.val = 0 ∨ i.val = D - 1)), v i ^ 2 =
         ∑ i : Fin D, v i ^ 2 := by
@@ -559,9 +557,7 @@ theorem doubleWellTridiag_rayleigh_bounds {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} (
     rw [hint_eq]
     have h1 := (abs_le.mp hhop).1
     linarith
-  · -- Global lower bound `≥ -(E_B - 2)⁻¹ ‖v‖²`
-    -- Split `v = v_bd + v_int` where `v_int` zeros out `0` and `D - 1`.
-    let v_int : Fin D → ℝ := fun i ↦ if i.val = 0 ∨ i.val = D - 1 then 0 else v i
+  · let v_int : Fin D → ℝ := fun i ↦ if i.val = 0 ∨ i.val = D - 1 then 0 else v i
     have hhop_int := path_hopping_quad_le hD2 v_int
     have hdot_int : ∑ i : Fin D, v_int i ^ 2 =
         ∑ i ∈ Finset.univ.filter (fun i : Fin D ↦ ¬(i.val = 0 ∨ i.val = D - 1)), v i ^ 2 := by
@@ -775,7 +771,6 @@ theorem lemma_B_1_eigenvec_decay_eq_B2_B3 {D : ℕ} (hD : 4 ≤ D) {E_B E : ℝ}
   have hB2 : ∀ j : Fin D, |v j| ≤ |v ⟨0, by omega⟩| * (q ^ j.val + q ^ (D - 1 - j.val)) :=
     fun j ↦ sub_nonpos.mp (hw_le j)
   refine ⟨hB2, ?_⟩
-  -- Prove Eq. (B.3) from Eq. (B.2) by summing squares over interior sites
   have h0_ne_D1 : (⟨0, by omega⟩ : Fin D) ≠ ⟨D - 1, by omega⟩ := by
     intro h; have := congrArg Fin.val h; dsimp at this; omega
   have hsplit : ∑ j : Fin D, v j ^ 2 =
