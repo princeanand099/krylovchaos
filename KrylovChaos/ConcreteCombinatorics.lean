@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Prince Anand
 -/
 import KrylovChaos.Basic
+import Mathlib.Combinatorics.Enumerative.Catalan
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Nat.Choose.Sum
 import Mathlib.Tactic
@@ -31,33 +32,53 @@ constructions and proofs (zero `htree`, `hcayley`, or abstract `S` hypotheses):
 
 namespace KrylovChaos
 
+private lemma real_prod_le_prod_cc {ι : Type*} [DecidableEq ι] (s : Finset ι) (f g : ι → ℝ)
+    (hf : ∀ i ∈ s, 0 ≤ f i) (hfg : ∀ i ∈ s, f i ≤ g i) :
+    ∏ i ∈ s, f i ≤ ∏ i ∈ s, g i := by
+  induction s using Finset.induction with
+  | empty => simp
+  | insert a t ha ih =>
+    rw [Finset.prod_insert ha, Finset.prod_insert ha]
+    have hfa : 0 ≤ f a := hf a (Finset.mem_insert_self a t)
+    have hft : 0 ≤ ∏ i ∈ t, f i := Finset.prod_nonneg fun i hi ↦ hf i (Finset.mem_insert_of_mem hi)
+    have hga : 0 ≤ g a := le_trans hfa (hfg a (Finset.mem_insert_self a t))
+    exact mul_le_mul (hfg a (Finset.mem_insert_self a t))
+      (ih (fun i hi ↦ hf i (Finset.mem_insert_of_mem hi)) (fun i hi ↦ hfg i (Finset.mem_insert_of_mem hi)))
+      hft hga
+
 section CatalanRecurrence
 
 /-- Catalan numbers defined via the Segner recurrence `C_0 = 1`,
 `C_{n+1} = ∑_{j=0}^n C_j * C_{n - j}`. -/
 def catalanRec : ℕ → ℕ
   | 0 => 1
-  | n + 1 => ∑ j ∈ Finset.range (n + 1), catalanRec j * catalanRec (n - j)
+  | n + 1 => ∑ j ∈ (Finset.range (n + 1)).attach, catalanRec j.1 * catalanRec (n - j.1)
+termination_by n => n
+decreasing_by
+  all_goals (have := Finset.mem_range.mp j.2; omega)
 
-/-- Exponential bound `catalanRec n ≤ 4^n` proved directly from the Segner recurrence
-by strong induction (Wait: `C_n = (2n choose n)/(n+1) ≤ 4^n`; here we prove `catalanRec n ≤ 4^n`
-or via `catalanRec n = catalan n`). Actually, `catalanRec` agrees with `Nat.catalan` in Mathlib! -/
-lemma catalanRec_eq_nat_catalan (n : ℕ) : catalanRec n = Nat.catalan n := by
+lemma catalanRec_succ (n : ℕ) :
+    catalanRec (n + 1) = ∑ j ∈ Finset.range (n + 1), catalanRec j * catalanRec (n - j) := by
+  rw [catalanRec]
+  exact Finset.sum_attach (Finset.range (n + 1)) (fun j ↦ catalanRec j * catalanRec (n - j))
+
+/-- `catalanRec` agrees with Mathlib's `catalan`. -/
+lemma catalanRec_eq_catalan (n : ℕ) : catalanRec n = catalan n := by
   induction n using Nat.strong_induction_on with
   | h n ih =>
     cases n with
     | zero => rfl
     | succ n =>
-      rw [catalanRec, Nat.catalan_succ]
-      rw [Finset.Nat.sum_antidiagonal_eq_sum_range_succ (fun i j ↦ Nat.catalan i * Nat.catalan j)]
+      rw [catalanRec_succ, catalan_succ]
+      rw [Finset.Nat.sum_antidiagonal_eq_sum_range_succ (fun i j ↦ catalan i * catalan j)]
       apply Finset.sum_congr rfl
       intro j hj
       have hj' : j < n + 1 := Finset.mem_range.mp hj
       rw [ih j (by omega), ih (n - j) (by omega)]
 
 lemma catalanRec_le_four_pow (n : ℕ) : (catalanRec n : ℝ) ≤ (4 : ℝ) ^ n := by
-  rw [catalanRec_eq_nat_catalan]
-  have h1 : Nat.catalan n = Nat.centralBinom n / (n + 1) := Nat.catalan_eq_centralBinom_div n
+  rw [catalanRec_eq_catalan]
+  have h1 : catalan n = Nat.centralBinom n / (n + 1) := catalan_eq_centralBinom_div n
   have h2 : Nat.centralBinom n / (n + 1) ≤ Nat.centralBinom n := Nat.div_le_self _ _
   have h3 : Nat.centralBinom n ≤ 4 ^ n := by
     rw [Nat.centralBinom]
@@ -73,14 +94,16 @@ lemma catalanRec_le_four_pow (n : ℕ) : (catalanRec n : ℝ) ≤ (4 : ℝ) ^ n 
 /-- Sharp exponential bound `catalanRec m ≤ 4^(m - 1)` for all `m ≥ 1`. -/
 lemma catalanRec_le_four_pow_pred (m : ℕ) (hm : 1 ≤ m) :
     (catalanRec m : ℝ) ≤ (4 : ℝ) ^ (m - 1) := by
-  rw [catalanRec_eq_nat_catalan]
-  have hnat : Nat.catalan m ≤ 4 ^ (m - 1) := by
+  rw [catalanRec_eq_catalan]
+  have hnat : catalan m ≤ 4 ^ (m - 1) := by
     by_cases h1 : m = 1
     · subst h1
-      norm_num [Nat.catalan_eq_centralBinom_div, Nat.centralBinom, Nat.choose]
+      rw [catalan_eq_centralBinom_div]
+      norm_num [Nat.centralBinom, Nat.choose]
     · by_cases h2 : m = 2
       · subst h2
-        norm_num [Nat.catalan_eq_centralBinom_div, Nat.centralBinom, Nat.choose]
+        rw [catalan_eq_centralBinom_div]
+        norm_num [Nat.centralBinom, Nat.choose]
       · have hm3 : 3 ≤ m := by omega
         have hcb : Nat.centralBinom m ≤ 4 ^ m := by
           rw [Nat.centralBinom]
@@ -91,7 +114,7 @@ lemma catalanRec_le_four_pow_pred (m : ℕ) (hm : 1 ≤ m) :
           rw [hsum] at hle
           have hpow : 2 ^ (2 * m) = 4 ^ m := by rw [pow_mul]; norm_num
           omega
-        rw [Nat.catalan_eq_centralBinom_div]
+        rw [catalan_eq_centralBinom_div]
         have hdiv1 : Nat.centralBinom m / (m + 1) ≤ Nat.centralBinom m / 4 :=
           Nat.div_le_div_left (by omega) (by omega)
         have hdiv2 : Nat.centralBinom m / 4 ≤ 4 ^ m / 4 := Nat.div_le_div_right hcb
@@ -115,10 +138,26 @@ noncomputable def binTreeSum {N : ℕ} (E : Finset (Finset (Fin N)))
   | 0, _ => 1
   | m + 1, x =>
     ∑ X ∈ E.filter (fun X ↦ x ∈ X),
-      η X * ∑ j ∈ Finset.range (m + 1),
-        (if j = 0 then 1 else ∑ y ∈ X, binTreeSum E η j y) *
-        (if m - j = 0 then 1 else ∑ z ∈ X, binTreeSum E η (m - j) z)
+      η X * ∑ j ∈ (Finset.range (m + 1)).attach,
+        (if j.1 = 0 then 1 else ∑ y ∈ X, binTreeSum E η j.1 y) *
+        (if m - j.1 = 0 then 1 else ∑ z ∈ X, binTreeSum E η (m - j.1) z)
 termination_by m _ => m
+decreasing_by
+  all_goals (have := Finset.mem_range.mp j.2; omega)
+
+lemma binTreeSum_succ {N : ℕ} (E : Finset (Finset (Fin N))) (η : Finset (Fin N) → ℝ)
+    (m : ℕ) (x : Fin N) :
+    binTreeSum E η (m + 1) x =
+      ∑ X ∈ E.filter (fun X ↦ x ∈ X),
+        η X * ∑ j ∈ Finset.range (m + 1),
+          (if j = 0 then 1 else ∑ y ∈ X, binTreeSum E η j y) *
+          (if m - j = 0 then 1 else ∑ z ∈ X, binTreeSum E η (m - j) z) := by
+  rw [binTreeSum]
+  apply Finset.sum_congr rfl; intro X _
+  congr 1
+  exact Finset.sum_attach (Finset.range (m + 1))
+    (fun j ↦ (if j = 0 then 1 else ∑ y ∈ X, binTreeSum E η j y) *
+             (if m - j = 0 then 1 else ∑ z ∈ X, binTreeSum E η (m - j) z))
 
 lemma binTreeSum_nonneg {N : ℕ} (E : Finset (Finset (Fin N)))
     (η : Finset (Fin N) → ℝ) (hη_nn : ∀ X ∈ E, 0 ≤ η X) :
@@ -130,7 +169,7 @@ lemma binTreeSum_nonneg {N : ℕ} (E : Finset (Finset (Fin N)))
     cases m with
     | zero => simp [binTreeSum]
     | succ m =>
-      rw [binTreeSum]
+      rw [binTreeSum_succ]
       apply Finset.sum_nonneg; intro X hX
       apply mul_nonneg (hη_nn X (Finset.mem_filter.mp hX).1)
       apply Finset.sum_nonneg; intro j hj
@@ -162,7 +201,7 @@ theorem lemma_A_1_concrete_bin_tree_sum {N r : ℕ}
     cases m with
     | zero => omega
     | succ m =>
-      rw [binTreeSum]
+      rw [binTreeSum_succ]
       have hterm : ∀ X ∈ E.filter (fun X ↦ x ∈ X),
           η X * (∑ j ∈ Finset.range (m + 1),
             (if j = 0 then 1 else ∑ y ∈ X, binTreeSum E η j y) *
@@ -216,7 +255,7 @@ theorem lemma_A_1_concrete_bin_tree_sum {N r : ℕ}
               ((r : ℝ) * η₀) ^ m := by
               rw [← Finset.sum_mul]
           _ = (catalanRec (m + 1) : ℝ) * ((r : ℝ) * η₀) ^ m := by
-              simp only [catalanRec, Nat.cast_sum, Nat.cast_mul]
+              rw [catalanRec_succ]; simp only [Nat.cast_sum, Nat.cast_mul]
       calc ∑ X ∈ E.filter (fun X ↦ x ∈ X),
             η X * (∑ j ∈ Finset.range (m + 1),
               (if j = 0 then 1 else ∑ y ∈ X, binTreeSum E η j y) *
@@ -256,9 +295,22 @@ noncomputable def forestSum {N : ℕ} (E : Finset (Finset (Fin N)))
   | 0, _ => 1
   | m + 1, S =>
     ∑ y ∈ S, ∑ X ∈ E.filter (fun X ↦ y ∈ X),
-      η X * ∑ j ∈ Finset.range (m + 1),
-        forestSum E η j X * forestSum E η (m - j) S
+      η X * ∑ j ∈ (Finset.range (m + 1)).attach,
+        forestSum E η j.1 X * forestSum E η (m - j.1) S
 termination_by m _ => m
+decreasing_by
+  all_goals (have := Finset.mem_range.mp j.2; omega)
+
+lemma forestSum_succ {N : ℕ} (E : Finset (Finset (Fin N))) (η : Finset (Fin N) → ℝ)
+    (m : ℕ) (S : Finset (Fin N)) :
+    forestSum E η (m + 1) S =
+      ∑ y ∈ S, ∑ X ∈ E.filter (fun X ↦ y ∈ X),
+        η X * ∑ j ∈ Finset.range (m + 1), forestSum E η j X * forestSum E η (m - j) S := by
+  rw [forestSum]
+  apply Finset.sum_congr rfl; intro y _
+  apply Finset.sum_congr rfl; intro X _
+  congr 1
+  exact Finset.sum_attach (Finset.range (m + 1)) (fun j ↦ forestSum E η j X * forestSum E η (m - j) S)
 
 lemma forestSum_nonneg {N : ℕ} (E : Finset (Finset (Fin N)))
     (η : Finset (Fin N) → ℝ) (hη_nn : ∀ X ∈ E, 0 ≤ η X) :
@@ -270,7 +322,7 @@ lemma forestSum_nonneg {N : ℕ} (E : Finset (Finset (Fin N)))
     cases m with
     | zero => simp [forestSum]
     | succ m =>
-      rw [forestSum]
+      rw [forestSum_succ]
       apply Finset.sum_nonneg; intro y _
       apply Finset.sum_nonneg; intro X hX
       apply mul_nonneg (hη_nn X (Finset.mem_filter.mp hX).1)
@@ -296,7 +348,7 @@ theorem lemma_A_1_concrete_forest_sum {N r : ℕ}
     cases m with
     | zero => simp [forestSum, catalanRec]
     | succ m =>
-      rw [forestSum]
+      rw [forestSum_succ]
       have hterm : ∀ y ∈ S, ∀ X ∈ E.filter (fun X ↦ y ∈ X),
           η X * (∑ j ∈ Finset.range (m + 1), forestSum E η j X * forestSum E η (m - j) S) ≤
           η X * ((catalanRec (m + 1) : ℝ) * ((r : ℝ) * η₀) ^ m) := by
@@ -322,7 +374,7 @@ theorem lemma_A_1_concrete_forest_sum {N r : ℕ}
           _ = (∑ j ∈ Finset.range (m + 1), (catalanRec j : ℝ) * (catalanRec (m - j) : ℝ)) *
               ((r : ℝ) * η₀) ^ m := by rw [← Finset.sum_mul]
           _ = (catalanRec (m + 1) : ℝ) * ((r : ℝ) * η₀) ^ m := by
-              simp only [catalanRec, Nat.cast_sum, Nat.cast_mul]
+              rw [catalanRec_succ]; simp only [Nat.cast_sum, Nat.cast_mul]
       calc ∑ y ∈ S, ∑ X ∈ E.filter (fun X ↦ y ∈ X),
             η X * (∑ j ∈ Finset.range (m + 1), forestSum E η j X * forestSum E η (m - j) S)
           ≤ ∑ y ∈ S, ∑ X ∈ E.filter (fun X ↦ y ∈ X),
@@ -406,11 +458,8 @@ lemma sum_overlapping_le {N : ℕ} (E : Finset (Finset (Fin N)))
       simp_rw [Finset.sum_filter]
       rw [Finset.sum_comm]
       apply Finset.sum_congr rfl; intro X _
-      have hcard : (∑ x ∈ U, if x ∈ X then w X else 0) = ((U ∩ X).card : ℝ) * w X := by
-        rw [← Finset.sum_filter, Finset.sum_const, nsmul_eq_mul]
-        congr 2
-        ext x; simp [Finset.mem_inter]
-      exact hcard
+      have hset : U.filter (fun x ↦ x ∈ X) = U ∩ X := by ext x; simp [Finset.mem_inter]
+      rw [← Finset.sum_filter, hset, Finset.sum_const, nsmul_eq_mul]
     rw [h2, Finset.sum_filter]
     apply Finset.sum_le_sum; intro X hX
     by_cases hne : (U ∩ X).Nonempty
@@ -460,7 +509,7 @@ theorem lemma_A_2_concrete_causal_seq_sum {N r : ℕ} (hr : 1 ≤ r)
         exact_mod_cast hnat
       have hih := ih (U ∪ X)
       refine le_trans hih (mul_le_mul_of_nonneg_right ?_ (pow_nonneg hJ k))
-      apply Finset.prod_le_prod
+      apply real_prod_le_prod_cc
       · intro j _; positivity
       · intro j _; linarith
     calc ∑ X ∈ E.filter (fun X ↦ (U ∩ X).Nonempty), w X * causalSeqSum E w k (U ∪ X)
@@ -539,7 +588,7 @@ theorem lemma_A_3_concrete_unordered_tree_sum {N r : ℕ}
     apply mul_le_mul_of_nonneg_left _ (hη_nn X hX)
     have hprod_exp : ∏ Y ∈ E.filter (fun Y ↦ (X ∩ Y).Nonempty), (1 + unorderedTreeSum E η h Y) ≤
         ∏ Y ∈ E.filter (fun Y ↦ (X ∩ Y).Nonempty), Real.exp (unorderedTreeSum E η h Y) := by
-      apply Finset.prod_le_prod
+      apply real_prod_le_prod_cc
       · intro Y hY; linarith [unorderedTreeSum_nonneg E η hη_nn h Y (Finset.mem_filter.mp hY).1]
       · intro Y _; linarith [Real.add_one_le_exp (unorderedTreeSum E η h Y)]
     rw [← Real.exp_sum] at hprod_exp
