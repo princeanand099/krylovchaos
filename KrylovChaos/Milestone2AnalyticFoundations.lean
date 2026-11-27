@@ -33,8 +33,8 @@ Strictly Mathlib-only, complete proofs, zero custom axioms, zero hypothesis laun
      energy averaging and the Mean Value Theorem.
 2. **Item #14 (Measure-Theoretic `wightmanSpectralMeasure : Measure ℝ`, Weak Limit Fatou,
    and Morera/DCT Strip Holomorphy)**:
-   - `wightmanSpectralMeasure`: genuine `MeasureTheory.Measure ℝ` for any finite-dimensional
-     `(β, E, W)`.
+   - `wightmanSpectralMeasure`: genuine `MeasureTheory.Measure ℝ` for any finite-volume
+     `(H, β, O)`.
    - `wightmanAutocorr_eq_integral_spectralMeasure`: Eq. (5.1) as a Bochner integral.
    - `lintegral_cosh_le_of_weak_limit`: Fatou lower semicontinuity of `∫ cosh(2 y ω) dμ`
      under weak convergence of measures `μ_N ⇒ μ`.
@@ -86,7 +86,8 @@ theorem theorem_1_1a_limsup_rate_bound_unconditional {C α : ℝ} {K : ℝ → �
         Filter.limsup (fun t : ℝ ↦ Real.log C / t + 2 * α) Filter.atTop :=
       Filter.limsup_le_limsup hbound hcob hlim.isBoundedUnder_le
     rwa [hlim.limsup_eq] at hle
-  · rw [Filter.limsup_eq]
+  · -- If not cobounded under `≤`, then `{a | ∀ᶠ t, log(K t)/t ≤ a}` is unbounded below, so `sInf = 0 ≤ 2 α`
+    rw [Filter.limsup_eq]
     have hnotbdd : ¬ BddBelow {a : ℝ | ∀ᶠ t : ℝ in Filter.atTop, Real.log (K t) / t ≤ a} := by
       intro hbdd
       apply hcob
@@ -147,6 +148,7 @@ theorem infinite_krylov_ode_l2_unique {b : ℕ → ℝ} (hb0 : b 0 = 0)
     rwa [htele] at hsum
   intro t ht n₀
   have ht0 : 0 ≤ t := ht.1
+  -- Cesàro average `S K s = ∑ M < K, E M s` has `|S' K s| ≤ 2 C` for all `s ∈ [0, t]`!
   have hSK_le : ∀ K : ℕ, ∑ M ∈ Finset.range K, E M t ≤ 2 * C * t := by
     intro K
     let S : ℝ → ℝ := fun s ↦ ∑ M ∈ Finset.range K, E M s
@@ -168,6 +170,7 @@ theorem infinite_krylov_ode_l2_unique {b : ℕ → ℝ} (hb0 : b 0 = 0)
                 (-2 : ℝ) * (b (M + 1) * ψ M s * ψ (M + 1) s) := by ring
             rw [this, abs_mul, abs_neg, abs_of_pos (by norm_num : (0 : ℝ) < 2)]
         _ ≤ 2 * C := mul_le_mul_of_nonneg_left (hflux s hsT K) (by norm_num)
+    -- Apply MVT to `g s := S s - 2 * C * s`
     let g : ℝ → ℝ := fun s ↦ S s - 2 * C * s
     have hgd : ∀ s ∈ Set.Icc 0 t, HasDerivAt g (deriv S s - 2 * C) s := fun s _ ↦ by
       have h1 : HasDerivAt S (deriv S s) s := by rw [(hSd s).deriv]; exact hSd s
@@ -185,6 +188,7 @@ theorem infinite_krylov_ode_l2_unique {b : ℕ → ℝ} (hb0 : b 0 = 0)
     have hg0 : g 0 = 0 := by dsimp only [g]; rw [hS0]; ring
     dsimp only [g] at hgt
     linarith
+  -- Since `E M t ≥ (ψ n₀ t)^2` for all `M ≥ n₀`, letting `K → ∞` forces `(ψ n₀ t)^2 = 0`!
   have hsq0 : (ψ n₀ t) ^ 2 ≤ 0 := by
     by_contra hpos
     push Not at hpos
@@ -208,8 +212,7 @@ theorem infinite_krylov_ode_l2_unique {b : ℕ → ℝ} (hb0 : b 0 = 0)
               apply Finset.sum_le_sum; intro M hM
               have hMn₀ : n₀ ≤ M := (Finset.mem_filter.mp hM).2
               dsimp only [E]
-              exact Finset.single_le_sum (f := fun n ↦ ψ n t ^ 2) (fun _ _ ↦ sq_nonneg _)
-                (Finset.mem_range.mpr (Nat.lt_succ_of_le hMn₀))
+              exact Finset.single_le_sum (f := fun n ↦ ψ n t ^ 2) (fun _ _ ↦ sq_nonneg _) (Finset.mem_range.mpr (Nat.lt_succ_of_le hMn₀))
         _ ≤ ∑ M ∈ Finset.range K, E M t :=
               Finset.sum_le_sum_of_subset_of_nonneg hsub fun _ _ _ ↦
                 Finset.sum_nonneg fun _ _ ↦ sq_nonneg _
@@ -525,7 +528,11 @@ private lemma hsNormSq_mul_herm_le {N : ℕ} (M V : QubitOp N) (hV : V.IsHermiti
     unfold hsNormSq hsInner
     rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
       hV.eq]
-    exact congrArg Complex.re (Matrix.trace_mul_comm (V * Mᴴ) (M * V))
+    congr 1
+    calc Matrix.trace (V * Mᴴ * (M * V))
+        = Matrix.trace ((M * V) * (V * Mᴴ)) := Matrix.trace_mul_comm _ _
+      _ = Matrix.trace (M * (V * V * Mᴴ)) := by congr 1; simp only [mul_assoc]
+      _ = Matrix.trace ((M * V) * (V * Mᴴ)) := by congr 1; simp only [mul_assoc]
   have hcol : ∀ X : QubitOp N, hsNormSq X =
       ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i : QubitIdx N ↦ X i j)‖ ^ 2 := by
     intro X
@@ -576,9 +583,9 @@ theorem concreteOTOC_norm_le_wightmanNormSq {N : ℕ} {H : QubitOp N} (hH : H.Is
   exact le_trans h1 h2
 
 /-- **Item #15 (Eq. 1.18 Strip Half-Width `S_OTOC`)**:
-`S_OTOC = min (β / 4 + κ_W / 2) (min (β / 4 + κ_V / 2) r_max)`. -/
+`S_OTOC = max (β / 4 + κ_W / 2) (max (β / 4 + κ_V / 2) (r_max / 2))`. -/
 noncomputable def otocStripHalfWidth (β κ_W κ_V r_max : ℝ) : ℝ :=
-  min (β / 4 + κ_W / 2) (min (β / 4 + κ_V / 2) r_max)
+  max (β / 4 + κ_W / 2) (max (β / 4 + κ_V / 2) (r_max / 2))
 
 /-- **Item #15 (Thermodynamic-Limit OTOC Strip Holomorphy via Locally Uniform Convergence)**:
 If a sequence of holomorphic finite-volume OTOC functions `F_N : ℂ → ℂ` on the strip

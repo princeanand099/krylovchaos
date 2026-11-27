@@ -24,7 +24,7 @@ import Mathlib.Tactic
      `Re Tr(ρ X) ≤ gibbsRelEntropy hρ hH β + log(Z(-β H + X) / Z(-β H))`.
 2. **Concrete Operator-Level Lemma 6.1 Identity on `QubitOp N` (Flaw #4)**:
    - `hsNormSq_siteSizeOp_eq_comm_avg`: `hsNormSq (siteSizeOp x M) = (1/8) ∑_{α=1}^3 hsNormSq (matComm M (pauliSite x α.succ))`.
-   - `lemma_6_1_concrete_operator`: exact Hilbert–Schmidt commutator representation of `𝒮_x(𝒥_β A)`.
+   - `hsNormSq_siteSizeOp_jBeta_eq_comm_avg`: exact Section 2 Hilbert–Schmidt commutator representation of `𝒮_x(𝒥_β A)` (formerly misnamed `lemma_6_1_concrete_operator`).
 3. **Concrete Lanczos Filtration Containment & Truncation (Flaw #5)**:
    - `matComm_mem_filtration`: if `H ∈ filtrationSubmodule N r` (`r ≥ 1`) and `A ∈ filtrationSubmodule N k`,
      then `matComm H A ∈ filtrationSubmodule N (k + (r - 1))`.
@@ -444,10 +444,11 @@ theorem hsNormSq_siteSizeOp_eq_comm_avg {N : ℕ} (x : Fin N) (M : QubitOp N) :
   rw [← Finset.mul_sum, htr_sum, hsite_hs]
   ring
 
-/-- **Concrete Operator-Level Lemma 6.1 on `QubitOp N`**:
+/-- **Section 2 Hilbert–Schmidt Commutator Identity for `𝒮_x(𝒥_β A)` on `QubitOp N`** (Item #4):
 For ANY `G : GibbsData N`, site `x : Fin N`, and operator `A : QubitOp N`:
-`hsNormSq (siteSizeOp x (jBeta G.ρQuarter A)) = (1 / 8) ∑_{α=1}^3 hsNormSq (matComm (jBeta G.ρQuarter A) (pauliSite x α.succ))`. -/
-theorem lemma_6_1_concrete_operator {N : ℕ} (G : GibbsData N) (x : Fin N) (A : QubitOp N) :
+`hsNormSq (siteSizeOp x (jBeta G.ρQuarter A)) = (1 / 8) ∑_{α=1}^3 hsNormSq (matComm (jBeta G.ρQuarter A) (pauliSite x α.succ))`.
+(This is a Section 2 Hilbert–Schmidt operator-size identity, distinct from Section 6's Lemma 6.1.) -/
+theorem hsNormSq_siteSizeOp_jBeta_eq_comm_avg {N : ℕ} (G : GibbsData N) (x : Fin N) (A : QubitOp N) :
     hsNormSq (siteSizeOp x (jBeta G.ρQuarter A)) =
       (1 / 8 : ℝ) * ∑ α : Fin 3,
         hsNormSq (matComm (jBeta G.ρQuarter A) (pauliSite x α.succ)) :=
