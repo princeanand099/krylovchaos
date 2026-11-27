@@ -693,7 +693,7 @@ theorem lemma_7_2_concrete_rho_half_normalized {N r : ℕ}
       dsimp only [c_norm]
       push_cast
       field_simp [hZpos]
-    · congr 1; funext e; congr 2; ring
+    · rfl
   have hdecomp : gibbsRho hH (β / 2) = ∑ s : Fin N → Fin 6, (πTilde s : ℂ) • globalDepolP N s := by
     rw [hrel, hρHalf, Finset.smul_sum]
     apply Finset.sum_congr rfl; intro s _
@@ -937,7 +937,7 @@ lemma sum_hittingForests_le_forestSum {N : ℕ}
         have hγ_eq := hspec.2.2.2
         simp only [toTgt, hγ, ↓reduceDIte]
         conv_lhs => rw [hγ_eq]
-        rw [Finset.prod_insert (by rw [Finset.mem_union]; push_neg; exact ⟨hnotL, hnotR⟩), Finset.prod_union hdisj]
+        rw [Finset.prod_insert (by rw [Finset.mem_union]; push Not; exact ⟨hnotL, hnotR⟩), Finset.prod_union hdisj]
       have hsum_le : ∑ γ ∈ dom, ∏ X ∈ γ, η X ≤
           ∑ p ∈ target, η p.2.1 * ((∏ X ∈ p.2.2.2.1, η X) * (∏ X ∈ p.2.2.2.2, η X)) := by
         calc ∑ γ ∈ dom, ∏ X ∈ γ, η X
@@ -1069,7 +1069,7 @@ theorem lemma_A_1_polymer_to_bintree_bridge {N r : ℕ}
           _ = (∑ j ∈ Finset.range (m' + 1), (catalanRec j : ℝ) * (catalanRec (m' - j) : ℝ)) *
               ((r : ℝ) * η₀) ^ m' := by rw [← Finset.sum_mul]
           _ = (catalanRec (m' + 1) : ℝ) * ((r : ℝ) * η₀) ^ m' := by
-              simp only [catalanRec, Nat.cast_sum, Nat.cast_mul]
+              rw [← Finset.sum_attach (Finset.range (m' + 1))]; simp only [catalanRec, Nat.cast_sum, Nat.cast_mul]
       calc ∑ X ∈ E.filter (fun X ↦ x ∈ X),
             η X * (∑ j ∈ Finset.range (m' + 1), forestSum E η j X * forestSum E η (m' - j) {x})
           ≤ ∑ X ∈ E.filter (fun X ↦ x ∈ X),
