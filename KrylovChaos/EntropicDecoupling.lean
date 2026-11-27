@@ -998,8 +998,14 @@ theorem bgShell_local_decomp {N r : ℕ} (hr : 2 ≤ r)
           · simp only [Finset.mem_union, h1, h2, or_false, ↓reduceIte, add_zero]; linarith
           · simp only [Finset.mem_union, h1, h2, false_or, ↓reduceIte, zero_add]; linarith
           · simp only [Finset.mem_union, h1, h2, or_self, ↓reduceIte, add_zero, mul_zero]; exact le_rfl
-        have hle1 := Finset.sum_le_sum fun x _ ↦ Finset.sum_le_sum fun f₁ _ ↦
-          Finset.sum_le_sum fun f₂ _ ↦ hsplit_y x f₁ f₂
+        have hle1 :
+            (∑ x : Fin N, ∑ f₁ ∈ cSeq x m, ∑ f₂ ∈ cSeq x (k - m),
+              if y ∈ causalUnionOp {x} f₁ ∪ causalUnionOp {x} f₂ then opNorm (pairOp x α m f₁ f₂) else 0) ≤
+            ∑ x : Fin N, ∑ f₁ ∈ cSeq x m, ∑ f₂ ∈ cSeq x (k - m),
+              fac * ((if y ∈ causalUnionOp {x} f₁ then (∏ j, w (f₁ j)) * (∏ j, w (f₂ j)) else 0) +
+                     (if y ∈ causalUnionOp {x} f₂ then (∏ j, w (f₁ j)) * (∏ j, w (f₂ j)) else 0)) :=
+          Finset.sum_le_sum fun x _ ↦ Finset.sum_le_sum fun f₁ _ ↦
+            Finset.sum_le_sum fun f₂ _ ↦ hsplit_y x f₁ f₂
         simp_rw [Finset.mul_sum, Finset.sum_add_distrib] at hle1
         rw [← Finset.mul_sum, ← Finset.mul_sum, ← Finset.mul_sum, ← Finset.mul_sum, ← Finset.mul_sum,
           ← Finset.mul_sum] at hle1
@@ -1109,6 +1115,7 @@ For any `N ≥ 1`, `r`-local Hermitian Hamiltonian `H = ∑ Z ∈ E, h Z` (`r �
      otocI hH β (heisenbergEvol hH (t : ℂ) O) +
      2 * √(otocI hH β (heisenbergEvol hH (t : ℂ) O)) * √(N + bgDecouplingC2 r s₀ C_O * √N) +
      bgDecouplingC2 r s₀ C_O * √N`. -/
+set_option maxHeartbeats 800000 in
 theorem prop_6_4_part2_unconditional {N r s₀ : ℕ}
     (hN : 1 ≤ N) (hr : 2 ≤ r)
     (E : Finset (Finset (Fin N))) (hE_ne : ∀ Z ∈ E, Z.Nonempty) (hE_card : ∀ Z ∈ E, Z.card ≤ r)
@@ -1285,12 +1292,15 @@ theorem prop_6_4_part2_unconditional {N r s₀ : ℕ}
         rw [hsum_k, ← rhoO_op_heisenbergEvol_eq_conj hH β t O] at hdec
         set k_X := 1 + k * (r - 1)
         set kr := max r k_X
-        have hkr_eq : kr = k_X := max_eq_right (by dsimp only [k_X]; nlinarith)
+        have hkr_eq : kr = k_X := max_eq_right (by
+          dsimp only [k_X]
+          have h1 : 1 * (r - 1) ≤ k * (r - 1) := Nat.mul_le_mul_right (r - 1) (by omega)
+          omega)
         have hkr_le : (kr : ℝ) ≤ (k : ℝ) * (r : ℝ) := by
           rw [hkr_eq]; dsimp only [k_X]
           have : 1 + k * (r - 1) ≤ k * r := by
             have h1 : k * (r - 1) + k = k * r := by
-              rw [← Nat.mul_succ, Nat.sub_add_cancel (by omega : 1 ≤ r)]
+              rw [← Nat.mul_succ, Nat.succ_eq_add_one, Nat.sub_add_cancel (by omega : 1 ≤ r)]
             omega
           exact_mod_cast this
         have hexp_le : Real.exp (1 + (kr : ℝ) / (r : ℝ)) ≤ Real.exp 1 * (Real.exp 1) ^ k := by
@@ -1378,9 +1388,11 @@ theorem prop_6_4_part2_unconditional {N r s₀ : ℕ}
     rw [hIII_eq]
     have hsumm_abs : Summable (fun k : ℕ ↦ |((rhoO_op hH β Ot - G.ρβ) * bgShell (∑ Z ∈ E, h Z) β k).trace.re|) :=
       Summable.of_nonneg_of_le (fun _ ↦ abs_nonneg _) hshell_bound (hgeom_le1.1.mul_left _)
+    have hsumm_norm : Summable (fun k : ℕ ↦ ‖((rhoO_op hH β Ot - G.ρβ) * bgShell (∑ Z ∈ E, h Z) β k).trace.re‖) := by
+      simpa only [Real.norm_eq_abs] using hsumm_abs
     calc |∑' k : ℕ, ((rhoO_op hH β Ot - G.ρβ) * bgShell (∑ Z ∈ E, h Z) β k).trace.re|
         ≤ ∑' k : ℕ, |((rhoO_op hH β Ot - G.ρβ) * bgShell (∑ Z ∈ E, h Z) β k).trace.re| := by
-          simpa only [← Real.norm_eq_abs] using norm_tsum_le_tsum_norm hsumm_abs
+          simpa only [Real.norm_eq_abs] using norm_tsum_le_tsum_norm hsumm_norm
       _ ≤ ∑' k : ℕ, (4 * Real.sqrt 2 * D_bd * (12 * Real.exp 1 * (r : ℝ))) * Real.sqrt (N : ℝ) *
             (if 2 ≤ k then ((k : ℝ) ^ 3 * (1 / 288 : ℝ) ^ k) else 0) :=
           hsumm_abs.tsum_le_tsum hshell_bound (hgeom_le1.1.mul_left _)
