@@ -530,7 +530,9 @@ private lemma hsTrace_unitary_conj {ι : Type*} [Fintype ι] [DecidableEq ι]
     calc Uᴴ * (U * M * Uᴴ) * U = (Uᴴ * U) * M * (Uᴴ * U) := by simp only [mul_assoc]
       _ = M := by rw [hUL, one_mul, mul_one]
   have hts : S (U * M * Uᴴ) = U * S M * Uᴴ := by
-    have h1 : S M = Uᴴ * S (U * M * Uᴴ) * U := by rw [← hback]; exact hsize (U * M * Uᴴ)
+    have h1 : S M = Uᴴ * S (U * M * Uᴴ) * U := by
+      have h := hsize (U * M * Uᴴ)
+      rwa [hback] at h
     calc S (U * M * Uᴴ)
         = (U * Uᴴ) * S (U * M * Uᴴ) * (U * Uᴴ) := by rw [hUR, one_mul, mul_one]
       _ = U * (Uᴴ * S (U * M * Uᴴ) * U) * Uᴴ := by simp only [mul_assoc]
@@ -540,8 +542,7 @@ private lemma hsTrace_unitary_conj {ι : Type*} [Fintype ι] [DecidableEq ι]
       = (U * (Mᴴ * (Uᴴ * U) * S M) * Uᴴ).trace := by
           apply congrArg Matrix.trace; simp only [mul_assoc]
     _ = (U * (Mᴴ * S M) * Uᴴ).trace := by rw [hUL, mul_one]
-    _ = (Uᴴ * U * (Mᴴ * S M)).trace := by
-          rw [Matrix.trace_mul_cycle]; apply congrArg Matrix.trace; simp only [mul_assoc]
+    _ = (Uᴴ * U * (Mᴴ * S M)).trace := by rw [Matrix.trace_mul_cycle]
     _ = (Mᴴ * S M).trace := by rw [hUL, one_mul]
 
 private lemma lambdaMSS_le_of_unitary_conj {N s : ℕ}
