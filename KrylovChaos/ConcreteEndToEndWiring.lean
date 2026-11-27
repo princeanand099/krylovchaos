@@ -1281,7 +1281,7 @@ theorem heisenbergEvol_eq_lanczosTrunc_full {N : ℕ} {H O : QubitOp N} (hH : H.
         apply HasDerivAt.fun_sum; intro j _
         have hd1 : HasDerivAt (fun u : ℝ ↦ star (R u k j))
             (star ((Complex.I • matComm H (R s)) k j)) s := by
-          simpa only [Function.comp_def, Complex.conjCLE_apply, Complex.star_def] using Complex.conjCLE.hasFDerivAt.comp_hasDerivAt s (hR_deriv s k j)
+          simpa only [Function.comp_def, ContinuousLinearEquiv.coe_coe, Complex.conjCLE_apply, Complex.star_def] using Complex.conjCLE.hasFDerivAt.comp_hasDerivAt s (hR_deriv s k j)
         have hd2 := hR_deriv s l i
         exact ((hd1.const_mul (G.ρHalf i j)).mul_const (G.ρHalf k l)).mul hd2
       have hsum_eq : (∑ i : QubitIdx N, ∑ l : QubitIdx N, ∑ k : QubitIdx N, ∑ j : QubitIdx N,

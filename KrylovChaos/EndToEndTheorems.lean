@@ -108,7 +108,7 @@ lemma qubitOpToCLM_pow {N : ℕ} (A : QubitOp N) (k : ℕ) :
 
 private lemma hermFunc_smul_id {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (α : ℂ) :
     α • H = hermFunc hH (fun E ↦ α * (E : ℂ)) := by
-  rw [← hermFunc_id hH]
+  conv_lhs => rw [← hermFunc_id hH]
   unfold hermFunc
   rw [Matrix.smul_mul, Matrix.mul_smul]
   congr 1; congr 1
@@ -122,7 +122,6 @@ private lemma hermFunc_pow_smul {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (
   | zero => simp [hermFunc_one]
   | succ k ih =>
     rw [pow_succ, ih, hermFunc_smul_id hH α, hermFunc_mul]
-    congr 1; funext E; rw [pow_succ]
 
 /-- **Item #27 (Exact `NormedSpace.exp` Bridge for Spectral Exponentials on `QubitOp N`)**:
 For ANY Hermitian `H : QubitOp N` and ANY `α : ℂ`:
@@ -153,7 +152,8 @@ theorem qubitOpToCLM_hermFunc_exp {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
   have hΦ : ((∑' k : ℕ, (k.factorial : ℂ)⁻¹ • (α • qubitOpToCLM H) ^ k) v) i =
       ∑' k : ℕ, (k.factorial : ℂ)⁻¹ * (((α • qubitOpToCLM H) ^ k) v) i := by
     have h1 := Φ.map_tsum hsumm
-    simpa [Φ, smul_eq_mul] using h1
+    simp only [map_smul, smul_eq_mul] at h1
+    exact h1
   rw [hΦ]
   have hclm_herm : ∀ f : ℝ → ℂ, (qubitOpToCLM (hermFunc hH f) v) i =
       ∑ r : QubitIdx N, ∑ m : QubitIdx N,
@@ -181,7 +181,7 @@ theorem qubitOpToCLM_hermFunc_exp {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
   have hs_cplx : ∀ z : ℂ, Summable (fun k : ℕ ↦ z ^ k / (k.factorial : ℂ)) := fun z ↦ by
     apply Summable.of_norm
     simpa [norm_div, norm_pow, Complex.norm_natCast] using Real.summable_pow_div_factorial ‖z‖
-  rw [Summable.tsum_finsetSum (fun r _ ↦ Summable.finset_sum _ fun m _ ↦
+  rw [Summable.tsum_finsetSum (fun r _ ↦ summable_sum fun m _ ↦
     (hs_cplx (α * (hH.eigenvalues m : ℂ))).mul_left _)]
   rw [hclm_herm]
   apply Finset.sum_congr rfl; intro r _
@@ -213,7 +213,7 @@ theorem qubitOpToCLM_heisenbergEvol_eq_tsum_adPow {N : ℕ} {H : QubitOp N} (hH 
     (z : ℂ) (O : QubitOp N) :
     qubitOpToCLM (heisenbergEvol hH z O) =
       ∑' m : ℕ, ((Complex.I * z) ^ m / (m.factorial : ℂ)) •
-        adPow (qubitOpToCLM H) m (qubitOpToCLM O) := by
+        adPow (qubitOpToCLM H) (qubitOpToCLM O) m := by
   rw [qubitOpToCLM_heisenbergEvol hH z O]
   have h := exp_conj_eq_tsum_adPow (qubitOpToCLM H) (qubitOpToCLM O) (Complex.I * z)
   simpa [neg_smul] using h
