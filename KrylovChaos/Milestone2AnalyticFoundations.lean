@@ -127,7 +127,7 @@ theorem infinite_krylov_ode_l2_unique {b : ℕ → ℝ} (hb0 : b 0 = 0)
           2 * ψ n s * (b n * ψ (n - 1) s - b (n + 1) * ψ (n + 1) s)) =
         -2 * b (M + 1) * ψ M s * ψ (M + 1) s := by
       induction M with
-      | zero => simp [hb0]
+      | zero => simp [hb0]; ring
       | succ k ih =>
         rw [Finset.sum_range_succ, ih]
         simp only [Nat.add_sub_cancel]
@@ -208,7 +208,8 @@ theorem infinite_krylov_ode_l2_unique {b : ℕ → ℝ} (hb0 : b 0 = 0)
               apply Finset.sum_le_sum; intro M hM
               have hMn₀ : n₀ ≤ M := (Finset.mem_filter.mp hM).2
               dsimp only [E]
-              exact Finset.single_le_sum (fun _ _ ↦ sq_nonneg _) (Finset.mem_range.mpr (Nat.lt_succ_of_le hMn₀))
+              exact Finset.single_le_sum (f := fun n ↦ ψ n t ^ 2) (fun _ _ ↦ sq_nonneg _)
+                (Finset.mem_range.mpr (Nat.lt_succ_of_le hMn₀))
         _ ≤ ∑ M ∈ Finset.range K, E M t :=
               Finset.sum_le_sum_of_subset_of_nonneg hsub fun _ _ _ ↦
                 Finset.sum_nonneg fun _ _ ↦ sq_nonneg _
@@ -513,6 +514,52 @@ noncomputable def concreteOTOC {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
   let A := jBeta G.ρQuarter (heisenbergEvol hH z W) * V
   Matrix.trace (A * A)
 
+private lemma hsNormSq_jBeta_eq {N : ℕ} (G : GibbsData N) (A : QubitOp N) :
+    hsNormSq (jBeta G.ρQuarter A) = gibbsWightmanNormSq G A := by
+  unfold hsNormSq gibbsWightmanNormSq gibbsWightmanInner hsInner wightmanInner jBeta
+  congr 1
+  exact prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf A A G.ρQuarter_herm G.sq_quarter
+
+private lemma hsNormSq_mul_herm_le {N : ℕ} (M V : QubitOp N) (hV : V.IsHermitian) :
+    hsNormSq (M * V) ≤ (opNorm V) ^ 2 * hsNormSq M := by
+  have hconj : hsNormSq (M * V) = hsNormSq (V * Mᴴ) := by
+    unfold hsNormSq hsInner
+    rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
+      hV.eq]
+    congr 1
+    exact Matrix.trace_mul_comm (V * Mᴴ) (M * V)
+  have hcol : ∀ X : QubitOp N, hsNormSq X =
+      ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i : QubitIdx N ↦ X i j)‖ ^ 2 := by
+    intro X
+    unfold hsNormSq hsInner
+    simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply,
+      Complex.re_sum, EuclideanSpace.norm_sq_eq]
+    apply Finset.sum_congr rfl; intro j _
+    apply Finset.sum_congr rfl; intro i _
+    rw [Complex.star_def, Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
+  have hM_conj : hsNormSq Mᴴ = hsNormSq M := by
+    unfold hsNormSq hsInner
+    rw [Matrix.conjTranspose_conjTranspose, Matrix.trace_mul_comm]
+  have hsum_le : ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i ↦ (V * Mᴴ) i j)‖ ^ 2 ≤
+      ∑ j : QubitIdx N, (opNorm V) ^ 2 * ‖WithLp.toLp 2 (fun i ↦ Mᴴ i j)‖ ^ 2 := by
+    apply Finset.sum_le_sum; intro j _
+    have hvec : WithLp.toLp 2 (fun i : QubitIdx N ↦ (V * Mᴴ) i j) =
+        opToCLM V (WithLp.toLp 2 (fun i : QubitIdx N ↦ Mᴴ i j)) := by
+      ext i; simp [opToCLM, Matrix.mul_apply]
+    rw [hvec]
+    have hle := (opToCLM V).le_opNorm (WithLp.toLp 2 (fun i : QubitIdx N ↦ Mᴴ i j))
+    have hsq := pow_le_pow_left₀ (norm_nonneg _) hle 2
+    rw [mul_pow] at hsq
+    exact hsq
+  calc hsNormSq (M * V)
+      = hsNormSq (V * Mᴴ) := hconj
+    _ = ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i ↦ (V * Mᴴ) i j)‖ ^ 2 := hcol (V * Mᴴ)
+    _ ≤ ∑ j : QubitIdx N, (opNorm V) ^ 2 * ‖WithLp.toLp 2 (fun i ↦ Mᴴ i j)‖ ^ 2 := hsum_le
+    _ = (opNorm V) ^ 2 * ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i ↦ Mᴴ i j)‖ ^ 2 :=
+        (Finset.mul_sum _ _ _).symm
+    _ = (opNorm V) ^ 2 * hsNormSq Mᴴ := by rw [← hcol Mᴴ]
+    _ = (opNorm V) ^ 2 * hsNormSq M := by rw [hM_conj]
+
 /-- **Item #15 (Concrete Operator-Level Theorem 1.2(c) Dominance Inequality, Eq. 1.17)**:
 For ANY Hermitian `H, V : QubitOp N`, ANY `W : QubitOp N`, `β : ℝ`, and `z : ℂ`:
 `‖concreteOTOC hH β W V z‖ ≤ (opNorm V)^2 * ‖heisenbergEvol hH z W‖_{β,W}^2`.
@@ -521,61 +568,14 @@ theorem concreteOTOC_norm_le_wightmanNormSq {N : ℕ} {H : QubitOp N} (hH : H.Is
     (β : ℝ) (W : QubitOp N) {V : QubitOp N} (hV : V.IsHermitian) (z : ℂ) :
     ‖concreteOTOC hH β W V z‖ ≤
       (opNorm V) ^ 2 * gibbsWightmanNormSq (concreteGibbsData hH β) (heisenbergEvol hH z W) := by
-  set G := concreteGibbsData hH β
-  set B : QubitOp N := jBeta G.ρQuarter (heisenbergEvol hH z W)
-  have h1 : ‖concreteOTOC hH β W V z‖ ≤ hsNormSq (B * V) :=
-    trace_sq_norm_le_hsNormSq (B * V)
-  have hhs_le : hsNormSq (B * V) ≤ (opNorm V) ^ 2 * hsNormSq B := by
-    have hV_mul : ∀ M : QubitOp N, hsNormSq (M * V) ≤ (opNorm V) ^ 2 * hsNormSq M := by
-      intro M
-      have hconj : hsNormSq (M * V) = hsNormSq (V * Mᴴ) := by
-        unfold hsNormSq hsInner
-        rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
-          hV.eq]
-        congr 1
-        calc Matrix.trace (V * Mᴴ * (M * V))
-            = Matrix.trace ((M * V) * (V * Mᴴ)) := Matrix.trace_mul_comm _ _
-          _ = Matrix.trace (M * (V * V * Mᴴ)) := by simp only [Matrix.mul_assoc]
-          _ = Matrix.trace ((M * V) * (V * Mᴴ)) := by simp only [Matrix.mul_assoc]
-      rw [hconj]
-      have hcol : ∀ X : QubitOp N, hsNormSq X =
-          ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i : QubitIdx N ↦ X i j)‖ ^ 2 := by
-        intro X
-        unfold hsNormSq hsInner
-        simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply,
-          Complex.re_sum, EuclideanSpace.norm_sq_eq]
-        rw [Finset.sum_comm]
-        apply Finset.sum_congr rfl; intro j _
-        apply Finset.sum_congr rfl; intro i _
-        rw [Complex.star_def, Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
-      rw [hcol (V * Mᴴ), hcol Mᴴ, Finset.mul_sum]
-      have hM_conj : hsNormSq Mᴴ = hsNormSq M := by
-        unfold hsNormSq hsInner
-        rw [Matrix.conjTranspose_conjTranspose, Matrix.trace_mul_comm]
-      have hsum_le : ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i ↦ (V * Mᴴ) i j)‖ ^ 2 ≤
-          ∑ j : QubitIdx N, (opNorm V) ^ 2 * ‖WithLp.toLp 2 (fun i ↦ Mᴴ i j)‖ ^ 2 := by
-        apply Finset.sum_le_sum; intro j _
-        have hvec : WithLp.toLp 2 (fun i : QubitIdx N ↦ (V * Mᴴ) i j) =
-            opToCLM V (WithLp.toLp 2 (fun i : QubitIdx N ↦ Mᴴ i j)) := by
-          ext i; simp [opToCLM, Matrix.mul_apply]
-        rw [hvec]
-        have hle := (opToCLM V).le_opNorm (WithLp.toLp 2 (fun i : QubitIdx N ↦ Mᴴ i j))
-        have hsq := pow_le_pow_left₀ (norm_nonneg _) hle 2
-        rw [mul_pow] at hsq
-        exact hsq
-      calc ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i ↦ (V * Mᴴ) i j)‖ ^ 2
-          ≤ ∑ j : QubitIdx N, (opNorm V) ^ 2 * ‖WithLp.toLp 2 (fun i ↦ Mᴴ i j)‖ ^ 2 := hsum_le
-        _ = (opNorm V) ^ 2 * ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i ↦ Mᴴ i j)‖ ^ 2 :=
-            (Finset.mul_sum _ _ _).symm
-        _ = (opNorm V) ^ 2 * hsNormSq Mᴴ := by rw [← hcol Mᴴ]
-        _ = (opNorm V) ^ 2 * hsNormSq M := by rw [hM_conj]
-    exact hV_mul B
-  have hB_eq : hsNormSq B = gibbsWightmanNormSq G (heisenbergEvol hH z W) := by
-    unfold hsNormSq gibbsWightmanNormSq gibbsWightmanInner B
-    congr 1
-    exact prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter
-  rw [hB_eq] at hhs_le
-  exact le_trans h1 hhs_le
+  have h1 : ‖concreteOTOC hH β W V z‖ ≤
+      hsNormSq (jBeta (concreteGibbsData hH β).ρQuarter (heisenbergEvol hH z W) * V) :=
+    trace_sq_norm_le_hsNormSq _
+  have h2 : hsNormSq (jBeta (concreteGibbsData hH β).ρQuarter (heisenbergEvol hH z W) * V) ≤
+      (opNorm V) ^ 2 * hsNormSq (jBeta (concreteGibbsData hH β).ρQuarter (heisenbergEvol hH z W)) :=
+    hsNormSq_mul_herm_le _ V hV
+  rw [hsNormSq_jBeta_eq] at h2
+  exact le_trans h1 h2
 
 /-- **Item #15 (Eq. 1.18 Strip Half-Width `S_OTOC`)**:
 `S_OTOC = min (β / 4 + κ_W / 2) (min (β / 4 + κ_V / 2) r_max)`. -/
