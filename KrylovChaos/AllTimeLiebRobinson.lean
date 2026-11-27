@@ -10,6 +10,7 @@ import KrylovChaos.GibbsConstruction
 import KrylovChaos.CausalExpansion
 import KrylovChaos.ClusterCumulantAndDecoupling
 import KrylovChaos.Milestone3Sections678
+import KrylovChaos.TimeOrderedOTOC
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
 import Mathlib.Tactic
 
@@ -41,7 +42,9 @@ lemma opNorm_heisenbergEvol_real {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (t : ℝ) (A : QubitOp N) :
     opNorm (heisenbergEvol hH (t : ℂ) A) = opNorm A := by
   set U := complexPropagator hH (t : ℂ)
-  have hU_adj : Uᴴ = complexPropagator hH (-(t : ℂ)) := complexPropagator_conjTranspose_real hH t
+  have hU_adj : Uᴴ = complexPropagator hH (-(t : ℂ)) := by
+    dsimp only [U]
+    rw [complexPropagator_conjTranspose, Complex.conj_ofReal]
   have hU_mul : U * Uᴴ = 1 := by
     rw [hU_adj]; unfold U complexPropagator; rw [hermFunc_mul]
     have h1 : (fun E : ℝ ↦ Complex.exp (Complex.I * (t : ℂ) * (E : ℂ)) *
@@ -53,16 +56,18 @@ lemma opNorm_heisenbergEvol_real {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
   have hU_mul' : Uᴴ * U = 1 := mul_eq_one_comm.mp hU_mul
   have hU_le : opNorm U ≤ 1 := opNorm_unitary_le hU_mul'
   have hUH_le : opNorm Uᴴ ≤ 1 := opNorm_unitary_le (by rw [Matrix.conjTranspose_conjTranspose]; exact hU_mul)
+  have hA_nn : 0 ≤ opNorm A := opNorm_nonneg A
   have hle : opNorm (U * A * Uᴴ) ≤ opNorm A := by
     calc opNorm (U * A * Uᴴ)
         ≤ opNorm (U * A) * opNorm Uᴴ := opNorm_mul_le _ _
       _ ≤ (opNorm U * opNorm A) * opNorm Uᴴ :=
           mul_le_mul_of_nonneg_right (opNorm_mul_le _ _) (opNorm_nonneg _)
       _ ≤ (1 * opNorm A) * 1 := by
-          apply mul_le_mul (mul_le_mul_of_nonneg_right hU_le (opNorm_nonneg _)) hUH_le
-            (opNorm_nonneg _) (by positivity)
+          apply mul_le_mul (mul_le_mul_of_nonneg_right hU_le hA_nn) hUH_le
+            (opNorm_nonneg _) (by linarith)
       _ = opNorm A := by ring
   have hge : opNorm A ≤ opNorm (U * A * Uᴴ) := by
+    have hUAU_nn : 0 ≤ opNorm (U * A * Uᴴ) := opNorm_nonneg _
     have hrec : A = Uᴴ * (U * A * Uᴴ) * U := by
       calc A = 1 * A * 1 := by simp
         _ = (Uᴴ * U) * A * (Uᴴ * U) := by rw [hU_mul']
@@ -72,8 +77,8 @@ lemma opNorm_heisenbergEvol_real {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
       _ ≤ (opNorm Uᴴ * opNorm (U * A * Uᴴ)) * opNorm U :=
           mul_le_mul_of_nonneg_right (opNorm_mul_le _ _) (opNorm_nonneg _)
       _ ≤ (1 * opNorm (U * A * Uᴴ)) * 1 := by
-          apply mul_le_mul (mul_le_mul_of_nonneg_right hUH_le (opNorm_nonneg _)) hU_le
-            (opNorm_nonneg _) (by positivity)
+          apply mul_le_mul (mul_le_mul_of_nonneg_right hUH_le hUAU_nn) hU_le
+            (opNorm_nonneg _) (by linarith)
       _ = opNorm (U * A * Uᴴ) := by ring
   have heq : heisenbergEvol hH (t : ℂ) A = U * A * Uᴴ := by
     unfold heisenbergEvol; rw [← hU_adj]
@@ -94,17 +99,49 @@ lemma opNorm_eq_norm_opToCLM_CLM {N : ℕ} (A : QubitOp N) :
 lemma continuous_opNorm {N : ℕ} : Continuous (opNorm (N := N)) :=
   continuous_norm.comp (opToCLM_CLM N).continuous
 
-/-- Matrix-valued Heisenberg ODE `HasDerivAt (fun s : ℝ ↦ heisenbergEvol hH (s : ℂ) A) (I • [H, A(t)]) t`. -/
-lemma heisenbergEvol_hasDerivAt {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
-    (A : QubitOp N) (t : ℝ) :
-    HasDerivAt (fun s : ℝ ↦ heisenbergEvol hH (s : ℂ) A)
-      (Complex.I • matComm H (heisenbergEvol hH (t : ℂ) A)) t := by
-  rw [hasDerivAt_pi]; intro i
-  rw [hasDerivAt_pi]; intro j
-  exact heisenbergEvol_entry_hasDerivAt hH A t i j
+/-- Matrix decomposition into standard basis units `Matrix.single i j 1`. -/
+private lemma matrix_eq_sum_single {N : ℕ} (A : QubitOp N) :
+    A = ∑ i : QubitIdx N, ∑ j : QubitIdx N, A i j • Matrix.single i j (1 : ℂ) := by
+  ext a b
+  simp only [Matrix.sum_apply, Matrix.smul_apply, smul_eq_mul, Matrix.single]
+  rw [Finset.sum_eq_single a]
+  · rw [Finset.sum_eq_single b]
+    · simp
+    · intro j _ hjb; simp [Ne.symm hjb]
+    · intro h; exact absurd (Finset.mem_univ b) h
+  · intro i _ hia
+    apply Finset.sum_eq_zero; intro j _
+    simp [Ne.symm hia]
+  · intro h; exact absurd (Finset.mem_univ a) h
+
+/-- Lift entrywise `HasDerivAt` on `QubitOp N` to `HasDerivAt` of `opToCLM_CLM N ∘ D`. -/
+private lemma hasDerivAt_opToCLM_of_entry {N : ℕ} (D : ℝ → QubitOp N) (D' : QubitOp N) (s : ℝ)
+    (hD : ∀ i j : QubitIdx N, HasDerivAt (fun u : ℝ ↦ D u i j) (D' i j) s) :
+    HasDerivAt (fun u : ℝ ↦ opToCLM_CLM N (D u)) (opToCLM_CLM N D') s := by
+  have heq : (fun u : ℝ ↦ opToCLM_CLM N (D u)) =
+      fun u : ℝ ↦ ∑ i : QubitIdx N, ∑ j : QubitIdx N,
+        (D u i j) • opToCLM_CLM N (Matrix.single i j (1 : ℂ)) := by
+    funext u
+    conv_lhs => rw [matrix_eq_sum_single (D u)]
+    simp only [map_sum, map_smul]
+  have heq' : opToCLM_CLM N D' =
+      ∑ i : QubitIdx N, ∑ j : QubitIdx N,
+        (D' i j) • opToCLM_CLM N (Matrix.single i j (1 : ℂ)) := by
+    conv_lhs => rw [matrix_eq_sum_single D']
+    simp only [map_sum, map_smul]
+  rw [heq, heq']
+  apply HasDerivAt.fun_sum; intro i _
+  apply HasDerivAt.fun_sum; intro j _
+  exact (hD i j).smul_const (opToCLM_CLM N (Matrix.single i j (1 : ℂ)))
+
+/-- Entrywise continuity of `heisenbergEvol hH (s : ℂ) A`. -/
+private lemma continuous_heisenbergEvol_real {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
+    (A : QubitOp N) : Continuous (fun s : ℝ ↦ heisenbergEvol hH (s : ℂ) A) :=
+  continuous_matrix fun i j ↦ continuous_iff_continuousAt.mpr fun s ↦
+    (heisenbergEvol_entry_hasDerivAt hH A s i j).continuousAt
 
 /-- At `t = 0`, `heisenbergEvol hH 0 A = A`. -/
-lemma heisenbergEvol_zero {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (A : QubitOp N) :
+private lemma heisenbergEvol_zero_real {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (A : QubitOp N) :
     heisenbergEvol hH 0 A = A := by
   unfold heisenbergEvol complexPropagator
   have h0 : (fun E : ℝ ↦ Complex.exp (Complex.I * 0 * (E : ℂ))) = fun _ ↦ 1 := by
@@ -114,17 +151,19 @@ lemma heisenbergEvol_zero {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (A : Qu
   rw [h0, h0', hermFunc_one, Matrix.one_mul, Matrix.mul_one]
 
 /-- **Norm-Preserving Differential Inequality**:
-If `K, M, R : ℝ → QubitOp N` satisfy `K'(s) = i [M(s), K(s)] + R(s)` with `M(s)` Hermitian
-and `R` continuous, then for all `t ≥ 0`:
+If `K, M, R : ℝ → QubitOp N` satisfy entrywise `K'(s) = i [M(s), K(s)] + R(s)` with `M(s)`
+Hermitian and `R` continuous, then for all `t ≥ 0`:
 `opNorm (K t) ≤ opNorm (K 0) + ∫ s in (0 : ℝ)..t, opNorm (R s)`. -/
 theorem opNorm_le_add_integral_of_deriv_comm_herm {N : ℕ}
     (K M R : ℝ → QubitOp N)
-    (hK_deriv : ∀ s : ℝ, HasDerivAt K (Complex.I • matComm (M s) (K s) + R s) s)
+    (hK_deriv : ∀ (s : ℝ) (i j : QubitIdx N),
+      HasDerivAt (fun u : ℝ ↦ K u i j) ((Complex.I • matComm (M s) (K s) + R s) i j) s)
     (hM_herm : ∀ s : ℝ, (M s).IsHermitian)
     (hR_cont : Continuous R)
     {t : ℝ} (ht : 0 ≤ t) :
     opNorm (K t) ≤ opNorm (K 0) + ∫ s in (0 : ℝ)..t, opNorm (R s) := by
-  have hK_cont : Continuous K := continuous_iff_continuousAt.mpr fun s ↦ (hK_deriv s).continuousAt
+  have hK_cont : Continuous K :=
+    continuous_matrix fun i j ↦ continuous_iff_continuousAt.mpr fun s ↦ (hK_deriv s i j).continuousAt
   have hRn_cont : Continuous (fun s ↦ opNorm (R s)) := continuous_opNorm.comp hR_cont
   have hInt_cont : Continuous (fun s ↦ ∫ u in (0 : ℝ)..s, opNorm (R u)) :=
     intervalIntegral.continuous_primitive (fun a b ↦ hRn_cont.intervalIntegrable a b) 0
@@ -171,25 +210,26 @@ theorem opNorm_le_add_integral_of_deriv_comm_herm {N : ℕ}
     linarith
   let D : ℝ → QubitOp N := fun δ ↦ K (s₀ + δ) - heisenbergEvol (hM_herm s₀) (δ : ℂ) (K s₀)
   have hD0 : D 0 = 0 := by
-    dsimp only [D]; rw [add_zero, Complex.ofReal_zero, heisenbergEvol_zero, sub_self]
-  have hK_shift : HasDerivAt (fun δ : ℝ ↦ K (s₀ + δ))
-      (Complex.I • matComm (M s₀) (K s₀) + R s₀) 0 := by
-    have h1 : HasDerivAt (fun δ : ℝ ↦ s₀ + δ) 1 0 := by
-      simpa using (hasDerivAt_id (0 : ℝ)).const_add s₀
-    have h2 := (hK_deriv s₀).comp (0 : ℝ) (by simpa using h1)
-    simpa using h2
-  have hE_deriv : HasDerivAt (fun δ : ℝ ↦ heisenbergEvol (hM_herm s₀) (δ : ℂ) (K s₀))
-      (Complex.I • matComm (M s₀) (K s₀)) 0 := by
-    have h1 := heisenbergEvol_hasDerivAt (hM_herm s₀) (K s₀) 0
-    simpa [heisenbergEvol_zero] using h1
-  have hD_deriv : HasDerivAt D (R s₀) 0 := by
-    have h1 := hK_shift.sub hE_deriv
-    convert h1 using 1
-    abel
+    dsimp only [D]; rw [add_zero, Complex.ofReal_zero, heisenbergEvol_zero_real, sub_self]
+  have hD_entry : ∀ i j : QubitIdx N, HasDerivAt (fun δ : ℝ ↦ D δ i j) (R s₀ i j) 0 := by
+    intro i j
+    have hK_shift : HasDerivAt (fun δ : ℝ ↦ K (s₀ + δ) i j)
+        ((Complex.I • matComm (M s₀) (K s₀) + R s₀) i j) 0 := by
+      have h1 : HasDerivAt (fun δ : ℝ ↦ s₀ + δ) 1 0 := by
+        simpa using (hasDerivAt_id (0 : ℝ)).const_add s₀
+      have h2 := (hK_deriv s₀ i j).comp (0 : ℝ) (by simpa using h1)
+      simpa using h2
+    have hE_deriv : HasDerivAt (fun δ : ℝ ↦ heisenbergEvol (hM_herm s₀) (δ : ℂ) (K s₀) i j)
+        ((Complex.I • matComm (M s₀) (K s₀)) i j) 0 := by
+      have h1 := heisenbergEvol_entry_hasDerivAt (hM_herm s₀) (K s₀) 0 i j
+      simpa [heisenbergEvol_zero_real] using h1
+    have hsub := hK_shift.sub hE_deriv
+    convert hsub using 1
+    simp only [Matrix.add_apply]; ring
   let φ : ℝ → (EuclideanSpace ℂ (QubitIdx N) →L[ℂ] EuclideanSpace ℂ (QubitIdx N)) :=
     fun δ ↦ opToCLM_CLM N (D δ)
   have hφ_deriv : HasDerivAt φ (opToCLM_CLM N (R s₀)) 0 :=
-    ((opToCLM_CLM N).restrictScalars ℝ).hasFDerivAt.comp_hasDerivAt 0 hD_deriv
+    hasDerivAt_opToCLM_of_entry D (R s₀) 0 hD_entry
   have hφ0 : φ 0 = 0 := by simp [φ, hD0]
   have hφ_slope := hφ_deriv.tendsto_slope_zero_right
   have hInt_deriv : HasDerivAt (fun s : ℝ ↦ ∫ u in (0 : ℝ)..s, opNorm (R u)) (opNorm (R s₀)) s₀ :=
@@ -254,20 +294,17 @@ private lemma isHermitian_heisenbergEvol_real {N : ℕ} {H A : QubitOp N}
     (hH : H.IsHermitian) (hA : A.IsHermitian) (s : ℝ) :
     (heisenbergEvol hH (s : ℂ) A).IsHermitian := by
   unfold heisenbergEvol
-  rw [Matrix.IsHermitian, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul,
-    complexPropagator_conjTranspose_real hH s,
-    show (complexPropagator hH (-(s : ℂ)))ᴴ = complexPropagator hH (s : ℂ) by
-      have := complexPropagator_conjTranspose_real hH (-s)
-      simpa using this,
-    hA.eq, Matrix.mul_assoc]
+  have hc1 : (complexPropagator hH (s : ℂ))ᴴ = complexPropagator hH (-(s : ℂ)) := by
+    rw [complexPropagator_conjTranspose, Complex.conj_ofReal]
+  have hc2 : (complexPropagator hH (-(s : ℂ)))ᴴ = complexPropagator hH (s : ℂ) := by
+    rw [complexPropagator_conjTranspose, map_neg, Complex.conj_ofReal, neg_neg]
+  rw [Matrix.IsHermitian, Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hc1, hc2, hA.eq,
+    Matrix.mul_assoc]
 
 private lemma heisenbergEvol_mul {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (z : ℂ) (A B : QubitOp N) :
     heisenbergEvol hH z (A * B) = heisenbergEvol hH z A * heisenbergEvol hH z B := by
   unfold heisenbergEvol complexPropagator
-  simp only [Matrix.mul_assoc]
-  congr 1; congr 1
-  rw [← Matrix.mul_assoc (hermFunc hH _)]
   have h1 : hermFunc hH (fun E ↦ Complex.exp (Complex.I * -z * (E : ℂ))) *
       hermFunc hH (fun E ↦ Complex.exp (Complex.I * z * (E : ℂ))) = 1 := by
     rw [hermFunc_mul]
@@ -277,17 +314,12 @@ private lemma heisenbergEvol_mul {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
       have : Complex.I * -z * (E : ℂ) + Complex.I * z * (E : ℂ) = 0 := by ring
       rw [this, Complex.exp_zero]
     rw [hf, hermFunc_one]
-  calc A * (B * hermFunc hH (fun E ↦ Complex.exp (Complex.I * -z * (E : ℂ))))
-      = A * (1 * (B * hermFunc hH (fun E ↦ Complex.exp (Complex.I * -z * (E : ℂ))))) := by
-          rw [Matrix.one_mul]
-    _ = A * ((hermFunc hH (fun E ↦ Complex.exp (Complex.I * -z * (E : ℂ))) *
-          hermFunc hH (fun E ↦ Complex.exp (Complex.I * z * (E : ℂ)))) *
-          (B * hermFunc hH (fun E ↦ Complex.exp (Complex.I * -z * (E : ℂ))))) := by
-          rw [h1]
-    _ = A * (hermFunc hH (fun E ↦ Complex.exp (Complex.I * -z * (E : ℂ))) *
-          (hermFunc hH (fun E ↦ Complex.exp (Complex.I * z * (E : ℂ))) *
-            (B * hermFunc hH (fun E ↦ Complex.exp (Complex.I * -z * (E : ℂ)))))) := by
-          simp only [Matrix.mul_assoc]
+  set P := hermFunc hH (fun E ↦ Complex.exp (Complex.I * z * (E : ℂ)))
+  set Q := hermFunc hH (fun E ↦ Complex.exp (Complex.I * -z * (E : ℂ)))
+  calc P * (A * B) * Q
+      = P * A * 1 * B * Q := by simp only [Matrix.mul_one, Matrix.mul_assoc]
+    _ = P * A * (Q * P) * B * Q := by rw [h1]
+    _ = (P * A * Q) * (P * B * Q) := by simp only [Matrix.mul_assoc]
 
 private lemma heisenbergEvol_sub {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (z : ℂ) (A B : QubitOp N) :
@@ -309,7 +341,7 @@ private lemma heisenbergEvol_comm {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
 private lemma heisenbergEvol_self {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (z : ℂ) :
     heisenbergEvol hH z H = H := by
   unfold heisenbergEvol complexPropagator
-  conv_lhs => rw [hermFunc_id hH]
+  conv_lhs => rw [← hermFunc_id hH]
   rw [hermFunc_mul, hermFunc_mul]
   have hf : (fun E : ℝ ↦ Complex.exp (Complex.I * z * (E : ℂ)) * (E : ℂ) *
       Complex.exp (Complex.I * -z * (E : ℂ))) = fun E : ℝ ↦ (E : ℂ) := by
@@ -320,7 +352,7 @@ private lemma heisenbergEvol_self {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
       _ = (E : ℂ) := by
           have : Complex.I * z * (E : ℂ) + Complex.I * -z * (E : ℂ) = 0 := by ring
           rw [this, Complex.exp_zero, one_mul]
-  rw [hf, ← hermFunc_id hH]
+  rw [hf, hermFunc_id hH]
 
 private lemma matComm_jacobi {N : ℕ} (X Y Z : QubitOp N) :
     matComm (matComm X Y) Z = matComm X (matComm Y Z) - matComm Y (matComm X Z) := by
@@ -332,7 +364,7 @@ theorem lieb_robinson_integral_step {N : ℕ}
     (h : Finset (Fin N) → QubitOp N) (hsupp : ∀ X, h X ∈ supportedOn X)
     (hh_herm : ∀ X ∈ E, (h X).IsHermitian)
     (hH : (∑ X ∈ E, h X).IsHermitian)
-    {U : Finset (Fin N)} {A B : QubitOp N} (hA : A ∈ supportedOn U)
+    {U : Finset (Fin N)} {A : QubitOp N} (B : QubitOp N) (hA : A ∈ supportedOn U)
     {t : ℝ} (ht : 0 ≤ t) :
     opNorm (matComm (heisenbergEvol hH (t : ℂ) A) B) ≤
       opNorm (matComm A B) +
@@ -360,16 +392,21 @@ theorem lieb_robinson_integral_step {N : ℕ}
   let M : ℝ → QubitOp N := fun s ↦ heisenbergEvol hH (s : ℂ) Hbd
   let R : ℝ → QubitOp N := fun s ↦
     -(Complex.I • matComm (heisenbergEvol hH (s : ℂ) A) (matComm (M s) B))
-  have hK_deriv : ∀ s : ℝ, HasDerivAt K (Complex.I • matComm (M s) (K s) + R s) s := by
-    intro s
-    let Lcomm : QubitOp N →L[ℂ] QubitOp N :=
-      LinearMap.toContinuousLinearMap
-        { toFun := fun X ↦ matComm X B
-          map_add' := fun X₁ X₂ ↦ by unfold matComm; noncomm_ring
-          map_smul' := fun c X ↦ by unfold matComm; simp [Matrix.smul_mul, Matrix.mul_smul, smul_sub] }
-    have h1 : HasDerivAt K (Lcomm (Complex.I • matComm (∑ X ∈ E, h X) (heisenbergEvol hH (s : ℂ) A))) s :=
-      (Lcomm.restrictScalars ℝ).hasFDerivAt.comp_hasDerivAt s (heisenbergEvol_hasDerivAt hH A s)
-    convert h1 using 1
+  have hK_deriv : ∀ (s : ℝ) (i j : QubitIdx N),
+      HasDerivAt (fun u : ℝ ↦ K u i j) ((Complex.I • matComm (M s) (K s) + R s) i j) s := by
+    intro s i j
+    have hmulL : HasDerivAt (fun u : ℝ ↦ (heisenbergEvol hH (u : ℂ) A * B) i j)
+        (((Complex.I • matComm (∑ X ∈ E, h X) (heisenbergEvol hH (s : ℂ) A)) * B) i j) s := by
+      simp only [Matrix.mul_apply]
+      apply HasDerivAt.fun_sum; intro k _
+      exact (heisenbergEvol_entry_hasDerivAt hH A s i k).mul_const (B k j)
+    have hmulR : HasDerivAt (fun u : ℝ ↦ (B * heisenbergEvol hH (u : ℂ) A) i j)
+        ((B * (Complex.I • matComm (∑ X ∈ E, h X) (heisenbergEvol hH (s : ℂ) A))) i j) s := by
+      simp only [Matrix.mul_apply]
+      apply HasDerivAt.fun_sum; intro k _
+      exact (heisenbergEvol_entry_hasDerivAt hH A s k j).const_mul (B i k)
+    have hsub := hmulL.sub hmulR
+    convert hsub using 1
     have h2 : matComm (∑ X ∈ E, h X) (heisenbergEvol hH (s : ℂ) A) =
         matComm (M s) (heisenbergEvol hH (s : ℂ) A) := by
       calc matComm (∑ X ∈ E, h X) (heisenbergEvol hH (s : ℂ) A)
@@ -379,25 +416,27 @@ theorem lieb_robinson_integral_step {N : ℕ}
               (heisenbergEvol_comm hH _ _ _).symm
         _ = heisenbergEvol hH (s : ℂ) (matComm Hbd A) := by rw [hcomm_eq]
         _ = matComm (M s) (heisenbergEvol hH (s : ℂ) A) := heisenbergEvol_comm hH _ _ _
-    have hL : Lcomm (Complex.I • matComm (∑ X ∈ E, h X) (heisenbergEvol hH (s : ℂ) A)) =
-        Complex.I • matComm (matComm (M s) (heisenbergEvol hH (s : ℂ) A)) B := by
-      rw [h2, Lcomm.map_smul]; rfl
-    rw [hL, matComm_jacobi]
-    dsimp only [K, R]
-    rw [smul_sub, sub_eq_add_neg]
+    have hmat : (Complex.I • matComm (∑ X ∈ E, h X) (heisenbergEvol hH (s : ℂ) A)) * B -
+        B * (Complex.I • matComm (∑ X ∈ E, h X) (heisenbergEvol hH (s : ℂ) A)) =
+        Complex.I • matComm (M s) (K s) + R s := by
+      rw [h2, Matrix.smul_mul, Matrix.mul_smul, ← smul_sub]
+      change Complex.I • matComm (matComm (M s) (heisenbergEvol hH (s : ℂ) A)) B =
+        Complex.I • matComm (M s) (K s) + R s
+      rw [matComm_jacobi, smul_sub, sub_eq_add_neg]
+    exact (congrFun (congrFun hmat i) j).symm
   have hM_herm : ∀ s : ℝ, (M s).IsHermitian := fun s ↦
     isHermitian_heisenbergEvol_real hH hHbd_herm s
   have hR_cont : Continuous R := by
     have hA_cont : Continuous (fun s : ℝ ↦ heisenbergEvol hH (s : ℂ) A) :=
-      continuous_iff_continuousAt.mpr fun s ↦ (heisenbergEvol_hasDerivAt hH A s).continuousAt
-    have hM_cont : Continuous M :=
-      continuous_iff_continuousAt.mpr fun s ↦ (heisenbergEvol_hasDerivAt hH Hbd s).continuousAt
+      continuous_heisenbergEvol_real hH A
+    have hM_cont : Continuous M := continuous_heisenbergEvol_real hH Hbd
     dsimp only [R, matComm]
     fun_prop
   have hstep := opNorm_le_add_integral_of_deriv_comm_herm K M R hK_deriv hM_herm hR_cont ht
   have hK0 : K 0 = matComm A B := by
-    dsimp only [K]; rw [Complex.ofReal_zero, heisenbergEvol_zero]
+    dsimp only [K]; rw [Complex.ofReal_zero, heisenbergEvol_zero_real]
   rw [hK0] at hstep
+  have hA_nn : 0 ≤ opNorm A := opNorm_nonneg A
   have hR_le : ∀ s : ℝ, opNorm (R s) ≤
       2 * opNorm A * ∑ Y ∈ E.filter (fun Y ↦ ¬Disjoint Y U),
         opNorm (matComm (heisenbergEvol hH (s : ℂ) (h Y)) B) := by
@@ -431,7 +470,7 @@ theorem lieb_robinson_integral_step {N : ℕ}
       _ = 2 * opNorm A * opNorm (matComm (M s) B) := by rw [opNorm_heisenbergEvol_real hH s A]
       _ ≤ 2 * opNorm A * ∑ Y ∈ E.filter (fun Y ↦ ¬Disjoint Y U),
             opNorm (matComm (heisenbergEvol hH (s : ℂ) (h Y)) B) := by
-          apply mul_le_mul_of_nonneg_left _ (by positivity)
+          apply mul_le_mul_of_nonneg_left _ (by linarith)
           rw [hMB_eq]
           exact opNorm_sum_le _ _
   have hInt_le : ∫ s in (0 : ℝ)..t, opNorm (R s) ≤
@@ -441,7 +480,7 @@ theorem lieb_robinson_integral_step {N : ℕ}
         Continuous (fun s : ℝ ↦ opNorm (matComm (heisenbergEvol hH (s : ℂ) (h Y)) B)) := by
       intro Y _
       have hc : Continuous (fun s : ℝ ↦ heisenbergEvol hH (s : ℂ) (h Y)) :=
-        continuous_iff_continuousAt.mpr fun s ↦ (heisenbergEvol_hasDerivAt hH (h Y) s).continuousAt
+        continuous_heisenbergEvol_real hH (h Y)
       refine continuous_opNorm.comp ?_
       unfold matComm; fun_prop
     have hsum_int : (∫ s in (0 : ℝ)..t,
@@ -560,7 +599,7 @@ lemma lieb_robinson_iterated_bound {N r : ℕ}
       _ = 2 * opNorm (h X) * opNorm B := by rw [opNorm_heisenbergEvol_real hH t (h X)]; ring
   | succ k ih =>
     intro X hXE t ht
-    have hstep := lieb_robinson_integral_step E h hsupp hh_herm hH (hsupp X) ht
+    have hstep := lieb_robinson_integral_step E h hsupp hh_herm hH B (hsupp X) ht
     have hf0 : opNorm (matComm (h X) B) ≤ lrPathCoeff E h B V 0 X := by
       simp only [lrPathCoeff]
       by_cases hd : Disjoint X V
@@ -592,7 +631,7 @@ lemma lieb_robinson_iterated_bound {N r : ℕ}
       have hYE := (Finset.mem_filter.mp hY).1
       have hcont_lhs : Continuous (fun s : ℝ ↦ opNorm (matComm (heisenbergEvol hH (s : ℂ) (h Y)) B)) := by
         have hc : Continuous (fun s : ℝ ↦ heisenbergEvol hH (s : ℂ) (h Y)) :=
-          continuous_iff_continuousAt.mpr fun s ↦ (heisenbergEvol_hasDerivAt hH (h Y) s).continuousAt
+          continuous_heisenbergEvol_real hH (h Y)
         refine continuous_opNorm.comp ?_
         unfold matComm; fun_prop
       have hcont_rhs : Continuous (fun s : ℝ ↦
@@ -649,7 +688,7 @@ lemma lieb_robinson_iterated_bound {N r : ℕ}
       have hnn : 0 ≤ 2 * opNorm B * (2 * (r : ℝ) * J) ^ k * (t ^ (k + 1) / ((k + 1).factorial : ℝ)) := by
         have := opNorm_nonneg B; positivity
       have hmul := mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_right htouch hnn)
-        (by have := opNorm_nonneg (h X); positivity : 0 ≤ 2 * opNorm (h X))
+        (by have := opNorm_nonneg (h X); linarith : 0 ≤ 2 * opNorm (h X))
       refine le_trans hmul ?_
       rw [mul_pow, pow_succ]
       ring_nf; exact le_rfl
@@ -661,7 +700,7 @@ lemma lieb_robinson_iterated_bound {N r : ℕ}
       ring
     rw [hrange]
     have hmul_sum := mul_le_mul_of_nonneg_left hsum_Y
-      (by have := opNorm_nonneg (h X); positivity : 0 ≤ 2 * opNorm (h X))
+      (by have := opNorm_nonneg (h X); linarith : 0 ≤ 2 * opNorm (h X))
     rw [mul_add, hmain_eq] at hmul_sum
     linarith
 
@@ -690,7 +729,7 @@ theorem all_time_lieb_robinson_factorial_nonneg {N r R_int : ℕ} (hr : 1 ≤ r)
       2 * opNorm O * opNorm B * (U₀.card : ℝ) *
         ((2 * (r : ℝ) * J * t) ^ (m + 1) / ((m + 1).factorial : ℝ)) := by
   classical
-  have hstep := lieb_robinson_integral_step E h hsupp hh_herm hH hO ht
+  have hstep := lieb_robinson_integral_step E h hsupp hh_herm hH B hO ht
   have hdisj : Disjoint U₀ V := by
     rw [Finset.disjoint_left]
     intro x hxU hxV
@@ -728,7 +767,7 @@ theorem all_time_lieb_robinson_factorial_nonneg {N r R_int : ℕ} (hr : 1 ≤ r)
     intro Y hY
     have hcont_lhs : Continuous (fun s : ℝ ↦ opNorm (matComm (heisenbergEvol hH (s : ℂ) (h Y)) B)) := by
       have hc : Continuous (fun s : ℝ ↦ heisenbergEvol hH (s : ℂ) (h Y)) :=
-        continuous_iff_continuousAt.mpr fun s ↦ (heisenbergEvol_hasDerivAt hH (h Y) s).continuousAt
+        continuous_heisenbergEvol_real hH (h Y)
       refine continuous_opNorm.comp ?_; unfold matComm; fun_prop
     have hmono := intervalIntegral.integral_mono_on ht
       (hcont_lhs.intervalIntegrable 0 t)
@@ -756,16 +795,15 @@ theorem all_time_lieb_robinson_factorial_nonneg {N r R_int : ℕ} (hr : 1 ≤ r)
     apply mul_le_mul_of_nonneg_right (sum_touching_opNorm_le E h hJ hsite U₀)
     have := opNorm_nonneg B; positivity
   refine le_trans hstep ?_
-  have hmul := mul_le_mul_of_nonneg_left hsum_le
-    (by have := opNorm_nonneg O; positivity : 0 ≤ 2 * opNorm O)
+  have hO_nn := opNorm_nonneg O
+  have hmul := mul_le_mul_of_nonneg_left hsum_le (by linarith : 0 ≤ 2 * opNorm O)
   refine le_trans hmul ?_
   have hr1 : (1 : ℝ) ≤ (r : ℝ) := by exact_mod_cast hr
   have hcore : 2 * opNorm O * ((U₀.card : ℝ) * J * (2 * opNorm B * (2 * (r : ℝ) * J) ^ m * (t ^ (m + 1) / ((m + 1).factorial : ℝ)))) ≤
       2 * opNorm O * ((U₀.card : ℝ) * ((r : ℝ) * J) * (2 * opNorm B * (2 * (r : ℝ) * J) ^ m * (t ^ (m + 1) / ((m + 1).factorial : ℝ)))) := by
-    have hO_nn := opNorm_nonneg O
     have hB_nn := opNorm_nonneg B
     have hJ_le : J ≤ (r : ℝ) * J := le_mul_of_one_le_left hJ hr1
-    have hnn1 : 0 ≤ 2 * opNorm O := by positivity
+    have hnn1 : 0 ≤ 2 * opNorm O := by linarith
     have hnn2 : 0 ≤ 2 * opNorm B * (2 * (r : ℝ) * J) ^ m * (t ^ (m + 1) / ((m + 1).factorial : ℝ)) := by positivity
     have hnn3 : 0 ≤ (U₀.card : ℝ) := Nat.cast_nonneg _
     nlinarith
@@ -783,7 +821,8 @@ lemma pow_div_factorial_le_exp_sub {u : ℝ} (hu : 0 ≤ u) (k : ℕ) :
     rw [sub_eq_add_neg, Real.exp_add]
   have h3 : (Real.exp 1) ^ k = Real.exp (k : ℝ) := by
     rw [← Real.exp_nat_mul]; simp
-  rw [h2, mul_pow, h3, mul_div_assoc] at h1 ⊢
+  rw [mul_pow, h3, mul_div_assoc] at h1
+  rw [h2]
   have hmul := mul_le_mul_of_nonneg_right h1 (Real.exp_pos (-(k : ℝ))).le
   have hcancel : Real.exp (k : ℝ) * (u ^ k / (k.factorial : ℝ)) * Real.exp (-(k : ℝ)) =
       u ^ k / (k.factorial : ℝ) := by
@@ -817,6 +856,8 @@ theorem all_time_lieb_robinson_exp {N r R_int : ℕ} (hr : 1 ≤ r)
     opNorm (matComm (heisenbergEvol hH (t : ℂ) O) B) ≤
       2 * opNorm O * opNorm B * (U₀.card : ℝ) *
         Real.exp (2 * Real.exp 1 * (r : ℝ) * J * |t| - ((m + 1 : ℕ) : ℝ)) := by
+  have hO_nn := opNorm_nonneg O
+  have hB_nn := opNorm_nonneg B
   by_cases ht : 0 ≤ t
   · rw [abs_of_nonneg ht]
     have hfac := all_time_lieb_robinson_factorial_nonneg hr dist hself htri E hcard hdiam h hsupp
@@ -826,7 +867,7 @@ theorem all_time_lieb_robinson_exp {N r R_int : ℕ} (hr : 1 ≤ r)
     rw [heq] at hexp
     refine le_trans hfac ?_
     apply mul_le_mul_of_nonneg_left hexp
-    have := opNorm_nonneg O; have := opNorm_nonneg B; positivity
+    positivity
   · push Not at ht
     rw [abs_of_neg ht]
     let hneg : Finset (Fin N) → QubitOp N := fun X ↦ -h X
@@ -853,7 +894,10 @@ theorem all_time_lieb_robinson_exp {N r R_int : ℕ} (hr : 1 ≤ r)
             ((Complex.I * (s : ℂ)) ^ k / (k.factorial : ℂ)) • (∑ X ∈ E, h X) ^ k =
             ((Complex.I * ((-s : ℝ) : ℂ)) ^ k / (k.factorial : ℂ)) • (∑ X ∈ E, hneg X) ^ k := by
           intro k
-          rw [hnegH_eq, neg_pow, smul_smul]
+          have hpow_neg : (∑ X ∈ E, hneg X) ^ k = (-1 : ℂ) ^ k • (∑ X ∈ E, h X) ^ k := by
+            rw [hnegH_eq, show -(∑ X ∈ E, h X) = (-1 : ℂ) • (∑ X ∈ E, h X) by rw [neg_one_smul],
+              smul_pow]
+          rw [hpow_neg, smul_smul]
           congr 1
           push_cast
           have : (Complex.I * -(s : ℂ)) ^ k * (-1 : ℂ) ^ k = (Complex.I * (s : ℂ)) ^ k := by
@@ -866,17 +910,18 @@ theorem all_time_lieb_robinson_exp {N r R_int : ℕ} (hr : 1 ≤ r)
       unfold heisenbergEvol
       have hp1 := hprop t
       have hp2 := hprop (-t)
-      simp only [neg_neg, Complex.ofReal_neg] at hp2 ⊢
+      simp only [neg_neg, Complex.ofReal_neg] at hp1 hp2 ⊢
       rw [hp1, hp2]
     rw [hevol_eq]
+    have hnt : 0 ≤ -t := by linarith
     have hfac := all_time_lieb_robinson_factorial_nonneg hr dist hself htri E hcard hdiam hneg
-      hneg_supp hneg_herm hnegH hJ hneg_site hO hB m hsep (by linarith)
+      hneg_supp hneg_herm hnegH hJ hneg_site hO hB m hsep (t := -t) hnt
     have hexp := pow_div_factorial_le_exp_sub (by positivity : 0 ≤ 2 * (r : ℝ) * J * (-t)) (m + 1)
     have heq : Real.exp 1 * (2 * (r : ℝ) * J * (-t)) = 2 * Real.exp 1 * (r : ℝ) * J * (-t) := by ring
     rw [heq] at hexp
     refine le_trans hfac ?_
     apply mul_le_mul_of_nonneg_left hexp
-    have := opNorm_nonneg O; have := opNorm_nonneg B; positivity
+    positivity
 
 end AllTimeLiebRobinson
 

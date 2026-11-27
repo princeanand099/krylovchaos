@@ -109,10 +109,10 @@ lemma mul_gibbsRhoHalf_eq_gibbsRhoHalf_mul_evol {N : ℕ} {H : QubitOp N} (hH : 
     rw [hL, hR]; simp only [Matrix.mul_assoc]
   rw [← hadd, ← h2, ← h1]
   have hL1 : (G.ρQuarter * G.ρQuarter) * (G.ρQuarterInv * G.ρQuarterInv) = 1 := by
-    calc (G.ρQuarter * G.ρQuarter) * (G.ρQuarterInv * G.ρQuarterInv)
-        = G.ρQuarter * (G.ρQuarter * G.ρQuarterInv) * G.ρQuarterInv := by simp only [Matrix.mul_assoc]
-      _ = G.ρQuarter * G.ρQuarterInv := by rw [G.inv_right, Matrix.mul_one]
-      _ = 1 := G.inv_right
+    have h1' : (G.ρQuarter * G.ρQuarter) * (G.ρQuarterInv * G.ρQuarterInv) =
+        G.ρQuarter * (G.ρQuarter * G.ρQuarterInv) * G.ρQuarterInv := by
+      simp only [Matrix.mul_assoc]
+    rw [h1', G.inv_right, Matrix.mul_one, G.inv_right]
   calc M * G.ρHalf
       = 1 * M * (G.ρQuarter * G.ρQuarter) := by rw [Matrix.one_mul, G.sq_quarter]
     _ = ((G.ρQuarter * G.ρQuarter) * (G.ρQuarterInv * G.ρQuarterInv)) * M * (G.ρQuarter * G.ρQuarter) := by
