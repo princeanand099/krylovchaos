@@ -168,6 +168,28 @@ theorem prop_2_3_full_qubit_thermal_size {N : ℕ} (G : GibbsData N) (A : QubitO
   apply Finset.sum_congr rfl; intro x _
   rw [← Finset.sum_sub_distrib]
 
+private lemma comm_diff_eq_two_cw_sub_fmss {N : ℕ} (G : GibbsData N)
+    (M P : QubitOp N) (hMh : Mᴴ = M) (hMsq : (Matrix.trace (M * M)).re = 1)
+    (hPh : Pᴴ = P) (hPsq : P * P = 1) :
+    hsNormSq (matComm M P) - hsNormSq (matComm G.ρHalf P) =
+      2 * (gibbsWightmanNormSq G P - (Matrix.trace (P * M * P * M)).re) := by
+  have hρ_sq : (Matrix.trace (G.ρHalf * G.ρHalf)).re = 1 := by
+    rw [G.sq_half, G.trace_one, Complex.one_re]
+  have h1 := congrArg Complex.re (prop_2_3_commutator_size_identity M P hMh hPh hPsq)
+  have h2 := congrArg Complex.re (prop_2_3_commutator_size_identity G.ρHalf P G.ρHalf_herm hPh hPsq)
+  have hcw : (Matrix.trace (P * G.ρHalf * P * G.ρHalf)).re = gibbsWightmanNormSq G P := by
+    unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
+    rw [hPh]
+    congr 1
+    calc Matrix.trace (P * G.ρHalf * P * G.ρHalf)
+        = Matrix.trace (G.ρHalf * (P * G.ρHalf * P)) := Matrix.trace_mul_comm _ _
+      _ = Matrix.trace (G.ρHalf * P * G.ρHalf * P) := by simp only [Matrix.mul_assoc]
+  simp only [Complex.sub_re, Complex.mul_re, Complex.re_ofNat, Complex.im_ofNat, zero_mul,
+    sub_zero] at h1 h2
+  unfold hsNormSq hsInner matComm
+  rw [h1, h2, hMsq, hρ_sq, hcw]
+  ring
+
 /-- **Proposition 2.3(1) (Full N-Qubit MSS-OTOC Identity, Eq. 2.9)**:
 For ANY `N`-qubit Gibbs state `G : GibbsData N` and Hermitian normalized operator `A : QubitOp N`
 (`Aᴴ = A`, `gibbsWightmanNormSq G A = 1`):
@@ -188,31 +210,12 @@ theorem prop_2_3_part1_qubit_eq_2_9 {N : ℕ} (G : GibbsData N) {A : QubitOp N}
       exact hAnorm
     unfold hsNormSq hsInner at h1
     rwa [hJA_herm] at h1
-  have hρ_sq : (Matrix.trace (G.ρHalf * G.ρHalf)).re = 1 := by
-    rw [G.sq_half, G.trace_one, Complex.one_re]
   have hterm : ∀ (x : Fin N) (α : Fin 3),
       hsNormSq (matComm (jBeta G.ρQuarter A) (pauliSite x α.succ)) -
       hsNormSq (matComm G.ρHalf (pauliSite x α.succ)) =
-      2 * (qubitCW0 G x α - qubitFMSS G A x α) := by
-    intro x α
-    set P := pauliSite x α.succ
-    set M := jBeta G.ρQuarter A
-    have hPh : Pᴴ = P := pauliSite_herm x α.succ
-    have hPsq : P * P = 1 := pauliSite_sq x α.succ
-    have h1 := congrArg Complex.re (prop_2_3_commutator_size_identity M P hJA_herm hPh hPsq)
-    have h2 := congrArg Complex.re (prop_2_3_commutator_size_identity G.ρHalf P G.ρHalf_herm hPh hPsq)
-    have hcw : (Matrix.trace (P * G.ρHalf * P * G.ρHalf)).re = qubitCW0 G x α := by
-      unfold qubitCW0 gibbsWightmanNormSq gibbsWightmanInner wightmanInner
-      rw [hPh]
-      congr 1
-      calc Matrix.trace (P * G.ρHalf * P * G.ρHalf)
-          = Matrix.trace (G.ρHalf * (P * G.ρHalf * P)) := Matrix.trace_mul_comm _ _
-        _ = Matrix.trace (G.ρHalf * P * G.ρHalf * P) := by simp only [Matrix.mul_assoc]
-    simp only [Complex.sub_re, Complex.mul_re, Complex.re_ofNat, Complex.im_ofNat, zero_mul,
-      sub_zero] at h1 h2
-    unfold hsNormSq hsInner matComm qubitFMSS
-    rw [h1, h2, hJA_sq, hρ_sq, hcw]
-    ring
+      2 * (qubitCW0 G x α - qubitFMSS G A x α) := fun x α ↦
+    comm_diff_eq_two_cw_sub_fmss G (jBeta G.ρQuarter A) (pauliSite x α.succ)
+      hJA_herm hJA_sq (pauliSite_herm x α.succ) (pauliSite_sq x α.succ)
   simp_rw [hterm, ← Finset.mul_sum]
   ring
 
