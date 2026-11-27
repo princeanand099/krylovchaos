@@ -607,6 +607,7 @@ theorem cauchy_order2_schwarz_bound {R M : ℝ} (hR : 0 < R) (hM : 0 ≤ M)
   have hbound_int : ‖∮ z in C((0 : ℂ), R), ((z - w)⁻¹ • h₁ z - (z - 0)⁻¹ • h₁ z)‖ ≤
       2 * Real.pi * R * (2 * ‖w‖ * M / R ^ 3) := by
     have hle := circleIntegral.norm_integral_le_of_norm_le_const (c := (0 : ℂ)) (R := R)
+      (f := fun z : ℂ ↦ (z - w)⁻¹ • h₁ z - (z - 0)⁻¹ • h₁ z)
       (C := 2 * ‖w‖ * M / R ^ 3) hR.le (fun z hz ↦ ?_)
     · simpa [abs_of_pos hR] using hle
     · rw [Metric.mem_sphere, dist_zero_right] at hz
@@ -826,15 +827,18 @@ theorem normalizedTrace_tsum_exp_eq_polymerZ {N : ℕ}
   symm
   refine Finset.sum_bij (fun I _ ↦ I.biUnion id) ?_ ?_ ?_ ?_
   · intro I hI
+    rw [Finset.mem_filter, Finset.mem_powerset] at hI
     rw [Finset.mem_powerset]
     intro X hX
     rcases Finset.mem_biUnion.mp hX with ⟨γ, hγI, hXγ⟩
-    exact (mem_connectedPolymers.mp ((Finset.mem_powerset.mp (Finset.mem_filter.mp hI).1) hγI)).1 hXγ
+    exact (mem_connectedPolymers.mp (hI.1 hγI)).1 hXγ
   · intro I₁ hI₁ I₂ hI₂ heq
-    exact hinj I₁ (by simpa [Finset.mem_filter] using hI₁) I₂ (by simpa [Finset.mem_filter] using hI₂) heq
+    rw [Finset.mem_filter] at hI₁ hI₂
+    exact hinj I₁ (by rw [Finset.mem_filter]; exact hI₁) I₂ (by rw [Finset.mem_filter]; exact hI₂) heq
   · intro S hS
     rcases hsurj S hS with ⟨I, hI, hEq⟩
-    exact ⟨I, by simpa [Finset.mem_filter] using hI, hEq⟩
+    rw [Finset.mem_filter] at hI
+    exact ⟨I, by rw [Finset.mem_filter]; exact hI, hEq⟩
   · intro I hI
     simp only [Finset.mem_filter, Finset.mem_powerset] at hI
     exact (normalizedTrace_polyOp_biUnion g hsupp I hI.2
@@ -891,12 +895,12 @@ lemma differentiable_tracePolyWeight_affine {N : ℕ}
       apply Finset.sum_le_sum; intro Z _
       calc opNorm (A Z + ζ • B Z) ≤ opNorm (A Z) + opNorm (ζ • B Z) := opNorm_add_le _ _
         _ = opNorm (A Z) + ‖ζ‖ * opNorm (B Z) := by rw [opNorm_smul]
-        _ ≤ opNorm (A Z) + R * opNorm (B Z) := by gcongr
+        _ ≤ opNorm (A Z) + R * opNorm (B Z) := by linarith [mul_le_mul_of_nonneg_right hζ (opNorm_nonneg (B Z))]
     have hpow_le : (∑ Z ∈ γ, opNorm (A Z + ζ • B Z)) ^ m ≤ C ^ m :=
       pow_le_pow_left₀ (Finset.sum_nonneg fun Z _ ↦ opNorm_nonneg _) hsum_le m
     calc 1 / (m.factorial : ℝ) * ‖normalizedTrace (polyTermSum (fun Z ↦ A Z + ζ • B Z) γ m)‖
         ≤ 1 / (m.factorial : ℝ) * C ^ m :=
-          mul_le_mul_of_nonneg_left (le_trans htr (le_trans hpt (le_trans (scalarWordSum_le_pow _ (fun _ _ ↦ opNorm_nonneg _) γ m) hpow_le))) (by positivity)
+          mul_le_mul_of_nonneg_left (le_trans htr (le_trans hpt (le_trans (scalarWordSum_le_pow (fun X ↦ opNorm (A X + ζ • B X)) (fun _ ↦ opNorm_nonneg _) γ m) hpow_le))) (by positivity)
       _ = C ^ m / (m.factorial : ℝ) := by ring
   have hsumm_u : Summable (fun m : ℕ ↦ C ^ m / (m.factorial : ℝ)) :=
     Real.summable_pow_div_factorial C
