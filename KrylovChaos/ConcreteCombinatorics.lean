@@ -4,7 +4,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Prince Anand
 -/
 import KrylovChaos.Basic
-import Mathlib.Combinatorics.Enumerative.Catalan
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Nat.Choose.Sum
 import Mathlib.Tactic
@@ -62,67 +61,156 @@ lemma catalanRec_succ (n : ℕ) :
   rw [catalanRec]
   exact Finset.sum_attach (Finset.range (n + 1)) (fun j ↦ catalanRec j * catalanRec (n - j))
 
-/-- `catalanRec` agrees with Mathlib's `catalan`. -/
-lemma catalanRec_eq_catalan (n : ℕ) : catalanRec n = catalan n := by
-  induction n using Nat.strong_induction_on with
-  | h n ih =>
-    cases n with
-    | zero => rfl
-    | succ n =>
-      rw [catalanRec_succ, catalan_succ]
-      rw [Finset.Nat.sum_antidiagonal_eq_sum_range_succ (fun i j ↦ catalan i * catalan j)]
-      apply Finset.sum_congr rfl
-      intro j hj
-      have hj' : j < n + 1 := Finset.mem_range.mp hj
-      rw [ih j (by omega), ih (n - j) (by omega)]
+/-- Generating-function partial sum bound at `x = 1/4`:
+`∑ k ∈ Finset.range (M + 1), (catalanRec k : ℝ) / 4 ^ k ≤ 2` for all `M : ℕ`. -/
+lemma catalanRec_quarter_sum_le_two :
+    ∀ M : ℕ, ∑ k ∈ Finset.range (M + 1), (catalanRec k : ℝ) / (4 : ℝ) ^ k ≤ 2 := by
+  intro M
+  induction M with
+  | zero =>
+    simp [catalanRec]
+  | succ M ih =>
+    rw [Finset.sum_range_succ']
+    have hc0 : (catalanRec 0 : ℝ) / (4 : ℝ) ^ 0 = 1 := by simp [catalanRec]
+    rw [hc0]
+    have hquad : ∑ k ∈ Finset.range (M + 1), (catalanRec (k + 1) : ℝ) / (4 : ℝ) ^ (k + 1) ≤
+        (1 / 4 : ℝ) * (∑ j ∈ Finset.range (M + 1), (catalanRec j : ℝ) / (4 : ℝ) ^ j) ^ 2 := by
+      have hterm : ∀ k ∈ Finset.range (M + 1),
+          (catalanRec (k + 1) : ℝ) / (4 : ℝ) ^ (k + 1) =
+            (1 / 4 : ℝ) * ∑ j ∈ Finset.range (k + 1),
+              ((catalanRec j : ℝ) / (4 : ℝ) ^ j) *
+              ((catalanRec (k - j) : ℝ) / (4 : ℝ) ^ (k - j)) := by
+        intro k _
+        rw [catalanRec_succ, Nat.cast_sum, Finset.sum_div, Finset.mul_sum]
+        apply Finset.sum_congr rfl; intro j hj
+        have hjk : j ≤ k := Nat.lt_succ_iff.mp (Finset.mem_range.mp hj)
+        have hpow : (4 : ℝ) ^ j * (4 : ℝ) ^ (k - j) = (4 : ℝ) ^ k := by
+          rw [← pow_add, Nat.add_sub_cancel' hjk]
+        rw [Nat.cast_mul, pow_succ]
+        field_simp [hpow]
+      rw [Finset.sum_congr rfl hterm, ← Finset.mul_sum]
+      apply mul_le_mul_of_nonneg_left _ (by norm_num)
+      let S := (Finset.range (M + 1)).sigma (fun k ↦ Finset.range (k + 1))
+      let f : ℕ → ℝ := fun j ↦ (catalanRec j : ℝ) / (4 : ℝ) ^ j
+      have hf_nn : ∀ j : ℕ, 0 ≤ f j := fun j ↦ by positivity
+      have h1 : (∑ k ∈ Finset.range (M + 1), ∑ j ∈ Finset.range (k + 1), f j * f (k - j)) =
+          ∑ p ∈ S, f p.2 * f (p.1 - p.2) := by
+        rw [Finset.sum_sigma]
+      rw [h1]
+      have hinj : Set.InjOn (fun p : Σ _k : ℕ, ℕ ↦ (p.2, p.1 - p.2)) (S : Set _) := by
+        intro p₁ hp₁ p₂ hp₂ heq
+        have h1' : p₁.2 ≤ p₁.1 := Nat.lt_succ_iff.mp (Finset.mem_range.mp (Finset.mem_sigma.mp hp₁).2)
+        have h2' : p₂.2 ≤ p₂.1 := Nat.lt_succ_iff.mp (Finset.mem_range.mp (Finset.mem_sigma.mp hp₂).2)
+        have heq1 : p₁.2 = p₂.2 := congrArg Prod.fst heq
+        have heq2 : p₁.1 - p₁.2 = p₂.1 - p₂.2 := congrArg Prod.snd heq
+        have hp1eq : p₁.1 = p₂.1 := by omega
+        cases p₁; cases p₂; simp only at hp1eq heq1; subst hp1eq; subst heq1; rfl
+      have hsub : S.image (fun p ↦ (p.2, p.1 - p.2)) ⊆
+          (Finset.range (M + 1)).product (Finset.range (M + 1)) := by
+        intro q hq
+        rcases Finset.mem_image.mp hq with ⟨p, hp, rfl⟩
+        rcases Finset.mem_sigma.mp hp with ⟨hp1, hp2⟩
+        have h1' : p.1 < M + 1 := Finset.mem_range.mp hp1
+        have h2' : p.2 < p.1 + 1 := Finset.mem_range.mp hp2
+        exact Finset.mem_product.mpr ⟨Finset.mem_range.mpr (by omega), Finset.mem_range.mpr (by omega)⟩
+      calc ∑ p ∈ S, f p.2 * f (p.1 - p.2)
+          = ∑ q ∈ S.image (fun p ↦ (p.2, p.1 - p.2)), f q.1 * f q.2 := by
+            rw [Finset.sum_image hinj]
+        _ ≤ ∑ q ∈ (Finset.range (M + 1)).product (Finset.range (M + 1)), f q.1 * f q.2 :=
+            Finset.sum_le_sum_of_subset_of_nonneg hsub fun q _ _ ↦ mul_nonneg (hf_nn _) (hf_nn _)
+        _ = (∑ j ∈ Finset.range (M + 1), f j) ^ 2 := by
+            rw [Finset.sum_product, sq, Finset.sum_mul]
+            apply Finset.sum_congr rfl; intro a _; rw [Finset.mul_sum]
+    have hnn : 0 ≤ ∑ j ∈ Finset.range (M + 1), (catalanRec j : ℝ) / (4 : ℝ) ^ j :=
+      Finset.sum_nonneg fun j _ ↦ by positivity
+    have hsq : (∑ j ∈ Finset.range (M + 1), (catalanRec j : ℝ) / (4 : ℝ) ^ j) ^ 2 ≤ 4 := by
+      nlinarith
+    linarith
 
 lemma catalanRec_le_four_pow (n : ℕ) : (catalanRec n : ℝ) ≤ (4 : ℝ) ^ n := by
-  rw [catalanRec_eq_catalan]
-  have h1 : catalan n = Nat.centralBinom n / (n + 1) := catalan_eq_centralBinom_div n
-  have h2 : Nat.centralBinom n / (n + 1) ≤ Nat.centralBinom n := Nat.div_le_self _ _
-  have h3 : Nat.centralBinom n ≤ 4 ^ n := by
-    rw [Nat.centralBinom]
-    have hsum := Nat.sum_range_choose (2 * n)
-    have hmem : n ∈ Finset.range (2 * n + 1) := Finset.mem_range.mpr (by omega)
-    have hle : Nat.choose (2 * n) n ≤ ∑ k ∈ Finset.range (2 * n + 1), Nat.choose (2 * n) k :=
-      Finset.single_le_sum (fun _ _ ↦ Nat.zero_le _) hmem
-    rw [hsum] at hle
-    have hpow : 2 ^ (2 * n) = 4 ^ n := by rw [pow_mul]; norm_num
-    omega
-  exact_mod_cast (h1 ▸ le_trans h2 h3)
+  have hsum := catalanRec_quarter_sum_le_two n
+  have hle1 : (catalanRec n : ℝ) / (4 : ℝ) ^ n ≤ 1 := by
+    cases n with
+    | zero => simp [catalanRec]
+    | succ n =>
+      have hsplit : ∑ k ∈ Finset.range (n + 2), (catalanRec k : ℝ) / (4 : ℝ) ^ k =
+          1 + ∑ k ∈ Finset.range (n + 1), (catalanRec (k + 1) : ℝ) / (4 : ℝ) ^ (k + 1) := by
+        rw [Finset.sum_range_succ']; simp [catalanRec]
+      have hterm : (catalanRec (n + 1) : ℝ) / (4 : ℝ) ^ (n + 1) ≤
+          ∑ k ∈ Finset.range (n + 1), (catalanRec (k + 1) : ℝ) / (4 : ℝ) ^ (k + 1) :=
+        Finset.single_le_sum (f := fun k ↦ (catalanRec (k + 1) : ℝ) / (4 : ℝ) ^ (k + 1))
+          (fun k _ ↦ by positivity) (Finset.mem_range.mpr (Nat.lt_succ_self n))
+      linarith
+  have hpos : (0 : ℝ) < (4 : ℝ) ^ n := by positivity
+  rwa [div_le_one hpos] at hle1
 
 /-- Sharp exponential bound `catalanRec m ≤ 4^(m - 1)` for all `m ≥ 1`. -/
 lemma catalanRec_le_four_pow_pred (m : ℕ) (hm : 1 ≤ m) :
     (catalanRec m : ℝ) ≤ (4 : ℝ) ^ (m - 1) := by
-  rw [catalanRec_eq_catalan]
-  have hnat : catalan m ≤ 4 ^ (m - 1) := by
-    by_cases h1 : m = 1
-    · subst h1
-      rw [catalan_eq_centralBinom_div]
-      norm_num [Nat.centralBinom, Nat.choose]
-    · by_cases h2 : m = 2
-      · subst h2
-        rw [catalan_eq_centralBinom_div]
-        norm_num [Nat.centralBinom, Nat.choose]
-      · have hm3 : 3 ≤ m := by omega
-        have hcb : Nat.centralBinom m ≤ 4 ^ m := by
-          rw [Nat.centralBinom]
-          have hsum := Nat.sum_range_choose (2 * m)
-          have hmem : m ∈ Finset.range (2 * m + 1) := Finset.mem_range.mpr (by omega)
-          have hle : Nat.choose (2 * m) m ≤ ∑ k ∈ Finset.range (2 * m + 1), Nat.choose (2 * m) k :=
-            Finset.single_le_sum (fun _ _ ↦ Nat.zero_le _) hmem
-          rw [hsum] at hle
-          have hpow : 2 ^ (2 * m) = 4 ^ m := by rw [pow_mul]; norm_num
-          omega
-        rw [catalan_eq_centralBinom_div]
-        have hdiv1 : Nat.centralBinom m / (m + 1) ≤ Nat.centralBinom m / 4 :=
-          Nat.div_le_div_left (by omega) (by omega)
-        have hdiv2 : Nat.centralBinom m / 4 ≤ 4 ^ m / 4 := Nat.div_le_div_right hcb
-        have hpow4 : 4 ^ m = 4 * 4 ^ (m - 1) := by
-          conv_lhs => rw [← Nat.sub_add_cancel hm, pow_succ']
-        rw [hpow4, Nat.mul_div_right _ (by omega)] at hdiv2
-        exact le_trans hdiv1 hdiv2
-  exact_mod_cast hnat
+  have hdiv : ∀ k : ℕ, 1 ≤ k → (catalanRec k : ℝ) / (4 : ℝ) ^ k ≤ 1 / 4 := by
+    intro k
+    induction k using Nat.strong_induction_on with
+    | h k ih =>
+      intro hk
+      cases k with
+      | zero => omega
+      | succ k =>
+        cases k with
+        | zero =>
+          rw [catalanRec_succ]
+          simp [catalanRec]
+        | succ n =>
+          have hrew : (catalanRec (n + 2) : ℝ) / (4 : ℝ) ^ (n + 2) =
+              (1 / 4 : ℝ) * ∑ j ∈ Finset.range (n + 2),
+                ((catalanRec j : ℝ) / (4 : ℝ) ^ j) *
+                ((catalanRec (n + 1 - j) : ℝ) / (4 : ℝ) ^ (n + 1 - j)) := by
+            rw [catalanRec_succ, Nat.cast_sum, Finset.sum_div, Finset.mul_sum]
+            apply Finset.sum_congr rfl; intro j hj
+            have hjn : j ≤ n + 1 := Nat.lt_succ_iff.mp (Finset.mem_range.mp hj)
+            have hpow : (4 : ℝ) ^ j * (4 : ℝ) ^ (n + 1 - j) = (4 : ℝ) ^ (n + 1) := by
+              rw [← pow_add, Nat.add_sub_cancel' hjn]
+            rw [Nat.cast_mul, pow_succ]
+            field_simp [hpow]
+          rw [hrew, Finset.sum_range_succ']
+          have h0 : ((catalanRec 0 : ℝ) / (4 : ℝ) ^ 0) *
+              ((catalanRec (n + 1 - 0) : ℝ) / (4 : ℝ) ^ (n + 1 - 0)) ≤ 1 / 4 := by
+            simp only [catalanRec, Nat.cast_one, pow_zero, div_one, one_mul, Nat.sub_zero]
+            exact ih (n + 1) (by omega) (by omega)
+          have hrest : ∑ j ∈ Finset.range (n + 1),
+              ((catalanRec (j + 1) : ℝ) / (4 : ℝ) ^ (j + 1)) *
+              ((catalanRec (n + 1 - (j + 1)) : ℝ) / (4 : ℝ) ^ (n + 1 - (j + 1))) ≤
+              (1 / 4 : ℝ) * ∑ j ∈ Finset.range (n + 1),
+                (catalanRec (n - j) : ℝ) / (4 : ℝ) ^ (n - j) := by
+            rw [Finset.mul_sum]
+            apply Finset.sum_le_sum; intro j hj
+            have hjn : j < n + 1 := Finset.mem_range.mp hj
+            have hsub : n + 1 - (j + 1) = n - j := by omega
+            rw [hsub]
+            exact mul_le_mul_of_nonneg_right (ih (j + 1) (by omega) (by omega)) (by positivity)
+          have hsum_le : ∑ j ∈ Finset.range (n + 1),
+              (catalanRec (n - j) : ℝ) / (4 : ℝ) ^ (n - j) ≤ 2 := by
+            have hrev : ∑ j ∈ Finset.range (n + 1),
+                (catalanRec (n - j) : ℝ) / (4 : ℝ) ^ (n - j) =
+                ∑ k ∈ Finset.range (n + 1), (catalanRec k : ℝ) / (4 : ℝ) ^ k := by
+              refine Finset.sum_bij (fun j _ ↦ n - j) ?_ ?_ ?_ ?_
+              · intro j hj; exact Finset.mem_range.mpr (by have := Finset.mem_range.mp hj; omega)
+              · intro j₁ hj₁ j₂ hj₂ heq
+                have h1 := Finset.mem_range.mp hj₁
+                have h2 := Finset.mem_range.mp hj₂
+                omega
+              · intro k hk
+                have hkn := Finset.mem_range.mp hk
+                exact ⟨n - k, Finset.mem_range.mpr (by omega), by omega⟩
+              · intro _ _; rfl
+            rw [hrev]
+            exact catalanRec_quarter_sum_le_two n
+          linarith
+  have hm_le := hdiv m hm
+  have hpow4 : (4 : ℝ) ^ m = 4 * (4 : ℝ) ^ (m - 1) := by
+    conv_lhs => rw [← Nat.sub_add_cancel hm, pow_succ']
+  have hpos : (0 : ℝ) < (4 : ℝ) ^ (m - 1) := by positivity
+  rw [hpow4, div_le_iff₀ (by positivity)] at hm_le
+  linarith
 
 end CatalanRecurrence
 
