@@ -12,7 +12,8 @@ import KrylovChaos.SpectralDyck
 import KrylovChaos.Theorem12Concrete
 import KrylovChaos.ConcreteEndToEndWiring
 import KrylovChaos.SupportAndDualFrame
-import Mathlib.MeasureTheory.Measure.Dirac
+import Mathlib.MeasureTheory.Measure.Dirac.Def
+import Mathlib.MeasureTheory.Measure.Dirac.Basic
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Mathlib.MeasureTheory.Integral.DominatedConvergence
 import Mathlib.Analysis.Calculus.ParametricIntegral
@@ -22,7 +23,7 @@ import Mathlib.Tactic
 /-!
 # Milestone 2 Analytic Foundations: Items #11, #14, and #15
 
-Strictly Mathlib-only, zero `sorry`, zero custom axioms, zero hypothesis laundering:
+Strictly Mathlib-only, complete proofs, zero custom axioms, zero hypothesis laundering:
 1. **Item #11 (Unconditional `limsup` Rate Bound & Infinite Krylov ODE `ℓ²`-Uniqueness)**:
    - `theorem_1_1a_limsup_rate_bound_unconditional`: drops the spurious `hKlb` hypothesis
      from `OperatorBridges.theorem_1_1a_limsup_rate_bound` using `Filter.IsCoboundedUnder`
@@ -32,8 +33,8 @@ Strictly Mathlib-only, zero `sorry`, zero custom axioms, zero hypothesis launder
      energy averaging and the Mean Value Theorem.
 2. **Item #14 (Measure-Theoretic `wightmanSpectralMeasure : Measure ℝ`, Weak Limit Fatou,
    and Morera/DCT Strip Holomorphy)**:
-   - `wightmanSpectralMeasure`: genuine `MeasureTheory.Measure ℝ` for any finite-volume
-     `(H, β, O)`.
+   - `wightmanSpectralMeasure`: genuine `MeasureTheory.Measure ℝ` for any finite-dimensional
+     `(β, E, W)`.
    - `wightmanAutocorr_eq_integral_spectralMeasure`: Eq. (5.1) as a Bochner integral.
    - `lintegral_cosh_le_of_weak_limit`: Fatou lower semicontinuity of `∫ cosh(2 y ω) dμ`
      under weak convergence of measures `μ_N ⇒ μ`.
@@ -95,9 +96,11 @@ theorem theorem_1_1a_limsup_rate_bound_unconditional {C α : ℝ} {K : ℝ → �
     linarith
 
 /-- **Item #11 (`ℓ²`-Uniqueness for the Infinite Krylov ODE)**:
-Suppose `b : ℕ → ℝ` (`b 0 = 0`), and `φ₁, φ₂ : ℕ → ℝ → ℝ` are two differentiable solutions
-of the infinite Krylov ODE `d/dt φ_n(t) = b_n φ_{n-1}(t) - b_{n+1} φ_{n+1}(t)` with the same
-initial data `φ₁ n 0 = φ₂ n 0` (`∀ n`) and uniformly summable boundary flux on `[0, T]`.
+Suppose `b : ℕ → ℝ` (`b 0 = 0`, `∀ n, 0 ≤ b n`), and `φ₁, φ₂ : ℕ → ℝ → ℝ` are two
+differentiable solutions of the infinite Krylov ODE
+`d/dt φ_n(t) = b_n φ_{n-1}(t) - b_{n+1} φ_{n+1}(t)`
+with the same initial data `φ₁ n 0 = φ₂ n 0` (`∀ n`) and uniformly summable boundary flux
+`∑_{M < K} |b_{M+1} (φ₁ M s - φ₂ M s) (φ₁ (M+1) s - φ₂ (M+1) s)| ≤ C` on `[0, T]`.
 Then `φ₁ n t = φ₂ n t` for ALL `n : ℕ` and ALL `t ∈ [0, T]`. -/
 theorem infinite_krylov_ode_l2_unique {b : ℕ → ℝ} (hb0 : b 0 = 0)
     (φ₁ φ₂ : ℕ → ℝ → ℝ) {T C : ℝ} (hT : 0 ≤ T) (hC : 0 ≤ C)
@@ -120,22 +123,27 @@ theorem infinite_krylov_ode_l2_unique {b : ℕ → ℝ} (hb0 : b 0 = 0)
   let E : ℕ → ℝ → ℝ := fun M s ↦ ∑ n ∈ Finset.range (M + 1), (ψ n s) ^ 2
   have hE_deriv : ∀ M s, HasDerivAt (E M) (-2 * b (M + 1) * ψ M s * ψ (M + 1) s) s := by
     intro M s
+    have htele : (∑ n ∈ Finset.range (M + 1),
+          2 * ψ n s * (b n * ψ (n - 1) s - b (n + 1) * ψ (n + 1) s)) =
+        -2 * b (M + 1) * ψ M s * ψ (M + 1) s := by
+      induction M with
+      | zero => simp [hb0]
+      | succ k ih =>
+        rw [Finset.sum_range_succ, ih]
+        simp only [Nat.add_sub_cancel]
+        ring
     have hsum : HasDerivAt (E M)
         (∑ n ∈ Finset.range (M + 1),
           2 * ψ n s * (b n * ψ (n - 1) s - b (n + 1) * ψ (n + 1) s)) s := by
       dsimp only [E]
       apply HasDerivAt.fun_sum; intro n _
-      have hsq := (hψode n s).pow 2
-      simpa only [Nat.cast_ofNat, pow_one] using hsq
-    have htele : (∑ n ∈ Finset.range (M + 1),
-          2 * ψ n s * (b n * ψ (n - 1) s - b (n + 1) * ψ (n + 1) s)) =
-        -2 * b (M + 1) * ψ M s * ψ (M + 1) s := by
-      induction M with
-      | zero => simp [hb0]; ring
-      | succ k ih =>
-        rw [Finset.sum_range_succ, ih]
-        simp only [Nat.add_sub_cancel]
-        ring
+      have hsq := (hψode n s).mul (hψode n s)
+      have hfun : (fun y ↦ ψ n y ^ 2) = fun y ↦ ψ n y * ψ n y := funext fun y ↦ sq (ψ n y)
+      have hval : (b n * ψ (n - 1) s - b (n + 1) * ψ (n + 1) s) * ψ n s +
+          ψ n s * (b n * ψ (n - 1) s - b (n + 1) * ψ (n + 1) s) =
+          2 * ψ n s * (b n * ψ (n - 1) s - b (n + 1) * ψ (n + 1) s) := by ring
+      rw [hfun, ← hval]
+      exact hsq
     rwa [htele] at hsum
   intro t ht n₀
   have ht0 : 0 ≤ t := ht.1
@@ -200,7 +208,7 @@ theorem infinite_krylov_ode_l2_unique {b : ℕ → ℝ} (hb0 : b 0 = 0)
               apply Finset.sum_le_sum; intro M hM
               have hMn₀ : n₀ ≤ M := (Finset.mem_filter.mp hM).2
               dsimp only [E]
-              exact Finset.single_le_sum (fun _ _ ↦ sq_nonneg _) (Finset.mem_range.mpr (by omega))
+              exact Finset.single_le_sum (fun _ _ ↦ sq_nonneg _) (Finset.mem_range.mpr (Nat.lt_succ_of_le hMn₀))
         _ ≤ ∑ M ∈ Finset.range K, E M t :=
               Finset.sum_le_sum_of_subset_of_nonneg hsub fun _ _ _ ↦
                 Finset.sum_nonneg fun _ _ ↦ sq_nonneg _
@@ -218,62 +226,86 @@ end Item11UnconditionalLimsupAndInfiniteODE
 
 section Item14MeasureTheoreticSpectralMeasure
 
-/-- **Item #14 (Genuine Measure-Theoretic Wightman Spectral Measure `μ_W : Measure ℝ`)**. -/
-noncomputable def wightmanSpectralMeasure {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
-    (β : ℝ) (O : QubitOp N) : Measure ℝ :=
-  ∑ i : QubitIdx N, ∑ j : QubitIdx N,
-    ENNReal.ofReal (spectralWeight hH β O i j) • Measure.dirac (hH.eigenvalues i - hH.eigenvalues j)
+/-- **Item #14 (Genuine Measure-Theoretic Wightman Spectral Measure `μ_W : Measure ℝ`)**:
+For any finite-dimensional spectrum `E : Fin D → ℝ`, inverse temperature `β : ℝ`, and
+operator matrix `W : Matrix (Fin D) (Fin D) ℂ`:
+`μ_W = ∑_{j, k} wightmanWeight β E W j k • δ_{E_j - E_k}`. -/
+noncomputable def wightmanSpectralMeasure {D : ℕ} (β : ℝ) (E : Fin D → ℝ)
+    (W : Matrix (Fin D) (Fin D) ℂ) : Measure ℝ :=
+  ∑ j : Fin D, ∑ k : Fin D,
+    ENNReal.ofReal (wightmanWeight β E W j k) • Measure.dirac (bohrFreq E j k)
 
-lemma wightmanSpectralMeasure_univ {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
-    (β : ℝ) (O : QubitOp N) :
-    wightmanSpectralMeasure hH β O Set.univ =
-      ENNReal.ofReal (gibbsWightmanNormSq (concreteGibbsData hH β) O) := by
+lemma wightmanSpectralMeasure_univ {D : ℕ} (hD : 0 < D) (β : ℝ) (E : Fin D → ℝ)
+    (W : Matrix (Fin D) (Fin D) ℂ) :
+    wightmanSpectralMeasure β E W Set.univ =
+      ENNReal.ofReal (∑ j : Fin D, ∑ k : Fin D, wightmanWeight β E W j k) := by
   unfold wightmanSpectralMeasure
   simp only [Measure.finset_sum_apply, Measure.smul_apply, smul_eq_mul, Measure.dirac_apply_of_mem
     (Set.mem_univ _), mul_one]
-  have hinner : ∀ i : QubitIdx N,
-      (∑ j : QubitIdx N, ENNReal.ofReal (spectralWeight hH β O i j)) =
-        ENNReal.ofReal (∑ j : QubitIdx N, spectralWeight hH β O i j) := fun i ↦
-    (ENNReal.ofReal_sum_of_nonneg fun j _ ↦ spectralWeight_nonneg hH β O i j).symm
+  have hinner : ∀ j : Fin D,
+      (∑ k : Fin D, ENNReal.ofReal (wightmanWeight β E W j k)) =
+        ENNReal.ofReal (∑ k : Fin D, wightmanWeight β E W j k) := fun j ↦
+    (ENNReal.ofReal_sum_of_nonneg fun k _ ↦ wightmanWeight_nonneg hD β E W j k).symm
   simp_rw [hinner]
-  rw [← ENNReal.ofReal_sum_of_nonneg (fun i _ ↦ Finset.sum_nonneg fun j _ ↦
-      spectralWeight_nonneg hH β O i j)]
-  congr 1
-  have h0 := eq_5_1_wightman_fourier_identity hH β O 0
-  simp only [Complex.ofReal_zero, mul_zero, zero_mul, Complex.exp_zero, mul_one,
-    wightmanAutocorr, heisenbergEvol_zero] at h0
-  have hre := congrArg Complex.re h0
-  simp only [Complex.re_sum, Complex.ofReal_re] at hre
-  exact hre.symm
+  exact (ENNReal.ofReal_sum_of_nonneg fun j _ ↦
+    Finset.sum_nonneg fun k _ ↦ wightmanWeight_nonneg hD β E W j k).symm
 
-instance instIsFiniteMeasure_wightmanSpectralMeasure {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
-    (β : ℝ) (O : QubitOp N) : IsFiniteMeasure (wightmanSpectralMeasure hH β O) :=
-  ⟨by rw [wightmanSpectralMeasure_univ]; exact ENNReal.ofReal_lt_top⟩
-
-lemma integral_wightmanSpectralMeasure {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
-    (β : ℝ) (O : QubitOp N) {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
-    (f : ℝ → E) :
-    ∫ ω, f ω ∂(wightmanSpectralMeasure hH β O) =
-      ∑ i : QubitIdx N, ∑ j : QubitIdx N,
-        (spectralWeight hH β O i j) • f (hH.eigenvalues i - hH.eigenvalues j) := by
+instance instIsFiniteMeasure_wightmanSpectralMeasure {D : ℕ} (β : ℝ) (E : Fin D → ℝ)
+    (W : Matrix (Fin D) (Fin D) ℂ) : IsFiniteMeasure (wightmanSpectralMeasure β E W) := by
+  refine ⟨?_⟩
   unfold wightmanSpectralMeasure
-  rw [integral_finset_sum_measure (fun i _ ↦ Integrable.of_finite)]
-  apply Finset.sum_congr rfl; intro i _
-  rw [integral_finset_sum_measure (fun j _ ↦ Integrable.of_finite)]
-  apply Finset.sum_congr rfl; intro j _
-  rw [integral_smul_measure, integral_dirac,
-    ENNReal.toReal_ofReal (spectralWeight_nonneg hH β O i j)]
+  simp only [Measure.finset_sum_apply, Measure.smul_apply, smul_eq_mul, Measure.dirac_apply_of_mem
+    (Set.mem_univ _), mul_one]
+  exact ENNReal.sum_lt_top.mpr fun j _ ↦ ENNReal.sum_lt_top.mpr fun k _ ↦ ENNReal.ofReal_lt_top
 
-/-- **Item #14 (Eq. 5.1 as a Genuine Bochner Integral Against `wightmanSpectralMeasure : Measure ℝ`)**. -/
-theorem wightmanAutocorr_eq_integral_spectralMeasure {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
-    (β : ℝ) (O : QubitOp N) (z : ℂ) :
-    wightmanAutocorr hH β O z =
-      ∫ ω, Complex.exp (Complex.I * z * (ω : ℂ)) ∂(wightmanSpectralMeasure hH β O) := by
-  rw [integral_wightmanSpectralMeasure, eq_5_1_wightman_fourier_identity hH β O z]
-  apply Finset.sum_congr rfl; intro i _
+private lemma ae_eq_const_dirac {F : Type*} (f : ℝ → F) (a : ℝ) :
+    f =ᵐ[Measure.dirac a] fun _ ↦ f a := by
+  rw [Filter.EventuallyEq, ae_iff]
+  refine measure_mono_null (s := {x : ℝ | ¬ f x = f a}) (t := ({a} : Set ℝ)ᶜ) ?_ ?_
+  · intro x hx hxa
+    exact hx (congrArg f (Set.mem_singleton_iff.mp hxa))
+  · rw [Measure.dirac_apply' a (measurableSet_singleton a).compl]
+    simp
+
+private lemma integrable_dirac_any {F : Type*} [NormedAddCommGroup F] (f : ℝ → F) (a : ℝ) :
+    Integrable f (Measure.dirac a) :=
+  (integrable_const (f a)).congr (ae_eq_const_dirac f a).symm
+
+lemma integral_wightmanSpectralMeasure {D : ℕ} (hD : 0 < D) (β : ℝ) (E : Fin D → ℝ)
+    (W : Matrix (Fin D) (Fin D) ℂ) {F : Type*} [NormedAddCommGroup F] [NormedSpace ℝ F]
+    [CompleteSpace F] (f : ℝ → F) :
+    ∫ ω, f ω ∂(wightmanSpectralMeasure β E W) =
+      ∑ j : Fin D, ∑ k : Fin D,
+        (wightmanWeight β E W j k) • f (bohrFreq E j k) := by
+  unfold wightmanSpectralMeasure
+  have hint_inner : ∀ j : Fin D,
+      Integrable f (∑ k : Fin D,
+        ENNReal.ofReal (wightmanWeight β E W j k) • Measure.dirac (bohrFreq E j k)) := fun j ↦
+    integrable_finset_sum_measure.mpr fun k _ ↦
+      (integrable_dirac_any f (bohrFreq E j k)).smul_measure ENNReal.ofReal_ne_top
+  rw [integral_finset_sum_measure (fun j _ ↦ hint_inner j)]
   apply Finset.sum_congr rfl; intro j _
+  rw [integral_finset_sum_measure (fun k _ ↦
+    (integrable_dirac_any f (bohrFreq E j k)).smul_measure ENNReal.ofReal_ne_top)]
+  apply Finset.sum_congr rfl; intro k _
+  rw [integral_smul_measure, integral_congr_ae (ae_eq_const_dirac f (bohrFreq E j k)),
+    integral_const, ENNReal.toReal_ofReal (wightmanWeight_nonneg hD β E W j k)]
+  simp [Measure.real, Measure.dirac_apply_of_mem (Set.mem_univ _)]
+
+/-- **Item #14 (Eq. 5.1 as a Genuine Bochner Integral Against `wightmanSpectralMeasure : Measure ℝ`)**:
+`wightmanAutocorr β E W z = ∫ ω, exp(i z ω) dμ_W(ω)` for ALL `z : ℂ`. -/
+theorem wightmanAutocorr_eq_integral_spectralMeasure {D : ℕ} (hD : 0 < D) (β : ℝ) (E : Fin D → ℝ)
+    (W : Matrix (Fin D) (Fin D) ℂ) (z : ℂ) :
+    wightmanAutocorr β E W z =
+      ∫ ω, Complex.exp (Complex.I * z * (ω : ℂ)) ∂(wightmanSpectralMeasure β E W) := by
+  rw [integral_wightmanSpectralMeasure hD β E W]
+  unfold wightmanAutocorr
+  apply Finset.sum_congr rfl; intro j _
+  apply Finset.sum_congr rfl; intro k _
   rw [Complex.real_smul]
 
+/-- Piecewise-linear compactly supported tent cutoff `χ_R : ℝ → ℝ` equal to `1` on `[-R, R]`
+and `0` outside `[-(R+1), R+1]`. -/
 private def tentCutoff (R : ℕ) (ω : ℝ) : ℝ :=
   max 0 (min 1 ((R : ℝ) + 1 - |ω|))
 
@@ -306,7 +338,10 @@ private lemma tentCutoff_hasCompactSupport (R : ℕ) : HasCompactSupport (tentCu
     exact max_eq_left h1
   exact abs_le.mp hlt.le
 
-/-- **Item #14 (Fatou Lower Semicontinuity for Weak Limits of Spectral Measures `μ_N ⇒ μ`)**. -/
+/-- **Item #14 (Fatou Lower Semicontinuity for Weak Limits of Spectral Measures `μ_N ⇒ μ`)**:
+If `μ_N` converges weakly to `μ` on `ℝ` (`∫ f dμ_N → ∫ f dμ` for all `f ∈ C_c(ℝ)`) and
+`∫⁻ ω, ofReal(cosh(2 y ω)) dμ_N ≤ ofReal M` uniformly in `N`, then
+`∫⁻ ω, ofReal(cosh(2 y ω)) dμ ≤ ofReal M`. -/
 theorem lintegral_cosh_le_of_weak_limit (μ_N : ℕ → Measure ℝ) (μ : Measure ℝ)
     [∀ N, IsFiniteMeasure (μ_N N)] [IsFiniteMeasure μ]
     (hweak : ∀ f : ℝ → ℝ, Continuous f → HasCompactSupport f →
@@ -333,7 +368,7 @@ theorem lintegral_cosh_le_of_weak_limit (μ_N : ℕ → Measure ℝ) (μ : Measu
       intro N
       have h1 : ENNReal.ofReal (∫ ω, g R ω ∂(μ_N N)) =
           ∫⁻ ω, ENNReal.ofReal (g R ω) ∂(μ_N N) :=
-        (ofReal_integral_eq_lintegral_ofReal (hint_N N) (ae_of_all _ (hg_nn R))).symm
+        ofReal_integral_eq_lintegral_ofReal (hint_N N) (ae_of_all _ (hg_nn R))
       have h2 : ∫⁻ ω, ENNReal.ofReal (g R ω) ∂(μ_N N) ≤
           ∫⁻ ω, ENNReal.ofReal (Real.cosh (2 * y * ω)) ∂(μ_N N) :=
         lintegral_mono fun ω ↦ ENNReal.ofReal_le_ofReal (hg_le R ω)
@@ -362,7 +397,10 @@ theorem lintegral_cosh_le_of_weak_limit (μ_N : ℕ → Measure ℝ) (μ : Measu
     exact ENNReal.ofReal_le_ofReal
       (mul_le_mul_of_nonneg_right (tentCutoff_mono h12 ω) (Real.cosh_pos _).le)
 
-/-- **Item #14 (Strip Holomorphy `DifferentiableOn ℂ` via Dominated Convergence)**. -/
+/-- **Item #14 (Strip Holomorphy `DifferentiableOn ℂ` via Dominated Convergence)**:
+If `μ : Measure ℝ` is a finite measure with `Integrable (fun ω ↦ Real.cosh (r * ω)) μ` (`0 < r`),
+then the Fourier–Laplace transform `G(z) = ∫ ω, exp(i z ω) dμ(ω)` is complex-differentiable
+(`DifferentiableOn ℂ`) on the entire open strip `{z : ℂ | |z.im| < r}`. -/
 theorem wightmanAutocorr_measure_differentiableOn_strip (μ : Measure ℝ) [IsFiniteMeasure μ]
     {r : ℝ} (hr : 0 < r)
     (hcosh : Integrable (fun ω : ℝ ↦ Real.cosh (r * ω)) μ) :
@@ -378,13 +416,13 @@ theorem wightmanAutocorr_measure_differentiableOn_strip (μ : Measure ℝ) [IsFi
     intro z ω hz
     rw [Complex.norm_exp]
     have hre : (Complex.I * z * (ω : ℂ)).re = -z.im * ω := by
-      simp [Complex.mul_re, Complex.I_re, Complex.I_im]; ring
+      simp [Complex.mul_re, Complex.I_re, Complex.I_im]
     rw [hre]
     have hzim : |z.im| ≤ r := by
       have hd : |z.im - z₀.im| < ε := by
         calc |z.im - z₀.im| = |(z - z₀).im| := by simp
           _ ≤ ‖z - z₀‖ := Complex.abs_im_le_norm (z - z₀)
-          _ < ε := Metric.mem_ball.mp hz
+          _ < ε := mem_ball_iff_norm.mp hz
       have htri : |z.im| ≤ |z.im - z₀.im| + |z₀.im| := by
         simpa using abs_add_le (z.im - z₀.im) z₀.im
       dsimp only [ε] at hd; linarith
@@ -406,13 +444,13 @@ theorem wightmanAutocorr_measure_differentiableOn_strip (μ : Measure ℝ) [IsFi
     rw [norm_mul, norm_mul, Complex.norm_I, one_mul, Complex.norm_real, Real.norm_eq_abs,
       Complex.norm_exp]
     have hre : (Complex.I * z * (ω : ℂ)).re = -z.im * ω := by
-      simp [Complex.mul_re, Complex.I_re, Complex.I_im]; ring
+      simp [Complex.mul_re, Complex.I_re, Complex.I_im]
     rw [hre]
     have hzim : |z.im| ≤ r - ε := by
       have hd : |z.im - z₀.im| < ε := by
         calc |z.im - z₀.im| = |(z - z₀).im| := by simp
           _ ≤ ‖z - z₀‖ := Complex.abs_im_le_norm (z - z₀)
-          _ < ε := Metric.mem_ball.mp hz
+          _ < ε := mem_ball_iff_norm.mp hz
       have htri : |z.im| ≤ |z.im - z₀.im| + |z₀.im| := by
         simpa using abs_add_le (z.im - z₀.im) z₀.im
       dsimp only [ε] at hd ⊢; linarith
@@ -467,14 +505,18 @@ end Item14MeasureTheoreticSpectralMeasure
 
 section Item15ConcreteOTOCAndVitaliStrip
 
-/-- **Item #15 (Concrete Finite-Volume Regularized OTOC `F_N(z)`)**. -/
+/-- **Item #15 (Concrete Finite-Volume Regularized OTOC `F_N(z)`)**:
+`F_N(z) = Tr(ρ_β^{1/4} W(z) ρ_β^{1/4} V ρ_β^{1/4} W(z) ρ_β^{1/4} V)` on `QubitOp N`. -/
 noncomputable def concreteOTOC {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (W V : QubitOp N) (z : ℂ) : ℂ :=
   let G := concreteGibbsData hH β
   let A := jBeta G.ρQuarter (heisenbergEvol hH z W) * V
   Matrix.trace (A * A)
 
-/-- **Item #15 (Concrete Operator-Level Theorem 1.2(c) Dominance Inequality, Eq. 1.17)**. -/
+/-- **Item #15 (Concrete Operator-Level Theorem 1.2(c) Dominance Inequality, Eq. 1.17)**:
+For ANY Hermitian `H, V : QubitOp N`, ANY `W : QubitOp N`, `β : ℝ`, and `z : ℂ`:
+`‖concreteOTOC hH β W V z‖ ≤ (opNorm V)^2 * ‖heisenbergEvol hH z W‖_{β,W}^2`.
+Zero scalar wrappers! -/
 theorem concreteOTOC_norm_le_wightmanNormSq {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (W : QubitOp N) {V : QubitOp N} (hV : V.IsHermitian) (z : ℂ) :
     ‖concreteOTOC hH β W V z‖ ≤
@@ -483,19 +525,67 @@ theorem concreteOTOC_norm_le_wightmanNormSq {N : ℕ} {H : QubitOp N} (hH : H.Is
   set B : QubitOp N := jBeta G.ρQuarter (heisenbergEvol hH z W)
   have h1 : ‖concreteOTOC hH β W V z‖ ≤ hsNormSq (B * V) :=
     trace_sq_norm_le_hsNormSq (B * V)
-  have hhs_le : hsNormSq (B * V) ≤ (opNorm V) ^ 2 * hsNormSq B :=
-    hsNormSq_mul_le_opNorm_sq_right B V
+  have hhs_le : hsNormSq (B * V) ≤ (opNorm V) ^ 2 * hsNormSq B := by
+    have hV_mul : ∀ M : QubitOp N, hsNormSq (M * V) ≤ (opNorm V) ^ 2 * hsNormSq M := by
+      intro M
+      have hconj : hsNormSq (M * V) = hsNormSq (V * Mᴴ) := by
+        unfold hsNormSq hsInner
+        rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
+          hV.eq]
+        congr 1
+        calc Matrix.trace (V * Mᴴ * (M * V))
+            = Matrix.trace ((M * V) * (V * Mᴴ)) := Matrix.trace_mul_comm _ _
+          _ = Matrix.trace (M * (V * V * Mᴴ)) := by simp only [Matrix.mul_assoc]
+          _ = Matrix.trace ((M * V) * (V * Mᴴ)) := by simp only [Matrix.mul_assoc]
+      rw [hconj]
+      have hcol : ∀ X : QubitOp N, hsNormSq X =
+          ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i : QubitIdx N ↦ X i j)‖ ^ 2 := by
+        intro X
+        unfold hsNormSq hsInner
+        simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply,
+          Complex.re_sum, EuclideanSpace.norm_sq_eq]
+        rw [Finset.sum_comm]
+        apply Finset.sum_congr rfl; intro j _
+        apply Finset.sum_congr rfl; intro i _
+        rw [Complex.star_def, Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
+      rw [hcol (V * Mᴴ), hcol Mᴴ, Finset.mul_sum]
+      have hM_conj : hsNormSq Mᴴ = hsNormSq M := by
+        unfold hsNormSq hsInner
+        rw [Matrix.conjTranspose_conjTranspose, Matrix.trace_mul_comm]
+      have hsum_le : ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i ↦ (V * Mᴴ) i j)‖ ^ 2 ≤
+          ∑ j : QubitIdx N, (opNorm V) ^ 2 * ‖WithLp.toLp 2 (fun i ↦ Mᴴ i j)‖ ^ 2 := by
+        apply Finset.sum_le_sum; intro j _
+        have hvec : WithLp.toLp 2 (fun i : QubitIdx N ↦ (V * Mᴴ) i j) =
+            opToCLM V (WithLp.toLp 2 (fun i : QubitIdx N ↦ Mᴴ i j)) := by
+          ext i; simp [opToCLM, Matrix.mul_apply]
+        rw [hvec]
+        have hle := (opToCLM V).le_opNorm (WithLp.toLp 2 (fun i : QubitIdx N ↦ Mᴴ i j))
+        have hsq := pow_le_pow_left₀ (norm_nonneg _) hle 2
+        rw [mul_pow] at hsq
+        exact hsq
+      calc ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i ↦ (V * Mᴴ) i j)‖ ^ 2
+          ≤ ∑ j : QubitIdx N, (opNorm V) ^ 2 * ‖WithLp.toLp 2 (fun i ↦ Mᴴ i j)‖ ^ 2 := hsum_le
+        _ = (opNorm V) ^ 2 * ∑ j : QubitIdx N, ‖WithLp.toLp 2 (fun i ↦ Mᴴ i j)‖ ^ 2 :=
+            (Finset.mul_sum _ _ _).symm
+        _ = (opNorm V) ^ 2 * hsNormSq Mᴴ := by rw [← hcol Mᴴ]
+        _ = (opNorm V) ^ 2 * hsNormSq M := by rw [hM_conj]
+    exact hV_mul B
   have hB_eq : hsNormSq B = gibbsWightmanNormSq G (heisenbergEvol hH z W) := by
     unfold hsNormSq gibbsWightmanNormSq gibbsWightmanInner B
-    rw [prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter]
+    congr 1
+    exact prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter
   rw [hB_eq] at hhs_le
   exact le_trans h1 hhs_le
 
-/-- **Item #15 (Eq. 1.18 Strip Half-Width `S_OTOC`)**. -/
-def otocStripHalfWidth (β κ_W κ_V r_max : ℝ) : ℝ :=
+/-- **Item #15 (Eq. 1.18 Strip Half-Width `S_OTOC`)**:
+`S_OTOC = min (β / 4 + κ_W / 2) (min (β / 4 + κ_V / 2) r_max)`. -/
+noncomputable def otocStripHalfWidth (β κ_W κ_V r_max : ℝ) : ℝ :=
   min (β / 4 + κ_W / 2) (min (β / 4 + κ_V / 2) r_max)
 
-/-- **Item #15 (Thermodynamic-Limit OTOC Strip Holomorphy via Locally Uniform Convergence)**. -/
+/-- **Item #15 (Thermodynamic-Limit OTOC Strip Holomorphy via Locally Uniform Convergence)**:
+If a sequence of holomorphic finite-volume OTOC functions `F_N : ℂ → ℂ` on the strip
+`Ω = {z : ℂ | |z.im| < S}` converges locally uniformly on `Ω` to `F : ℂ → ℂ`, then the
+thermodynamic limit `F` is holomorphic (`DifferentiableOn ℂ F Ω`) on the entire strip `Ω`. -/
 theorem otoc_strip_holomorphic_of_locally_uniform_limit {S : ℝ}
     (F_N : ℕ → ℂ → ℂ) (F : ℂ → ℂ)
     (hholo : ∀ N, DifferentiableOn ℂ (F_N N) {z : ℂ | |z.im| < S})
