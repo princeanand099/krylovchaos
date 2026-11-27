@@ -305,7 +305,7 @@ theorem polymerZ_nonvanishing_and_ratio {ι : Type*} [DecidableEq ι]
           have hprev := ihS hS'sub
           have hst := hstep_norm (Λ₀ ∪ S') δ (Finset.Subset.trans hMsub hΛΓ) hMcard
             (hΛΓ (Finset.mem_filter.mp hδB).1) hδM
-          have hins_eq : Λ₀ ∪ insert δ S' = insert δ (Λ₀ ∪ S') := by ext x; simp; tauto
+          have hins_eq : Λ₀ ∪ insert δ S' = insert δ (Λ₀ ∪ S') := by ext x; simp
           rw [hins_eq]
           refine ⟨hst.2.1, ?_⟩
           have hmul : polymerZ incompat w Λ₀ / polymerZ incompat w (insert δ (Λ₀ ∪ S')) =
@@ -594,7 +594,9 @@ theorem cauchy_order2_schwarz_bound {R M : ℝ} (hR : 0 < R) (hM : 0 ≤ M)
     simp [h₁, hw0, mul_div_cancel₀ _ hw0]
   have hbound_int : ‖∮ z in C((0 : ℂ), R), ((z - w)⁻¹ • h₁ z - (z - 0)⁻¹ • h₁ z)‖ ≤
       2 * Real.pi * R * (2 * ‖w‖ * M / R ^ 3) := by
-    have hle := circleIntegral.norm_integral_le_of_norm_le_const (c := (0 : ℂ)) (R := R)
+    have hle := circleIntegral.norm_integral_le_of_norm_le_const
+      (f := fun z : ℂ ↦ (z - w)⁻¹ • h₁ z - (z - 0)⁻¹ • h₁ z)
+      (c := (0 : ℂ)) (R := R)
       (C := 2 * ‖w‖ * M / R ^ 3) hR.le (fun z hz ↦ ?_)
     · simpa [abs_of_pos hR] using hle
     · rw [Metric.mem_sphere, dist_zero_right] at hz
