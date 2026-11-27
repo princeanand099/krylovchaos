@@ -908,8 +908,9 @@ lemma rhoO_op_eigenvalues_nonneg {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     ring
   have hre := congrArg Complex.re hinner
   simp only [Complex.ofReal_re] at hre
-  rw [hre, inner_self_eq_norm_sq_to_K, ← Complex.ofReal_pow, Complex.ofReal_re]
-  exact sq_nonneg _
+  rw [hre, inner_self_eq_norm_sq_to_K]
+  simp [sq]
+  positivity
 
 set_option maxHeartbeats 800000 in
 /-- **Item #19 — Singular-State Relative Entropy Bound `D(ρ_O ‖ ρ_β) ≤ 2 ln ‖O(iβ/4)‖_∞`**:
@@ -962,7 +963,7 @@ theorem rhoO_op_relEntropy_le_two_log_opNorm {N : ℕ} {H : QubitOp N} (hH : H.I
           = ((((gibbsPartitionFn hH β) ^ (-(1 / 4 : ℝ)) : ℝ) : ℂ) •
               complexPropagator hH (Complex.I * ((β / 4 : ℝ) : ℂ))) * O := by
                 rw [hprop_l]; unfold gibbsRhoQuarter; congr 2
-                unfold hermFunc; dsimp only; congr 2
+                unfold hermFunc; dsimp only; congr 3
                 funext i; exact Complex.ofReal_exp _
         _ = complexPropagator hH (Complex.I * ((β / 4 : ℝ) : ℂ)) * O *
               ((((gibbsPartitionFn hH β) ^ (-(1 / 4 : ℝ)) : ℝ) : ℂ) • (1 : QubitOp N)) := by
@@ -1031,7 +1032,7 @@ theorem rhoO_op_relEntropy_le_two_log_opNorm {N : ℕ} {H : QubitOp N} (hH : H.I
         change UH * Matrix.diagonal _ * UHᴴ = UH * Dinv * UHᴴ
         apply congrArg (fun d ↦ UH * Matrix.diagonal d * UHᴴ)
         funext i; dsimp only [μ]
-        rw [← Complex.ofReal_inv, mul_inv, inv_inv, ← Real.exp_neg]; congr 2; ring
+        rw [← Complex.ofReal_inv, mul_inv, inv_inv, ← Real.exp_neg]; congr 1; congr 1; congr 1; ring
       have htrM : (ρ * ρ * ρInv).trace = (Dρ2 * W * Dinv * Wᴴ).trace := by
         calc (ρ * ρ * ρInv).trace
             = (Uρ * (Dρ2 * (Uρᴴ * UH) * Dinv * UHᴴ)).trace := by
@@ -1151,16 +1152,16 @@ theorem wightmanNormSq_le_opNorm_sq {N : ℕ} (G : GibbsData N) (A : QubitOp N) 
         have hc := inner_self_eq_norm_sq_to_K (𝕜 := ℂ) (qubitOpToHS N (A * G.ρHalf))
         rw [qubitOpToHS_inner] at hc
         have hr := congrArg Complex.re hc
-        rw [← Complex.ofReal_pow, Complex.ofReal_re] at hr
-        exact hr.symm
+        simp [sq] at hr
+        rw [sq]; exact hr.symm
       rw [← hsq, Real.sqrt_sq (norm_nonneg _)]
     have hn2 : ‖qubitOpToHS N (G.ρHalf * A)‖ = Real.sqrt (hsNormSq (G.ρHalf * A)) := by
       have hsq : ‖qubitOpToHS N (G.ρHalf * A)‖ ^ 2 = hsNormSq (G.ρHalf * A) := by
         have hc := inner_self_eq_norm_sq_to_K (𝕜 := ℂ) (qubitOpToHS N (G.ρHalf * A))
         rw [qubitOpToHS_inner] at hc
         have hr := congrArg Complex.re hc
-        rw [← Complex.ofReal_pow, Complex.ofReal_re] at hr
-        exact hr.symm
+        simp [sq] at hr
+        rw [sq]; exact hr.symm
       rw [← hsq, Real.sqrt_sq (norm_nonneg _)]
     rw [qubitOpToHS_inner, hn1, hn2, ← Real.sqrt_mul (hsNormSq_nonneg _)] at h1
     exact le_trans (Complex.re_le_norm _) h1
@@ -1743,12 +1744,20 @@ theorem prop_8_3_classical_ising_reverse_poincare_eq_8_4 {N : ℕ}
           (∑ i : Fin N, β * hfield i * spinVal (σ i)) +
           ∑ e : IsingEdge N, (if ξ e then c e else -c e) * (spinVal (σ e.1.1) + sgn e * spinVal (σ e.1.2)) := by
         dsimp only [h_eff]
-        simp_rw [add_mul, Finset.sum_add_distrib, Finset.sum_mul]
-        congr 1
-        rw [Finset.sum_comm]
-        apply Finset.sum_congr rfl; intro e _
-        simp only [ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
-        ring
+        trans (∑ i : Fin N, (β * hfield i * spinVal (σ i) +
+            (∑ e : IsingEdge N, ((if e.1.1 = i then (if ξ e then c e else -c e) else 0) +
+              (if e.1.2 = i then (if ξ e then c e else -c e) * sgn e else 0))) * spinVal (σ i)))
+        · exact Finset.sum_congr rfl fun i _ ↦ add_mul _ _ _
+        · rw [Finset.sum_add_distrib]
+          congr 1
+          trans (∑ i : Fin N, ∑ e : IsingEdge N,
+              ((if e.1.1 = i then (if ξ e then c e else -c e) else 0) +
+               (if e.1.2 = i then (if ξ e then c e else -c e) * sgn e else 0)) * spinVal (σ i))
+          · exact Finset.sum_congr rfl fun i _ ↦ Finset.sum_mul _ _ _
+          · rw [Finset.sum_comm]
+            apply Finset.sum_congr rfl; intro e _
+            simp only [add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
+            ring
       rw [hsum_eq]
     rw [hnum]
     dsimp only [w, Z_ising]

@@ -321,7 +321,7 @@ theorem prop_9_1_part3_concrete_2d_krylov_eq_9_3 {D : ℕ} {Δ C E_B : ℝ}
     simp only [Matrix.sub_apply, Matrix.smul_mul, Matrix.mul_smul, Matrix.smul_apply,
       smul_eq_mul, hmul_ps, hps]
     rcases hfin2 (i 0) with hi | hi <;> rcases hfin2 (j 0) with hj | hj <;>
-      (simp [hi, hj, pauliMat, Matrix.mul_apply, Fin.sum_univ_two]; ring_nf; simp [Complex.I_sq]; ring)
+      simp [hi, hj, pauliMat, Matrix.mul_apply, Fin.sum_univ_two] <;> (ring_nf; simp [Complex.I_sq]; ring)
   exact ⟨hH₂, hO₀, hcomm0, hcomm1, prop_9_1_part3_tunneling_time_lower_bound hΔ hC hEB hsplit⟩
 
 end Item28DoubleWellAnd2DKrylovEq93
