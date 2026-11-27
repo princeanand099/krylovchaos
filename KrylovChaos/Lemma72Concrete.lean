@@ -333,16 +333,7 @@ private lemma depolDualWeight_exp_re_pos_of_nonzero {N : ℕ}
     ⟨t, ht, hft⟩
   exact hf_ne t ht hft
 
-/-- **Lemma 7.2 (Concrete Positive Depolarized Frame Representation — Open Sub-Gap 1)**:
-For ANY local Hamiltonian `H = ∑ X ∈ E, h X` with `∀ X ∈ E, X.Nonempty ∧ X.card ≤ r`,
-`∀ X, h X ∈ supportedOn X`, `hH : H.IsHermitian`, inverse temperature `β ≥ 0`, and
-high-temperature Kotecký–Preiss parameters `η₀, c > 0` satisfying:
-- `∀ x : Fin N, ∑ X ∈ E.filter (fun X ↦ x ∈ X), 6 ^ X.card * (Real.exp ((β / 2) * opNorm (h X)) - 1) ≤ η₀`
-- `η₀ * Real.exp (2 * c * r) ≤ c`
-
-there exists a STRICTLY POSITIVE weight function `π : (Fin N → Fin 6) → ℝ` (`∀ s, 0 < π s`)
-such that:
-`gibbsRhoHalf hH β = ∑ s : Fin N → Fin 6, (π s : ℂ) • globalDepolP N s`. -/
+/-- **Lemma 7.2 (Concrete Positive Depolarized Frame Representation — Open Sub-Gap 1)**. -/
 theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
     (E : Finset (Finset (Fin N))) (hne : ∀ X ∈ E, X.Nonempty)
     (hcard : ∀ X ∈ E, X.card ≤ r)
@@ -601,10 +592,7 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
   dsimp only [π]
   push_cast; ring
 
-/-- **Unconditional Theorem 1.3(a) (Zero `hρHalf` Hypothesis)**:
-Directly from any `r`-local Hamiltonian `H = ∑ X ∈ E, h X` in the high-temperature
-Kotecký–Preiss regime, for `G := concreteGibbsData hH β` and EVERY `A : QubitOp N`:
-`(A | 𝒬̃^{(β)} A)_β^W ≤ ∑_x ‖𝒮_x(A)‖_{β,W}² ≤ 9 (A | 𝒬^{(β)} A)_β^W`. -/
+/-- **Unconditional Theorem 1.3(a) (Zero `hρHalf` Hypothesis)**. -/
 theorem theorem_1_3a_unconditional {N r : ℕ}
     (E : Finset (Finset (Fin N))) (hne : ∀ X ∈ E, X.Nonempty)
     (hcard : ∀ X ∈ E, X.card ≤ r)
@@ -627,10 +615,7 @@ theorem theorem_1_3a_unconditional {N r : ℕ}
   exact theorem_1_3a_concrete_operator (concreteGibbsData hH β) π
     (fun s ↦ (hπ_pos s).le) hρHalf A
 
-/-- **Unconditional Theorem 1.3(b) Part 1 — Equal-Time Commutator Bound (Zero `hρHalf` Hypothesis)**:
-Directly from any `r`-local Hamiltonian `H = ∑ X ∈ E, h X` in the high-temperature
-Kotecký–Preiss regime, for `G := concreteGibbsData hH β` and EVERY `A : QubitOp N`:
-`otocCW G A ≤ 54 * Re (A | 𝒬^{(β)} A)_β^W`. -/
+/-- **Unconditional Theorem 1.3(b) Part 1 — Equal-Time Commutator Bound (Zero `hρHalf` Hypothesis)**. -/
 theorem theorem_1_3b_CW_unconditional {N r : ℕ}
     (E : Finset (Finset (Fin N))) (hne : ∀ X ∈ E, X.Nonempty)
     (hcard : ∀ X ∈ E, X.card ≤ r)
@@ -650,11 +635,7 @@ theorem theorem_1_3b_CW_unconditional {N r : ℕ}
   exact theorem_1_3b_concrete_CW (concreteGibbsData hH β) π
     (fun s ↦ (hπ_pos s).le) hρHalf A
 
-/-- **Lemma 7.2 Corollary (Normalized Probability Representation of `ρ_{β/2}`, Eq. 7.8)**:
-Under the same high-temperature Kotecký–Preiss hypotheses as `lemma_7_2_concrete_positive_frame`,
-the thermal state `gibbsRho hH (β / 2)` is a strictly positive convex combination of the
-depolarized product states `globalDepolP N s`:
-`∃ πTilde, (∀ s, 0 < πTilde s) ∧ (∑ s, πTilde s = 1) ∧ gibbsRho hH (β / 2) = ∑ s, (πTilde s : ℂ) • globalDepolP N s`. -/
+/-- **Lemma 7.2 Corollary (Normalized Probability Representation of `ρ_{β/2}`, Eq. 7.8)**. -/
 theorem lemma_7_2_concrete_rho_half_normalized {N r : ℕ}
     (E : Finset (Finset (Fin N))) (hne : ∀ X ∈ E, X.Nonempty)
     (hcard : ∀ X ∈ E, X.card ≤ r)
@@ -732,7 +713,7 @@ lemma sum_hittingForests_le_forestSum {N : ℕ}
               rw [Finset.mem_singleton.mp hγ, Finset.prod_empty]; exact zero_le_one
         _ = 1 := by simp
     | succ m =>
-      rw [forestSum]
+      rw [forestSum_succ]
       let HForest : ℕ → Finset (Fin N) → Finset (Polymer N) := fun k T ↦
         E.powerset.filter (fun γ ↦ γ.card = k ∧
           ∀ I ∈ (connectedPolymers E).powerset.filter (fun I ↦ isCompatPolymer polyIncompat I),
@@ -946,10 +927,7 @@ lemma sum_hittingForests_le_forestSum {N : ℕ}
                 hη_nn Z (Finset.mem_powerset.mp (Finset.mem_filter.mp hγR).1 hZ))
               (forestSum_nonneg E η hη_nn j X)
 
-/-- **Lemma A.1 Connected-Polymer to Binary-Tree Bridge (Sharp `4^(m - 1)` Constant)**:
-For any finite hypergraph `E` with nonempty edges of size `≤ r`, nonnegative weights `η` with
-`∀ x, ∑_{X ∋ x} η X ≤ η₀`, and any `m ≥ 1`, `x : Fin N`:
-`∑_{γ ∈ connectedPolymers E, |γ| = m, x ∈ polySupp γ} ∏_{X ∈ γ} η X ≤ 4^(m - 1) * (r * η₀)^(m - 1) * η₀`. -/
+/-- **Lemma A.1 Connected-Polymer to Binary-Tree Bridge (Sharp `4^(m - 1)` Constant)**. -/
 theorem lemma_A_1_polymer_to_bintree_bridge {N r : ℕ}
     (E : Finset (Finset (Fin N))) (hne : ∀ X ∈ E, X.Nonempty)
     (hcard : ∀ X ∈ E, X.card ≤ r)
@@ -991,7 +969,7 @@ theorem lemma_A_1_polymer_to_bintree_bridge {N r : ℕ}
       _ ≤ forestSum E η m {x} := sum_hittingForests_le_forestSum E hne η hη_nn m {x}
   have h2 : forestSum E η m {x} ≤ (4 : ℝ) ^ (m - 1) * ((r : ℝ) * η₀) ^ (m - 1) * η₀ := by
     obtain ⟨m', rfl⟩ := Nat.exists_eq_add_of_le' hm
-    rw [forestSum, Finset.sum_singleton]
+    rw [forestSum_succ, Finset.sum_singleton]
     by_cases hE : (E.filter (fun X ↦ x ∈ X)).Nonempty
     · rcases hE with ⟨X₁, hX₁⟩
       have h1r : ({x} : Finset (Fin N)).card ≤ r := by
@@ -1024,7 +1002,7 @@ theorem lemma_A_1_polymer_to_bintree_bridge {N r : ℕ}
           _ = (∑ j ∈ Finset.range (m' + 1), (catalanRec j : ℝ) * (catalanRec (m' - j) : ℝ)) *
               ((r : ℝ) * η₀) ^ m' := by rw [← Finset.sum_mul]
           _ = (catalanRec (m' + 1) : ℝ) * ((r : ℝ) * η₀) ^ m' := by
-              simp only [catalanRec, Nat.cast_sum, Nat.cast_mul]
+              rw [catalanRec_succ]; simp only [Nat.cast_sum, Nat.cast_mul]
       calc ∑ X ∈ E.filter (fun X ↦ x ∈ X),
             η X * (∑ j ∈ Finset.range (m' + 1), forestSum E η j X * forestSum E η (m' - j) {x})
           ≤ ∑ X ∈ E.filter (fun X ↦ x ∈ X),
