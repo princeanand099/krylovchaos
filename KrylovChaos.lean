@@ -48,3 +48,5 @@ import KrylovChaos.Araki1DConcrete
 import KrylovChaos.ProductStateLambdaMSS
 import KrylovChaos.Theorem11bConcrete
 import KrylovChaos.Milestone2AnalyticFoundations
+import KrylovChaos.Milestone3Bridges
+import KrylovChaos.Milestone4StructuralNecessity

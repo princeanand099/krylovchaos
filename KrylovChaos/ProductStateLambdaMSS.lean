@@ -15,20 +15,6 @@ import Mathlib.Tactic
 
 /-!
 # Proposition 4.3: Full `Λ_ρ^{MSS}(s)` Bound & N-Qubit Local Unitary Invariance (Item #13)
-
-Closes all remaining gaps in Proposition 4.3 (`ProductStateMultiSite.lean`):
-1. **Exact Filtration Span Equivalence (`filtrationSubmodule_eq_span_prodGSBasis`)**:
-   For every `m : Fin N → ℝ` with `∀ x, |m x| < 1` and every `s : ℕ`,
-   `filtrationSubmodule N s = Submodule.span ℂ { M | ∃ a, stringWeight a ≤ s ∧ M = prodGSBasis m a }`.
-2. **Static Supremum Bound (`prop_4_3_lambdaMSS_product_state`)**:
-   `lambdaMSS (prodGibbsData m hm) s ≤ (s : ℝ) + mmax * Real.sqrt ((N : ℝ) * (s : ℝ))`
-   with ZERO assumed expansion coefficients.
-3. **Full `N`-Qubit Local Unitary Invariance Lift (`prop_4_3_lambdaMSS_general_product_state`)**:
-   For ANY local unitary rotation `U = ⨂_{x=1}^N u_x` (`u_xᴴ u_x = u_x u_xᴴ = 1`),
-   proves that `A ↦ Uᴴ A U` preserves `filtrationSubmodule N s`, `gibbsWightmanNormSq`,
-   and `mssThermalSize`, hence
-   `lambdaMSS (rotatedProdGibbsData u hu m hm) s ≤ (s : ℝ) + mmax * Real.sqrt ((N : ℝ) * (s : ℝ))`
-   for EVERY general `N`-qubit product state `ρ = ⨂_x u_x ((I + m_x Z)/2) u_xᴴ`.
 -/
 
 namespace KrylovChaos
@@ -79,9 +65,6 @@ private lemma kronOp_update_smul {N : ℕ} (F : Fin N → Mat2) (x : Fin N) (c :
   simp only [Function.update_self, Matrix.smul_apply, smul_eq_mul]
   ring
 
-/-- Multilinear Kronecker-product span lemma: if on every site `x ∈ S`, `F x` lies in
-`span { B x i | P x i }`, and outside `S`, `F x = B x i` with `P x i`, then `kronOp F`
-lies in `span { kronOp (fun x ↦ B x (b x)) | ∀ x, P x (b x) }`. -/
 lemma kronOp_mem_span_of_site_span {N : ℕ}
     (B : Fin N → Fin 4 → Mat2) (P : Fin N → Fin 4 → Prop)
     (S : Finset (Fin N)) :
@@ -143,7 +126,7 @@ private lemma pauliMat_eq_gsBasis_comb {m : ℝ} (hm : |m| < 1) (a : Fin 4) :
   have hσ_ne : (prodSigma m : ℂ) ≠ 0 := Complex.ofReal_ne_zero.mpr hσ.ne'
   have hsq_ne : (Real.sqrt (prodSigma m) : ℂ) ≠ 0 :=
     Complex.ofReal_ne_zero.mpr (Real.sqrt_pos.mpr hσ).ne'
-  fin_cases a
+  fin_cases a <;> dsimp only
   · apply Submodule.subset_span
     refine ⟨0, fun _ ↦ rfl, ?_⟩
     ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, gsBasis]
@@ -152,15 +135,7 @@ private lemma pauliMat_eq_gsBasis_comb {m : ℝ} (hm : |m| < 1) (a : Fin 4) :
     rw [h1]
     exact Submodule.smul_mem _ _ (Submodule.subset_span ⟨1, by simp, rfl⟩)
   · have h2 : pauliMat 2 = (Real.sqrt (prodSigma m) : ℂ) • gsBasis m 2 := by
-      ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, gsBasis]
-      · calc -Complex.I = -Complex.I * 1 := by ring
-          _ = -Complex.I * ((Real.sqrt (prodSigma m) : ℂ) * (Real.sqrt (prodSigma m) : ℂ)⁻¹) := by
-              rw [mul_inv_cancel₀ hsq_ne]
-          _ = (Real.sqrt (prodSigma m) : ℂ) * (-Complex.I * (Real.sqrt (prodSigma m) : ℂ)⁻¹) := by ring
-      · calc Complex.I = Complex.I * 1 := by ring
-          _ = Complex.I * ((Real.sqrt (prodSigma m) : ℂ) * (Real.sqrt (prodSigma m) : ℂ)⁻¹) := by
-              rw [mul_inv_cancel₀ hsq_ne]
-          _ = (Real.sqrt (prodSigma m) : ℂ) * (Complex.I * (Real.sqrt (prodSigma m) : ℂ)⁻¹) := by ring
+      ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, gsBasis] <;> field_simp [hsq_ne]
     rw [h2]
     exact Submodule.smul_mem _ _ (Submodule.subset_span ⟨2, by simp, rfl⟩)
   · have h3 : pauliMat 3 = (prodSigma m : ℂ) • gsBasis m 3 + (m : ℂ) • gsBasis m 0 := by
@@ -176,7 +151,7 @@ private lemma pauliMat_eq_gsBasis_comb {m : ℝ} (hm : |m| < 1) (a : Fin 4) :
 private lemma gsBasis_eq_pauliMat_comb {m : ℝ} (a : Fin 4) :
     gsBasis m a ∈ Submodule.span ℂ
       { M : Mat2 | ∃ i : Fin 4, (a = 0 → i = 0) ∧ M = pauliMat i } := by
-  fin_cases a
+  fin_cases a <;> dsimp only
   · apply Submodule.subset_span
     refine ⟨0, fun _ ↦ rfl, ?_⟩
     ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat, gsBasis]
@@ -193,10 +168,6 @@ private lemma gsBasis_eq_pauliMat_comb {m : ℝ} (a : Fin 4) :
       (Submodule.subset_span ⟨3, by simp, rfl⟩)
       (Submodule.smul_mem _ _ (Submodule.subset_span ⟨0, by simp, rfl⟩)))
 
-/-- **Item #13 (Exact Filtration Span Equivalence)**:
-For ANY `m : Fin N → ℝ` with `∀ x, |m x| < 1` and ANY `s : ℕ`, the locality filtration
-subspace `filtrationSubmodule N s` equals the span of tensor-product Gram–Schmidt basis
-operators `prodGSBasis m a` with `stringWeight a ≤ s`. -/
 theorem filtrationSubmodule_eq_span_prodGSBasis {N s : ℕ}
     (m : Fin N → ℝ) (hm : ∀ x, |m x| < 1) :
     filtrationSubmodule N s =
@@ -220,8 +191,6 @@ theorem filtrationSubmodule_eq_span_prodGSBasis {N s : ℕ}
     rintro _ ⟨b, hb, rfl⟩
     exact ⟨b, le_trans (stringWeight_le_of_zero_imp hb) ha, rfl⟩
 
-/-- Every `A ∈ filtrationSubmodule N s` admits an explicit expansion `A = ∑ a, c a • prodGSBasis m a`
-with `c a = 0` for all `stringWeight a > s`. -/
 lemma exists_prodGSBasis_expansion_of_mem_filtration {N s : ℕ}
     (m : Fin N → ℝ) (hm : ∀ x, |m x| < 1) {A : QubitOp N}
     (hA : A ∈ filtrationSubmodule N s) :
@@ -238,18 +207,14 @@ lemma exists_prodGSBasis_expansion_of_mem_filtration {N s : ℕ}
     · simp [Finset.sum_ite_eq']
   · exact ⟨fun _ ↦ 0, fun _ _ ↦ rfl, by simp⟩
   · rintro X Y _ _ ⟨c₁, hs₁, hX⟩ ⟨c₂, hs₂, hY⟩
-    refine ⟨fun a ↦ c₁ a + c₂ a, fun a hgt ↦ by rw [hs₁ a hgt, hs₂ a hgt, add_zero], ?_⟩
+    refine ⟨fun a ↦ c₁ a + c₂ a, fun a hgt ↦ by dsimp only; rw [hs₁ a hgt, hs₂ a hgt, add_zero], ?_⟩
     rw [hX, hY, ← Finset.sum_add_distrib]
     apply Finset.sum_congr rfl; intro a _; rw [add_smul]
   · rintro r X _ ⟨c, hs, hX⟩
-    refine ⟨fun a ↦ r * c a, fun a hgt ↦ by rw [hs a hgt, mul_zero], ?_⟩
+    refine ⟨fun a ↦ r * c a, fun a hgt ↦ by dsimp only; rw [hs a hgt, mul_zero], ?_⟩
     rw [hX, Finset.smul_sum]
     apply Finset.sum_congr rfl; intro a _; rw [smul_smul]
 
-/-- **Proposition 4.3 — Full Concrete `lambdaMSS` Bound for Diagonal Product States (Item #13)**:
-For ANY `N`-qubit product state `ρ = ⨂_{x=1}^N (I + m_x Z_x)/2` with `|m_x| ≤ mmax < 1`
-and ANY `s : ℕ`:
-`lambdaMSS (prodGibbsData m hm) s ≤ (s : ℝ) + mmax * Real.sqrt ((N : ℝ) * (s : ℝ))`. -/
 theorem prop_4_3_lambdaMSS_product_state {N s : ℕ} {mmax : ℝ}
     (m : Fin N → ℝ) (hm_le : ∀ x, |m x| ≤ mmax) (hmmax : mmax < 1) :
     lambdaMSS (prodGibbsData m (fun x ↦ lt_of_le_of_lt (hm_le x) hmmax)) s ≤
@@ -276,9 +241,6 @@ end ProductStateFiltrationSpan
 
 section LocalUnitaryInvarianceLift
 
-/-- Locally rotated `N`-qubit product state `U ρ Uᴴ` where `U = ⨂_{x=1}^N u_x` is a product
-of single-qubit unitaries (`(u x)ᴴ * u x = 1` and `u x * (u x)ᴴ = 1`). Every full-rank
-`N`-qubit product state `⨂_x (I + r_x · σ_x)/2` has this exact form! -/
 noncomputable def rotatedProdGibbsData {N : ℕ}
     (u : Fin N → Mat2)
     (huL : ∀ x, (u x)ᴴ * u x = 1) (huR : ∀ x, u x * (u x)ᴴ = 1)
@@ -348,7 +310,6 @@ private lemma mat2_mem_pauli_span (M : Mat2) :
     (Submodule.smul_mem _ _ (Submodule.subset_span ⟨2, rfl⟩)))
     (Submodule.smul_mem _ _ (Submodule.subset_span ⟨3, rfl⟩))
 
-/-- Local unitary conjugation `A ↦ Uᴴ A U` (`U = ⨂_x u_x`) preserves `filtrationSubmodule N s`. -/
 theorem localUnitary_conj_mem_filtration {N s : ℕ}
     (u : Fin N → Mat2) (huL : ∀ x, (u x)ᴴ * u x = 1)
     {A : QubitOp N} (hA : A ∈ filtrationSubmodule N s) :
@@ -395,7 +356,6 @@ private lemma singleSite_pauli_twirl_unitary (u : Mat2) (huL : uᴴ * u = 1) (hu
   congr 1; congr 1
   rw [Matrix.trace_mul_cycle, huR, Matrix.one_mul]
 
-/-- Local unitary conjugation commutes with `partialTraceSite x`. -/
 lemma partialTraceSite_localUnitary_conj {N : ℕ}
     (u : Fin N → Mat2) (huL : ∀ x, (u x)ᴴ * u x = 1) (huR : ∀ x, u x * (u x)ᴴ = 1)
     (x : Fin N) (M : QubitOp N) :
@@ -419,7 +379,7 @@ lemma partialTraceSite_localUnitary_conj {N : ℕ}
       · rcases h with ⟨rfl, rfl⟩; simp [Matrix.single_apply]
       · simp only [Matrix.single_apply, h, ↓reduceIte]
         have hex : ∃ y : Fin N, ¬(σ y = a y ∧ τ y = b y) := by
-          by_contra hall; push_neg at hall
+          by_contra hall; push Not at hall
           exact h ⟨funext fun y ↦ (hall y).1, funext fun y ↦ (hall y).2⟩
         rcases hex with ⟨y₀, hy₀⟩
         exact (Finset.prod_eq_zero (Finset.mem_univ y₀) (by simp [Matrix.single_apply, hy₀])).symm
@@ -439,7 +399,7 @@ lemma partialTraceSite_localUnitary_conj {N : ℕ}
   have hpt_smul : ∀ (c : ℂ) (A : QubitOp N),
       partialTraceSite x (c • A) = c • partialTraceSite x A := by
     intro c A; unfold partialTraceSite
-    simp [Matrix.mul_smul, Matrix.smul_mul, ← Finset.smul_sum, smul_comm]
+    simp only [Matrix.mul_smul, Matrix.smul_mul, ← Finset.smul_sum]; rw [smul_comm]
   refine Submodule.span_induction ?_ ?_ ?_ ?_ hspan
   · rintro _ ⟨a, rfl⟩
     unfold pauliString
@@ -477,7 +437,7 @@ lemma partialTraceSite_localUnitary_conj {N : ℕ}
           ∏ y ∈ Finset.univ.erase x, F y (p y) (q y) := by
         apply Finset.prod_congr rfl; intro y hy; simp [(Finset.mem_erase.mp hy).1]
       rw [hrest]; ring
-    rw [hpt_kron, hpt_kron, kronOp_conjTranspose, kronOp_mul, kronOp_mul]
+    rw [hpt_kron, hpt_kron, kronOp_mul, kronOp_mul]
     congr 1; funext y
     by_cases hy : y = x
     · subst hy; simp only [↓reduceIte]
@@ -489,7 +449,6 @@ lemma partialTraceSite_localUnitary_conj {N : ℕ}
   · intro c A _ hA
     rw [Matrix.mul_smul, Matrix.smul_mul, hpt_smul, hpt_smul, Matrix.mul_smul, Matrix.smul_mul, hA]
 
-/-- Local unitary conjugation preserves `totalSizeOp`: `S(Uᴴ M U) = Uᴴ S(M) U`. -/
 lemma totalSizeOp_localUnitary_conj {N : ℕ}
     (u : Fin N → Mat2) (huL : ∀ x, (u x)ᴴ * u x = 1) (huR : ∀ x, u x * (u x)ᴴ = 1)
     (M : QubitOp N) :
@@ -499,10 +458,6 @@ lemma totalSizeOp_localUnitary_conj {N : ℕ}
   apply Finset.sum_congr rfl; intro x _
   rw [partialTraceSite_localUnitary_conj u huL huR x M]
 
-/-- **Proposition 4.3 — Full General Product-State Bound via Local Unitary Invariance (Item #13)**:
-For ANY local unitary `U = ⨂_{x=1}^N u_x` and ANY Bloch-vector magnitudes `|m_x| ≤ mmax < 1`,
-the rotated product state `ρ = U (⨂_x (I + m_x Z_x)/2) Uᴴ` satisfies
-`lambdaMSS (rotatedProdGibbsData u huL huR m hm) s ≤ (s : ℝ) + mmax * Real.sqrt ((N : ℝ) * (s : ℝ))`. -/
 theorem prop_4_3_lambdaMSS_general_product_state {N s : ℕ} {mmax : ℝ}
     (u : Fin N → Mat2) (huL : ∀ x, (u x)ᴴ * u x = 1) (huR : ∀ x, u x * (u x)ᴴ = 1)
     (m : Fin N → ℝ) (hm_le : ∀ x, |m x| ≤ mmax) (hmmax : mmax < 1) :
@@ -520,13 +475,14 @@ theorem prop_4_3_lambdaMSS_general_product_state {N s : ℕ} {mmax : ℝ}
     dsimp only [U]; rw [kronOp_conjTranspose, kronOp_mul]
     have : (fun x ↦ u x * (u x)ᴴ) = fun _ ↦ 1 := funext huR
     rw [this, kronOp_one]
+  have hG'half : G'.ρHalf = U * G.ρHalf * Uᴴ := rfl
+  have hG'quarter : G'.ρQuarter = U * G.ρQuarter * Uᴴ := rfl
   have hnorm_eq : ∀ A : QubitOp N,
       gibbsWightmanNormSq G' A = gibbsWightmanNormSq G (Uᴴ * A * U) := by
     intro A
     unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
+    rw [hG'half]
     congr 1
-    change Matrix.trace ((U * G.ρHalf * Uᴴ) * Aᴴ * (U * G.ρHalf * Uᴴ) * A) =
-      Matrix.trace (G.ρHalf * (Uᴴ * A * U)ᴴ * G.ρHalf * (Uᴴ * A * U))
     rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
     calc Matrix.trace (U * G.ρHalf * Uᴴ * Aᴴ * (U * G.ρHalf * Uᴴ) * A)
         = Matrix.trace (U * (G.ρHalf * (Uᴴ * (Aᴴ * U)) * G.ρHalf * (Uᴴ * A))) := by
@@ -563,14 +519,10 @@ theorem prop_4_3_lambdaMSS_general_product_state {N s : ℕ} {mmax : ℝ}
         _ = Matrix.trace (Mᴴ * totalSizeOp M) := by rw [hUL, Matrix.one_mul]
     have hj_eq : jBeta G'.ρQuarter A = U * jBeta G.ρQuarter (Uᴴ * A * U) * Uᴴ := by
       unfold jBeta
-      change (U * G.ρQuarter * Uᴴ) * A * (U * G.ρQuarter * Uᴴ) =
-        U * (G.ρQuarter * (Uᴴ * A * U) * G.ρQuarter) * Uᴴ
+      rw [hG'quarter]
       simp only [Matrix.mul_assoc]
     unfold mssThermalSize
-    rw [hj_eq, hhs_unit]
-    change (hsInner (jBeta G.ρQuarter (Uᴴ * A * U)) (totalSizeOp (jBeta G.ρQuarter (Uᴴ * A * U)))).re -
-        (hsInner (U * G.ρHalf * Uᴴ) (totalSizeOp (U * G.ρHalf * Uᴴ))).re = _
-    rw [hhs_unit]
+    rw [hj_eq, hG'half, hhs_unit, hhs_unit]
   have hle_G : lambdaMSS G' s ≤ lambdaMSS G s := by
     unfold lambdaMSS
     apply csSup_le

@@ -18,14 +18,6 @@ import Mathlib.Tactic
 
 /-!
 # Concrete Operator-Level Theorem 1.2(a) on `QubitOp N` (Eqs. 5.2–5.4) & Concrete Lemma 6.1 / Prop. 6.2
-
-Connects the concrete Hermitian operator algebra `QubitOp N` and Gibbs state
-`concreteGibbsData hH β` directly to:
-1. **`theorem_1_2a_concrete_eq52_trace_bound`**: Eq. (5.2) asymmetric shift bound.
-2. **`theorem_1_2a_concrete_eq53_opNorm_bound`**: Eq. (5.3) operator-norm trace bound.
-3. **`theorem_1_2a_concrete_eq54_r_local_bound`**: Eq. (5.4) generalized negative-binomial bound.
-4. **`lemma_6_1_concrete_wightman_commutator`** & **`prop_6_2_concrete_high_temp_glauber`**:
-   Concrete operator-level Lemma 6.1 and Proposition 6.2 on `QubitOp N`.
 -/
 
 namespace KrylovChaos
@@ -42,8 +34,6 @@ private lemma eigU_mul_star_t12 {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) :
     (hH.eigenvectorUnitary : QubitOp N) * (hH.eigenvectorUnitary : QubitOp N)ᴴ = 1 :=
   Matrix.mem_unitaryGroup_iff.mp hH.eigenvectorUnitary.2
 
-/-- Exact eigenbasis matrix element of complex-time Heisenberg evolution `O(z) = e^{izH} O e^{-izH}`:
-`(Uᴴ O(z) U)_{ab} = exp(i z (E_a - E_b)) (Uᴴ O U)_{ab}`. -/
 lemma heisenbergEvol_eigen_entry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (z : ℂ) (O : QubitOp N) (a b : QubitIdx N) :
     let U : QubitOp N := (hH.eigenvectorUnitary : QubitOp N)
@@ -64,7 +54,6 @@ lemma heisenbergEvol_eigen_entry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
   rw [mul_right_comm, ← Complex.exp_add]
   congr 2; push_cast; ring
 
-/-- Symmetric imaginary-time strip-cosh identity on `QubitOp N`. -/
 theorem theorem_1_2a_concrete_strip_cosh {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β y : ℝ) (O : QubitOp N) :
     ∑ a : QubitIdx N, ∑ b : QubitIdx N,
@@ -108,7 +97,6 @@ theorem theorem_1_2a_concrete_strip_cosh {N : ℕ} {H : QubitOp N} (hH : H.IsHer
   rw [h2a, h2b]
   ring
 
-/-- Symmetric exponential spectral moment bound on `QubitOp N`. -/
 theorem theorem_1_2a_concrete_exp_moment {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β y : ℝ) (O : QubitOp N) :
     ∑ a : QubitIdx N, ∑ b : QubitIdx N,
@@ -146,7 +134,6 @@ end ConcreteStripCosh
 
 section AsymmetricEq52To54
 
-/-- Exact eigenbasis formula for `Re Tr(ρ_β W W(-i κ'))` when `W` is Hermitian. -/
 lemma trace_gibbsRho_mul_evol_eq {N : ℕ} {H W : QubitOp N}
     (hH : H.IsHermitian) (hW : W.IsHermitian) (β κ' : ℝ) :
     (Matrix.trace (gibbsRho hH β * W * heisenbergEvol hH (-(Complex.I * (κ' : ℂ))) W)).re =
@@ -160,7 +147,7 @@ lemma trace_gibbsRho_mul_evol_eq {N : ℕ} {H W : QubitOp N}
   have hρ_eq : gibbsRho hH β = U * Dρ * Uᴴ := by
     unfold gibbsRho hermFunc
     dsimp only
-    rw [Matrix.smul_mul, Matrix.mul_smul]
+    rw [← Matrix.smul_mul, ← Matrix.mul_smul]
     congr 2
     ext i j
     simp only [Dρ, Matrix.smul_apply, Matrix.diagonal_apply, smul_eq_mul]
@@ -176,10 +163,15 @@ lemma trace_gibbsRho_mul_evol_eq {N : ℕ} {H W : QubitOp N}
       _ = Matrix.trace (Dρ * (Uᴴ * W) * ((U * Uᴴ) * E) * U) := by rw [eigU_mul_star_t12 hH]
       _ = Matrix.trace (Dρ * (Uᴴ * W * U) * (Uᴴ * E * U)) := by simp only [Matrix.mul_assoc]
   rw [hcyc]
-  simp only [Dρ, Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.diagonal_apply,
-    ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte, Complex.re_sum]
+  have htr_Dρ : Matrix.trace (Dρ * (Uᴴ * W * U) * (Uᴴ * heisenbergEvol hH (-(Complex.I * (κ' : ℂ))) W * U)) =
+      ∑ a : QubitIdx N, ∑ b : QubitIdx N,
+        ((Z⁻¹ * Real.exp (-β * hH.eigenvalues a) : ℝ) : ℂ) * (Uᴴ * W * U) a b *
+          (Uᴴ * heisenbergEvol hH (-(Complex.I * (κ' : ℂ))) W * U) b a := by
+    simp only [Dρ, Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.diagonal_apply,
+      ite_mul, zero_mul, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
+  rw [htr_Dρ, Complex.re_sum]
   apply Finset.sum_congr rfl; intro a _
-  rw [Finset.sum_mul, Complex.re_sum]
+  rw [Complex.re_sum]
   apply Finset.sum_congr rfl; intro b _
   rw [heisenbergEvol_eigen_entry hH (-(Complex.I * (κ' : ℂ))) W b a]
   have hexp_c : Complex.I * -(Complex.I * (κ' : ℂ)) * ((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ) =
@@ -215,7 +207,6 @@ lemma trace_gibbsRho_mul_evol_eq {N : ℕ} {H W : QubitOp N}
       _ = _ := by push_cast; ring
   rw [hre_term, Complex.ofReal_re]
 
-/-- **Theorem 1.2(a), Eq. (5.2) (Asymmetric Exponential Spectral Moment Bound)**. -/
 theorem theorem_1_2a_concrete_eq52_trace_bound {N : ℕ} {H W : QubitOp N}
     (hH : H.IsHermitian) (hW : W.IsHermitian) (β κ' : ℝ) :
     ∑ a : QubitIdx N, ∑ b : QubitIdx N,
@@ -299,7 +290,6 @@ theorem theorem_1_2a_concrete_eq52_trace_bound {N : ℕ} {H W : QubitOp N}
       _ = _ := by rw [hexp_eq]
   linarith
 
-/-- Any diagonal matrix entry is bounded in norm by the operator norm `opNorm M`. -/
 lemma norm_diag_entry_le_opNorm {N : ℕ} (M : QubitOp N) (a : QubitIdx N) :
     ‖M a a‖ ≤ opNorm M := by
   let e : EuclideanSpace ℂ (QubitIdx N) := WithLp.toLp 2 (Pi.single a (1 : ℂ))
@@ -312,9 +302,8 @@ lemma norm_diag_entry_le_opNorm {N : ℕ} (M : QubitOp N) (a : QubitIdx N) :
       · intro ha; exact absurd (Finset.mem_univ a) ha
     rw [hsq, Real.sqrt_one]
   have hentry : (opToCLM M e) a = M a a := by
-    simp only [opToCLM, LinearMap.coe_toContinuousLinearMap', LinearMap.comp_apply,
-      LinearEquiv.coe_coe, EuclideanSpace.equiv_apply, EuclideanSpace.equiv_symm_apply,
-      Matrix.toLin'_apply, WithLp.ofLp_toLp, Matrix.mulVec, dotProduct, e]
+    change (M *ᵥ Pi.single a (1 : ℂ)) a = M a a
+    simp only [Matrix.mulVec, dotProduct]
     rw [Finset.sum_eq_single a]
     · simp
     · intro j _ hja; simp [Pi.single_eq_of_ne hja]
@@ -326,7 +315,6 @@ lemma norm_diag_entry_le_opNorm {N : ℕ} (M : QubitOp N) (a : QubitIdx N) :
   rw [he_norm, mul_one] at h2
   exact le_trans h1 h2
 
-/-- Gibbs expectation value bound: `‖Tr(ρ_β X)‖ ≤ ‖X‖_∞` for every `X : QubitOp N`. -/
 lemma norm_trace_gibbsRho_mul_le_opNorm {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (X : QubitOp N) :
     ‖Matrix.trace (gibbsRho hH β * X)‖ ≤ opNorm X := by
@@ -336,7 +324,7 @@ lemma norm_trace_gibbsRho_mul_le_opNorm {N : ℕ} {H : QubitOp N} (hH : H.IsHerm
   have hρ_eq : gibbsRho hH β = U * Dρ * Uᴴ := by
     unfold gibbsRho hermFunc
     dsimp only
-    rw [Matrix.smul_mul, Matrix.mul_smul]
+    rw [← Matrix.smul_mul, ← Matrix.mul_smul]
     congr 2
     ext i j
     simp only [Dρ, Matrix.smul_apply, Matrix.diagonal_apply, smul_eq_mul]
@@ -351,7 +339,7 @@ lemma norm_trace_gibbsRho_mul_le_opNorm {N : ℕ} {H : QubitOp N} (hH : H.IsHerm
   have htr : Matrix.trace (Dρ * (Uᴴ * X * U)) =
       ∑ a : QubitIdx N, ((Z⁻¹ * Real.exp (-β * hH.eigenvalues a) : ℝ) : ℂ) * (Uᴴ * X * U) a a := by
     simp only [Dρ, Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.diagonal_apply,
-      ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
+      ite_mul, zero_mul, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
   rw [htr]
   have hZpos : 0 < Z := gibbsPartitionFn_pos hH β
   have hop_conj : opNorm (Uᴴ * X * U) ≤ opNorm X := by
@@ -362,7 +350,7 @@ lemma norm_trace_gibbsRho_mul_le_opNorm {N : ℕ} {H : QubitOp N} (hH : H.IsHerm
       _ ≤ (opNorm Uᴴ * opNorm X) * opNorm U :=
           mul_le_mul_of_nonneg_right (opNorm_mul_le _ _) (opNorm_nonneg _)
       _ ≤ (1 * opNorm X) * 1 := by
-          apply mul_le_mul _ hU (opNorm_nonneg _) (by positivity)
+          apply mul_le_mul _ hU (opNorm_nonneg _) (mul_nonneg zero_le_one (opNorm_nonneg _))
           exact mul_le_mul_of_nonneg_right hUH (opNorm_nonneg _)
       _ = opNorm X := by ring
   calc ‖∑ a : QubitIdx N, ((Z⁻¹ * Real.exp (-β * hH.eigenvalues a) : ℝ) : ℂ) * (Uᴴ * X * U) a a‖
@@ -380,7 +368,6 @@ lemma norm_trace_gibbsRho_mul_le_opNorm {N : ℕ} {H : QubitOp N} (hH : H.IsHerm
         have hsum_eq : ∑ a : QubitIdx N, Real.exp (-β * hH.eigenvalues a) = Z := rfl
         rw [hsum_eq, inv_mul_cancel₀ hZpos.ne', one_mul]
 
-/-- **Theorem 1.2(a), Eq. (5.3) (Operator-Norm Trace Bound)**. -/
 theorem theorem_1_2a_concrete_eq53_opNorm_bound {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β κ' : ℝ) (W : QubitOp N) :
     (Matrix.trace (gibbsRho hH β * W * heisenbergEvol hH (-(Complex.I * (κ' : ℂ))) W)).re ≤
@@ -393,7 +380,6 @@ theorem theorem_1_2a_concrete_eq53_opNorm_bound {N : ℕ} {H : QubitOp N} (hH : 
   have h3 := opNorm_mul_le W (heisenbergEvol hH (-(Complex.I * (κ' : ℂ))) W)
   exact le_trans h1 (le_trans h2 h3)
 
-/-- Rising-factorial binomial coefficient `c(α, k) = (∏_{j=0}^{k-1} (α + j)) / k!`. -/
 noncomputable def risingBinomCoeff (α : ℝ) (k : ℕ) : ℝ :=
   (∏ j ∈ Finset.range k, (α + (j : ℝ))) / (k.factorial : ℝ)
 
@@ -412,7 +398,6 @@ lemma risingBinomCoeff_succ (α : ℝ) (k : ℕ) :
   have hkf : (k.factorial : ℝ) ≠ 0 := by exact_mod_cast (Nat.factorial_pos k).ne'
   field_simp [hk1, hkf]
 
-/-- Generalized negative-binomial series bound proved via finite-sum differentiation. -/
 lemma risingBinom_tsum_le_rpow {α q : ℝ} (hα : 0 ≤ α) (hq0 : 0 ≤ q) (hq1 : q < 1) :
     Summable (fun k : ℕ ↦ risingBinomCoeff α k * q ^ k) ∧
     (∑' k : ℕ, risingBinomCoeff α k * q ^ k) ≤ (1 - q) ^ (-α) := by
@@ -449,8 +434,8 @@ lemma risingBinom_tsum_le_rpow {α q : ℝ} (hα : 0 ≤ α) (hq0 : 0 ≤ q) (hq
       have h1x : 0 < 1 - x := by linarith [hx.2]
       have hd1 : HasDerivAt (fun t : ℝ ↦ (1 - t) ^ α) (α * (1 - x) ^ (α - 1) * (-1)) x := by
         have hsub : HasDerivAt (fun t : ℝ ↦ 1 - t) (-1) x := by
-          have h := (hasDerivAt_const x (1 : ℝ)).sub (hasDerivAt_id x)
-          simpa only [zero_sub] using h
+          convert (hasDerivAt_const x (1 : ℝ)).sub (hasDerivAt_id x) using 1
+          ring
         have hr := hsub.rpow_const (p := α) (Or.inl h1x.ne')
         have heq : (-1 : ℝ) * α * (1 - x) ^ (α - 1) = α * (1 - x) ^ (α - 1) * (-1) := by ring
         rwa [heq] at hr
@@ -540,7 +525,6 @@ lemma risingBinom_tsum_le_rpow {α q : ℝ} (hα : 0 ≤ α) (hq0 : 0 ≤ q) (hq
     summable_of_sum_range_le (fun k ↦ mul_nonneg (risingBinomCoeff_nonneg hα k) (pow_nonneg hq0 k)) hpart_all
   exact ⟨hsumm, hsumm.tsum_le_of_sum_range_le hpart_all⟩
 
-/-- **Theorem 1.2(a), Eq. (5.4) (Concrete `r`-Local Imaginary-Time Operator Norm Bound)**. -/
 theorem theorem_1_2a_concrete_eq54_r_local_norm_bound {N r sW : ℕ} (hr : 2 ≤ r)
     (E : Finset (Finset (Fin N))) (hcard : ∀ X ∈ E, X.card ≤ r)
     (h : Finset (Fin N) → QubitOp N) (hsupp : ∀ X, h X ∈ supportedOn X)
@@ -609,6 +593,7 @@ theorem theorem_1_2a_concrete_eq54_r_local_norm_bound {N r sW : ℕ} (hr : 2 ≤
         ((r - 1 : ℕ) : ℝ) ^ k * (∏ j ∈ Finset.range k, (α + (j : ℝ))) := by
       calc (∏ j ∈ Finset.range k, ((U₀.card : ℝ) + (j : ℝ) * ((r - 1 : ℕ) : ℝ)))
           ≤ ∏ j ∈ Finset.range k, ((sW : ℝ) + (j : ℝ) * ((r - 1 : ℕ) : ℝ)) := by
+            clear hcoeff had_le hfwd
             induction k with
             | zero => simp
             | succ k ihk =>
@@ -657,7 +642,6 @@ theorem theorem_1_2a_concrete_eq54_r_local_norm_bound {N r sW : ℕ} (hr : 2 ≤
     _ = opNorm W * ∑' k : ℕ, risingBinomCoeff α k * q ^ k := tsum_mul_left
     _ ≤ opNorm W * (1 - q) ^ (-α) := mul_le_mul_of_nonneg_left hrb.2 (opNorm_nonneg _)
 
-/-- **Concrete End-to-End Finite-Volume Theorem 1.2(a) (Eqs. 5.2–5.4 Combined)**. -/
 theorem theorem_1_2a_concrete_eq54_r_local_bound {N r sW : ℕ} (hr : 2 ≤ r)
     (E : Finset (Finset (Fin N))) (hcard : ∀ X ∈ E, X.card ≤ r)
     (h : Finset (Fin N) → QubitOp N) (hsupp : ∀ X, h X ∈ supportedOn X)
@@ -699,9 +683,8 @@ private lemma hsNormSq_eq_sum_col_norm_sq_t12 {N : ℕ} (X : QubitOp N) :
     rw [EuclideanSpace.norm_eq, Real.sq_sqrt (Finset.sum_nonneg fun i _ ↦ sq_nonneg _)]
     apply Finset.sum_congr rfl; intro i _
     have hentry : (opToCLM X (WithLp.toLp 2 (Pi.single j (1 : ℂ)))) i = X i j := by
-      simp only [opToCLM, LinearMap.coe_toContinuousLinearMap', LinearMap.comp_apply,
-        LinearEquiv.coe_coe, EuclideanSpace.equiv_apply, EuclideanSpace.equiv_symm_apply,
-        Matrix.toLin'_apply, WithLp.ofLp_toLp, Matrix.mulVec, dotProduct]
+      change (X *ᵥ Pi.single j (1 : ℂ)) i = X i j
+      simp only [Matrix.mulVec, dotProduct]
       rw [Finset.sum_eq_single j]
       · simp
       · intro k _ hkj; simp [Pi.single_eq_of_ne hkj]
@@ -710,10 +693,9 @@ private lemma hsNormSq_eq_sum_col_norm_sq_t12 {N : ℕ} (X : QubitOp N) :
   simp_rw [hcol]
   unfold hsNormSq hsInner
   simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply, Complex.re_sum]
-  rw [Finset.sum_comm]
-  apply Finset.sum_congr rfl; intro i _
   apply Finset.sum_congr rfl; intro j _
-  rw [Complex.star_def, Complex.conj_mul', Complex.normSq_eq_norm_sq, Complex.ofReal_re]
+  apply Finset.sum_congr rfl; intro i _
+  rw [Complex.star_def, Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
 
 lemma hsNormSq_mul_le_opNorm_sq_left {N : ℕ} (B M : QubitOp N) :
     hsNormSq (B * M) ≤ (opNorm B) ^ 2 * hsNormSq M := by
@@ -722,9 +704,8 @@ lemma hsNormSq_mul_le_opNorm_sq_left {N : ℕ} (B M : QubitOp N) :
   have hmul : opToCLM (B * M) (WithLp.toLp 2 (Pi.single j (1 : ℂ))) =
       opToCLM B (opToCLM M (WithLp.toLp 2 (Pi.single j (1 : ℂ)))) := by
     ext i
-    simp only [opToCLM, LinearMap.coe_toContinuousLinearMap', LinearMap.comp_apply,
-      LinearEquiv.coe_coe, EuclideanSpace.equiv_apply, EuclideanSpace.equiv_symm_apply,
-      Matrix.toLin'_apply, WithLp.ofLp_toLp, Matrix.mulVec_mulVec]
+    change ((B * M) *ᵥ Pi.single j (1 : ℂ)) i = (B *ᵥ (M *ᵥ Pi.single j (1 : ℂ))) i
+    rw [Matrix.mulVec_mulVec]
   rw [hmul]
   have hle : ‖opToCLM B (opToCLM M (WithLp.toLp 2 (Pi.single j (1 : ℂ))))‖ ≤
       opNorm B * ‖opToCLM M (WithLp.toLp 2 (Pi.single j (1 : ℂ)))‖ :=
@@ -754,7 +735,6 @@ lemma singleSiteTrivialSubmodule_le_supportedOn_compl {N : ℕ} (x : Fin N) :
       exact hy
     subst hyx; exact ha
 
-/-- **Concrete Operator-Level Lemma 6.1 (Wightman Single-Site Commutator Inequality on `QubitOp N`)**. -/
 theorem lemma_6_1_concrete_wightman_commutator {N : ℕ} (G : GibbsData N)
     (x : Fin N) {V_x : QubitOp N} (hVx : V_x ∈ supportedOn {x}) (A : QubitOp N) :
     let M_β : ℝ :=
@@ -794,7 +774,7 @@ theorem lemma_6_1_concrete_wightman_commutator {N : ℕ} (G : GibbsData N)
     singleSiteTrivialSubmodule_le_supportedOn_compl x hP_mem
   have hcomm_P : matComm V_x (singleSiteWightmanProj G x A) = 0 := by
     unfold matComm
-    rw [supportedOn_comm_of_disjoint (Finset.disjoint_iff_inter_eq_empty.mpr (Finset.inter_compl_self ({x} : Finset (Fin N))))
+    rw [supportedOn_comm_of_disjoint (Finset.disjoint_left.mpr fun y hy1 hy2 ↦ (Finset.mem_compl.mp hy2) hy1)
       hVx hP_supp, sub_self]
   set A' : QubitOp N := A - singleSiteWightmanProj G x A
   have hcomm_eq : matComm V_x A = matComm V_x A' := by
@@ -1037,7 +1017,7 @@ theorem lemma_6_1_concrete_wightman_commutator {N : ℕ} (G : GibbsData N)
             apply Finset.prod_congr rfl; intro y _; rw [h1 y]; simp
           rw [hprod, Finset.prod_mul_distrib, Finset.prod_ite_eq' Finset.univ x]
           simp
-        simp_rw [hterm]; rw [← Finset.sum_smul, smul_smul]
+        unfold pauliSite; simp_rw [hterm]; rw [← Finset.sum_smul, smul_smul]
         by_cases hax : a x = 0
         · simp [hax, Fin.sum_univ_four]; norm_num
         · simp only [hax, ↓reduceIte]
@@ -1063,7 +1043,6 @@ theorem lemma_6_1_concrete_wightman_commutator {N : ℕ} (G : GibbsData N)
     · exact ⟨partialTraceSite x A, hpt_mem, rfl⟩
   exact ⟨hpart1, hpart2⟩
 
-/-- Conjugation by `gibbsRhoQuarter hH β` equals complex-time Heisenberg evolution by `±i β / 4`. -/
 lemma gibbsRhoQuarter_conj_eq_heisenbergEvol {N : ℕ} {H : QubitOp N}
     (hH : H.IsHermitian) (β : ℝ) (V : QubitOp N) :
     (concreteGibbsData hH β).ρQuarter * V * (concreteGibbsData hH β).ρQuarterInv =
@@ -1103,7 +1082,6 @@ lemma gibbsRhoQuarter_conj_eq_heisenbergEvol {N : ℕ} {H : QubitOp N}
     · congr 1; funext e; rw [h2, Complex.ofReal_exp]; congr 1; push_cast; ring
     · congr 1; funext e; rw [neg_neg, h1, Complex.ofReal_exp]; congr 1; push_cast; ring
 
-/-- **Concrete Operator-Level Proposition 6.2 (High-Temperature Glauber Decoupling on `QubitOp N`)**. -/
 theorem prop_6_2_concrete_high_temp_glauber {N r : ℕ} (hr : 2 ≤ r)
     (E : Finset (Finset (Fin N))) (hcard : ∀ X ∈ E, X.card ≤ r)
     (h : Finset (Fin N) → QubitOp N) (hsupp : ∀ X, h X ∈ supportedOn X)

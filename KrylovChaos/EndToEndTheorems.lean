@@ -14,29 +14,6 @@ import Mathlib.Tactic
 
 /-!
 # End-to-End Concrete Operator Instantiations (Lemma 2.1 on `QubitOp N`, `NormedSpace.exp` Bridge & Theorem 1.1(b))
-
-Unifies the concrete `N`-qubit operator algebra (`QubitOp N`) with the Banach-algebra
-machinery (`CausalNormBounds`), spectral Heisenberg evolution (`GibbsConstruction`),
-and operator-level truncation (`WightmanProjectors`):
-1. **Concrete Operator-Norm Representation `QubitOpCLM N`**:
-   lifts `QubitOp N` to `EuclideanSpace ℂ (Fin N → Fin 2) →L[ℂ] EuclideanSpace ℂ (Fin N → Fin 2)`
-   with `[NormOneClass (QubitOpCLM N)]` (since `2^N ≥ 1` for all `N : ℕ`).
-2. **Item #27 (`NormedSpace.exp` Bridge for `complexPropagator` & `heisenbergEvol`)**:
-   proves `qubitOpToCLM (complexPropagator hH z) = NormedSpace.exp ((Complex.I * z) • qubitOpToCLM H)`
-   and `qubitOpToCLM (heisenbergEvol hH z O) = NormedSpace.exp ((Complex.I * z) • qubitOpToCLM H) *
-   qubitOpToCLM O * NormedSpace.exp (-(Complex.I * z) • qubitOpToCLM H)`, directly wiring
-   `CausalNormBounds.exp_conj_eq_tsum_adPow` and `lemma_2_1_*_exp_bound` to `heisenbergEvol hH z O`.
-3. **Concrete `LocalInteractionDecomp (QubitOpCLM N) N r`** (`qubitLocalInteractionDecomp`):
-   proves disjoint-support commutativity (`supportedSubmodule_comm_zero`) and support-union
-   closure (`supportedSubmodule_comm_union`) directly on `QubitOp N` (using the canonical
-   `ManyBodySetup.supportedSubmodule`), instantiating
-   `CausalNormBounds.lemma_2_1_single_site_exp_bound` (Eq. 2.4) and
-   `CausalNormBounds.lemma_2_1_r_local_exp_bound` (Eq. 2.5) directly on `N`-qubit
-   `r`-local Hamiltonians in exact operator norm `‖·‖_∞`.
-4. **End-to-End Theorem 1.1(b) (`theorem_1_1b_end_to_end`)**:
-   invokes `WightmanProjectors.lemma_4_2_operator_thermal_size_truncation` directly inside
-   the proof to bound `mssThermalSize G O` from the Krylov tail `q ≤ exp(-θ M + A)` and
-   static hypothesis `(H1)`.
 -/
 
 namespace KrylovChaos
@@ -110,7 +87,8 @@ private lemma hermFunc_smul_id {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (�
     α • H = hermFunc hH (fun E ↦ α * (E : ℂ)) := by
   conv_lhs => rw [← hermFunc_id hH]
   unfold hermFunc
-  rw [Matrix.smul_mul, Matrix.mul_smul]
+  dsimp only
+  rw [← Matrix.smul_mul, ← Matrix.mul_smul]
   congr 1; congr 1
   ext i j
   simp only [Matrix.smul_apply, Matrix.diagonal_apply, smul_eq_mul]
@@ -123,9 +101,7 @@ private lemma hermFunc_pow_smul {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (
   | succ k ih =>
     rw [pow_succ, ih, hermFunc_smul_id hH α, hermFunc_mul]
 
-/-- **Item #27 (Exact `NormedSpace.exp` Bridge for Spectral Exponentials on `QubitOp N`)**:
-For ANY Hermitian `H : QubitOp N` and ANY `α : ℂ`:
-`qubitOpToCLM (hermFunc hH (fun E ↦ Complex.exp (α * (E : ℂ)))) = NormedSpace.exp (α • qubitOpToCLM H)`. -/
+/-- **Item #27 (Exact `NormedSpace.exp` Bridge for Spectral Exponentials on `QubitOp N`)**. -/
 theorem qubitOpToCLM_hermFunc_exp {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (α : ℂ) :
     qubitOpToCLM (hermFunc hH (fun E ↦ Complex.exp (α * (E : ℂ)))) =
       NormedSpace.exp (α • qubitOpToCLM H) := by
@@ -194,13 +170,10 @@ theorem qubitOpToCLM_hermFunc_exp {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
   rw [tsum_mul_left, ← NormedSpace.exp_eq_tsum_div, ← Complex.exp_eq_exp_ℂ]
   ring
 
-/-- **Item #27**: `complexPropagator hH z` agrees identically with `NormedSpace.exp ((i z) • H)` in `QubitOpCLM N`. -/
 theorem qubitOpToCLM_complexPropagator {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (z : ℂ) :
     qubitOpToCLM (complexPropagator hH z) = NormedSpace.exp ((Complex.I * z) • qubitOpToCLM H) :=
   qubitOpToCLM_hermFunc_exp hH (Complex.I * z)
 
-/-- **Item #27**: `heisenbergEvol hH z O` agrees identically with Banach-algebra conjugation
-`exp(i z H) * O * exp(-i z H)` in `QubitOpCLM N`. -/
 theorem qubitOpToCLM_heisenbergEvol {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (z : ℂ) (O : QubitOp N) :
     qubitOpToCLM (heisenbergEvol hH z O) =
@@ -210,8 +183,6 @@ theorem qubitOpToCLM_heisenbergEvol {N : ℕ} {H : QubitOp N} (hH : H.IsHermitia
   rw [qubitOpToCLM_mul, qubitOpToCLM_mul, qubitOpToCLM_complexPropagator hH z,
     qubitOpToCLM_complexPropagator hH (-z), mul_neg, neg_smul]
 
-/-- **Item #27 (Exact Baker–Campbell–Hausdorff / `ad_H` Power Series for `heisenbergEvol`)**:
-Directly wires `GibbsConstruction.heisenbergEvol` to `CausalNormBounds.exp_conj_eq_tsum_adPow`! -/
 theorem qubitOpToCLM_heisenbergEvol_eq_tsum_adPow {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (z : ℂ) (O : QubitOp N) :
     qubitOpToCLM (heisenbergEvol hH z O) =
@@ -221,7 +192,6 @@ theorem qubitOpToCLM_heisenbergEvol_eq_tsum_adPow {N : ℕ} {H : QubitOp N} (hH 
   have h := exp_conj_eq_tsum_adPow (qubitOpToCLM H) (qubitOpToCLM O) (Complex.I * z)
   simpa [neg_smul] using h
 
-/-- Two Pauli strings with disjoint supports commute. -/
 lemma pauliString_comm_zero_of_disjoint {N : ℕ} {U₁ U₂ : Finset (Fin N)}
     (hdisj : Disjoint U₁ U₂) {a b : Fin N → Fin 4}
     (ha : ∀ x, a x ≠ 0 → x ∈ U₁) (hb : ∀ x, b x ≠ 0 → x ∈ U₂) :
@@ -269,7 +239,6 @@ private lemma pauliMat_mul_eqE (α β : Fin 4) :
     simp [pauliMat, pauliMulIdxE, pauliMulPhaseE, Matrix.mul_apply, Fin.sum_univ_two,
       Complex.I_mul_I]
 
-/-- Product of two Pauli strings supported on `U₁` and `U₂` lies in `supportedSubmodule N (U₂ ∪ U₁)`. -/
 lemma pauliString_mul_mem_union {N : ℕ} {U₁ U₂ : Finset (Fin N)}
     {a b : Fin N → Fin 4}
     (ha : ∀ x, a x ≠ 0 → x ∈ U₁) (hb : ∀ x, b x ≠ 0 → x ∈ U₂) :
@@ -299,7 +268,6 @@ lemma pauliString_mul_mem_union {N : ℕ} {U₁ U₂ : Finset (Fin N)}
   exact Submodule.smul_mem _ _
     (Submodule.subset_span ⟨fun x ↦ pauliMulIdxE (a x) (b x), hsupp', rfl⟩)
 
-/-- Disjoint-support operators in `QubitOp N` commute. -/
 theorem supportedSubmodule_comm_zero {N : ℕ} {U₁ U₂ : Finset (Fin N)}
     (hdisj : Disjoint U₁ U₂) {A B : QubitOp N}
     (hA : A ∈ supportedSubmodule N U₁) (hB : B ∈ supportedSubmodule N U₂) :
@@ -334,7 +302,6 @@ theorem supportedSubmodule_comm_zero {N : ℕ} {U₁ U₂ : Finset (Fin N)}
             simp only [Matrix.smul_mul, Matrix.mul_smul, smul_sub]
       _ = 0 := by rw [hx, smul_zero]
 
-/-- Commutator of operators supported on `U₁` and `U₂` is supported on `U₂ ∪ U₁`. -/
 theorem supportedSubmodule_comm_union {N : ℕ} {U₁ U₂ : Finset (Fin N)}
     {A B : QubitOp N}
     (hA : A ∈ supportedSubmodule N U₁) (hB : B ∈ supportedSubmodule N U₂) :
@@ -371,11 +338,6 @@ theorem supportedSubmodule_comm_union {N : ℕ} {U₁ U₂ : Finset (Fin N)}
       simp only [Matrix.smul_mul, Matrix.mul_smul, smul_sub]
     rw [heq]; exact Submodule.smul_mem _ c hx
 
-/-- **Concrete `N`-Qubit `LocalInteractionDecomp` in Exact Operator Norm `‖·‖_∞`**:
-Given any finite family of `r`-local interaction terms `term : ι → QubitOp N` supported on
-`supp : ι → Finset (Fin N)` (`|supp i| ≤ r`), constructs a `LocalInteractionDecomp (QubitOpCLM N) N r`
-so `CausalNormBounds.lemma_2_1_single_site_exp_bound` (Eq. 2.4) and
-`CausalNormBounds.lemma_2_1_r_local_exp_bound` (Eq. 2.5) apply directly on `QubitOp N`. -/
 noncomputable def qubitLocalInteractionDecomp {N r : ℕ} {ι : Type*} [Fintype ι]
     (term : ι → QubitOp N) (supp : ι → Finset (Fin N))
     (hcard : ∀ i, (supp i).card ≤ r)
@@ -399,13 +361,6 @@ end QubitOperatorNormDecomp
 
 section EndToEndTheorem11b
 
-/-- **End-to-End Theorem 1.1(b) (Operator-Level Static-to-Dynamical Thermal-Size Bound)**:
-Directly invokes `WightmanProjectors.lemma_4_2_operator_thermal_size_truncation` inside the
-proof (no `hH1` scalar-laundering!) to bound `mssThermalSize G O` on concrete `QubitOp N`
-from:
-- Operator truncation `O = A_M + R_M` (`‖A_M‖_W² = 1 - q`, `‖R_M‖_W² = q`),
-- Krylov tail bound `q ≤ exp(-θ M + A)` (from Theorem 1.1(a) / `JacobiSemigroup`), and
-- Static hypothesis `(H1)` `mssThermalSize G A_M ≤ (1 - q) * (C₁ N^δ s_M^η + C₂)`. -/
 theorem theorem_1_1b_end_to_end {N : ℕ} (G : GibbsData N)
     (hQsq : G.ρQuarter * G.ρQuarter = G.ρHalf)
     (O A_M R_M : QubitOp N) {q θ M A C₁ C₂ δ η s_M : ℝ}
