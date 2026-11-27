@@ -95,13 +95,13 @@ private lemma trace_herm_mul_hermFunc_re {N : ℕ} {ρ A : QubitOp N}
     Matrix.conjTranspose_apply, ite_mul, zero_mul, mul_ite, mul_zero,
     Finset.sum_ite_eq, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte, Complex.re_sum]
   apply Finset.sum_congr rfl; intro i _
+  rw [Finset.sum_mul, Complex.re_sum]
   apply Finset.sum_congr rfl; intro j _
   have hnorm : W i j * star (W i j) = ((‖W i j‖ ^ 2 : ℝ) : ℂ) := by
     rw [Complex.star_def, Complex.mul_conj', Complex.ofReal_pow]
   have hrew : (hρ.eigenvalues i : ℂ) * W i j * (f (hA.eigenvalues j) : ℂ) * star (W i j) =
       (((‖W i j‖ ^ 2 * (hρ.eigenvalues i * f (hA.eigenvalues j)) : ℝ) : ℂ)) := by
-    simp only [Complex.ofReal_mul]
-    linear_combination (hρ.eigenvalues i : ℂ) * (f (hA.eigenvalues j) : ℂ) * hnorm
+    push_cast; linear_combination (hρ.eigenvalues i : ℂ) * (f (hA.eigenvalues j) : ℂ) * hnorm
   rw [hrew, Complex.ofReal_re]
 
 private lemma unitary_overlap_doubly_stochastic {N : ℕ} {ρ A : QubitOp N}
@@ -160,9 +160,9 @@ theorem quantumRelEntropy_nonneg {N : ℕ} {ρ σ : QubitOp N}
   have htr1 : (ρ * hermFunc hρ (fun x ↦ (Real.log x : ℂ))).trace.re =
       ∑ i : QubitIdx N, hρ.eigenvalues i * Real.log (hρ.eigenvalues i) := by
     have h1 : ρ * hermFunc hρ (fun x ↦ (Real.log x : ℂ)) =
-        hermFunc hρ (fun x ↦ (x : ℂ) * (Real.log x : ℂ)) :=
-      (congrArg (· * hermFunc hρ (fun x ↦ (Real.log x : ℂ))) (hermFunc_id hρ).symm).trans
-        (hermFunc_mul hρ _ _)
+        hermFunc hρ (fun x ↦ (x : ℂ) * (Real.log x : ℂ)) := by
+      have hid : ρ = hermFunc hρ (fun x ↦ (x : ℂ)) := (hermFunc_id hρ).symm
+      rw [hid]; exact hermFunc_mul hρ _ _
     rw [h1, hermFunc_trace, Complex.re_sum]
     apply Finset.sum_congr rfl; intro i _
     rw [← Complex.ofReal_mul, Complex.ofReal_re]
@@ -192,7 +192,7 @@ theorem quantumRelEntropy_nonneg {N : ℕ} {ρ σ : QubitOp N}
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * (hρ.eigenvalues i * Real.log (hσ.eigenvalues j))) -
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * hρ.eigenvalues i) +
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * hσ.eigenvalues j) := by
-      simp_rw [← Finset.sum_sub_distrib, ← Finset.sum_add_distrib]
+      simp_rw [← Finset.sum_add_distrib, ← Finset.sum_sub_distrib, ← Finset.sum_add_distrib]
       apply Finset.sum_congr rfl; intro i _
       apply Finset.sum_congr rfl; intro j _; ring
     rw [hsplit, ← h1, h2, h3]; ring
@@ -225,9 +225,9 @@ theorem gibbsRelEntropy_nonneg {N : ℕ} {ρ H : QubitOp N}
   have htr1 : (ρ * hermFunc hρ (fun x ↦ (Real.log x : ℂ))).trace.re =
       ∑ i : QubitIdx N, hρ.eigenvalues i * Real.log (hρ.eigenvalues i) := by
     have h1 : ρ * hermFunc hρ (fun x ↦ (Real.log x : ℂ)) =
-        hermFunc hρ (fun x ↦ (x : ℂ) * (Real.log x : ℂ)) :=
-      (congrArg (· * hermFunc hρ (fun x ↦ (Real.log x : ℂ))) (hermFunc_id hρ).symm).trans
-        (hermFunc_mul hρ _ _)
+        hermFunc hρ (fun x ↦ (x : ℂ) * (Real.log x : ℂ)) := by
+      have hid : ρ = hermFunc hρ (fun x ↦ (x : ℂ)) := (hermFunc_id hρ).symm
+      rw [hid]; exact hermFunc_mul hρ _ _
     rw [h1, hermFunc_trace, Complex.re_sum]
     apply Finset.sum_congr rfl; intro i _
     rw [← Complex.ofReal_mul, Complex.ofReal_re]
@@ -235,16 +235,13 @@ theorem gibbsRelEntropy_nonneg {N : ℕ} {ρ H : QubitOp N}
       ∑ i : QubitIdx N, ∑ j : QubitIdx N,
         ‖W i j‖ ^ 2 * (hρ.eigenvalues i * (β * hH.eigenvalues j)) := by
     have hH_eq : ((β : ℝ) : ℂ) • H = hermFunc hH (fun y ↦ ((β * y : ℝ) : ℂ)) := by
-      calc ((β : ℝ) : ℂ) • H
-          = ((β : ℝ) : ℂ) • hermFunc hH (fun x ↦ (x : ℂ)) :=
-              congrArg (((β : ℝ) : ℂ) • ·) (hermFunc_id hH).symm
-        _ = hermFunc hH (fun y ↦ ((β * y : ℝ) : ℂ)) := by
-              unfold hermFunc
-              rw [← smul_mul_assoc, ← mul_smul_comm]
-              congr 1; congr 1; ext a b
-              by_cases hab : a = b
-              · subst hab; simp [Matrix.diagonal_apply]
-              · simp [Matrix.diagonal_apply, hab]
+      have hid := hermFunc_id hH
+      unfold hermFunc at hid ⊢
+      rw [← hid, ← smul_mul_assoc, ← mul_smul_comm]
+      congr 1; congr 1; ext a b
+      by_cases hab : a = b
+      · subst hab; simp [Matrix.diagonal_apply]
+      · simp [Matrix.diagonal_apply, hab]
     rw [hH_eq]
     exact trace_herm_mul_hermFunc_re hρ hH (fun y ↦ β * y)
   have hD : gibbsRelEntropy hρ hH β =
@@ -280,7 +277,7 @@ theorem gibbsRelEntropy_nonneg {N : ℕ} {ρ H : QubitOp N}
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * (hρ.eigenvalues i * Real.log (gibbsPartitionFn hH β))) -
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * hρ.eigenvalues i) +
         (∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖W i j‖ ^ 2 * μ j) := by
-      simp_rw [← Finset.sum_add_distrib, ← Finset.sum_sub_distrib, ← Finset.sum_add_distrib]
+      simp_rw [← Finset.sum_add_distrib, ← Finset.sum_sub_distrib]
       apply Finset.sum_congr rfl; intro i _
       apply Finset.sum_congr rfl; intro j _; ring
     rw [hsplit, ← h1, ← h4, h2, h3]; ring
@@ -363,7 +360,7 @@ theorem hsNormSq_siteSizeOp_eq_comm_avg {N : ℕ} (x : Fin N) (M : QubitOp N) :
     by_cases hax : a x = 0
     · rw [if_pos hax, if_neg (not_not.mpr hax), Matrix.zero_apply]
       rw [← Finset.mul_prod_erase Finset.univ (fun y ↦ pauliMat (a y) (p y) (q y)) (Finset.mem_univ x), sub_self]
-    · rw [if_neg hax, if_pos hax, zero_mul, sub_zero]; simp only [Matrix.of_apply]
+    · rw [if_neg hax, if_pos hax, zero_mul, sub_zero]
   -- Also compute HS norm of any commutator [M, P] via Pauli unitarity:
   -- ‖[M, P]‖_HS² = 2 ‖M‖_HS² - 2 Re Tr(Mᴴ P M P)
   have hcomm_hs : ∀ α : Fin 3,
@@ -378,8 +375,8 @@ theorem hsNormSq_siteSizeOp_eq_comm_avg {N : ℕ} (x : Fin N) (M : QubitOp N) :
       · simp [hy]; exact pauliMat_herm 0
     have hPsq : P * P = 1 := by
       unfold P pauliSite pauliString; rw [kronOp_mul]
-      have h1 : (fun y : Fin N ↦ pauliMat (Function.update (fun _ ↦ (0 : Fin 4)) x α.succ y) *
-          pauliMat (Function.update (fun _ ↦ (0 : Fin 4)) x α.succ y)) = fun _ ↦ 1 := by
+      have h1 : (fun y : Fin N ↦ pauliMat (Function.update (fun _ ↦ 0) x α.succ y) *
+          pauliMat (Function.update (fun _ ↦ 0) x α.succ y)) = fun _ ↦ 1 := by
         funext y; exact pauliMat_sq _
       rw [h1, kronOp_one]
     unfold hsNormSq hsInner matComm
@@ -407,7 +404,7 @@ theorem hsNormSq_siteSizeOp_eq_comm_avg {N : ℕ} (x : Fin N) (M : QubitOp N) :
       rw [smul_smul]; norm_num
     have h0 : pauliSite x 0 = 1 := by
       unfold pauliSite pauliString
-      have : (fun y : Fin N ↦ pauliMat (Function.update (fun _ ↦ (0 : Fin 4)) x 0 y)) = fun _ ↦ 1 := by
+      have : (fun y : Fin N ↦ pauliMat (Function.update (fun _ ↦ 0) x 0 y)) = fun _ ↦ 1 := by
         funext y; by_cases hy : y = x <;> simp [hy, hp0]
       rw [this, kronOp_one]
     rw [h4]
@@ -613,11 +610,11 @@ theorem lanczosOp_mem_filtration {N r s₀ : ℕ} (hr : 1 ≤ r)
       · exact Submodule.smul_mem _ _ hAnext
     · exact hOn_mono
 
-/-- Concrete `M`-term Lanczos truncation `A_M(t) = ∑_{n < M} ((-i)^n φ_n(t)) • 𝒪_n`. -/
+/-- Concrete `M`-term Lanczos truncation `A_M(t) = ∑_{n < M} (i^n φ_n(t)) • 𝒪_n` (Eq. 2.7 / Eq. 4.3). -/
 noncomputable def lanczosTrunc {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (O : QubitOp N) (M : ℕ) (t : ℝ) : QubitOp N :=
   ∑ n ∈ Finset.range M,
-    ((-Complex.I) ^ n * concreteKrylovWavefn hH β O n t) •
+    (Complex.I ^ n * concreteKrylovWavefn hH β O n t) •
       lanczosOp (concreteGibbsData hH β) H O n
 
 /-- **Concrete `M`-Term Lanczos Truncation Filtration Containment**:

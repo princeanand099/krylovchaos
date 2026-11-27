@@ -474,11 +474,12 @@ theorem lanczos_three_term {N : ℕ} (G : GibbsData N) (H O : QubitOp N) (n : �
     simp [Complex.ofReal_inv]
   rw [hdef, smul_smul, mul_inv_cancel₀ hbC, one_smul, sub_add_cancel]
 
-/-- Concrete Krylov wavefunction `φ_n^{(β)}(t) = i^n (𝒪_n^{(β)} | 𝒪(t))_β^W`. -/
+/-- Concrete Krylov wavefunction `φ_n^{(β)}(t) = (-i)^n (𝒪_n^{(β)} | 𝒪(t))_β^W`,
+matching `𝒪(t) = ∑_n i^n φ_n^{(β)}(t) 𝒪_n^{(β)}` (Eq. 2.7, `tex:364`). -/
 noncomputable def concreteKrylovWavefn {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (O : QubitOp N) (n : ℕ) (t : ℝ) : ℂ :=
   let G := concreteGibbsData hH β
-  Complex.I ^ n * gibbsWightmanInner G (lanczosOp G H O n) (heisenbergEvol hH (t : ℂ) O)
+  (-Complex.I) ^ n * gibbsWightmanInner G (lanczosOp G H O n) (heisenbergEvol hH (t : ℂ) O)
 
 /-- Concrete Krylov complexity `K_β^W(t) = ∑_{n < 4^N} n |φ_n^{(β)}(t)|²`. -/
 noncomputable def concreteKrylovComplexity {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
