@@ -12,6 +12,7 @@ import KrylovChaos.ClusterCumulantAndDecoupling
 import KrylovChaos.ConcreteCombinatorics
 import KrylovChaos.ConcreteEndToEndWiring
 import KrylovChaos.DepolarizedFrame
+import KrylovChaos.DoubleWellTunneling
 import KrylovChaos.EndToEndTheorems
 import KrylovChaos.Filtration
 import KrylovChaos.GibbsConstruction
