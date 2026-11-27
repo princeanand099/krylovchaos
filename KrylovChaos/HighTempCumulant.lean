@@ -18,7 +18,7 @@ open Complex Matrix
 noncomputable section TraceCumulantMain
 
 set_option maxHeartbeats 800000 in
-/-- **Lemma 6.3 (High-Temperature Combined-Exponential Trace Cumulant Bound)**:
+/-- **Lemma 6.3 (Unconditional High-Temperature Combined-Exponential Trace Cumulant Bound)**:
 For any `r`-local (`r ≥ 2`) Hermitian Hamiltonian `H = ∑ Z ∈ E, h Z` with `h Z ∈ supportedOn Z`,
 `Z.Nonempty`, `Z.card ≤ r`, site strength `≤ Jsite` (`0 < Jsite`), any `k_X`-local (`1 ≤ k_X`)
 Hermitian observable `X = ∑ Z ∈ E_X, x Z` with `x Z ∈ supportedOn Z`, `Z.Nonempty`,
@@ -528,7 +528,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       rw [Matrix.conjTranspose_smul, hermFunc_conjTranspose]
       congr 1
       · simp [Complex.star_def, Complex.conj_ofReal]
-      · congr 1; funext e; simp [Complex.star_def, Complex.conj_ofReal]
+      · congr 1; funext e; rw [Complex.star_def, Complex.conj_ofReal]
     have htr_re : (gibbsRho hH β * X).trace.im = 0 := by
       have hconj : star (gibbsRho hH β * X).trace = (gibbsRho hH β * X).trace := by
         rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, hX.eq,
@@ -656,17 +656,19 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
         (Complex.exp ((-lam * μ : ℝ) : ℂ)) • hermFunc hK₀ (fun e ↦ Complex.exp (e : ℂ)) := by
       have h1 := hasSum_hermFunc_exp hK (1 : ℂ)
       have h2 := hasSum_hermFunc_exp hK₀ (1 : ℂ)
+      -- Compare traces via `Matrix.exp` / Cauchy product of `exp(K₀)` and `exp((-lam * μ) • 1)`.
+      -- Direct eigenspace proof: `hK₀` eigenvectors are eigenvectors of `K = K₀ + c • 1` with eigenvalue `e_i + c`!
       set U := (hK₀.eigenvectorUnitary : QubitOp N)
       have hUUH : U * Uᴴ = 1 := Matrix.mem_unitaryGroup_iff.mp hK₀.eigenvectorUnitary.prop
       have hUHU : Uᴴ * U = 1 := Matrix.mem_unitaryGroup_iff'.mp hK₀.eigenvectorUnitary.prop
       have hK_diag : K = U * Matrix.diagonal (fun i ↦ ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ)) * Uᴴ := by
-        conv_lhs => rw [hK_eq, ← hermFunc_id hK₀]
-        unfold hermFunc
         have h1_eq : (1 : QubitOp N) = U * (1 : QubitOp N) * Uᴴ := by rw [Matrix.mul_one, hUUH]
-        conv_lhs => rhs; rw [h1_eq]
-        rw [Matrix.smul_mul, Matrix.mul_smul, ← Matrix.mul_add, ← Matrix.add_mul]
-        congr 2; ext i j; simp [Matrix.diagonal_apply, Matrix.one_apply]
-        split_ifs <;> simp
+        have hK₀_eq : K₀ = U * Matrix.diagonal (fun i ↦ (hK₀.eigenvalues i : ℂ)) * Uᴴ :=
+          (hermFunc_id hK₀).symm
+        have hD : Matrix.diagonal (fun i ↦ ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ)) =
+            Matrix.diagonal (fun i ↦ (hK₀.eigenvalues i : ℂ)) + ((-lam * μ : ℝ) : ℂ) • (1 : QubitOp N) := by
+          ext i j; simp [Matrix.diagonal_apply, Matrix.one_apply]; split_ifs <;> simp
+        rw [hD, Matrix.mul_add, Matrix.add_mul, Matrix.mul_smul, Matrix.smul_mul, ← hK₀_eq, ← h1_eq, ← hK_eq]
       have hpow_K : ∀ m : ℕ, K ^ m = U * Matrix.diagonal (fun i ↦ ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ) ^ m) * Uᴴ := by
         intro m
         induction m with
@@ -683,20 +685,26 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
                 rw [hUHU, Matrix.mul_one]; simp only [Matrix.mul_assoc]
             _ = U * Matrix.diagonal (fun i ↦ ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ) ^ (m + 1)) * Uᴴ := by
                 rw [Matrix.diagonal_mul_diagonal]
-                congr 2; congr 1; funext i; rw [pow_succ]
+                simp_rw [← pow_succ]
       have hsum_K : HasSum (fun m : ℕ ↦ ((1 : ℂ) ^ m / (m.factorial : ℂ)) • K ^ m)
           (U * Matrix.diagonal (fun i ↦ Complex.exp ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ)) * Uᴴ) := by
         have hdiag_sum : HasSum
             (fun m : ℕ ↦ Matrix.diagonal (fun i : QubitIdx N ↦
               ((1 : ℂ) ^ m / (m.factorial : ℂ)) * ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ) ^ m))
             (Matrix.diagonal (fun i : QubitIdx N ↦ Complex.exp ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ))) := by
-          rw [Pi.hasSum]; intro a; rw [Pi.hasSum]; intro b
-          by_cases hab : a = b
-          · subst hab
-            simp only [Matrix.diagonal_apply_eq, one_pow, one_div]
-            have hce := Complex.hasSum_exp ((hK₀.eigenvalues a + (-lam * μ) : ℝ) : ℂ)
-            simpa [div_eq_inv_mul] using hce
-          · simp [Matrix.diagonal_apply_ne _ hab, hasSum_zero]
+          have hvec : HasSum
+              (fun m : ℕ ↦ (fun i : QubitIdx N ↦
+                ((1 : ℂ) ^ m / (m.factorial : ℂ)) * ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ) ^ m))
+              (fun i : QubitIdx N ↦ Complex.exp ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ)) := by
+            rw [Pi.hasSum]; intro a
+            simp only [one_pow, one_div]
+            simpa [div_eq_inv_mul] using Complex.hasSum_exp ((hK₀.eigenvalues a + (-lam * μ) : ℝ) : ℂ)
+          let Dmap : (QubitIdx N → ℂ) →L[ℂ] QubitOp N :=
+            LinearMap.toContinuousLinearMap
+              { toFun := Matrix.diagonal
+                map_add' := fun v w ↦ by ext i j; simp [Matrix.diagonal_apply]; split_ifs <;> simp
+                map_smul' := fun c v ↦ by ext i j; simp [Matrix.diagonal_apply]; split_ifs <;> simp }
+          exact hvec.map Dmap Dmap.continuous
         let Lmul : QubitOp N →L[ℂ] QubitOp N :=
           LinearMap.toContinuousLinearMap
             { toFun := fun M ↦ U * M * Uᴴ
@@ -704,15 +712,16 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
               map_smul' := fun c M ↦ by simp [Matrix.mul_smul, Matrix.smul_mul] }
         have hL := hdiag_sum.map Lmul Lmul.continuous
         convert hL using 1
-        funext m; rw [hpow_K m]
-        change ((1 : ℂ) ^ m / (m.factorial : ℂ)) • (U * Matrix.diagonal (fun i ↦ ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ) ^ m) * Uᴴ) =
-          U * Matrix.diagonal (fun i ↦ ((1 : ℂ) ^ m / (m.factorial : ℂ)) * ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ) ^ m) * Uᴴ
-        ext a b
-        simp only [Matrix.smul_apply, smul_eq_mul, Matrix.mul_apply, Matrix.diagonal_apply,
-          Finset.sum_mul, Finset.mul_sum]
-        apply Finset.sum_congr rfl; intro l _
-        apply Finset.sum_congr rfl; intro k _
-        split_ifs <;> ring
+        · funext m; rw [hpow_K m]
+          change ((1 : ℂ) ^ m / (m.factorial : ℂ)) • (U * Matrix.diagonal (fun i ↦ ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ) ^ m) * Uᴴ) =
+            U * Matrix.diagonal (fun i ↦ ((1 : ℂ) ^ m / (m.factorial : ℂ)) * ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ) ^ m) * Uᴴ
+          ext a b
+          simp only [Matrix.smul_apply, smul_eq_mul, Matrix.mul_apply, Matrix.diagonal_apply,
+            Finset.sum_mul, Finset.mul_sum]
+          apply Finset.sum_congr rfl; intro l _
+          apply Finset.sum_congr rfl; intro k _
+          split_ifs <;> ring
+        · rfl
       have heq_mat : hermFunc hK (fun e ↦ Complex.exp ((1 : ℂ) * (e : ℂ))) =
           U * Matrix.diagonal (fun i ↦ Complex.exp ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ)) * Uᴴ :=
         h1.unique hsum_K
