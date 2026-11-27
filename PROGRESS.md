@@ -1,33 +1,38 @@
 # Formalization Progress
 
-- **Status**: Complete — all **52** library modules under `KrylovChaos/`, `KrylovChaos/AuditAxioms.lean` (**142** audited headline theorems), and **23** locked `comparator` theorems verified with **zero `sorry`s**, **zero custom axioms**, and **zero hypothesis laundering**.
+- **Status**: Complete — all **58** library modules under `KrylovChaos/`, `KrylovChaos/AuditAxioms.lean` (**193** audited headline theorems), and **23** locked `comparator` theorems verified with **zero `sorry`s**, **zero custom axioms**, and **zero hypothesis laundering**.
 - **Toolchain**: `leanprover/lean4:v4.35.0` + Mathlib `v4.35.0` + `leanprover/comparator` `v4.35.0`.
 
-## Remediation Summary (31-Item Checklist Against `finite_temp_krylov_chaos.tex`)
+## Verdict-A Remediation Summary (30-Item Gap & Remediation Checklist Against `finite_temp_krylov_chaos.tex`)
 
-- **Part A (Items #1–#8)**:
-  - `#1` Majorana fermion parity, string basis, parity-aware size operator, and Prop. 2.3(2) Eq. (2.10) (`KrylovChaos/MajoranaAlgebra.lean`).
-  - `#2` Exact `(-i)^n` phase in `concreteKrylovWavefn`, real-valuedness, normalization, initial condition, and ODE Eq. (2.7) (`KrylovChaos/GibbsConstruction.lean`, `KrylovChaos/ConcreteEndToEndWiring.lean`).
-  - `#3` Concrete Prop. 4.1(2) Eq. (4.2) on `QubitOp N` (`KrylovChaos/ConcreteEndToEndWiring.lean`).
-  - `#4` Concrete Lemma 4.2 Eq. (4.3) on `mssThermalSize`/`lambdaMSS` (`KrylovChaos/ConcreteEndToEndWiring.lean`).
-  - `#5` Operator-level Lemma 6.1 & Prop. 6.2 on `QubitOp N` (`KrylovChaos/Theorem12Concrete.lean`).
-  - `#6` Exact asymmetric shift Eqs. (5.2)–(5.4) (`KrylovChaos/Theorem12Concrete.lean`).
-  - `#7` Euler-secant Meixner $\eta = 1$ `sech` pole obstruction & zero-laundering `Filter.liminf` Thm. 1.2(b) (`KrylovChaos/SpectralMeasure.lean`).
-  - `#8` Concrete 1D finite-range Prop. 8.1 wired into Lemma 6.1 (`KrylovChaos/Milestone3Bridges.lean`).
-- **Part B (Items #9–#23)**:
-  - `#9` Prop. 2.2(3) Lanczos invariance under `jBeta` (`KrylovChaos/ConcreteEndToEndWiring.lean`).
-  - `#10` Prop. 2.3(1) qubit Eq. (2.9) (`KrylovChaos/ManyBodySetup.lean`).
-  - `#11` Unconditional `limsup` rate bound & infinite Krylov ODE $\ell^2$-uniqueness (`KrylovChaos/Milestone2AnalyticFoundations.lean`).
-  - `#12` Concrete end-to-end qubit Thm. 1.1(a)–(b) (`KrylovChaos/Theorem11bConcrete.lean`).
-  - `#13` Full Prop. 4.3 `lambdaMSS` bound & `N`-qubit local unitary invariance (`KrylovChaos/ProductStateLambdaMSS.lean`).
-  - `#14` Measure-theoretic `wightmanSpectralMeasure : Measure ℝ`, weak-limit Fatou & strip holomorphy (`KrylovChaos/Milestone2AnalyticFoundations.lean`).
-  - `#15` Concrete `concreteOTOC`, Eq. (1.17)–(1.18) dominance & locally-uniform-limit holomorphy (`KrylovChaos/Milestone2AnalyticFoundations.lean`).
-  - `#16` Lemma 6.3 / A.3 trace polymer KP (`KrylovChaos/ClusterCumulantAndDecoupling.lean`, `KrylovChaos/ConcreteCombinatorics.lean`).
-  - `#17` Prop. 6.4(1)–(2) `S_β = I + II + III` & entropic decoupling (`KrylovChaos/Milestone3Bridges.lean`, `KrylovChaos/ClusterCumulantAndDecoupling.lean`).
-  - `#18` Cor. 6.5 $\mathbb{Z}^d$ causal ball volume & Lieb–Robinson (`KrylovChaos/Milestone3Bridges.lean`, `KrylovChaos/ClusterCumulantAndDecoupling.lean`).
-  - `#19` Thm. 1.3(b) Eq. (1.22) & Thm. 1.3(c) (`KrylovChaos/Milestone3Bridges.lean`, `KrylovChaos/ShiftedCommutatorAndThm13c.lean`).
-  - `#20` Sec. 8.2 Classical Ising Hamiltonian & diagonal-to-$L^2$ equivalence (`KrylovChaos/Milestone3Bridges.lean`, `KrylovChaos/ClassicalIsingConcrete.lean`).
-  - `#21`–`#23` Prop. 9.1(1)–(3) & Lemma B.1 (`KrylovChaos/Milestone4StructuralNecessity.lean`, `KrylovChaos/SpectralSmearingAndDoubleWell.lean`, `KrylovChaos/BimodalExact.lean`).
-- **Part C (Items #24–#31)**:
-  - `#24`–`#28` Sharp `4^(m-1)` Catalan bound, Knuth `forestSum`, polymer-to-bintree bridge, causal expansion, normalized Lemma 7.2, `NormedSpace.exp` bridge, `supportedSubmodule` (`KrylovChaos/ConcreteCombinatorics.lean`, `KrylovChaos/CausalExpansion.lean`, `KrylovChaos/Lemma72Concrete.lean`, `KrylovChaos/EndToEndTheorems.lean`, `KrylovChaos/ManyBodySetup.lean`).
-  - `#29`–`#31` `comparator` sync, 142-theorem `AuditAxioms.lean`, and documentation sync.
+- **Milestone 1 — Sections 2–4 & Appendix A (Items #1–#11, #29)**:
+  - `#1` Majorana `LocalInteractionDecomp` & Lemma 2.1(1)–(3) (`KrylovChaos/Milestone1Majorana.lean`).
+  - `#2` Standalone `jBeta` bijectivity / `LinearEquiv` (`KrylovChaos/Milestone1CoreRemediation.lean`).
+  - `#3` `isEvenParity H → isEvenParity ρQuarter` wired into Prop. 2.3(2) Eq. (2.10) (`KrylovChaos/Milestone1CoreRemediation.lean`).
+  - `#4` Renamed misnamed Section 2 identity `lemma_6_1_concrete_operator` → `hsNormSq_siteSizeOp_jBeta_eq_comm_avg` (`KrylovChaos/OperatorGlauberAndLanczosFiltration.lean`).
+  - `#5`–`#8` Infinite Krylov ODE satisfaction, genuine Carleman $\ell^2$-uniqueness without `hflux`, exact single-exponential Fatou Eqs. (1.12)–(1.13), and `limsup` rate bound including `b 1 = 0` (`KrylovChaos/Milestone1InfiniteChain.lean`).
+  - `#9` Majorana filtration, `majoranaWightmanQ`, Prop. 4.1(1)–(2), Lemma 4.2, and concrete & family Thm. 1.1(b) (`KrylovChaos/Milestone1Majorana.lean`).
+  - `#10` Family-level concrete qubit Thm. 1.1(b) (`λ_L ≤ 2 α`) (`KrylovChaos/Milestone1CoreRemediation.lean`).
+  - `#11` Prop. 4.3 `lambdaMSS` bound for arbitrary non-diagonal full-rank product states (`KrylovChaos/Milestone1CoreRemediation.lean`).
+  - `#29` Multi-type heterogeneous-locality Lemma A.3 (`KrylovChaos/Milestone1CoreRemediation.lean`).
+- **Milestone 2 — Section 5 & Theorem 1.2(a)–(c) (Items #12–#15)**:
+  - `#12` Spectral-weight-to-measure bridge, `Integrable (cosh (r * ω))`, Eq. (1.15), and `r_W ≥ β/2 + κ` (`KrylovChaos/Milestone2SpectralAndVitali.lean`).
+  - `#13` Concrete Lanczos tridiagonalization moment identity + Cauchy–Hadamard from strip integrability → `2 liminf b_n / n ≤ π / r_W` (`KrylovChaos/Milestone2SpectralAndVitali.lean`).
+  - `#14` Concrete `T_{τ,N}(t)`, time-translation invariance, `W ↔ V` swap symmetry, 3-way Eq. (1.17), and `otocStripHalfWidthMax` (`KrylovChaos/Milestone2SpectralAndVitali.lean`, `KrylovChaos/Milestone2AnalyticFoundations.lean`).
+  - `#15` Genuine Montel + Vitali strip extension theorem (`KrylovChaos/Milestone2SpectralAndVitali.lean`).
+- **Milestone 3 — Sections 6–8 & Theorem 1.3(a)–(c) (Items #16–#25)**:
+  - `#16` Prop. 6.2 exact `3/2` prefactor & `X ∈ E` scoping (`KrylovChaos/Milestone3Sections678.lean`).
+  - `#17` Two-type hypergraph polymer expansion + order-$k$ Schwarz Lemma 6.3 Eq. (6.3) (`KrylovChaos/Milestone3Sections678.lean`).
+  - `#18` Genuine non-tautological `II(A)`, `B_β`, `III(A)` & Eq. (6.4) (`KrylovChaos/Milestone3Sections678.lean`).
+  - `#19` Singular `ρ_O` & `D(ρ_O ‖ ρ_β) ≤ 2 ln ‖O(iβ/4)‖_∞` (`KrylovChaos/Milestone3Sections678.lean`).
+  - `#20` `wightmanNormSq_le_opNorm_sq` + all-time lattice Cor. 6.5 (`KrylovChaos/Milestone3Sections678.lean`).
+  - `#21` `betaWC_concrete` & Lemma 7.3(1) general subset `U` (`KrylovChaos/Milestone3Sections678.lean`).
+  - `#22` Thm. 1.3(b) Eq. (1.22) without `hRP` with exact `54`/`216` prefactors (`KrylovChaos/Milestone3Sections678.lean`).
+  - `#23` Family-level concrete Thm. 1.3(c) Eqs. (1.23)–(1.24) (`KrylovChaos/Milestone3Sections678.lean`).
+  - `#24` All-temperature 1D Araki Prop. 8.1 with exact `3/2` prefactor & Eq. (8.1) (`KrylovChaos/Milestone3Sections678.lean`).
+  - `#25` Strict `i < j` Classical Ising `μ_β`, `Φ_max(β)`, multi-edge discrete Hubbard–Stratonovich Prop. 8.3 Eq. (8.4) & diagonal qubit bridge (`KrylovChaos/Milestone3Sections678.lean`).
+- **Milestone 4 — Section 9, Appendix B, Comparator, Audit & Docs (Items #26–#28, #30)**:
+  - `#26` Gaussian time-smearing Bochner integral `W_σ`, unconditional `liminf b_n / n = 0` without `hstrip`, & OTOC preservation (`KrylovChaos/Milestone4Section9AppB.lean`).
+  - `#27` Bimodal state wiring & (H2) violation for all `δ ∈ [0, 1)` (`KrylovChaos/Milestone4Section9AppB.lean`).
+  - `#28` Genuine `doubleWellBlock` Lemma B.1 & 1-qubit 2D Krylov closure Prop. 9.1(3) Eq. (9.3) (`KrylovChaos/Milestone4Section9AppB.lean`).
+  - `#30` Expanded `AuditAxioms.lean` (193 headline theorems), documentation sync (`README.md`, `EXTERNAL-AXIOMS.md`, `PROGRESS.md`, `PROOF-PATH.md`), and full CI verification (`lake build` + `#print axioms` + `lake comparator`).

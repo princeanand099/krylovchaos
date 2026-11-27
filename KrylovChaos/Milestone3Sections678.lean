@@ -391,25 +391,33 @@ private lemma hsInner_siteSizeOp_eq_comm_sum {N : ℕ} (x : Fin N) (M : QubitOp 
     have h4 : (Mᴴ * P * (M * P)).trace = (Mᴴ * (P * M * P)).trace := by
       congr 1; simp only [Matrix.mul_assoc]
     rw [h1, h2, h3, h4]; ring
+  have hsum_twirl : (∑ α : Fin 3, pauliSite x α.succ * M * pauliSite x α.succ) =
+      (4 : ℂ) • partialTraceSite x M - M := by
+    unfold partialTraceSite
+    have h4 : (4 : ℂ) • ((1 / 4 : ℂ) • ∑ k : Fin 4, pauliSite x k * M * pauliSite x k) =
+        ∑ k : Fin 4, pauliSite x k * M * pauliSite x k := by
+      rw [smul_smul]; norm_num
+    have h0 : pauliSite x 0 = 1 := by
+      unfold pauliSite pauliString
+      have hp0 : pauliMat 0 = 1 := by ext i j; fin_cases i <;> fin_cases j <;> simp [pauliMat]
+      have : (fun y : Fin N ↦ pauliMat (Function.update (fun _ : Fin N ↦ (0 : Fin 4)) x (0 : Fin 4) y)) = fun _ ↦ 1 := by
+        funext y; by_cases hy : y = x <;> simp [hy, hp0]
+      rw [this, kronOp_one]
+    rw [h4]; symm
+    rw [Fin.sum_univ_succ, h0, Matrix.one_mul, Matrix.mul_one, add_sub_cancel_left]
+  have htr_sum : (∑ α : Fin 3, (Mᴴ * (pauliSite x α.succ * M * pauliSite x α.succ)).trace.re) =
+      4 * (Mᴴ * partialTraceSite x M).trace.re - (Mᴴ * M).trace.re := by
+    have h1 : (∑ α : Fin 3, (Mᴴ * (pauliSite x α.succ * M * pauliSite x α.succ)).trace.re) =
+        (Mᴴ * ∑ α : Fin 3, pauliSite x α.succ * M * pauliSite x α.succ).trace.re := by
+      rw [Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum]
+    rw [h1, hsum_twirl, Matrix.mul_sub, Matrix.mul_smul, Matrix.trace_sub, Matrix.trace_smul,
+      smul_eq_mul, Complex.sub_re]
+    rw [show (4 : ℂ) = ((4 : ℝ) : ℂ) by norm_num, Complex.re_ofReal_mul]
   simp_rw [hterm]
   rw [← Finset.mul_sum, Finset.sum_sub_distrib, Finset.sum_const, Finset.card_univ,
-    Fintype.card_fin, nsmul_eq_mul]
-  have hre : ((1 / 4 : ℂ) * ((3 : ℂ) * (Mᴴ * M).trace -
-      ∑ α : Fin 3, (Mᴴ * (pauliSite x α.succ * M * pauliSite x α.succ)).trace)).re =
-      (1 / 4 : ℝ) * (3 * (Mᴴ * M).trace.re -
-      ∑ α : Fin 3, (Mᴴ * (pauliSite x α.succ * M * pauliSite x α.succ)).trace.re) := by
-    have h14 : (1 / 4 : ℂ) = ((1 / 4 : ℝ) : ℂ) := by push_cast; rfl
-    rw [h14, Complex.re_ofReal_mul, Complex.sub_re, Complex.re_sum]
-    have h3 : ((3 : ℂ) * (Mᴴ * M).trace).re = 3 * (Mᴴ * M).trace.re := by
-      have : (3 : ℂ) = ((3 : ℝ) : ℂ) := by norm_num
-      rw [this, Complex.re_ofReal_mul]
-    rw [h3]
-  have hsum3 : (Mᴴ * (3 • M - ∑ α : Fin 3, pauliSite x α.succ * M * pauliSite x α.succ)).trace =
-      (3 : ℂ) * (Mᴴ * M).trace - ∑ α : Fin 3, (Mᴴ * (pauliSite x α.succ * M * pauliSite x α.succ)).trace := by
-    rw [Matrix.mul_sub, Matrix.trace_sub, Matrix.mul_smul, Matrix.trace_smul, Matrix.mul_sum,
-      Matrix.trace_sum, nsmul_eq_mul]; norm_cast
-  change ((1 / 4 : ℂ) * (Mᴴ * (3 • M - ∑ α : Fin 3, pauliSite x α.succ * M * pauliSite x α.succ)).trace).re = _
-  rw [hsum3, hre]; ring
+    Fintype.card_fin, nsmul_eq_mul, Nat.cast_ofNat, htr_sum,
+    Matrix.mul_sub, Matrix.trace_sub, Complex.sub_re]
+  ring
 
 set_option maxHeartbeats 800000 in
 /-- **Item #18 — Genuine Non-Tautological Proposition 6.4(1) Eq. (6.4) Decomposition & Cauchy–Schwarz**:
@@ -485,29 +493,44 @@ theorem prop_6_4_part1_genuine_eq_6_4 {N : ℕ} (G : GibbsData N) (A : QubitOp N
   set SUV := ∑ x : Fin N, ∑ α : Fin 3, (hsInner (commutatorPieceU G A x α) (commutatorPieceV G A x α)).re
   have hSU_nn : 0 ≤ SU := Finset.sum_nonneg fun x _ ↦ Finset.sum_nonneg fun α _ ↦ hsNormSq_nonneg _
   have hSV_nn : 0 ≤ SV := Finset.sum_nonneg fun x _ ↦ Finset.sum_nonneg fun α _ ↦ hsNormSq_nonneg _
+  have hexp_smul : ∀ (U V : QubitOp N) (t : ℝ),
+      hsNormSq (U + (t : ℂ) • V) = hsNormSq U + 2 * t * (hsInner U V).re + t ^ 2 * hsNormSq V := by
+    intro U V t
+    have h1 : (hsInner U ((t : ℂ) • V)).re = t * (hsInner U V).re := by
+      unfold hsInner
+      rw [Matrix.mul_smul, Matrix.trace_smul, smul_eq_mul, Complex.re_ofReal_mul]
+    have h2 : hsNormSq ((t : ℂ) • V) = t ^ 2 * hsNormSq V := by
+      unfold hsNormSq hsInner
+      simp only [Matrix.conjTranspose_smul, Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_smul,
+        smul_smul, smul_eq_mul, Complex.star_def, Complex.conj_ofReal]
+      rw [← Complex.ofReal_mul, Complex.re_ofReal_mul, sq]
+    rw [hexp U ((t : ℂ) • V), h1, h2]; ring
   have hquad : ∀ t : ℝ, 0 ≤ SU + 2 * t * SUV + t ^ 2 * SV := by
     intro t
     have hsum_nn : 0 ≤ ∑ x : Fin N, ∑ α : Fin 3,
         hsNormSq (commutatorPieceU G A x α + (t : ℂ) • commutatorPieceV G A x α) :=
       Finset.sum_nonneg fun x _ ↦ Finset.sum_nonneg fun α _ ↦ hsNormSq_nonneg _
-    have hterm_eq : ∀ x α,
-        hsNormSq (commutatorPieceU G A x α + (t : ℂ) • commutatorPieceV G A x α) =
-        hsNormSq (commutatorPieceU G A x α) +
-        2 * t * (hsInner (commutatorPieceU G A x α) (commutatorPieceV G A x α)).re +
-        t ^ 2 * hsNormSq (commutatorPieceV G A x α) := by
-      intro x α
-      rw [hexp]
-      congr 1
-      · congr 1
-        unfold hsInner
-        rw [Matrix.mul_smul, Matrix.trace_smul, smul_eq_mul, Complex.re_ofReal_mul]
-        ring
-      · unfold hsNormSq hsInner
-        simp only [Matrix.conjTranspose_smul, Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_smul,
-          smul_smul, smul_eq_mul, Complex.star_def, Complex.conj_ofReal]
-        rw [← Complex.ofReal_mul, Complex.re_ofReal_mul, sq]
-    simp_rw [hterm_eq, Finset.sum_add_distrib, ← Finset.mul_sum] at hsum_nn
-    exact hsum_nn
+    have hsum_eq : (∑ x : Fin N, ∑ α : Fin 3,
+        hsNormSq (commutatorPieceU G A x α + (t : ℂ) • commutatorPieceV G A x α)) =
+        SU + 2 * t * SUV + t ^ 2 * SV := by
+      dsimp only [SU, SUV, SV]
+      have h1 : ∀ x : Fin N, (∑ α : Fin 3,
+          hsNormSq (commutatorPieceU G A x α + (t : ℂ) • commutatorPieceV G A x α)) =
+          (∑ α : Fin 3, hsNormSq (commutatorPieceU G A x α)) +
+          (2 * t) * (∑ α : Fin 3, (hsInner (commutatorPieceU G A x α) (commutatorPieceV G A x α)).re) +
+          (t ^ 2) * (∑ α : Fin 3, hsNormSq (commutatorPieceV G A x α)) := by
+        intro x
+        trans (∑ α : Fin 3, (hsNormSq (commutatorPieceU G A x α) +
+            2 * t * (hsInner (commutatorPieceU G A x α) (commutatorPieceV G A x α)).re +
+            t ^ 2 * hsNormSq (commutatorPieceV G A x α)))
+        · exact Finset.sum_congr rfl fun α _ ↦ hexp_smul _ _ t
+        · rw [Finset.sum_add_distrib, Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
+      trans (∑ x : Fin N, ((∑ α : Fin 3, hsNormSq (commutatorPieceU G A x α)) +
+          (2 * t) * (∑ α : Fin 3, (hsInner (commutatorPieceU G A x α) (commutatorPieceV G A x α)).re) +
+          (t ^ 2) * (∑ α : Fin 3, hsNormSq (commutatorPieceV G A x α))))
+      · exact Finset.sum_congr rfl fun x _ ↦ h1 x
+      · rw [Finset.sum_add_distrib, Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
+    linarith
   have hcs_sq : SUV ^ 2 ≤ SU * SV := by
     by_cases hSV0 : SV = 0
     · have h0 : SUV = 0 := by
@@ -885,7 +908,7 @@ lemma rhoO_op_eigenvalues_nonneg {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     ring
   have hre := congrArg Complex.re hinner
   simp only [Complex.ofReal_re] at hre
-  rw [hre, inner_self_eq_norm_sq_to_K, Complex.ofReal_re]
+  rw [hre, inner_self_eq_norm_sq_to_K, ← Complex.ofReal_pow, Complex.ofReal_re]
   exact sq_nonneg _
 
 set_option maxHeartbeats 800000 in
@@ -938,9 +961,8 @@ theorem rhoO_op_relEntropy_le_two_log_opNorm {N : ℕ} {H : QubitOp N} (hH : H.I
       calc gibbsRhoQuarter hH β * O
           = ((((gibbsPartitionFn hH β) ^ (-(1 / 4 : ℝ)) : ℝ) : ℂ) •
               complexPropagator hH (Complex.I * ((β / 4 : ℝ) : ℂ))) * O := by
-                rw [hprop_l]; unfold gibbsRhoQuarter; congr 1
-                unfold hermFunc
-                apply congrArg (fun d ↦ (hH.eigenvectorUnitary : QubitOp N) * Matrix.diagonal d * (hH.eigenvectorUnitary : QubitOp N)ᴴ)
+                rw [hprop_l]; unfold gibbsRhoQuarter; congr 2
+                unfold hermFunc; dsimp only; congr 2
                 funext i; exact Complex.ofReal_exp _
         _ = complexPropagator hH (Complex.I * ((β / 4 : ℝ) : ℂ)) * O *
               ((((gibbsPartitionFn hH β) ^ (-(1 / 4 : ℝ)) : ℝ) : ℂ) • (1 : QubitOp N)) := by
@@ -1009,7 +1031,7 @@ theorem rhoO_op_relEntropy_le_two_log_opNorm {N : ℕ} {H : QubitOp N} (hH : H.I
         change UH * Matrix.diagonal _ * UHᴴ = UH * Dinv * UHᴴ
         apply congrArg (fun d ↦ UH * Matrix.diagonal d * UHᴴ)
         funext i; dsimp only [μ]
-        rw [← Complex.ofReal_inv, mul_inv, inv_inv, ← Real.exp_neg, neg_neg]
+        rw [← Complex.ofReal_inv, mul_inv, inv_inv, ← Real.exp_neg]; congr 2; ring
       have htrM : (ρ * ρ * ρInv).trace = (Dρ2 * W * Dinv * Wᴴ).trace := by
         calc (ρ * ρ * ρInv).trace
             = (Uρ * (Dρ2 * (Uρᴴ * UH) * Dinv * UHᴴ)).trace := by
@@ -1059,7 +1081,7 @@ theorem rhoO_op_relEntropy_le_two_log_opNorm {N : ℕ} {H : QubitOp N} (hH : H.I
           ext i j; simp [Matrix.diagonal_apply, Matrix.one_apply]
         have hUH_mul : (hH.eigenvectorUnitary : QubitOp N) * (hH.eigenvectorUnitary : QubitOp N)ᴴ = 1 := by
           simpa [Matrix.star_eq_conjTranspose] using Matrix.mem_unitaryGroup_iff.mp hH.eigenvectorUnitary.2
-        rw [hdiag, Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one, hUH_mul]
+        dsimp only; rw [hdiag, Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one, hUH_mul]
       rw [hconst, smul_smul, smul_smul, ← Complex.ofReal_inv, ← Complex.ofReal_mul, ← Complex.ofReal_mul]
       have hsc : (Real.sqrt (gibbsPartitionFn hH β))⁻¹ *
           ((Real.sqrt (gibbsPartitionFn hH β))⁻¹ * gibbsPartitionFn hH β) = 1 := by
@@ -1068,7 +1090,7 @@ theorem rhoO_op_relEntropy_le_two_log_opNorm {N : ℕ} {H : QubitOp N} (hH : H.I
         have hsne : Real.sqrt (gibbsPartitionFn hH β) ≠ 0 := (Real.sqrt_pos.mpr hZ).ne'
         field_simp [hsne]
         linarith
-      rw [hsc, Complex.ofReal_one, one_smul]
+      rw [mul_assoc, hsc, Complex.ofReal_one, one_smul]
     rw [h1]
     unfold hsNormSq hsInner
     apply congrArg Complex.re
@@ -1129,7 +1151,7 @@ theorem wightmanNormSq_le_opNorm_sq {N : ℕ} (G : GibbsData N) (A : QubitOp N) 
         have hc := inner_self_eq_norm_sq_to_K (𝕜 := ℂ) (qubitOpToHS N (A * G.ρHalf))
         rw [qubitOpToHS_inner] at hc
         have hr := congrArg Complex.re hc
-        rw [Complex.ofReal_re] at hr
+        rw [← Complex.ofReal_pow, Complex.ofReal_re] at hr
         exact hr.symm
       rw [← hsq, Real.sqrt_sq (norm_nonneg _)]
     have hn2 : ‖qubitOpToHS N (G.ρHalf * A)‖ = Real.sqrt (hsNormSq (G.ρHalf * A)) := by
@@ -1137,7 +1159,7 @@ theorem wightmanNormSq_le_opNorm_sq {N : ℕ} (G : GibbsData N) (A : QubitOp N) 
         have hc := inner_self_eq_norm_sq_to_K (𝕜 := ℂ) (qubitOpToHS N (G.ρHalf * A))
         rw [qubitOpToHS_inner] at hc
         have hr := congrArg Complex.re hc
-        rw [Complex.ofReal_re] at hr
+        rw [← Complex.ofReal_pow, Complex.ofReal_re] at hr
         exact hr.symm
       rw [← hsq, Real.sqrt_sq (norm_nonneg _)]
     rw [qubitOpToHS_inner, hn1, hn2, ← Real.sqrt_mul (hsNormSq_nonneg _)] at h1
@@ -1562,11 +1584,11 @@ lemma single_edge_discrete_hs {β : ℝ} (hβ : 0 ≤ β) (Jij : ℝ) (σ₁ σ�
     cases σ₁ <;> cases σ₂ <;> simp only [spinVal, Bool.false_eq_true, ↓reduceIte,
       one_mul, mul_one, mul_neg, neg_mul, neg_neg, add_neg_cancel, neg_add_cancel, mul_zero, Real.exp_zero]
     · have e1 : c * (-1 + -1) = -(2 * c) := by ring
-      rw [e1, neg_neg, mul_assoc, hc2', hcosh, ← Real.exp_add]; congr 1; ring
+      rw [e1, neg_neg, mul_assoc, hc2', hcosh, ← Real.exp_add]; congr 1; rw [habs]; ring
     · ring
     · ring
     · have e1 : c * (1 + 1) = 2 * c := by ring
-      rw [e1, mul_assoc, hc2, hcosh, ← Real.exp_add]; congr 1; ring
+      rw [e1, mul_assoc, hc2, hcosh, ← Real.exp_add]; congr 1; rw [habs]; ring
   · have hs1 : s = -1 := if_neg (not_le.mpr hJ)
     have habs : |Jij| = -Jij := abs_of_neg hJ
     rw [hs1, habs]
@@ -1574,9 +1596,9 @@ lemma single_edge_discrete_hs {β : ℝ} (hβ : 0 ≤ β) (Jij : ℝ) (σ₁ σ�
       one_mul, mul_one, mul_neg, neg_mul, neg_neg, add_neg_cancel, neg_add_cancel, mul_zero, Real.exp_zero]
     · ring
     · have e1 : c * (-1 + -1) = -(2 * c) := by ring
-      rw [e1, neg_neg, mul_assoc, hc2', hcosh, ← Real.exp_add]; congr 1; ring
+      rw [e1, neg_neg, mul_assoc, hc2', hcosh, ← Real.exp_add]; congr 1; rw [habs]; ring
     · have e1 : c * (1 + 1) = 2 * c := by ring
-      rw [e1, mul_assoc, hc2, hcosh, ← Real.exp_add]; congr 1; ring
+      rw [e1, mul_assoc, hc2, hcosh, ← Real.exp_add]; congr 1; rw [habs]; ring
     · ring
 
 /-- Safe `Φ_max(β)` valid for all `N : ℕ` (including `N = 0`):
@@ -1715,7 +1737,7 @@ theorem prop_8_3_classical_ising_reverse_poincare_eq_8_4 {N : ℕ}
           Real.exp (∑ e : IsingEdge N,
             (if ξ e then c e else -c e) * (spinVal (σ e.1.1) + sgn e * spinVal (σ e.1.2))) :=
         (Real.exp_sum Finset.univ _).symm
-      rw [hprod_bern, hexp_prod, ← Real.exp_add]
+      rw [hprod_bern, hexp_prod, ← Real.exp_sum, ← Real.exp_add]
       congr 1
       have hsum_eq : (∑ i : Fin N, h_eff ξ i * spinVal (σ i)) =
           (∑ i : Fin N, β * hfield i * spinVal (σ i)) +
