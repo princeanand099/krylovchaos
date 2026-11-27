@@ -21,7 +21,8 @@ machinery (`CausalNormBounds`) and operator-level truncation (`WightmanProjector
    with `[NormOneClass (QubitOpCLM N)]` (since `2^N ≥ 1` for all `N : ℕ`).
 2. **Concrete `LocalInteractionDecomp (QubitOpCLM N) N r`** (`qubitLocalInteractionDecomp`):
    proves disjoint-support commutativity (`supportedSubmodule_comm_zero`) and support-union
-   closure (`supportedSubmodule_comm_union`) directly on `QubitOp N`, instantiating
+   closure (`supportedSubmodule_comm_union`) directly on `QubitOp N` (using the canonical
+   `ManyBodySetup.supportedSubmodule`), instantiating
    `CausalNormBounds.lemma_2_1_single_site_exp_bound` (Eq. 2.4) and
    `CausalNormBounds.lemma_2_1_r_local_exp_bound` (Eq. 2.5) directly on `N`-qubit
    `r`-local Hamiltonians in exact operator norm `‖·‖_∞`.
@@ -77,12 +78,6 @@ lemma qubitOpToCLM_mul {N : ℕ} (A B : QubitOp N) :
   apply Finset.sum_congr rfl; intro j _
   apply Finset.sum_congr rfl; intro k _
   ring
-
-/-- Submodule of `QubitOp N` consisting of operators supported on `U ⊆ Fin N`:
-the `ℂ`-linear span of Pauli strings `pauliString a` whose support is contained in `U`. -/
-def supportedSubmodule (N : ℕ) (U : Finset (Fin N)) : Submodule ℂ (QubitOp N) :=
-  Submodule.span ℂ ((fun a : Fin N → Fin 4 ↦ pauliString a) ''
-    {a : Fin N → Fin 4 | ∀ x : Fin N, a x ≠ 0 → x ∈ U})
 
 /-- Two Pauli strings with disjoint supports commute. -/
 lemma pauliString_comm_zero_of_disjoint {N : ℕ} {U₁ U₂ : Finset (Fin N)}
@@ -144,6 +139,10 @@ lemma pauliString_mul_mem_union {N : ℕ} {U₁ U₂ : Finset (Fin N)}
       have hbx : b x ≠ 0 := by simpa [pauliMulIdxE] using hne
       exact Finset.mem_union_left _ (hb x hbx)
     · exact Finset.mem_union_right _ (ha x hax)
+  have hsupp' : ∀ x ∉ U₂ ∪ U₁, pauliMulIdxE (a x) (b x) = 0 := by
+    intro x hx
+    by_contra hne
+    exact hx (hsupp x hne)
   have hprod : pauliString a * pauliString b =
       (∏ x : Fin N, pauliMulPhaseE (a x) (b x)) •
         pauliString (fun x ↦ pauliMulIdxE (a x) (b x)) := by
@@ -156,7 +155,7 @@ lemma pauliString_mul_mem_union {N : ℕ} {U₁ U₂ : Finset (Fin N)}
     rw [pauliMat_mul_eqE (a x) (b x), Matrix.smul_apply, smul_eq_mul]
   rw [hprod]
   exact Submodule.smul_mem _ _
-    (Submodule.subset_span ⟨fun x ↦ pauliMulIdxE (a x) (b x), hsupp, rfl⟩)
+    (Submodule.subset_span ⟨fun x ↦ pauliMulIdxE (a x) (b x), hsupp', rfl⟩)
 
 /-- Disjoint-support operators in `QubitOp N` commute. -/
 theorem supportedSubmodule_comm_zero {N : ℕ} {U₁ U₂ : Finset (Fin N)}
@@ -165,9 +164,11 @@ theorem supportedSubmodule_comm_zero {N : ℕ} {U₁ U₂ : Finset (Fin N)}
     A * B - B * A = 0 := by
   refine Submodule.span_induction ?_ ?_ ?_ ?_ hA
   · rintro _ ⟨a, ha, rfl⟩
+    have ha' : ∀ x, a x ≠ 0 → x ∈ U₁ := fun x hne ↦ by_contra fun hx ↦ hne (ha x hx)
     refine Submodule.span_induction ?_ ?_ ?_ ?_ hB
     · rintro _ ⟨b, hb, rfl⟩
-      exact pauliString_comm_zero_of_disjoint hdisj ha hb
+      have hb' : ∀ x, b x ≠ 0 → x ∈ U₂ := fun x hne ↦ by_contra fun hx ↦ hne (hb x hx)
+      exact pauliString_comm_zero_of_disjoint hdisj ha' hb'
     · simp
     · intro x y _ _ hx hy
       calc pauliString a * (x + y) - (x + y) * pauliString a
@@ -198,12 +199,14 @@ theorem supportedSubmodule_comm_union {N : ℕ} {U₁ U₂ : Finset (Fin N)}
     A * B - B * A ∈ supportedSubmodule N (U₂ ∪ U₁) := by
   refine Submodule.span_induction ?_ ?_ ?_ ?_ hA
   · rintro _ ⟨a, ha, rfl⟩
+    have ha' : ∀ x, a x ≠ 0 → x ∈ U₁ := fun x hne ↦ by_contra fun hx ↦ hne (ha x hx)
     refine Submodule.span_induction ?_ ?_ ?_ ?_ hB
     · rintro _ ⟨b, hb, rfl⟩
+      have hb' : ∀ x, b x ≠ 0 → x ∈ U₂ := fun x hne ↦ by_contra fun hx ↦ hne (hb x hx)
       have h1 : pauliString a * pauliString b ∈ supportedSubmodule N (U₂ ∪ U₁) :=
-        pauliString_mul_mem_union ha hb
+        pauliString_mul_mem_union ha' hb'
       have h2 : pauliString b * pauliString a ∈ supportedSubmodule N (U₂ ∪ U₁) := by
-        rw [Finset.union_comm]; exact pauliString_mul_mem_union hb ha
+        rw [Finset.union_comm]; exact pauliString_mul_mem_union hb' ha'
       exact Submodule.sub_mem _ h1 h2
     · simp [Submodule.zero_mem]
     · intro x y _ _ hx hy

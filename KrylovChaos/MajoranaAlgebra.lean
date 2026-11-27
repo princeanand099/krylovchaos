@@ -610,6 +610,19 @@ noncomputable def majoranaThermalSize {n : ℕ} (G : GibbsData n) (A : QubitOp n
   (hsInner (jBeta G.ρQuarter A) (majoranaParitySizeOp n (jBeta G.ρQuarter A))).re -
   (hsInner G.ρHalf (majoranaParitySizeOp n G.ρHalf)).re
 
+private lemma majorana_anticomm_comm_diff_eq {n : ℕ} (X Y V : QubitOp n)
+    (hXh : Xᴴ = X) (hYh : Yᴴ = Y) (hVh : Vᴴ = V) (hVsq : V * V = 1)
+    (hXsq : (Matrix.trace (X * X)).re = 1) (hYsq : (Matrix.trace (Y * Y)).re = 1) :
+    hsNormSq (matAnticomm X V) - hsNormSq (matComm Y V) =
+      2 * ((Matrix.trace (V * Y * V * Y)).re + (Matrix.trace (V * X * V * X)).re) := by
+  have h1 := congrArg Complex.re (prop_2_3_majorana_size_identity X V hXh hVh hVsq)
+  have h2 := congrArg Complex.re (prop_2_3_commutator_size_identity Y V hYh hVh hVsq)
+  simp only [Complex.add_re, Complex.sub_re, Complex.mul_re, Complex.re_ofNat, Complex.im_ofNat,
+    zero_mul, sub_zero] at h1 h2
+  unfold hsNormSq hsInner matAnticomm matComm
+  rw [h1, h2, hXsq, hYsq]
+  ring
+
 /-- **Proposition 2.3(2) (Exact Majorana Thermal-Size MSS-OTOC Identity, Eq. 2.10)**:
 For ANY `2n`-Majorana thermal state `G : GibbsData n` with even-parity `G.ρQuarter` and ANY
 odd-parity Hermitian normalized operator `A : QubitOp n` (`isOddParity A`, `Aᴴ = A`,
@@ -657,28 +670,20 @@ theorem prop_2_3_part2_majorana_eq_2_10 {n : ℕ} (G : GibbsData n) {A : QubitOp
     intro j
     have hVh := majoranaProbe_herm n j
     have hVsq := majoranaProbe_sq n j
-    have h1 := congrArg Complex.re
-      (prop_2_3_majorana_size_identity (jBeta G.ρQuarter A) (majoranaProbe n j) hJA_herm hVh hVsq)
-    have h2 := congrArg Complex.re
-      (prop_2_3_commutator_size_identity G.ρHalf (majoranaProbe n j) G.ρHalf_herm hVh hVsq)
+    have hdiff := majorana_anticomm_comm_diff_eq (jBeta G.ρQuarter A) G.ρHalf (majoranaProbe n j)
+      hJA_herm G.ρHalf_herm hVh hVsq hJA_sq hρ_sq
     have hcw : (Matrix.trace (majoranaProbe n j * G.ρHalf * majoranaProbe n j * G.ρHalf)).re =
         majoranaCW0 G j := by
       unfold majoranaCW0 gibbsWightmanNormSq gibbsWightmanInner wightmanInner
-      congr 1; rw [hVh]
-      calc Matrix.trace (majoranaProbe n j * G.ρHalf * majoranaProbe n j * G.ρHalf)
-          = Matrix.trace (G.ρHalf * (majoranaProbe n j * G.ρHalf * majoranaProbe n j)) :=
-            Matrix.trace_mul_comm _ _
-        _ = Matrix.trace (G.ρHalf * majoranaProbe n j * G.ρHalf * majoranaProbe n j) := by
-            simp only [Matrix.mul_assoc]
-    simp only [Complex.add_re, Complex.sub_re, Complex.mul_re, Complex.re_ofNat, Complex.im_ofNat,
-      zero_mul, sub_zero] at h1 h2
-    change (Matrix.trace ((jBeta G.ρQuarter A * majoranaProbe n j + majoranaProbe n j * jBeta G.ρQuarter A)ᴴ *
-      (jBeta G.ρQuarter A * majoranaProbe n j + majoranaProbe n j * jBeta G.ρQuarter A))).re -
-      (Matrix.trace ((G.ρHalf * majoranaProbe n j - majoranaProbe n j * G.ρHalf)ᴴ *
-        (G.ρHalf * majoranaProbe n j - majoranaProbe n j * G.ρHalf))).re = _
-    rw [h1, h2, hJA_sq, hρ_sq, hcw]
-    unfold majoranaFMSS
-    ring
+      exact congrArg Complex.re (by
+        rw [hVh]
+        calc Matrix.trace (majoranaProbe n j * G.ρHalf * majoranaProbe n j * G.ρHalf)
+            = Matrix.trace (G.ρHalf * (majoranaProbe n j * G.ρHalf * majoranaProbe n j)) :=
+              Matrix.trace_mul_comm _ _
+          _ = Matrix.trace (G.ρHalf * majoranaProbe n j * G.ρHalf * majoranaProbe n j) := by
+              simp only [Matrix.mul_assoc])
+    rw [hdiff, hcw]
+    rfl
   simp_rw [hterm, ← Finset.mul_sum]
   ring
 
