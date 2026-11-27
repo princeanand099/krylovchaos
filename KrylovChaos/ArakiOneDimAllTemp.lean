@@ -195,7 +195,7 @@ lemma biUnion_shellEdges_eq {N r : ℕ} (hr : 1 ≤ r)
     · rw [h0]; exact Finset.mem_filter.mpr ⟨hXE, by rw [← h0]; exact hk₀_sub⟩
     · obtain ⟨m, hm⟩ := Nat.exists_eq_succ_of_ne_zero (Nat.pos_iff_ne_zero.mp hpos)
       rw [hm]
-      exact Finset.mem_filter.mpr ⟨hXE, by rw [← hm]; exact hk₀_sub, Nat.find_min hex (by omega)⟩
+      exact Finset.mem_filter.mpr ⟨hXE, by simpa [hm] using hk₀_sub, Nat.find_min hex (by omega)⟩
 
 /-- Exact shell partition of the Hamiltonian: `∑ X ∈ E, h X = ∑ k : Fin (N + 1), shellOp E h r x k.val`. -/
 lemma sum_h_eq_sum_shellOp {N r : ℕ} (hr : 1 ≤ r)

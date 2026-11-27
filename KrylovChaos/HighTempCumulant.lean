@@ -1,4 +1,5 @@
 import KrylovChaos.HighTempPolymerZ
+import KrylovChaos.Theorem12Concrete
 
 /-!
 # High-Temperature Trace Cumulant Bound (Lemma 6.3, Eq. 6.3)
@@ -16,6 +17,7 @@ open Complex Matrix
 
 noncomputable section TraceCumulantMain
 
+set_option maxHeartbeats 800000 in
 /-- **Lemma 6.3 (High-Temperature Combined-Exponential Trace Cumulant Bound)**:
 For any `r`-local (`r ≥ 2`) Hermitian Hamiltonian `H = ∑ Z ∈ E, h Z` with `h Z ∈ supportedOn Z`,
 `Z.Nonempty`, `Z.card ≤ r`, site strength `≤ Jsite` (`0 < Jsite`), any `k_X`-local (`1 ≤ k_X`)
@@ -26,7 +28,6 @@ Hermitian observable `X = ∑ Z ∈ E_X, x Z` with `x Z ∈ supportedOn Z`, `Z.N
 For EVERY real `lam` with `|lam| ≤ Λ₀' / 2`:
 `Real.log (gibbsPartitionFn hK (-1) / gibbsPartitionFn hH β) ≤ 8 * (N : ℝ) * lam ^ 2 / (Λ₀') ^ 2`,
 where `K = (-β) • H + lam • X̃`. -/
-set_option maxHeartbeats 800000 in
 theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     (hr : 2 ≤ r) (hkX : 1 ≤ k_X)
     (E : Finset (Finset (Fin N))) (hE_ne : ∀ Z ∈ E, Z.Nonempty) (hE_card : ∀ Z ∈ E, Z.card ≤ r)
@@ -444,10 +445,10 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       · exact Finset.prod_empty
       · intro I hI hne
         exfalso; apply hne
-        exact Finset.subset_empty.mp (Finset.mem_powerset.mp (Finset.mem_filter.mp hI).1)
+        simp only [Finset.mem_filter, Finset.mem_powerset, Finset.subset_empty] at hI
+        exact hI.1
       · intro hnot; exfalso; apply hnot
-        refine Finset.mem_filter.mpr ⟨Finset.mem_powerset.mpr (Finset.empty_subset _), ?_⟩
-        intro u hu; exact absurd hu (Finset.notMem_empty u)
+        simp [isCompatPolymer]
     rw [htel N le_rfl, hZ0, div_one]
   -- Differentiability of `Zslice k` and `L` on `closedBall 0 Λ₀'`.
   have hZslice_diff : ∀ k : ℕ, Differentiable ℂ (Zslice k) := by
@@ -522,10 +523,16 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     rw [hrew] at hΨ
     exact hΨ.tsum_eq
   have hμ_complex : (gibbsRho hH β * X).trace = (μ : ℂ) := by
+    have hρ_herm : (gibbsRho hH β)ᴴ = gibbsRho hH β := by
+      unfold gibbsRho
+      rw [Matrix.conjTranspose_smul, hermFunc_conjTranspose]
+      congr 1
+      · simp [Complex.star_def, Complex.conj_ofReal]
+      · congr 1; funext e; simp [Complex.star_def, Complex.conj_ofReal]
     have htr_re : (gibbsRho hH β * X).trace.im = 0 := by
       have hconj : star (gibbsRho hH β * X).trace = (gibbsRho hH β * X).trace := by
         rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, hX.eq,
-          (concreteGibbsData hH β).ρ_herm, Matrix.trace_mul_comm]
+          hρ_herm, Matrix.trace_mul_comm]
       exact Complex.conj_eq_iff_im.mp hconj
     exact Complex.ext rfl (by simp [htr_re])
   have hg'0 : deriv g 0 = 0 := by
@@ -548,7 +555,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       rw [← hμ_complex]
       have hgibbs : gibbsRho hH β = ((gibbsPartitionFn hH β : ℂ)⁻¹) •
           hermFunc hH (fun e ↦ Complex.exp (-(β : ℂ) * (e : ℂ))) := by
-        unfold gibbsRho; rfl
+        unfold gibbsRho; congr 1; congr 1; funext e; rw [Complex.ofReal_exp]; push_cast; rfl
       rw [hgibbs, Matrix.smul_mul, Matrix.trace_smul, smul_eq_mul]
       apply mul_left_cancel₀ hZ0_ne
       rw [heq_d]
@@ -556,8 +563,9 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       have hneZ : (gibbsPartitionFn hH β : ℂ) ≠ 0 := Complex.ofReal_ne_zero.mpr hZpart_pos.ne'
       field_simp [hneZ]
     have hg_d : HasDerivAt g (deriv L 0 - (μ : ℂ)) 0 := by
-      have h1 := (hL0.sub (hasDerivAt_const (0 : ℂ) (L 0))).sub ((hasDerivAt_id (0 : ℂ)).const_mul (μ : ℂ))
-      simpa using h1
+      have h1 : HasDerivAt (fun ζ : ℂ ↦ L ζ - L 0 - (μ : ℂ) * ζ) (deriv L 0 - 0 - (μ : ℂ) * 1) 0 :=
+        (hL0.sub (hasDerivAt_const (0 : ℂ) (L 0))).sub ((hasDerivAt_id (0 : ℂ)).const_mul (μ : ℂ))
+      simpa [g] using h1
     rw [hg_d.deriv, hL'_eq, sub_self]
   -- Bound `‖g ζ‖ ≤ 2 * N` on `sphere 0 Λ₀'`.
   have hμ_le : |μ| ≤ (N : ℝ) * gX := by
@@ -643,7 +651,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     have hK_eq : K = K₀ + ((-lam * μ : ℝ) : ℂ) • (1 : QubitOp N) := by
       dsimp only [K, K₀, Xtilde]
       rw [smul_sub, smul_smul]; push_cast; rw [sub_eq_add_neg, neg_smul, ← add_assoc]
-      congr 2; ext i j; simp; ring
+      congr 2; ext i j; simp
     have hexp_shift : hermFunc hK (fun e ↦ Complex.exp (e : ℂ)) =
         (Complex.exp ((-lam * μ : ℝ) : ℂ)) • hermFunc hK₀ (fun e ↦ Complex.exp (e : ℂ)) := by
       have h1 := hasSum_hermFunc_exp hK (1 : ℂ)
@@ -652,7 +660,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       have hUUH : U * Uᴴ = 1 := Matrix.mem_unitaryGroup_iff.mp hK₀.eigenvectorUnitary.prop
       have hUHU : Uᴴ * U = 1 := Matrix.mem_unitaryGroup_iff'.mp hK₀.eigenvectorUnitary.prop
       have hK_diag : K = U * Matrix.diagonal (fun i ↦ ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ)) * Uᴴ := by
-        rw [hK_eq, ← hermFunc_id hK₀]
+        conv_lhs => rw [hK_eq, ← hermFunc_id hK₀]
         unfold hermFunc
         have h1_eq : (1 : QubitOp N) = U * (1 : QubitOp N) * Uᴴ := by rw [Matrix.mul_one, hUUH]
         conv_lhs => rhs; rw [h1_eq]
@@ -675,14 +683,14 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
                 rw [hUHU, Matrix.mul_one]; simp only [Matrix.mul_assoc]
             _ = U * Matrix.diagonal (fun i ↦ ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ) ^ (m + 1)) * Uᴴ := by
                 rw [Matrix.diagonal_mul_diagonal]
-                congr 2; ext i; rw [pow_succ]
+                congr 2; congr 1; funext i; rw [pow_succ]
       have hsum_K : HasSum (fun m : ℕ ↦ ((1 : ℂ) ^ m / (m.factorial : ℂ)) • K ^ m)
           (U * Matrix.diagonal (fun i ↦ Complex.exp ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ)) * Uᴴ) := by
         have hdiag_sum : HasSum
             (fun m : ℕ ↦ Matrix.diagonal (fun i : QubitIdx N ↦
               ((1 : ℂ) ^ m / (m.factorial : ℂ)) * ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ) ^ m))
             (Matrix.diagonal (fun i : QubitIdx N ↦ Complex.exp ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ))) := by
-          rw [hasSum_pi_iff]; intro a; rw [hasSum_pi_iff]; intro b
+          rw [Pi.hasSum]; intro a; rw [Pi.hasSum]; intro b
           by_cases hab : a = b
           · subst hab
             simp only [Matrix.diagonal_apply_eq, one_pow, one_div]
@@ -696,9 +704,15 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
               map_smul' := fun c M ↦ by simp [Matrix.mul_smul, Matrix.smul_mul] }
         have hL := hdiag_sum.map Lmul Lmul.continuous
         convert hL using 1
-        funext m; rw [hpow_K m]; dsimp only [Lmul]
-        rw [← Matrix.mul_smul, ← Matrix.smul_mul]
-        congr 2; ext i j; simp [Matrix.diagonal_apply]; split_ifs <;> simp
+        funext m; rw [hpow_K m]
+        change ((1 : ℂ) ^ m / (m.factorial : ℂ)) • (U * Matrix.diagonal (fun i ↦ ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ) ^ m) * Uᴴ) =
+          U * Matrix.diagonal (fun i ↦ ((1 : ℂ) ^ m / (m.factorial : ℂ)) * ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ) ^ m) * Uᴴ
+        ext a b
+        simp only [Matrix.smul_apply, smul_eq_mul, Matrix.mul_apply, Matrix.diagonal_apply,
+          Finset.sum_mul, Finset.mul_sum]
+        apply Finset.sum_congr rfl; intro l _
+        apply Finset.sum_congr rfl; intro k _
+        split_ifs <;> ring
       have heq_mat : hermFunc hK (fun e ↦ Complex.exp ((1 : ℂ) * (e : ℂ))) =
           U * Matrix.diagonal (fun i ↦ Complex.exp ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ)) * Uᴴ :=
         h1.unique hsum_K
@@ -706,11 +720,14 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
         funext e; simp
       rw [heq_f, heq_mat]
       unfold hermFunc
-      rw [← Matrix.mul_smul, ← Matrix.smul_mul]
-      congr 2; ext i j; simp [Matrix.diagonal_apply]
+      ext a b
+      simp only [Matrix.smul_apply, smul_eq_mul, Matrix.mul_apply, Matrix.diagonal_apply,
+        Finset.sum_mul, Finset.mul_sum]
+      apply Finset.sum_congr rfl; intro l _
+      apply Finset.sum_congr rfl; intro k _
       split_ifs
-      · push_cast; rw [Complex.exp_add]; ring
-      · simp
+      · push_cast; rw [Complex.exp_add]; simp only [one_mul]; ring
+      · ring
     have htrK : (hermFunc hK (fun e ↦ Complex.exp (e : ℂ))).trace = (gibbsPartitionFn hK (-1) : ℂ) := by
       unfold gibbsPartitionFn hermFunc
       have hU : (hK.eigenvectorUnitary : QubitOp N)ᴴ * (hK.eigenvectorUnitary : QubitOp N) = 1 :=
@@ -746,7 +763,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     have htr_eq := congrArg Matrix.trace hexp_shift
     rw [Matrix.trace_smul, smul_eq_mul, htrK, htrK₀, ← Complex.ofReal_exp] at htr_eq
     have hre := congrArg Complex.re htr_eq
-    simpa using hre
+    simpa [← Complex.ofReal_exp] using hre
   -- Now relate `Real.log (gibbsPartitionFn hK (-1) / gibbsPartitionFn hH β)` to `(g (lam : ℂ)).re`!
   have hlam_mem : (lam : ℂ) ∈ Metric.closedBall (0 : ℂ) Λ₀' := by
     rw [Metric.mem_closedBall, dist_zero_right, Complex.norm_real, Real.norm_eq_abs]
