@@ -87,7 +87,8 @@ lemma catalanRec_quarter_sum_le_two :
         have hpow : (4 : ℝ) ^ j * (4 : ℝ) ^ (k - j) = (4 : ℝ) ^ k := by
           rw [← pow_add, Nat.add_sub_cancel' hjk]
         rw [Nat.cast_mul, pow_succ]
-        field_simp [hpow]
+        field_simp
+        rw [mul_assoc, hpow]
       rw [Finset.sum_congr rfl hterm, ← Finset.mul_sum]
       apply mul_le_mul_of_nonneg_left _ (by norm_num)
       let S := (Finset.range (M + 1)).sigma (fun k ↦ Finset.range (k + 1))
@@ -106,7 +107,7 @@ lemma catalanRec_quarter_sum_le_two :
         have hp1eq : p₁.1 = p₂.1 := by omega
         cases p₁; cases p₂; simp only at hp1eq heq1; subst hp1eq; subst heq1; rfl
       have hsub : S.image (fun p ↦ (p.2, p.1 - p.2)) ⊆
-          (Finset.range (M + 1)).product (Finset.range (M + 1)) := by
+          Finset.range (M + 1) ×ˢ Finset.range (M + 1) := by
         intro q hq
         rcases Finset.mem_image.mp hq with ⟨p, hp, rfl⟩
         rcases Finset.mem_sigma.mp hp with ⟨hp1, hp2⟩
@@ -116,7 +117,7 @@ lemma catalanRec_quarter_sum_le_two :
       calc ∑ p ∈ S, f p.2 * f (p.1 - p.2)
           = ∑ q ∈ S.image (fun p ↦ (p.2, p.1 - p.2)), f q.1 * f q.2 := by
             rw [Finset.sum_image hinj]
-        _ ≤ ∑ q ∈ (Finset.range (M + 1)).product (Finset.range (M + 1)), f q.1 * f q.2 :=
+        _ ≤ ∑ q ∈ Finset.range (M + 1) ×ˢ Finset.range (M + 1), f q.1 * f q.2 :=
             Finset.sum_le_sum_of_subset_of_nonneg hsub fun q _ _ ↦ mul_nonneg (hf_nn _) (hf_nn _)
         _ = (∑ j ∈ Finset.range (M + 1), f j) ^ 2 := by
             rw [Finset.sum_product, sq, Finset.sum_mul]
@@ -135,7 +136,8 @@ lemma catalanRec_le_four_pow (n : ℕ) : (catalanRec n : ℝ) ≤ (4 : ℝ) ^ n 
     | succ n =>
       have hsplit : ∑ k ∈ Finset.range (n + 2), (catalanRec k : ℝ) / (4 : ℝ) ^ k =
           1 + ∑ k ∈ Finset.range (n + 1), (catalanRec (k + 1) : ℝ) / (4 : ℝ) ^ (k + 1) := by
-        rw [Finset.sum_range_succ']; simp [catalanRec]
+        have hc0 : (catalanRec 0 : ℝ) / (4 : ℝ) ^ 0 = 1 := by simp [catalanRec]
+        rw [Finset.sum_range_succ', hc0, add_comm]
       have hterm : (catalanRec (n + 1) : ℝ) / (4 : ℝ) ^ (n + 1) ≤
           ∑ k ∈ Finset.range (n + 1), (catalanRec (k + 1) : ℝ) / (4 : ℝ) ^ (k + 1) :=
         Finset.single_le_sum (f := fun k ↦ (catalanRec (k + 1) : ℝ) / (4 : ℝ) ^ (k + 1))
@@ -170,11 +172,13 @@ lemma catalanRec_le_four_pow_pred (m : ℕ) (hm : 1 ≤ m) :
             have hpow : (4 : ℝ) ^ j * (4 : ℝ) ^ (n + 1 - j) = (4 : ℝ) ^ (n + 1) := by
               rw [← pow_add, Nat.add_sub_cancel' hjn]
             rw [Nat.cast_mul, pow_succ]
-            field_simp [hpow]
+            field_simp
+            rw [mul_assoc, hpow]
           rw [hrew, Finset.sum_range_succ']
           have h0 : ((catalanRec 0 : ℝ) / (4 : ℝ) ^ 0) *
               ((catalanRec (n + 1 - 0) : ℝ) / (4 : ℝ) ^ (n + 1 - 0)) ≤ 1 / 4 := by
-            simp only [catalanRec, Nat.cast_one, pow_zero, div_one, one_mul, Nat.sub_zero]
+            have hc0 : (catalanRec 0 : ℝ) / (4 : ℝ) ^ 0 = 1 := by simp [catalanRec]
+            rw [hc0, one_mul, Nat.sub_zero]
             exact ih (n + 1) (by omega) (by omega)
           have hrest : ∑ j ∈ Finset.range (n + 1),
               ((catalanRec (j + 1) : ℝ) / (4 : ℝ) ^ (j + 1)) *
