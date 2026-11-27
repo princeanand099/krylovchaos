@@ -185,14 +185,14 @@ Majorana operator `A : QubitOp n`:
 with `isEvenParity G.ρQuarter` derived automatically from `isEvenParity H`. -/
 theorem prop_2_3_part2_majorana_from_even_H {n : ℕ} {H : QubitOp n}
     (hH : H.IsHermitian) (hH_even : isEvenParity H) (β : ℝ)
-    {A : QubitOp n} (hA : isOddParity A) :
+    {A : QubitOp n} (hA : isOddParity A) (hA_herm : Aᴴ = A)
+    (hAnorm : gibbsWightmanNormSq (concreteGibbsData hH β) A = 1) :
     let G := concreteGibbsData hH β
     majoranaThermalSize G A =
       (1 / 2 : ℝ) * ∑ j : Fin (2 * n),
-        (gibbsWightmanNormSq G (matComm (majoranaProbe n j) A) +
-          majoranaFMSS G A j) :=
+        (majoranaCW0 G j + majoranaFMSS G A j) :=
   prop_2_3_part2_majorana_eq_2_10 (concreteGibbsData hH β)
-    (isEvenParity_concreteGibbsRhoQuarter hH hH_even β) hA
+    (isEvenParity_concreteGibbsRhoQuarter hH hH_even β) hA hA_herm hAnorm
 
 end Item3MajoranaEvenGibbs
 
@@ -374,14 +374,16 @@ private lemma singleSite_spectral_eq_rotated {ρ : Mat2} (hρ : ρ.IsHermitian)
       calc (∑ i : Fin 2, (hρ.eigenvalues i : ℂ))
           = (Matrix.diagonal (fun i ↦ (hρ.eigenvalues i : ℂ))).trace :=
               (Matrix.trace_diagonal _).symm
-        _ = ((hρ.eigenvectorUnitary : Mat2)ᴴ * (hρ.eigenvectorUnitary : Mat2) *
-              Matrix.diagonal (fun i ↦ (hρ.eigenvalues i : ℂ))).trace := by
-              rw [hUleft, one_mul]
+        _ = (Matrix.diagonal (fun i ↦ (hρ.eigenvalues i : ℂ)) *
+              ((hρ.eigenvectorUnitary : Mat2)ᴴ * (hρ.eigenvectorUnitary : Mat2))).trace := by
+              rw [hUleft, Matrix.mul_one]
+        _ = ((Matrix.diagonal (fun i ↦ (hρ.eigenvalues i : ℂ)) * (hρ.eigenvectorUnitary : Mat2)ᴴ) *
+              (hρ.eigenvectorUnitary : Mat2)).trace := by
+              simp only [Matrix.mul_assoc]
         _ = ((hρ.eigenvectorUnitary : Mat2) *
-              Matrix.diagonal (fun i ↦ (hρ.eigenvalues i : ℂ)) *
-              (hρ.eigenvectorUnitary : Mat2)ᴴ).trace := by
-              rw [Matrix.trace_mul_cycle]; simp only [Matrix.mul_assoc]
-        _ = ρ.trace := by rw [← h1]
+              (Matrix.diagonal (fun i ↦ (hρ.eigenvalues i : ℂ)) * (hρ.eigenvectorUnitary : Mat2)ᴴ)).trace :=
+              Matrix.trace_mul_comm _ _
+        _ = ρ.trace := by rw [h1]; simp only [Matrix.mul_assoc]
     rw [htr, Fin.sum_univ_two] at htr_eig
     have hre := congrArg Complex.re htr_eig
     simpa using hre
@@ -539,9 +541,25 @@ theorem lemma_A_3_multiType_unordered_tree_sum {N : ℕ} {ι : Type*} [Decidable
           (1 + multiTypeTreeSum F supp μ h e') ≤
         ∏ e' ∈ F.filter (fun e' ↦ (supp e ∩ supp e').Nonempty),
           Real.exp (multiTypeTreeSum F supp μ h e') := by
-      exact Finset.prod_le_prod
-        (fun e' he' ↦ by linarith [multiTypeTreeSum_nonneg F supp μ hμ_nn h e' (Finset.mem_filter.mp he').1])
-        (fun e' _ ↦ by linarith [Real.add_one_le_exp (multiTypeTreeSum F supp μ h e')])
+      have haux : ∀ S : Finset ι, (∀ e' ∈ S, e' ∈ F) →
+          ∏ e' ∈ S, (1 + multiTypeTreeSum F supp μ h e') ≤
+          ∏ e' ∈ S, Real.exp (multiTypeTreeSum F supp μ h e') := by
+        intro S
+        induction S using Finset.induction_on with
+        | empty => intro _; simp
+        | insert a s ha ihs =>
+          intro hS
+          rw [Finset.prod_insert ha, Finset.prod_insert ha]
+          have ha_nn : 0 ≤ 1 + multiTypeTreeSum F supp μ h a := by
+            linarith [multiTypeTreeSum_nonneg F supp μ hμ_nn h a (hS a (Finset.mem_insert_self a s))]
+          have ha_le : 1 + multiTypeTreeSum F supp μ h a ≤ Real.exp (multiTypeTreeSum F supp μ h a) := by
+            linarith [Real.add_one_le_exp (multiTypeTreeSum F supp μ h a)]
+          have hs_nn : 0 ≤ ∏ e' ∈ s, (1 + multiTypeTreeSum F supp μ h e') :=
+            Finset.prod_nonneg fun e' he' ↦ by
+              linarith [multiTypeTreeSum_nonneg F supp μ hμ_nn h e' (hS e' (Finset.mem_insert_of_mem he'))]
+          exact mul_le_mul ha_le (ihs (fun e' he' ↦ hS e' (Finset.mem_insert_of_mem he')))
+            hs_nn (Real.exp_pos _).le
+      exact haux _ (fun e' he' ↦ (Finset.mem_filter.mp he').1)
     rw [← Real.exp_sum] at hprod_exp
     refine le_trans hprod_exp (Real.exp_le_exp.mpr ?_)
     have hsum_le :

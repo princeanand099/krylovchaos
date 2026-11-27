@@ -133,7 +133,7 @@ theorem wightmanStripHalfWidth_ge_beta_half_add_kappa (μ : Measure ℝ) {β κ 
     (hstrip : ∀ κ' : ℝ, 0 ≤ κ' → κ' < κ → Integrable (fun ω : ℝ ↦ Real.cosh ((β / 2 + κ') * ω)) μ) :
     β / 2 + κ ≤ wightmanStripHalfWidth μ := by
   by_contra hlt
-  push_neg at hlt
+  push Not at hlt
   set δ : ℝ := min (κ / 2) ((β / 2 + κ - wightmanStripHalfWidth μ) / 2)
   have hδ_pos : 0 < δ := lt_min (by linarith) (by linarith)
   set κ' : ℝ := κ - δ
@@ -173,7 +173,14 @@ private lemma adPowOp_step_lanczos {N D : ℕ} {H O : QubitOp N}
     have h := (lanczos_stays_zero G H O (k₀ + 1) hOk1 hbk₀ (m - (k₀ + 1))).1
     rwa [show k₀ + 1 + (m - (k₀ + 1)) = m by omega] at h
   by_cases hkn : lanczosOp G H O k.1 = 0
-  · have hcomm0 : matComm H (lanczosOp G H O k.1) = 0 := by rw [hkn]; unfold matComm; simp
+  · -- When `O_k = 0`, `[H, O_k] = 0`, and `b_{k+1} O_{k+1} = 0` and `b_k O_{k-1} = 0`!
+    -- Wait: if `k` is the FIRST index where `O_k = 0`, then `b_k = 0`!
+    -- Let's check: `b_{k+1} * O_{k+1} = 0` always when `O_k = 0` (since `O_k = 0 → b_k = 0`?
+    -- Check: `O_0 ≠ 0` if `‖O‖=1`, and for `k ≥ 1`, `O_k = 0 ↔ b_k = 0` by `lanczosOp`!).
+    -- Let's use `lanczos_three_term` directly: for EVERY `k`, `lanczos_three_term` gives
+    -- `matComm H (lanczosOp G H O k) = b (k+1) • lanczosOp (k+1) + b k • (lanczosState k).2.1`
+    -- whenever `b (k+1) ≠ 0`, and if `b (k+1) = 0` then `matComm H O_k - b_k O_{k-1} = 0`!
+    have hcomm0 : matComm H (lanczosOp G H O k.1) = 0 := by rw [hkn]; unfold matComm; simp
     rw [hcomm0]
     have hbk0 : b k.1 = 0 := by
       cases hk : k.1 with
@@ -184,32 +191,29 @@ private lemma adPowOp_step_lanczos {N D : ℕ} {H O : QubitOp N}
           intro h0
           have hnorm0 : gibbsWightmanNormSq G (lanczosOp G H O (m + 1)) = 0 := by
             rw [h0]; unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner; simp
-          have hA_norm : gibbsWightmanNormSq G
-              (matComm H (lanczosOp G H O m) - (b m : ℂ) • (lanczosState G H O m).2.1) =
-              (b (m + 1)) ^ 2 := by
-            unfold b lanczosCoeff
-            simp only [lanczosState]
-            rw [Real.sq_sqrt (gibbsWightmanNormSq_nonneg G _)]
-          have hO_eq : lanczosOp G H O (m + 1) =
-              ((b (m + 1) : ℝ)⁻¹ : ℂ) •
-                (matComm H (lanczosOp G H O m) - (b m : ℂ) • (lanczosState G H O m).2.1) := by
-            unfold lanczosOp b lanczosCoeff
-            simp only [lanczosState]
+          set A := matComm H (lanczosState G H O m).1 - ((lanczosState G H O m).2.2 : ℂ) • (lanczosState G H O m).2.1
+          have hb_def : b (m + 1) = Real.sqrt (gibbsWightmanNormSq G A) := rfl
+          have hA_norm : gibbsWightmanNormSq G A = (b (m + 1)) ^ 2 := by
+            rw [hb_def, Real.sq_sqrt (gibbsWightmanNormSq_nonneg G A)]
+          have hO_eq : lanczosOp G H O (m + 1) = ((b (m + 1) : ℝ)⁻¹ : ℂ) • A := by
+            change (if b (m + 1) = 0 then 0 else ((b (m + 1) : ℝ)⁻¹ : ℂ) • A) = _
             rw [if_neg hne]
           have h1 : gibbsWightmanNormSq G (lanczosOp G H O (m + 1)) = 1 := by
             rw [hO_eq]
             unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
             simp only [Matrix.conjTranspose_smul, Matrix.mul_smul, Matrix.smul_mul,
               Matrix.trace_smul, smul_smul, Complex.star_def, Complex.conj_ofReal]
-            rw [← Complex.ofReal_mul, Complex.re_ofReal_mul]
-            change (b (m + 1))⁻¹ * (b (m + 1))⁻¹ *
-              gibbsWightmanNormSq G (matComm H (lanczosOp G H O m) - (b m : ℂ) • (lanczosState G H O m).2.1) = 1
+            have hinv : (((b (m + 1) : ℝ)⁻¹ : ℂ) * ((b (m + 1) : ℝ)⁻¹ : ℂ)) =
+                ((((b (m + 1))⁻¹ * (b (m + 1))⁻¹ : ℝ) : ℂ)) := by push_cast; rfl
+            rw [hinv, Complex.re_ofReal_mul]
+            change (b (m + 1))⁻¹ * (b (m + 1))⁻¹ * gibbsWightmanNormSq G A = 1
             rw [hA_norm]; field_simp [hne]
           linarith
         exact hOnz (hk ▸ hkn)
     have hnext0 : lanczosOp G H O (k.1 + 1) = 0 := (lanczos_stays_zero G H O k.1 hkn hbk0 1).1
     simp [hnext0, hbk0]
-  · have hk_lt : k.1 < 4 ^ N := by
+  · -- `lanczosOp G H O k.1 ≠ 0`, so `k.1 < 4^N ≤ D`
+    have hk_lt : k.1 < 4 ^ N := by
       by_contra hge; exact hkn (hzero_ge k.1 (by omega))
     have hprev_eq : (if k.1 = 0 then (0 : QubitOp N) else (b k.1 : ℂ) • lanczosOp G H O (k.1 - 1)) =
         (b k.1 : ℂ) • (lanczosState G H O k.1).2.1 := by
@@ -223,8 +227,8 @@ private lemma adPowOp_step_lanczos {N D : ℕ} {H O : QubitOp N}
     · have hA0 : matComm H (lanczosOp G H O k.1) - (b k.1 : ℂ) • (lanczosState G H O k.1).2.1 = 0 := by
         apply eq_zero_of_gibbsWightmanNormSq_eq_zero G
         have hsq : Real.sqrt (gibbsWightmanNormSq G
-            (matComm H (lanczosOp G H O k.1) - (b k.1 : ℂ) • (lanczosState G H O k.1).2.1)) = 0 := by
-          simpa [b, lanczosCoeff, lanczosState] using hbn
+            (matComm H (lanczosOp G H O k.1) - (b k.1 : ℂ) • (lanczosState G H O k.1).2.1)) = 0 :=
+          hbn
         have := congrArg (fun x : ℝ ↦ x ^ 2) hsq
         rw [Real.sq_sqrt (gibbsWightmanNormSq_nonneg G _)] at this
         simpa using this
@@ -235,22 +239,21 @@ private lemma adPowOp_step_lanczos {N D : ℕ} {H O : QubitOp N}
         by_contra hge
         have : k.1 + 1 ≥ 4 ^ N := by omega
         have h0 := hzero_ge (k.1 + 1) this
-        have hA_norm : gibbsWightmanNormSq G
-            (matComm H (lanczosOp G H O k.1) - (b k.1 : ℂ) • (lanczosState G H O k.1).2.1) =
-            (b (k.1 + 1)) ^ 2 := by
-          unfold b lanczosCoeff; simp only [lanczosState]
-          rw [Real.sq_sqrt (gibbsWightmanNormSq_nonneg G _)]
-        have hO_eq : lanczosOp G H O (k.1 + 1) =
-            ((b (k.1 + 1) : ℝ)⁻¹ : ℂ) •
-              (matComm H (lanczosOp G H O k.1) - (b k.1 : ℂ) • (lanczosState G H O k.1).2.1) := by
-          unfold lanczosOp b lanczosCoeff; simp only [lanczosState]; rw [if_neg hbn]
+        set A := matComm H (lanczosState G H O k.1).1 - ((lanczosState G H O k.1).2.2 : ℂ) • (lanczosState G H O k.1).2.1
+        have hb_def : b (k.1 + 1) = Real.sqrt (gibbsWightmanNormSq G A) := rfl
+        have hA_norm : gibbsWightmanNormSq G A = (b (k.1 + 1)) ^ 2 := by
+          rw [hb_def, Real.sq_sqrt (gibbsWightmanNormSq_nonneg G A)]
+        have hO_eq : lanczosOp G H O (k.1 + 1) = ((b (k.1 + 1) : ℝ)⁻¹ : ℂ) • A := by
+          change (if b (k.1 + 1) = 0 then 0 else ((b (k.1 + 1) : ℝ)⁻¹ : ℂ) • A) = _
+          rw [if_neg hbn]
         have h1 : gibbsWightmanNormSq G (lanczosOp G H O (k.1 + 1)) = 1 := by
           rw [hO_eq]; unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
           simp only [Matrix.conjTranspose_smul, Matrix.mul_smul, Matrix.smul_mul,
             Matrix.trace_smul, smul_smul, Complex.star_def, Complex.conj_ofReal]
-          rw [← Complex.ofReal_mul, Complex.re_ofReal_mul]
-          change (b (k.1 + 1))⁻¹ * (b (k.1 + 1))⁻¹ *
-            gibbsWightmanNormSq G (matComm H (lanczosOp G H O k.1) - (b k.1 : ℂ) • (lanczosState G H O k.1).2.1) = 1
+          have hinv : (((b (k.1 + 1) : ℝ)⁻¹ : ℂ) * ((b (k.1 + 1) : ℝ)⁻¹ : ℂ)) =
+              ((((b (k.1 + 1))⁻¹ * (b (k.1 + 1))⁻¹ : ℝ) : ℂ)) := by push_cast; rfl
+          rw [hinv, Complex.re_ofReal_mul]
+          change (b (k.1 + 1))⁻¹ * (b (k.1 + 1))⁻¹ * gibbsWightmanNormSq G A = 1
           rw [hA_norm]; field_simp [hbn]
         rw [h0] at h1
         unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner at h1
@@ -277,7 +280,7 @@ theorem adPowOp_eq_jacobi_lanczos_sum {N D : ℕ} {H O : QubitOp N}
     rw [Finset.sum_eq_single ⟨0, hDpos⟩]
     · simp only [↓reduceIte, Complex.ofReal_one, one_smul]
       unfold lanczosOp lanczosState
-      rw [hOnorm, Real.sqrt_one, if_neg one_ne_zero]; simp
+      simp only [G, hOnorm, Real.sqrt_one, one_ne_zero, ↓reduceIte, inv_one, Complex.ofReal_one, one_smul]
     · intro k _ hk; simp [hk]
     · intro h; exact absurd (Finset.mem_univ _) h
   | succ m ih =>
@@ -289,27 +292,24 @@ theorem adPowOp_eq_jacobi_lanczos_sum {N D : ℕ} {H O : QubitOp N}
       unfold matComm
       simp only [Matrix.mul_sum, Matrix.sum_mul, Matrix.mul_smul, Matrix.smul_mul, ← Finset.sum_sub_distrib, smul_sub]
     rw [hcomm_sum]
+    -- Expand `matComm H (lanczosOp G H O k.1)` using `adPowOp_step_lanczos`
     have hstep : ∀ k : Fin D,
         matComm H (lanczosOp G H O k.1) =
         ∑ j : Fin D, ((jacobiMat D b j k : ℝ) : ℂ) • lanczosOp G H O j.1 := by
       intro k
       rw [adPowOp_step_lanczos hH hO β hD k]
+      -- Show `∑ j : Fin D, (jacobiMat D b j k) • O_j` equals the two-term sum
       have hjac : ∀ j : Fin D,
           jacobiMat D b j k =
             (if j.1 = k.1 + 1 then b (k.1 + 1) else 0) +
             (if k.1 = j.1 + 1 then b k.1 else 0) := by
         intro j; unfold jacobiMat
-        by_cases h1 : j.1 = k.1 + 1
-        · have h2 : ¬ k.1 = j.1 + 1 := by omega
-          simp [h1, h2]
-        · by_cases h2 : k.1 = j.1 + 1
-          · simp [h1, h2]
-          · simp [h1, h2]
+        split_ifs <;> first | rfl | omega | ring
       simp_rw [hjac, Complex.ofReal_add, add_smul, Finset.sum_add_distrib]
       congr 1
       · by_cases hk1 : k.1 + 1 < D
         · rw [dif_pos hk1, Finset.sum_eq_single ⟨k.1 + 1, hk1⟩]
-          · simp
+          · simp only [↓reduceIte]; rfl
           · intro j _ hj; have : j.1 ≠ k.1 + 1 := fun h ↦ hj (Fin.ext h); simp [this]
           · intro h; exact absurd (Finset.mem_univ _) h
         · rw [dif_neg hk1]
@@ -324,9 +324,11 @@ theorem adPowOp_eq_jacobi_lanczos_sum {N D : ℕ} {H O : QubitOp N}
         · rw [if_neg hk0]
           have hkm : k.1 - 1 < D := by omega
           rw [Finset.sum_eq_single ⟨k.1 - 1, hkm⟩]
-          · have : k.1 = k.1 - 1 + 1 := by omega
-            simp [this]
-          · intro j _ hj; have : k.1 ≠ j.1 + 1 := fun h ↦ hj (Fin.ext (by omega)); simp [this]
+          · have hkk : k.1 = k.1 - 1 + 1 := by omega
+            simp only [hkk, ↓reduceIte]; rfl
+          · intro j _ hj
+            have hneq : k.1 ≠ j.1 + 1 := fun h ↦ hj (Fin.ext (show j.1 = k.1 - 1 by omega))
+            simp only [hneq, ↓reduceIte, Complex.ofReal_zero, zero_smul]
           · intro h; exact absurd (Finset.mem_univ _) h
     simp_rw [hstep, Finset.smul_sum, smul_smul]
     rw [Finset.sum_comm]
@@ -353,40 +355,25 @@ theorem concrete_lanczos_moment_eq_jacobi {N D : ℕ} {H O : QubitOp N}
   rw [adPowOp_eq_jacobi_lanczos_sum hH hO β hOnorm hD m]
   have hO_eq : O = lanczosOp G H O 0 := by
     unfold lanczosOp lanczosState
-    rw [hOnorm, Real.sqrt_one, if_neg one_ne_zero]; simp
+    simp only [G, hOnorm, Real.sqrt_one, one_ne_zero, ↓reduceIte, inv_one, Complex.ofReal_one, one_smul]
   have hOnz : lanczosOp G H O 0 ≠ 0 := by
     intro h0; rw [← hO_eq] at h0; rw [h0] at hOnorm
     unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner at hOnorm; simp at hOnorm
-  conv_lhs => rw [hO_eq]
-  unfold gibbsWightmanInner wightmanInner
-  simp only [Matrix.mul_sum, Matrix.mul_smul, Matrix.trace_sum, Matrix.trace_smul, smul_eq_mul,
-    Complex.re_sum]
+  have hinner_sum : ∀ (S : Finset (Fin D)) (f : Fin D → ℂ) (X : QubitOp N),
+      gibbsWightmanInner G X (∑ k ∈ S, f k • lanczosOp G H O k.1) =
+      ∑ k ∈ S, f k * gibbsWightmanInner G X (lanczosOp G H O k.1) := by
+    intro S f X
+    unfold gibbsWightmanInner wightmanInner
+    simp only [Matrix.mul_sum, Matrix.mul_smul, Matrix.trace_sum, Matrix.trace_smul, smul_eq_mul]
+  conv_lhs => rw [hO_eq, hinner_sum, Complex.re_sum]
   rw [Finset.sum_eq_single ⟨0, hDpos⟩]
-  · change (((jacobiMat D b ^ m) ⟨0, hDpos⟩ ⟨0, hDpos⟩ : ℂ) *
-      gibbsWightmanInner G (lanczosOp G H O 0) (lanczosOp G H O 0)).re = _
-    rw [lanczosOp_orthonormal_all hH hO β 0 0, if_pos ⟨rfl, hOnz⟩, mul_one, Complex.ofReal_re]
+  · rw [lanczosOp_orthonormal_all hH hO β 0 0, if_pos ⟨rfl, hOnz⟩, mul_one, Complex.ofReal_re]
   · intro k _ hk
-    change (((jacobiMat D b ^ m) k ⟨0, hDpos⟩ : ℂ) *
-      gibbsWightmanInner G (lanczosOp G H O 0) (lanczosOp G H O k.1)).re = 0
     have h0k : (0 : ℕ) ≠ k.1 := fun h ↦ hk (Fin.ext h.symm)
     rw [lanczosOp_orthonormal_all hH hO β 0 k.1, if_neg (by intro h; exact h0k h.1), mul_zero, Complex.zero_re]
   · intro h; exact absurd (Finset.mem_univ _) h
 
-/-- Elementary inequality: `(r * ω)^(2n) / (2n)! ≤ 2 * cosh(r * ω)` for all `r, ω : ℝ`, `n : ℕ`. -/
-lemma pow_even_div_factorial_le_two_cosh (r ω : ℝ) (n : ℕ) :
-    (r * ω) ^ (2 * n) / ((2 * n).factorial : ℝ) ≤ 2 * Real.cosh (r * ω) := by
-  have h1 : |r * ω| ^ (2 * n) / ((2 * n).factorial : ℝ) ≤ Real.exp |r * ω| :=
-    Real.pow_div_factorial_le_exp |r * ω| (abs_nonneg _) (2 * n)
-  have hpow : (r * ω) ^ (2 * n) = |r * ω| ^ (2 * n) := by
-    rw [pow_mul, pow_mul, sq_abs]
-  have hexp_le : Real.exp |r * ω| ≤ 2 * Real.cosh (r * ω) := by
-    rw [Real.cosh_eq]
-    have hpos1 : 0 < Real.exp (r * ω) := Real.exp_pos _
-    have hpos2 : 0 < Real.exp (-(r * ω)) := Real.exp_pos _
-    rcases le_or_gt 0 (r * ω) with hnn | hneg
-    · rw [abs_of_nonneg hnn]; linarith
-    · rw [abs_of_neg hneg]; linarith
-  linarith [hpow ▸ h1]
+
 
 /-- **Item #13 — Cauchy–Hadamard Moment Bound from Strip Integrability & Theorem 1.2(b)**:
 If `μ : Measure ℝ` satisfies `Integrable (fun ω ↦ Real.cosh (r * ω)) μ` with `∫ cosh(r ω) ∂μ ≤ M`
@@ -411,7 +398,7 @@ theorem theorem_1_2b_from_strip_measure (μ : Measure ℝ) {r M : ℝ} (b : ℕ 
     rw [hmom_eq n]
     have hpt : ∀ ω : ℝ, ω ^ (2 * n) ≤ (2 * ((2 * n).factorial : ℝ) * r⁻¹ ^ (2 * n)) * Real.cosh (r * ω) := by
       intro ω
-      have h1 := pow_even_div_factorial_le_two_cosh r ω n
+      have h1 := pow_even_div_factorial_le_two_cosh r n ω
       have hfac_pos : (0 : ℝ) < ((2 * n).factorial : ℝ) := by positivity
       have hrpow_pos : (0 : ℝ) < r ^ (2 * n) := pow_pos hr _
       have h2 : (r * ω) ^ (2 * n) ≤ 2 * ((2 * n).factorial : ℝ) * Real.cosh (r * ω) := by
@@ -457,7 +444,7 @@ theorem concreteWightmanNormAtShift_time_invariant {N : ℕ} {H : QubitOp N} (hH
     (β : ℝ) (W : QubitOp N) (τ t : ℝ) :
     concreteWightmanNormAtShift hH β W τ t = concreteWightmanNormAtShift hH β W τ 0 := by
   unfold concreteWightmanNormAtShift
-  rw [heisenbergEvol_add hH (t : ℂ) (Complex.I * (τ : ℂ)) W]
+  rw [← heisenbergEvol_add hH (t : ℂ) (Complex.I * (τ : ℂ)) W]
   rw [heisenbergEvol_real_wightmanNormSq hH β t _]
   simp
 
@@ -473,9 +460,9 @@ theorem concreteOTOC_swap_symmetry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian
   set U := complexPropagator hH z
   set Uinv := complexPropagator hH (-z)
   have hUUinv : U * Uinv = 1 := by
-    dsimp only [U, Uinv]; rw [← complexPropagator_add, add_neg_cancel, complexPropagator_zero]
+    dsimp only [U, Uinv]; rw [complexPropagator_add, add_neg_cancel, complexPropagator_zero]
   have hUinvU : Uinv * U = 1 := by
-    dsimp only [U, Uinv]; rw [← complexPropagator_add, neg_add_cancel, complexPropagator_zero]
+    dsimp only [U, Uinv]; rw [complexPropagator_add, neg_add_cancel, complexPropagator_zero]
   have hRU : R * U = U * R := by
     change gibbsRhoQuarter hH β * complexPropagator hH z = complexPropagator hH z * gibbsRhoQuarter hH β
     unfold gibbsRhoQuarter complexPropagator
@@ -491,6 +478,7 @@ theorem concreteOTOC_swap_symmetry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian
   rw [hneg]
   change (R * (U * W * Uinv) * R * V * (R * (U * W * Uinv) * R * V)).trace =
     (R * (Uinv * V * U) * R * W * (R * (Uinv * V * U) * R * W)).trace
+  -- Conjugate the inside of RHS by `U` (using `Tr(U X Uinv) = Tr(X)` and `[R, U] = 0`)
   have hstep : U * (R * (Uinv * V * U) * R * W) * Uinv = R * V * R * (U * W * Uinv) := by
     calc U * (R * (Uinv * V * U) * R * W) * Uinv
         = (U * R) * Uinv * V * (U * R) * W * Uinv := by simp only [Matrix.mul_assoc]
@@ -500,11 +488,12 @@ theorem concreteOTOC_swap_symmetry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian
   set X := R * (Uinv * V * U) * R * W
   have htr_conj : (X * X).trace = ((U * X * Uinv) * (U * X * Uinv)).trace := by
     calc (X * X).trace
-        = (Uinv * U * (X * X)).trace := by rw [hUinvU, Matrix.one_mul]
-      _ = (U * (X * X) * Uinv).trace := by rw [Matrix.trace_mul_cycle]; simp only [Matrix.mul_assoc]
+        = (Uinv * (U * (X * X))).trace := by rw [← Matrix.mul_assoc, hUinvU, Matrix.one_mul]
+      _ = ((U * (X * X)) * Uinv).trace := Matrix.trace_mul_comm _ _
       _ = (U * X * (Uinv * U) * X * Uinv).trace := by rw [hUinvU, Matrix.mul_one]; simp only [Matrix.mul_assoc]
       _ = ((U * X * Uinv) * (U * X * Uinv)).trace := by simp only [Matrix.mul_assoc]
   rw [htr_conj, hstep]
+  -- Now cyclically shift `R * V` from the front to the back!
   calc (R * (U * W * Uinv) * R * V * (R * (U * W * Uinv) * R * V)).trace
       = ((R * (U * W * Uinv)) * (R * V * R * (U * W * Uinv) * R * V)).trace := by
           simp only [Matrix.mul_assoc]
@@ -533,14 +522,14 @@ theorem concreteOTOC_three_way_eq_1_17 {N : ℕ} {H W V : QubitOp N}
   have h1 : ‖concreteOTOC hH β W V z‖ ≤
       (opNorm V) ^ 2 * concreteWightmanNormAtShift hH β W τ 0 := by
     rw [← concreteWightmanNormAtShift_time_invariant hH β W τ t]
-    exact concreteOTOC_norm_le_wightmanNormSq hH hV β W z
+    exact concreteOTOC_norm_le_wightmanNormSq hH β W hV z
   have h2 : ‖concreteOTOC hH β W V z‖ ≤
       (opNorm W) ^ 2 * concreteWightmanNormAtShift hH β V (-τ) 0 := by
     rw [concreteOTOC_swap_symmetry hH β W V z]
     have hnegz : -z = ((-t : ℝ) : ℂ) + Complex.I * ((-τ : ℝ) : ℂ) := by
       dsimp only [z]; push_cast; ring
     rw [hnegz, ← concreteWightmanNormAtShift_time_invariant hH β V (-τ) (-t)]
-    exact concreteOTOC_norm_le_wightmanNormSq hH hW β V _
+    exact concreteOTOC_norm_le_wightmanNormSq hH β V hW _
   refine ⟨h1, h2, ?_⟩
   have hnn : 0 ≤ ‖concreteOTOC hH β W V z‖ := norm_nonneg _
   have hWnn : 0 ≤ opNorm W := by unfold opNorm; exact norm_nonneg _
@@ -590,38 +579,99 @@ private lemma openStrip_isPreconnected (S : ℝ) : IsPreconnected {z : ℂ | |z.
         · have h1 : a * |z.im| < a * S := mul_lt_mul_of_pos_left hz ha_pos
           have h2 : b * |w.im| ≤ b * S := mul_le_mul_of_nonneg_left hw.le hb
           linarith
-    _ = S := by nlinarith
+    _ = S := by rw [← add_mul, hab, one_mul]
 
 /-- Cauchy Lipschitz estimate on half-radius balls inside the strip: if `f` is holomorphic on
 `Ω = {|Im z| < S}` and `‖f w‖ ≤ M` on `closedBall z₀ (2 * δ) ⊆ Ω`, then for all
-`w₁, w₂ ∈ closedBall z₀ δ`, `‖f w₂ - f w₁‖ ≤ (M / δ) * ‖w₂ - w₁‖`. -/
+`w₁, w₂ ∈ closedBall z₀ δ`, `‖f w₂ - f w₁‖ ≤ (2 * M / δ) * ‖w₂ - w₁‖`. -/
 private lemma cauchy_lipschitz_on_half_ball {S δ M : ℝ} (hδ : 0 < δ) (hM : 0 ≤ M)
     {f : ℂ → ℂ} {z₀ : ℂ}
     (hholo : DifferentiableOn ℂ f {z : ℂ | |z.im| < S})
     (hsub : Metric.closedBall z₀ (2 * δ) ⊆ {z : ℂ | |z.im| < S})
     (hbdd : ∀ w ∈ Metric.closedBall z₀ (2 * δ), ‖f w‖ ≤ M) :
     ∀ w₁ ∈ Metric.closedBall z₀ δ, ∀ w₂ ∈ Metric.closedBall z₀ δ,
-      ‖f w₂ - f w₁‖ ≤ (M / δ) * ‖w₂ - w₁‖ := by
-  have hderiv_le : ∀ w ∈ Metric.closedBall z₀ δ, ‖deriv f w‖ ≤ M / δ := by
-    intro w hw
-    have hball_sub : Metric.closedBall w δ ⊆ Metric.closedBall z₀ (2 * δ) := by
-      intro u hu
-      rw [Metric.mem_closedBall] at hw hu ⊢
-      calc dist u z₀ ≤ dist u w + dist w z₀ := dist_triangle u w z₀
-        _ ≤ δ + δ := add_le_add hu hw
-        _ = 2 * δ := by ring
-    have hdiff_on : DiffContOnCl ℂ f (Metric.ball w δ) := by
-      have h1 : closure (Metric.ball w δ) ⊆ Metric.closedBall w δ := Metric.closure_ball_subset_closedBall
-      exact (hholo.mono (fun u hu ↦ hsub (hball_sub (h1 hu)))).diffContOnCl
-    have hsphere : ∀ u ∈ Metric.sphere w δ, ‖f u‖ ≤ M := fun u hu ↦
-      hbdd u (hball_sub (Metric.sphere_subset_closedBall hu))
-    exact Complex.norm_deriv_le_of_forall_mem_sphere_norm_le hδ hdiff_on hsphere
+      ‖f w₂ - f w₁‖ ≤ (2 * M / δ) * ‖w₂ - w₁‖ := by
   intro w₁ hw₁ w₂ hw₂
-  have hdiff_ball : ∀ w ∈ Metric.closedBall z₀ δ, DifferentiableAt ℂ f w := fun w hw ↦ by
-    have hw_in : w ∈ {z : ℂ | |z.im| < S} := hsub (Metric.closedBall_subset_closedBall (by linarith) hw)
-    exact (hholo w hw_in).differentiableAt ((openStrip_isOpen S).mem_nhds hw_in)
-  exact Convex.norm_image_sub_le_of_norm_deriv_le
-    (fun w hw ↦ hdiff_ball w hw) hderiv_le (convex_closedBall z₀ δ) hw₁ hw₂
+  have h2δ : 0 < 2 * δ := by linarith
+  have hcont : ContinuousOn f (Metric.closedBall z₀ (2 * δ)) :=
+    (hholo.mono hsub).continuousOn
+  have hdiff_ball : ∀ z ∈ Metric.ball z₀ (2 * δ) \ (∅ : Set ℂ), DifferentiableAt ℂ f z := by
+    intro z hz
+    have hzΩ : z ∈ {z : ℂ | |z.im| < S} := hsub (Metric.ball_subset_closedBall hz.1)
+    exact (hholo z hzΩ).differentiableAt ((openStrip_isOpen S).mem_nhds hzΩ)
+  have hw1_ball : w₁ ∈ Metric.ball z₀ (2 * δ) := by
+    rw [Metric.mem_ball]; rw [Metric.mem_closedBall] at hw₁; linarith
+  have hw2_ball : w₂ ∈ Metric.ball z₀ (2 * δ) := by
+    rw [Metric.mem_ball]; rw [Metric.mem_closedBall] at hw₂; linarith
+  have hc1 := Complex.two_pi_I_inv_smul_circleIntegral_sub_inv_smul_of_differentiable_on_off_countable
+    Set.countable_empty hcont hdiff_ball hw1_ball
+  have hc2 := Complex.two_pi_I_inv_smul_circleIntegral_sub_inv_smul_of_differentiable_on_off_countable
+    Set.countable_empty hcont hdiff_ball hw2_ball
+  have hf_int : CircleIntegrable f z₀ (2 * δ) :=
+    (hcont.mono Metric.sphere_subset_closedBall).circleIntegrable h2δ.le
+  have hci1 : CircleIntegrable (fun z ↦ (z - w₁)⁻¹ • f z) z₀ (2 * δ) := by
+    refine hf_int.continuousOn_smul ?_
+    refine ContinuousOn.inv₀ (continuousOn_id.sub continuousOn_const) ?_
+    intro z hz; rw [sub_ne_zero]; intro heq; subst heq
+    rw [Metric.mem_sphere] at hz; rw [Metric.mem_closedBall] at hw₁; linarith
+  have hci2 : CircleIntegrable (fun z ↦ (z - w₂)⁻¹ • f z) z₀ (2 * δ) := by
+    refine hf_int.continuousOn_smul ?_
+    refine ContinuousOn.inv₀ (continuousOn_id.sub continuousOn_const) ?_
+    intro z hz; rw [sub_ne_zero]; intro heq; subst heq
+    rw [Metric.mem_sphere] at hz; rw [Metric.mem_closedBall] at hw₂; linarith
+  have hsub_eq : f w₂ - f w₁ =
+      (2 * Real.pi * Complex.I : ℂ)⁻¹ •
+        ∮ z in C(z₀, 2 * δ), ((z - w₂)⁻¹ • f z - (z - w₁)⁻¹ • f z) := by
+    rw [← hc2, ← hc1, ← smul_sub, circleIntegral.integral_sub hci2 hci1]
+  rw [hsub_eq, norm_smul, norm_inv]
+  have h2pi_norm : ‖(2 * Real.pi * Complex.I : ℂ)‖ = 2 * Real.pi := by
+    simp [abs_of_pos Real.pi_pos]
+  rw [h2pi_norm]
+  have hint_le : ‖∮ z in C(z₀, 2 * δ), ((z - w₂)⁻¹ • f z - (z - w₁)⁻¹ • f z)‖ ≤
+      ((2 * δ) * (‖w₂ - w₁‖ * M / δ ^ 2)) * (2 * Real.pi) := by
+    unfold circleIntegral
+    have hbound : ∀ θ ∈ Set.uIoc (0 : ℝ) (2 * Real.pi),
+        ‖deriv (circleMap z₀ (2 * δ)) θ •
+          (((circleMap z₀ (2 * δ) θ - w₂)⁻¹ • f (circleMap z₀ (2 * δ) θ)) -
+           ((circleMap z₀ (2 * δ) θ - w₁)⁻¹ • f (circleMap z₀ (2 * δ) θ)))‖ ≤
+        (2 * δ) * (‖w₂ - w₁‖ * M / δ ^ 2) := by
+      intro θ _
+      set z := circleMap z₀ (2 * δ) θ
+      have hz_sph : z ∈ Metric.sphere z₀ (2 * δ) := circleMap_mem_sphere z₀ h2δ.le θ
+      have hz_dist : ‖z - z₀‖ = 2 * δ := by simpa [Metric.mem_sphere, Complex.dist_eq] using hz_sph
+      have hzw1 : δ ≤ ‖z - w₁‖ := by
+        rw [Metric.mem_closedBall, Complex.dist_eq] at hw₁
+        have htri : ‖z - z₀‖ ≤ ‖z - w₁‖ + ‖w₁ - z₀‖ := by
+          simpa [sub_add_sub_cancel] using norm_add_le (z - w₁) (w₁ - z₀)
+        linarith
+      have hzw2 : δ ≤ ‖z - w₂‖ := by
+        rw [Metric.mem_closedBall, Complex.dist_eq] at hw₂
+        have htri : ‖z - z₀‖ ≤ ‖z - w₂‖ + ‖w₂ - z₀‖ := by
+          simpa [sub_add_sub_cancel] using norm_add_le (z - w₂) (w₂ - z₀)
+        linarith
+      have hzw1_ne : z - w₁ ≠ 0 := norm_ne_zero_iff.mp (by linarith)
+      have hzw2_ne : z - w₂ ≠ 0 := norm_ne_zero_iff.mp (by linarith)
+      have hdiff_inv : (z - w₂)⁻¹ - (z - w₁)⁻¹ = (w₂ - w₁) / ((z - w₂) * (z - w₁)) := by
+        field_simp [hzw1_ne, hzw2_ne]; ring
+      have hderiv_norm : ‖deriv (circleMap z₀ (2 * δ)) θ‖ = 2 * δ := by
+        rw [deriv_circleMap, norm_mul, norm_circleMap_zero, Complex.norm_I, mul_one, abs_of_pos h2δ]
+      rw [norm_smul, hderiv_norm, ← sub_smul, smul_eq_mul, norm_mul, hdiff_inv, norm_div, norm_mul]
+      apply mul_le_mul_of_nonneg_left _ h2δ.le
+      have hf_le : ‖f z‖ ≤ M := hbdd z (Metric.sphere_subset_closedBall hz_sph)
+      have hden_le : δ ^ 2 ≤ ‖z - w₂‖ * ‖z - w₁‖ := by
+        rw [sq]; exact mul_le_mul hzw2 hzw1 hδ.le (by linarith)
+      have hdiv_le : ‖w₂ - w₁‖ / (‖z - w₂‖ * ‖z - w₁‖) ≤ ‖w₂ - w₁‖ / δ ^ 2 :=
+        div_le_div_of_nonneg_left (norm_nonneg _) (sq_pos_of_pos hδ) hden_le
+      calc ‖w₂ - w₁‖ / (‖z - w₂‖ * ‖z - w₁‖) * ‖f z‖
+          ≤ ‖w₂ - w₁‖ / δ ^ 2 * M := mul_le_mul hdiv_le hf_le (norm_nonneg _) (by positivity)
+        _ = ‖w₂ - w₁‖ * M / δ ^ 2 := by ring
+    have hle := intervalIntegral.norm_integral_le_of_norm_le_const hbound
+    rwa [sub_zero, abs_of_pos (by positivity : (0 : ℝ) < 2 * Real.pi)] at hle
+  calc (2 * Real.pi)⁻¹ * ‖∮ z in C(z₀, 2 * δ), ((z - w₂)⁻¹ • f z - (z - w₁)⁻¹ • f z)‖
+      ≤ (2 * Real.pi)⁻¹ * (((2 * δ) * (‖w₂ - w₁‖ * M / δ ^ 2)) * (2 * Real.pi)) :=
+        mul_le_mul_of_nonneg_left hint_le (by positivity)
+    _ = (2 * M / δ) * ‖w₂ - w₁‖ := by
+        field_simp [hδ.ne', Real.pi_pos.ne']
 
 /-- **Item #15 — Genuine Montel + Vitali Strip Extension Theorem (Zero Hypothesis Laundering)**:
 Let `Ω = {z : ℂ | |z.im| < S}` (`0 < S`), and let `F_N : ℕ → ℂ → ℂ` be a sequence of holomorphic
@@ -644,12 +694,15 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
       (∀ t : ℝ, F (t : ℂ) = f t) := by
   set Ω : Set ℂ := {z : ℂ | |z.im| < S}
   have hΩ_open : IsOpen Ω := openStrip_isOpen S
+  -- Step 1: Montel compactness — every subsequence `σ` of `F_N` has a further subsequence
+  -- converging locally uniformly on `Ω` to a holomorphic function `G` extending `f`.
   have hmontel : ∀ σ : ℕ → ℕ, StrictMono σ →
       ∃ (τ : ℕ → ℕ) (G : ℂ → ℂ), StrictMono τ ∧
         DifferentiableOn ℂ G Ω ∧
         TendstoLocallyUniformlyOn (fun k ↦ F_N (σ (τ k))) G atTop Ω ∧
         (∀ t : ℝ, G (t : ℂ) = f t) := by
     intro σ hσ
+    -- Enumerate a countable dense subset `q : ℕ → ℂ` of `Ω` via `ℚ × ℚ`
     let embedQ : ℚ × ℚ → ℂ := fun p ↦
       ((p.1 : ℝ) : ℂ) + Complex.I * (((S * (p.2 : ℝ) / (1 + |(p.2 : ℝ)|) : ℝ)) : ℂ)
     have hembedQ_mem : ∀ p : ℚ × ℚ, embedQ p ∈ Ω := by
@@ -663,8 +716,10 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
     have hembedQ_dense : ∀ z ∈ Ω, ∀ ε > 0, ∃ p : ℚ × ℚ, dist z (embedQ p) < ε := by
       intro z hz ε hε
       simp only [Ω, Set.mem_setOf_eq] at hz
+      -- Find `q1 : ℚ` close to `z.re`, and `q2 : ℚ` such that `S * q2 / (1 + |q2|)` is close to `z.im`
       obtain ⟨q1, hq1⟩ := exists_rat_btwn (show z.re - ε / 2 < z.re + ε / 2 by linarith)
       have hq1_dist : |z.re - (q1 : ℝ)| < ε / 2 := abs_sub_lt_iff.mpr ⟨by linarith, by linarith⟩
+      -- Map `y = z.im ∈ (-S, S)` to `u = y / (S - |y|)`; then `S * u / (1 + |u|) = y`!
       set y : ℝ := z.im
       set u : ℝ := y / (S - |y|)
       have hSy : 0 < S - |y| := by linarith
@@ -686,14 +741,22 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
       refine ⟨(q1, q2), ?_⟩
       rw [Complex.dist_eq]
       have hnorm : ‖z - embedQ (q1, q2)‖ ≤ |z.re - (q1 : ℝ)| + |y - S * (q2 : ℝ) / (1 + |(q2 : ℝ)|)| := by
-        have hre : (z - embedQ (q1, q2)).re = z.re - (q1 : ℝ) := by simp [embedQ]
-        have him : (z - embedQ (q1, q2)).im = y - S * (q2 : ℝ) / (1 + |(q2 : ℝ)|) := by simp [embedQ, y]
+        have hre : (z - embedQ (q1, q2)).re = z.re - (q1 : ℝ) := by
+          simp only [embedQ, Complex.sub_re, Complex.add_re, Complex.mul_re, Complex.I_re,
+            Complex.I_im, Complex.ofReal_re, Complex.ofReal_im]; ring
+        have him : (z - embedQ (q1, q2)).im = y - S * (q2 : ℝ) / (1 + |(q2 : ℝ)|) := by
+          simp only [embedQ, y, Complex.sub_im, Complex.add_im, Complex.mul_im, Complex.I_re,
+            Complex.I_im, Complex.ofReal_re, Complex.ofReal_im]; ring
         rw [← hre, ← him]
         exact Complex.norm_le_abs_re_add_abs_im _
       rw [abs_sub_comm] at hy_dist
       linarith
-    let e : ℕ ≃ ℚ × ℚ := Encodable.equivNat (ℚ × ℚ) |>.symm
+    -- Enumerate `ℚ × ℚ` via `Denumerable`
+    let e : ℕ ≃ ℚ × ℚ := (Denumerable.eqv (ℚ × ℚ)).symm
     let q : ℕ → ℂ := fun k ↦ embedQ (e k)
+    -- Step 1a: For each `k`, `{F_N (σ m) (q k)}` is bounded, so by recursive Bolzano–Weierstrass
+    -- we extract nested subsequences `sub : ℕ → ℕ → ℕ` with `StrictMono (sub k)` and
+    -- `sub (k + 1) = sub k ∘ step_k`, converging at `q k`.
     have hextract : ∀ (k : ℕ) (ρ : ℕ → ℕ), StrictMono ρ →
         ∃ (ρ' : ℕ → ℕ) (L : ℂ), StrictMono ρ' ∧
           Tendsto (fun m ↦ F_N (σ (ρ (ρ' m))) (q k)) atTop (nhds L) := by
@@ -704,11 +767,13 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
         exact le_trans (hM _ _ rfl) (le_max_left _ _)
       obtain ⟨L, _, ρ', hρ'_mono, hρ'_lim⟩ := (isCompact_closedBall (0 : ℂ) (max M 0)).tendsto_subseq hmem
       exact ⟨ρ', L, hρ'_mono, hρ'_lim⟩
+    -- Build nested subsequences `chain : ℕ → (ℕ → ℕ)` recursively
     let chain : ℕ → { ρ : ℕ → ℕ // StrictMono ρ } := Nat.rec
       ⟨id, strictMono_id⟩
       (fun k prev ↦
         let h := hextract k prev.1 prev.2
         ⟨prev.1 ∘ h.choose, prev.2.comp h.choose_spec.choose_spec.1⟩)
+    -- Diagonal subsequence `τ m = (chain (m + 1)).1 m`
     let τ : ℕ → ℕ := fun m ↦ (chain (m + 1)).1 m
     have hchain_step : ∀ k, ∃ step : ℕ → ℕ, StrictMono step ∧ (chain (k + 1)).1 = (chain k).1 ∘ step := by
       intro k
@@ -734,6 +799,7 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
       rw [heq, Function.comp_apply]
       have hsm : m < s (m + 1) := lt_of_lt_of_le (Nat.lt_succ_self m) (hs.id_le (m + 1))
       exact (chain (m + 1)).2 hsm
+    -- `F_N (σ (τ m)) (q k)` is Cauchy for every `k`!
     have hq_cauchy : ∀ k : ℕ, CauchySeq (fun m ↦ F_N (σ (τ m)) (q k)) := by
       intro k
       let h := hextract k (chain k).1 (chain k).2
@@ -750,6 +816,8 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
         dsimp only [τ]; rw [heq, Function.comp_apply]
         exact hN₀ (s m) hsm
       exact hdiag_lim.cauchySeq
+    -- Step 1b: For EVERY compact ball `closedBall z₀ δ` with `closedBall z₀ (2*δ) ⊆ Ω`,
+    -- `F_N (σ (τ m))` is uniformly Cauchy on `closedBall z₀ δ`!
     have hball_cauchy : ∀ z₀ ∈ Ω, ∃ δ > 0, Metric.closedBall z₀ (2 * δ) ⊆ Ω ∧
         ∀ ε > 0, ∃ N₀ : ℕ, ∀ m₁ ≥ N₀, ∀ m₂ ≥ N₀, ∀ z ∈ Metric.closedBall z₀ δ,
           ‖F_N (σ (τ m₁)) z - F_N (σ (τ m₂)) z‖ < ε := by
@@ -770,14 +838,22 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
       set M : ℝ := max M₀ 0
       have hM_nn : 0 ≤ M := le_max_right _ _
       have hlip : ∀ N : ℕ, ∀ w₁ ∈ Metric.closedBall z₀ δ, ∀ w₂ ∈ Metric.closedBall z₀ δ,
-          ‖F_N N w₂ - F_N N w₁‖ ≤ (M / δ) * ‖w₂ - w₁‖ := fun N ↦
+          ‖F_N N w₂ - F_N N w₁‖ ≤ (2 * M / δ) * ‖w₂ - w₁‖ := fun N ↦
         cauchy_lipschitz_on_half_ball hδ_pos hM_nn (hholo N) hsub2
           (fun w hw ↦ le_trans (hM₀ N w hw) (le_max_left _ _))
       refine ⟨δ, hδ_pos, hsub2, fun ε hε ↦ ?_⟩
-      set L : ℝ := M / δ + 1
+      -- Cover compact `closedBall z₀ δ` by finitely many balls of radius `η` centered at points `q k`
+      set L : ℝ := 2 * M / δ + 1
       have hL_pos : 0 < L := by positivity
       set η : ℝ := min (δ / 2) (ε / (3 * L))
       have hη_pos : 0 < η := lt_min (by linarith) (by positivity)
+      have hcover : Metric.closedBall z₀ δ ⊆ ⋃ k : ℕ, Metric.ball (q k) η := by
+        intro w hw
+        have hwΩ : w ∈ Ω := hsub2 (Metric.closedBall_subset_closedBall (by linarith) hw)
+        obtain ⟨p, hp⟩ := hembedQ_dense w hwΩ η hη_pos
+        exact Set.mem_iUnion.mpr ⟨e.symm p, by simp [q, Metric.mem_ball, hp]⟩
+      obtain ⟨F_idx, hF_cover⟩ := (isCompact_closedBall z₀ δ).elim_finite_subcover
+        (fun k ↦ Metric.ball (q k) η) (fun _ ↦ Metric.isOpen_ball) hcover
       have hcover_in : Metric.closedBall z₀ δ ⊆
           ⋃ k ∈ { k : ℕ | q k ∈ Metric.closedBall z₀ δ }, Metric.ball (q k) η := by
         intro w hw
@@ -808,7 +884,7 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
           have : t * δ < 1 * δ := mul_lt_mul_of_pos_right ht1 hδ_pos
           linarith
         obtain ⟨p, hp⟩ := hembedQ_dense w' hw'Ω (min (η / 2) (δ - t * δ)) hr_pos
-        refine Set.mem_biUnion (i := e.symm p) ?_ ?_
+        refine Set.mem_biUnion (x := e.symm p) ?_ ?_
         · simp only [Set.mem_setOf_eq, Metric.mem_closedBall, q, Equiv.apply_symm_apply]
           have hp2 : dist (embedQ p) w' < δ - t * δ := by
             rw [dist_comm]; exact lt_of_lt_of_le hp (min_le_right _ _)
@@ -838,10 +914,10 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
       have hmid : ‖F_N (σ (τ m₁)) (q k.1) - F_N (σ (τ m₂)) (q k.1)‖ < ε / 3 :=
         hN_k k hkF m₁ (le_trans hNk_le hm₁) m₂ (le_trans hNk_le hm₂)
       have hz_qk : ‖z - q k.1‖ < η := by simpa [Metric.mem_ball, Complex.dist_eq] using hzk
-      have hηL : (M / δ) * η < ε / 3 := by
+      have hηL : (2 * M / δ) * η < ε / 3 := by
         have h1 : η ≤ ε / (3 * L) := min_le_right _ _
-        have h2 : M / δ < L := by dsimp only [L]; linarith
-        calc (M / δ) * η ≤ (M / δ) * (ε / (3 * L)) := mul_le_mul_of_nonneg_left h1 (by positivity)
+        have h2 : 2 * M / δ < L := by dsimp only [L]; linarith
+        calc (2 * M / δ) * η ≤ (2 * M / δ) * (ε / (3 * L)) := mul_le_mul_of_nonneg_left h1 (by positivity)
           _ < L * (ε / (3 * L)) := mul_lt_mul_of_pos_right h2 (by positivity)
           _ = ε / 3 := by field_simp [hL_pos.ne']
       have hlip1 : ‖F_N (σ (τ m₁)) z - F_N (σ (τ m₁)) (q k.1)‖ < ε / 3 :=
@@ -861,6 +937,7 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
       have h2 := norm_add_le (F_N (σ (τ m₁)) z - F_N (σ (τ m₁)) (q k.1))
           (F_N (σ (τ m₁)) (q k.1) - F_N (σ (τ m₂)) (q k.1))
       linarith
+    -- Pointwise limit `G z` exists at every `z ∈ Ω` by completeness of `ℂ`
     have hpt_exists : ∀ z ∈ Ω, ∃ L : ℂ, Tendsto (fun m ↦ F_N (σ (τ m)) z) atTop (nhds L) := by
       intro z hz
       rcases hball_cauchy z hz with ⟨δ, hδ, _, hcauchy⟩
@@ -874,9 +951,10 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
       intro z hz; simp only [G, dif_pos hz]; exact (hpt_exists z hz).choose_spec
     have hG_loc : TendstoLocallyUniformlyOn (fun m ↦ F_N (σ (τ m))) G atTop Ω := by
       rw [tendstoLocallyUniformlyOn_iff_forall_isCompact hΩ_open]
-      intro K hK hK_sub
+      intro K hK_sub hK
       rw [Metric.tendstoUniformlyOn_iff]
       intro ε hε
+      -- Cover `K` by finitely many balls from `hball_cauchy`
       have hcov : K ⊆ ⋃ z : { z : ℂ // z ∈ K }, Metric.ball z.1 (hball_cauchy z.1 (hK_sub z.2)).choose :=
         fun z hz ↦ Set.mem_iUnion.mpr ⟨⟨z, hz⟩, Metric.mem_ball_self (hball_cauchy z (hK_sub hz)).choose_spec.1⟩
       obtain ⟨S_fin, hS_fin⟩ := hK.elim_finite_subcover
@@ -911,6 +989,7 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
         (hreal t).comp ((hσ.comp hτ_mono).tendsto_atTop)
       exact tendsto_nhds_unique (hG_lim (t : ℂ) htΩ) hsub_lim
     exact ⟨τ, G, hτ_mono, hG_holo, hG_loc, hG_real⟩
+  -- Step 2: Identity theorem — any two holomorphic extensions of `f` on `Ω` are equal on `Ω`!
   have huniq : ∀ G₁ G₂ : ℂ → ℂ,
       DifferentiableOn ℂ G₁ Ω → DifferentiableOn ℂ G₂ Ω →
       (∀ t : ℝ, G₁ (t : ℂ) = f t) → (∀ t : ℝ, G₂ (t : ℂ) = f t) →
@@ -932,19 +1011,22 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
     · simp only [Set.mem_compl_iff, Set.mem_singleton_iff, Complex.ofReal_eq_zero]
       linarith
     · rw [h1, h2]
+  -- Step 3: Extract one limit `F` from `σ = id`, and prove the FULL sequence `F_N` converges
+  -- locally uniformly to `F` on `Ω` by subsequence-of-subsequence!
   obtain ⟨_, F, _, hF_holo, _, hF_real⟩ := hmontel id strictMono_id
   refine ⟨F, hF_holo, ?_, hF_real⟩
   rw [tendstoLocallyUniformlyOn_iff_forall_isCompact hΩ_open]
-  intro K hK hK_sub
+  intro K hK_sub hK
   rw [Metric.tendstoUniformlyOn_iff]
   intro ε hε
   by_contra hnot
   rw [Filter.not_eventually] at hnot
+  -- Extract a bad subsequence `σ` with `∃ z ∈ K, ε ≤ dist (F z) (F_N (σ k) z)`
   have hbad : ∀ N₀ : ℕ, ∃ N ≥ N₀, ∃ z ∈ K, ε ≤ dist (F z) (F_N N z) := by
     intro N₀
     have hf := (Filter.frequently_atTop.mp hnot) N₀
     rcases hf with ⟨N, hN, hnot_all⟩
-    push_neg at hnot_all
+    push Not at hnot_all
     rcases hnot_all with ⟨z, hzK, hdist⟩
     exact ⟨N, hN, z, hzK, hdist⟩
   let σ : ℕ → ℕ := Nat.rec (hbad 0).choose (fun _ prev ↦ (hbad (prev + 1)).choose)
@@ -957,7 +1039,7 @@ theorem vitali_montel_strip_extension {S : ℝ} (hS : 0 < S)
     | succ k => exact (hbad (σ k + 1)).choose_spec.2
   obtain ⟨τ, G, _, hG_holo, hG_loc, hG_real⟩ := hmontel σ hσ_mono
   have hGF : Set.EqOn G F Ω := huniq G F hG_holo hF_holo hG_real hF_real
-  have hG_unif := (tendstoLocallyUniformlyOn_iff_forall_isCompact hΩ_open).mp hG_loc K hK hK_sub
+  have hG_unif := (tendstoLocallyUniformlyOn_iff_forall_isCompact hΩ_open).mp hG_loc K hK_sub hK
   obtain ⟨M₀, hM₀⟩ := Filter.eventually_atTop.mp ((Metric.tendstoUniformlyOn_iff.mp hG_unif) ε hε)
   rcases hσ_bad (τ M₀) with ⟨z, hzK, hge⟩
   have hlt := hM₀ M₀ le_rfl z hzK
