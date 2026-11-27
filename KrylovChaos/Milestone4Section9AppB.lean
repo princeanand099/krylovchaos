@@ -159,8 +159,7 @@ theorem prop_9_1_part1_otoc_preservation {N : ℕ} {H : QubitOp N} (hH : H.IsHer
         Matrix.of (fun i j : QubitIdx N ↦
           ((Real.exp (-(σ ^ 2 / 2) * (hH.eigenvalues i - hH.eigenvalues j) ^ 2) : ℝ) : ℂ) *
             ((hH.eigenvectorUnitary : QubitOp N)ᴴ * W * (hH.eigenvectorUnitary : QubitOp N)) i j)) := by
-      rw [continuous_pi_iff]; intro i
-      rw [continuous_pi_iff]; intro j
+      refine continuous_matrix fun i j ↦ ?_
       apply Continuous.mul _ continuous_const
       refine Complex.continuous_ofReal.comp ?_
       exact Real.continuous_exp.comp (((continuous_pow 2).div_const 2).neg.mul continuous_const)
@@ -308,21 +307,20 @@ theorem prop_9_1_part3_concrete_2d_krylov_eq_9_3 {D : ℕ} {Δ C E_B : ℝ}
     rw [Matrix.mul_apply, Matrix.mul_apply, ← Equiv.sum_comp (Equiv.funUnique (Fin 1) (Fin 2)).symm]
     apply Finset.sum_congr rfl; intro k _
     simp [hps]
+  have hfin2 : ∀ x : Fin 2, x = 0 ∨ x = 1 := fun ⟨k, hk⟩ ↦ by interval_cases k <;> simp
   have hcomm0 : matComm H₂ O₀ = (Δ : ℂ) • O₁ := by
     unfold H₂ O₀ O₁ matComm
     ext i j
     simp only [Matrix.sub_apply, Matrix.smul_mul, Matrix.mul_smul, Matrix.smul_apply,
       smul_eq_mul, hmul_ps, hps]
-    rcases Fin.fin_two_eq_zero_or_one (i 0) with hi | hi <;>
-      rcases Fin.fin_two_eq_zero_or_one (j 0) with hj | hj <;>
+    rcases hfin2 (i 0) with hi | hi <;> rcases hfin2 (j 0) with hj | hj <;>
       simp [hi, hj, pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_sq] <;> ring
   have hcomm1 : matComm H₂ O₁ = (Δ : ℂ) • O₀ := by
     unfold H₂ O₀ O₁ matComm
     ext i j
     simp only [Matrix.sub_apply, Matrix.smul_mul, Matrix.mul_smul, Matrix.smul_apply,
       smul_eq_mul, hmul_ps, hps]
-    rcases Fin.fin_two_eq_zero_or_one (i 0) with hi | hi <;>
-      rcases Fin.fin_two_eq_zero_or_one (j 0) with hj | hj <;>
+    rcases hfin2 (i 0) with hi | hi <;> rcases hfin2 (j 0) with hj | hj <;>
       simp [hi, hj, pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_sq] <;> ring
   exact ⟨hH₂, hO₀, hcomm0, hcomm1, prop_9_1_part3_tunneling_time_lower_bound hΔ hC hEB hsplit⟩
 
