@@ -6,11 +6,11 @@ Authors: Prince Anand
 import KrylovChaos
 
 /-!
-# Comprehensive Kernel Axiom Audit for `KrylovChaos` (All 52 Modules)
+# Comprehensive Kernel Axiom Audit for `KrylovChaos` (All 58 Modules)
 
 Run with `lake env lean KrylovChaos/AuditAxioms.lean`.
 Every listed headline theorem must depend strictly on a subset of
-`[propext, Classical.choice, Quot.sound]` — zero custom axioms, complete proofs.
+`[propext, Classical.choice, Quot.sound]` — zero `sorryAx`, zero custom axioms.
 -/
 
 -- Original Headline & Literature Theorems
@@ -102,7 +102,7 @@ Every listed headline theorem must depend strictly on a subset of
 #print axioms KrylovChaos.theorem_1_3b_concrete_CW
 #print axioms KrylovChaos.quantumRelEntropy_nonneg
 #print axioms KrylovChaos.gibbs_variational_bound
-#print axioms KrylovChaos.lemma_6_1_concrete_operator
+#print axioms KrylovChaos.hsNormSq_siteSizeOp_jBeta_eq_comm_avg
 #print axioms KrylovChaos.lanczosTrunc_mem_filtration
 #print axioms KrylovChaos.theorem_1_1a_infinite_exact_constant
 #print axioms KrylovChaos.prop_4_1_concrete_operator
@@ -164,3 +164,56 @@ Every listed headline theorem must depend strictly on a subset of
 #print axioms KrylovChaos.lieb_robinson_concrete_opNorm
 #print axioms KrylovChaos.opNorm_boundaryOp_le
 #print axioms KrylovChaos.heisenbergEvol_concrete_norm_bound
+
+-- Verdict-A 30-Item Remediation Theorems (Milestones 1–4, 51 Headline Theorems)
+#print axioms KrylovChaos.infinite_krylov_ode_of_pointwise_limit
+#print axioms KrylovChaos.infinite_krylov_ode_carleman_l2_unique
+#print axioms KrylovChaos.infinite_krylov_ode_linear_growth_l2_unique
+#print axioms KrylovChaos.theorem_1_1a_limsup_rate_bound_nonneg
+#print axioms KrylovChaos.theorem_1_1a_infinite_fatou_exact_single_exp
+#print axioms KrylovChaos.prop_2_2_part1_jBeta_bijective
+#print axioms KrylovChaos.isEvenParity_concreteGibbsRhoQuarter
+#print axioms KrylovChaos.prop_2_3_part2_majorana_from_even_H
+#print axioms KrylovChaos.theorem_1_1b_family_concrete_qubit
+#print axioms KrylovChaos.arbitraryProdGibbsData_rho_eq_kronOp
+#print axioms KrylovChaos.prop_4_3_lambdaMSS_arbitrary_product_state
+#print axioms KrylovChaos.lemma_A_3_multiType_unordered_tree_sum
+#print axioms KrylovChaos.majoranaString_even_disjoint_comm
+#print axioms KrylovChaos.majorana_comm_mem_filtration
+#print axioms KrylovChaos.majorana_lanczosOp_mem_filtration
+#print axioms KrylovChaos.prop_4_1_part1_majorana
+#print axioms KrylovChaos.lemma_4_2_majorana_concrete
+#print axioms KrylovChaos.theorem_1_1b_majorana_concrete
+#print axioms KrylovChaos.prop_4_1_part2_majorana
+#print axioms KrylovChaos.theorem_1_1b_family_majorana
+#print axioms KrylovChaos.integrable_cosh_of_lintegral_le
+#print axioms KrylovChaos.theorem_1_2a_thermo_limit_eq_1_15_and_rW
+#print axioms KrylovChaos.wightmanStripHalfWidth_ge_beta_half_add_kappa
+#print axioms KrylovChaos.concrete_lanczos_moment_eq_jacobi
+#print axioms KrylovChaos.theorem_1_2b_from_strip_measure
+#print axioms KrylovChaos.concreteWightmanNormAtShift_time_invariant
+#print axioms KrylovChaos.concreteOTOC_swap_symmetry
+#print axioms KrylovChaos.concreteOTOC_three_way_eq_1_17
+#print axioms KrylovChaos.vitali_montel_strip_extension
+#print axioms KrylovChaos.prop_6_2_exact_three_halves
+#print axioms KrylovChaos.prop_6_2_concrete_r_local_scoped
+#print axioms KrylovChaos.lemma_6_3_schwarz_order_k
+#print axioms KrylovChaos.lemma_6_3_twoType_polymer_tree_bound
+#print axioms KrylovChaos.prop_6_4_part1_genuine_eq_6_4
+#print axioms KrylovChaos.gibbsRelEntropy_le_log_of_renyi2_singular
+#print axioms KrylovChaos.hsNormSq_mul_le_opNorm_sq
+#print axioms KrylovChaos.hsNormSq_mul_right_le_opNorm_sq
+#print axioms KrylovChaos.rhoO_op_relEntropy_le_two_log_opNorm
+#print axioms KrylovChaos.wightmanNormSq_le_opNorm_sq
+#print axioms KrylovChaos.cor_6_5_all_time_lattice_bound
+#print axioms KrylovChaos.lemma_7_3_part1_general_subset
+#print axioms KrylovChaos.theorem_1_3b_concrete_exact_54_216
+#print axioms KrylovChaos.theorem_1_3c_family_concrete
+#print axioms KrylovChaos.prop_8_1_araki_1d_exact_eq_8_1
+#print axioms KrylovChaos.prop_8_3_classical_ising_reverse_poincare_eq_8_4
+#print axioms KrylovChaos.diagIsing_wightmanNormSq_eq_classical_L2
+#print axioms KrylovChaos.prop_9_1_part1_liminf_zero_from_gaussian_measure
+#print axioms KrylovChaos.prop_9_1_part1_otoc_preservation
+#print axioms KrylovChaos.prop_9_1_part2_violates_H2_all_delta
+#print axioms KrylovChaos.lemma_B_1_doubleWell_splitting_from_matrix
+#print axioms KrylovChaos.prop_9_1_part3_concrete_2d_krylov_eq_9_3

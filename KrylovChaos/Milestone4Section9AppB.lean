@@ -156,14 +156,15 @@ theorem prop_9_1_part1_otoc_preservation {N : ℕ} {H : QubitOp N} (hH : H.IsHer
   have hcont_smear : Continuous (fun σ : ℝ ↦ gaussianSmear hH σ W) := by
     unfold gaussianSmear
     have hmid : Continuous (fun σ : ℝ ↦
-        (fun i j : QubitIdx N ↦
+        Matrix.of (fun i j : QubitIdx N ↦
           ((Real.exp (-(σ ^ 2 / 2) * (hH.eigenvalues i - hH.eigenvalues j) ^ 2) : ℝ) : ℂ) *
-            ((hH.eigenvectorUnitary : QubitOp N)ᴴ * W * (hH.eigenvectorUnitary : QubitOp N)) i j : QubitOp N)) := by
+            ((hH.eigenvectorUnitary : QubitOp N)ᴴ * W * (hH.eigenvectorUnitary : QubitOp N)) i j)) := by
       rw [continuous_pi_iff]; intro i
       rw [continuous_pi_iff]; intro j
       apply Continuous.mul _ continuous_const
       refine Complex.continuous_ofReal.comp ?_
       exact Real.continuous_exp.comp (((continuous_pow 2).div_const 2).neg.mul continuous_const)
+    dsimp only
     exact (continuous_const.mul hmid).mul continuous_const
   have hcont_otoc : Continuous (fun X : QubitOp N ↦ concreteOTOC hH β X V (t : ℂ)) := by
     unfold concreteOTOC jBeta heisenbergEvol
@@ -297,22 +298,32 @@ theorem prop_9_1_part3_concrete_2d_krylov_eq_9_3 {D : ℕ} {Δ C E_B : ℝ}
     unfold H₂ Matrix.IsHermitian
     rw [Matrix.conjTranspose_smul, pauliSite_herm, Complex.star_def, Complex.conj_ofReal]
   have hO₀ : O₀.IsHermitian := pauliSite_herm 0 1
+  have hps : ∀ (a : Fin 4) (i j : Fin 1 → Fin 2),
+      pauliSite (0 : Fin 1) a i j = pauliMat a (i 0) (j 0) := by
+    intro a i j; simp [pauliSite, pauliString, kronOp, Fin.prod_univ_one]
+  have hmul_ps : ∀ (a b : Fin 4) (i j : Fin 1 → Fin 2),
+      (pauliSite (0 : Fin 1) a * pauliSite (0 : Fin 1) b) i j =
+      (pauliMat a * pauliMat b) (i 0) (j 0) := by
+    intro a b i j
+    rw [Matrix.mul_apply, Matrix.mul_apply, ← Equiv.sum_comp (Equiv.funUnique (Fin 1) (Fin 2)).symm]
+    apply Finset.sum_congr rfl; intro k _
+    simp [hps]
   have hcomm0 : matComm H₂ O₀ = (Δ : ℂ) • O₁ := by
     unfold H₂ O₀ O₁ matComm
     ext i j
-    fin_cases i; fin_cases j
-    all_goals (
-      simp [pauliSite, pauliString, pauliMat, kronOp, Matrix.mul_apply,
-        Fin.sum_univ_two, Fin.prod_univ_one, Complex.I_sq]
-      try ring)
+    simp only [Matrix.sub_apply, Matrix.smul_mul, Matrix.mul_smul, Matrix.smul_apply,
+      smul_eq_mul, hmul_ps, hps]
+    rcases Fin.fin_two_eq_zero_or_one (i 0) with hi | hi <;>
+      rcases Fin.fin_two_eq_zero_or_one (j 0) with hj | hj <;>
+      simp [hi, hj, pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_sq] <;> ring
   have hcomm1 : matComm H₂ O₁ = (Δ : ℂ) • O₀ := by
     unfold H₂ O₀ O₁ matComm
     ext i j
-    fin_cases i; fin_cases j
-    all_goals (
-      simp [pauliSite, pauliString, pauliMat, kronOp, Matrix.mul_apply,
-        Fin.sum_univ_two, Fin.prod_univ_one, Complex.I_sq]
-      try ring)
+    simp only [Matrix.sub_apply, Matrix.smul_mul, Matrix.mul_smul, Matrix.smul_apply,
+      smul_eq_mul, hmul_ps, hps]
+    rcases Fin.fin_two_eq_zero_or_one (i 0) with hi | hi <;>
+      rcases Fin.fin_two_eq_zero_or_one (j 0) with hj | hj <;>
+      simp [hi, hj, pauliMat, Matrix.mul_apply, Fin.sum_univ_two, Complex.I_sq] <;> ring
   exact ⟨hH₂, hO₀, hcomm0, hcomm1, prop_9_1_part3_tunneling_time_lower_bound hΔ hC hEB hsplit⟩
 
 end Item28DoubleWellAnd2DKrylovEq93
