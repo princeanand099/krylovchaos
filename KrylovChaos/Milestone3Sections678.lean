@@ -1757,7 +1757,7 @@ theorem prop_8_3_classical_ising_reverse_poincare_eq_8_4 {N : ℕ}
           · rw [Finset.sum_comm]
             apply Finset.sum_congr rfl; intro e _
             simp only [add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
-            ring
+            split_ifs <;> ring
       rw [hsum_eq]
     rw [hnum]
     dsimp only [w, Z_ising]
