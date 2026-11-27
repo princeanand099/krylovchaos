@@ -218,6 +218,7 @@ theorem polymerZ_nonvanishing_and_ratio {ι : Type*} [DecidableEq ι]
     by_cases hcard_le : Λ.card ≤ n
     · exact ih Λ hcard_le hΛΓ
     · have hcard_eq : Λ.card = n + 1 := by omega
+      -- First prove `polymerZ Λ ≠ 0` by picking any `δ₀ ∈ Λ`.
       have hΛ_ne : Λ.Nonempty := Finset.card_pos.mp (by omega)
       rcases hΛ_ne with ⟨δ₀, hδ₀⟩
       have hcard_er : (Λ.erase δ₀).card ≤ n := by
@@ -271,6 +272,7 @@ theorem polymerZ_nonvanishing_and_ratio {ι : Type*} [DecidableEq ι]
         rw [Finset.insert_erase hδ₀] at hst
         exact hst.2.1
       refine ⟨hZΛ_ne, fun γ hγΓ ↦ ?_⟩
+      -- Decompose `Λ = Λ₀ ∪ B` where `Λ₀ = Λ.filter (¬incompat γ ·)` and `B = Λ.filter (incompat γ ·)`.
       let Λ₀ := Λ.filter (fun δ ↦ ¬incompat γ δ)
       let B := Λ.filter (fun δ ↦ incompat γ δ)
       have hdisj : Disjoint Λ₀ B := by
@@ -278,6 +280,7 @@ theorem polymerZ_nonvanishing_and_ratio {ι : Type*} [DecidableEq ι]
         exact (Finset.mem_filter.mp hx1).2 (Finset.mem_filter.mp hx2).2
       have hunion : Λ₀ ∪ B = Λ := by
         ext x; simp only [Λ₀, B, Finset.mem_union, Finset.mem_filter]; tauto
+      -- Induct over `S ⊆ B`: `‖Z(Λ₀) / Z(Λ₀ ∪ S)‖ ≤ exp(2 * ∑ δ ∈ S, ‖w δ‖ * exp(a δ))`.
       have hS_bound : ∀ S : Finset ι, S ⊆ B →
           polymerZ incompat w (Λ₀ ∪ S) ≠ 0 ∧
           ‖polymerZ incompat w Λ₀ / polymerZ incompat w (Λ₀ ∪ S)‖ ≤
@@ -402,6 +405,7 @@ lemma polymerZ_siteSlice_step {N : ℕ} (w : Polymer N → ℂ) (Γ : Finset (Po
     rw [Finset.not_disjoint_iff]
     exact ⟨⟨k, hk⟩, mem_siteSlice_sdiff_mem_polySupp Γ hk h₁,
       mem_siteSlice_sdiff_mem_polySupp Γ hk h₂⟩
+  -- Induct over `S ⊆ Δ`: `Z(Λk ∪ S) = Z(Λk) + ∑ γ ∈ S, w γ * Z(Λk.filter (¬polyIncompat γ ·))`.
   have hstep : ∀ S : Finset (Polymer N), S ⊆ Δ →
       polymerZ polyIncompat w (Λk ∪ S) =
         polymerZ polyIncompat w Λk +
@@ -435,7 +439,7 @@ lemma polymerZ_siteSlice_step {N : ℕ} (w : Polymer N → ℂ) (Γ : Finset (Po
   rw [hunion] at hres
   exact hres
 
-/-- For `z : ℂ` with `‖z - 1‖ ≤ 1 / 4`, `z ∈ Complex.slitPlane` and `‖Complex.log z‖ ≤ 2 / 3`. -/
+/-- For `z : ℂ` with `‖z - 1‖ ≤ 1 / 4`, `z ∈ Complex.slitPlane` and `‖Complex.log z‖ ≤ 1`. -/
 lemma complex_log_bound_of_norm_sub_one_le {z : ℂ} (hz : ‖z - 1‖ ≤ 1 / 4) :
     z ∈ Complex.slitPlane ∧ ‖Complex.log z‖ ≤ 2 / 3 := by
   have hre_sub : |z.re - 1| ≤ 1 / 4 := by
@@ -535,6 +539,7 @@ theorem cauchy_order2_schwarz_bound {R M : ℝ} (hR : 0 < R) (hM : 0 ≤ M)
   intro w hw
   by_cases hw0 : w = 0
   · subst hw0; simp [hg0]
+  -- Define `h₁ z = if z = 0 then 0 else g z / z`.
   let h₁ : ℂ → ℂ := fun z ↦ if z = 0 then 0 else g z / z
   have hh₁_cont : ContinuousOn h₁ (Metric.closedBall 0 R) := by
     intro z hz
@@ -822,24 +827,28 @@ theorem normalizedTrace_tsum_exp_eq_polymerZ {N : ℕ}
     rw [hpow_expand m, normalizedTrace_sum, Finset.mul_sum]
   rw [hlhs_eq] at hsum_all
   rw [hsum_all.tsum_eq]
+  -- Bijection between `E.powerset` and compatible subsets of `connectedPolymers E`.
   rcases compatible_connectedPolymers_bijection E hne with ⟨hinj, hsurj⟩
   unfold polymerZ
   symm
+  have hmem_filt : ∀ {α : Type*} {s : Finset α} {p : α → Prop} {inst : DecidablePred p} {a : α},
+      a ∈ @Finset.filter α p inst s ↔ a ∈ s ∧ p a :=
+    fun {_ _ _ _ _} ↦ Finset.mem_filter
   refine Finset.sum_bij (fun I _ ↦ I.biUnion id) ?_ ?_ ?_ ?_
   · intro I hI
-    have hI' := (@Finset.mem_filter _ _ _ _ _).mp hI
+    have hI' := hmem_filt.mp hI
     rw [Finset.mem_powerset] at hI' ⊢
     intro X hX
     rcases Finset.mem_biUnion.mp hX with ⟨γ, hγI, hXγ⟩
     exact (mem_connectedPolymers.mp (hI'.1 hγI)).1 hXγ
   · intro I₁ hI₁ I₂ hI₂ heq
-    exact hinj I₁ ((@Finset.mem_filter _ _ _ _ _).mpr ((@Finset.mem_filter _ _ _ _ _).mp hI₁))
-      I₂ ((@Finset.mem_filter _ _ _ _ _).mpr ((@Finset.mem_filter _ _ _ _ _).mp hI₂)) heq
+    exact hinj I₁ (hmem_filt.mpr (hmem_filt.mp hI₁))
+      I₂ (hmem_filt.mpr (hmem_filt.mp hI₂)) heq
   · intro S hS
     rcases hsurj S hS with ⟨I, hI, hEq⟩
-    exact ⟨I, (@Finset.mem_filter _ _ _ _ _).mpr ((@Finset.mem_filter _ _ _ _ _).mp hI), hEq⟩
+    exact ⟨I, hmem_filt.mpr (hmem_filt.mp hI), hEq⟩
   · intro I hI
-    have hI' := (@Finset.mem_filter _ _ _ _ _).mp hI
+    have hI' := hmem_filt.mp hI
     rw [Finset.mem_powerset] at hI'
     exact (normalizedTrace_polyOp_biUnion g hsupp I hI'.2
       (fun γ hγ X hXγ ↦ hne X ((mem_connectedPolymers.mp (hI'.1 hγ)).1 hXγ))).symm
@@ -863,6 +872,7 @@ lemma differentiable_tracePolyWeight_affine {N : ℕ}
     unfold Matrix.trace Matrix.diag polyTermSum
     simp only [Matrix.sum_apply]
     refine Differentiable.fun_sum fun i _ ↦ Differentiable.fun_sum fun w _ ↦ ?_
+    -- Each entry of `(List.ofFn fun j : Fin m ↦ A (w j) + ζ • B (w j)).prod` is a polynomial in `ζ`.
     have hprod_diff : ∀ (k : ℕ) (M : Fin k → ℂ → QubitOp N),
         (∀ j a b, Differentiable ℂ (fun ζ ↦ M j ζ a b)) →
         ∀ a b, Differentiable ℂ (fun ζ ↦ (List.ofFn (fun j : Fin k ↦ M j ζ)).prod a b) := by
@@ -938,10 +948,12 @@ lemma hasDerivAt_normalizedTrace_exp_affine {N : ℕ} (A B : QubitOp N) :
     HasDerivAt
       (fun ζ : ℂ ↦ ∑' m : ℕ, ((m.factorial : ℂ)⁻¹ * normalizedTrace ((A + ζ • B) ^ m)))
       (∑' m : ℕ, ((m.factorial : ℂ)⁻¹ * normalizedTrace (A ^ m * B))) 0 := by
+  -- Differentiate each term `m` at `ζ = 0` and pass the derivative under the locally uniform sum.
   have hderiv_pow : ∀ m : ℕ,
       HasDerivAt (fun ζ : ℂ ↦ normalizedTrace ((A + ζ • B) ^ m))
         ((m : ℂ) * normalizedTrace (A ^ (m - 1) * B)) 0 := by
     intro m
+    -- Prove entrywise derivative of `(A + ζ • B) ^ m` at `ζ = 0` is `∑ j < m, A^j * B * A^(m-1-j)`.
     have hmat_deriv : ∀ (k : ℕ) (a b : QubitIdx N),
         HasDerivAt (fun ζ : ℂ ↦ ((A + ζ • B) ^ k) a b)
           ((∑ j ∈ Finset.range k, A ^ j * B * A ^ (k - 1 - j)) a b) 0 := by
@@ -1007,6 +1019,7 @@ lemma hasDerivAt_normalizedTrace_exp_affine {N : ℕ} (A B : QubitOp N) :
               rw [← pow_add, show m - 1 - j + j = m - 1 by omega]
       rw [Finset.sum_congr rfl h2, Finset.sum_const, Finset.card_range, nsmul_eq_mul]
     rw [hcyc]; unfold Matrix.trace Matrix.diag; ring
+  -- Now use Weierstrass M-test + `TendstoLocallyUniformlyOn.deriv` on `Metric.ball 0 1`.
   let f : ℕ → ℂ → ℂ := fun m ζ ↦ (m.factorial : ℂ)⁻¹ * normalizedTrace ((A + ζ • B) ^ m)
   set M : ℝ := opNorm A + opNorm B
   have hM_nn : 0 ≤ M := add_nonneg (opNorm_nonneg A) (opNorm_nonneg B)
@@ -1099,6 +1112,7 @@ lemma hasDerivAt_normalizedTrace_exp_affine {N : ℕ} (A B : QubitOp N) :
       ∑' m : ℕ, (m.factorial : ℂ)⁻¹ * normalizedTrace (A ^ m * B) :=
     tendsto_nhds_unique hlim1 hlim2
   exact heq_d ▸ hdiff_lim.hasDerivAt
+
 
 end TracePolymerIdentityAndCumulant
 
