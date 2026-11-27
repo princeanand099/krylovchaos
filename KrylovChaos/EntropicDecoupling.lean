@@ -490,8 +490,8 @@ lemma rhoO_op_heisenbergEvol_eq_conj {N : ℕ} {H : QubitOp N} (hH : H.IsHermiti
       complexPropagator hH (t : ℂ) * gibbsRhoQuarter hH β
     unfold gibbsRhoQuarter complexPropagator
     rw [Matrix.smul_mul, Matrix.mul_smul, hermFunc_mul, hermFunc_mul]
-    have hfn : (fun x : ℝ ↦ Complex.exp ((-(β / 4) * x : ℝ) : ℂ) * Complex.exp (Complex.I * (t : ℂ) * (x : ℂ))) =
-        (fun x : ℝ ↦ Complex.exp (Complex.I * (t : ℂ) * (x : ℂ)) * Complex.exp ((-(β / 4) * x : ℝ) : ℂ)) := by
+    have hfn : (fun x : ℝ ↦ ((Real.exp (-(β / 4) * x) : ℝ) : ℂ) * Complex.exp (Complex.I * (t : ℂ) * (x : ℂ))) =
+        (fun x : ℝ ↦ Complex.exp (Complex.I * (t : ℂ) * (x : ℂ)) * ((Real.exp (-(β / 4) * x) : ℝ) : ℂ)) := by
       funext x; ring
     rw [hfn]
   have hcomm_QH : Q * Uᴴ = Uᴴ * Q := by
@@ -500,8 +500,8 @@ lemma rhoO_op_heisenbergEvol_eq_conj {N : ℕ} {H : QubitOp N} (hH : H.IsHermiti
       complexPropagator hH (-(t : ℂ)) * gibbsRhoQuarter hH β
     unfold gibbsRhoQuarter complexPropagator
     rw [Matrix.smul_mul, Matrix.mul_smul, hermFunc_mul, hermFunc_mul]
-    have hfn : (fun x : ℝ ↦ Complex.exp ((-(β / 4) * x : ℝ) : ℂ) * Complex.exp (Complex.I * -(t : ℂ) * (x : ℂ))) =
-        (fun x : ℝ ↦ Complex.exp (Complex.I * -(t : ℂ) * (x : ℂ)) * Complex.exp ((-(β / 4) * x : ℝ) : ℂ)) := by
+    have hfn : (fun x : ℝ ↦ ((Real.exp (-(β / 4) * x) : ℝ) : ℂ) * Complex.exp (Complex.I * -(t : ℂ) * (x : ℂ))) =
+        (fun x : ℝ ↦ Complex.exp (Complex.I * -(t : ℂ) * (x : ℂ)) * ((Real.exp (-(β / 4) * x) : ℝ) : ℂ)) := by
       funext x; ring
     rw [hfn]
   have hj : jBeta Q (heisenbergEvol hH (t : ℂ) O) = U * jBeta Q O * Uᴴ := by
@@ -648,6 +648,7 @@ private lemma hasSum_cauchy_product_complex_bg {a b : ℕ → ℂ} {A B : ℂ}
         intro n
         have hdisj : (Finset.range n : Set ℕ).PairwiseDisjoint Finset.antidiagonal := by
           intro i _ j _ hij
+          change Disjoint (Finset.antidiagonal i) (Finset.antidiagonal j)
           rw [Finset.disjoint_left]
           intro p hp1 hp2
           exact hij ((Finset.mem_antidiagonal.mp hp1).symm.trans (Finset.mem_antidiagonal.mp hp2))
@@ -664,8 +665,8 @@ private lemma hasSum_cauchy_product_complex_bg {a b : ℕ → ℂ} {A B : ℂ}
         (fun n : ℕ ↦ ∑ m ∈ Finset.range (2 * n), ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2)
         Filter.atTop (nhds (∑' m : ℕ, ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2)) :=
       hanti_summ.hasSum.tendsto_sum_nat.comp
-        (Filter.tendsto_atTop_mono (fun n ↦ by omega) Filter.tendsto_id)
-    rw [tendsto_nhds_unique hsubseq hlim]
+        (Filter.tendsto_atTop_mono (fun n : ℕ ↦ show id n ≤ 2 * n by dsimp; omega) Filter.tendsto_id)
+    rw [← tendsto_nhds_unique hsubseq hlim]
     exact hanti_summ.hasSum
   have hsq_lim : Filter.Tendsto
       (fun n : ℕ ↦ (∑ i ∈ Finset.range n, a i) * (∑ j ∈ Finset.range n, b j))
@@ -677,8 +678,9 @@ private lemma hasSum_cauchy_product_complex_bg {a b : ℕ → ℂ} {A B : ℂ}
       Filter.atTop (nhds 0) := by
     rw [Metric.tendsto_atTop]
     intro ε hε
-    have htail := hprod_norm.hasSum
-    rw [HasSum, Metric.tendsto_atTop] at htail
+    have htail : Filter.Tendsto (fun s : Finset (ℕ × ℕ) ↦ ∑ p ∈ s, ‖a p.1 * b p.2‖)
+        Filter.atTop (nhds (∑' p : ℕ × ℕ, ‖a p.1 * b p.2‖)) := hprod_norm.hasSum
+    rw [Metric.tendsto_atTop] at htail
     rcases htail ε hε with ⟨S, hS⟩
     let N₀ := S.sup (fun p : ℕ × ℕ ↦ max p.1 p.2 + 1)
     refine ⟨N₀, fun n hn ↦ ?_⟩
@@ -690,6 +692,7 @@ private lemma hasSum_cauchy_product_complex_bg {a b : ℕ → ℂ} {A B : ℂ}
     let T := (Finset.range (2 * n)).biUnion Finset.antidiagonal
     have hdisj : (Finset.range (2 * n) : Set ℕ).PairwiseDisjoint Finset.antidiagonal := by
       intro i _ j _ hij
+      change Disjoint (Finset.antidiagonal i) (Finset.antidiagonal j)
       rw [Finset.disjoint_left]; intro p hp1 hp2
       exact hij ((Finset.mem_antidiagonal.mp hp1).symm.trans (Finset.mem_antidiagonal.mp hp2))
     have hT_eq : ∑ m ∈ Finset.range (2 * n), ∑ p ∈ Finset.antidiagonal m, a p.1 * b p.2 =
@@ -1118,10 +1121,14 @@ theorem bgShell_local_decomp {N r : ℕ} (hr : 2 ≤ r)
               ∑ x : Fin N, (∑ f₁ ∈ (cSeq x m).filter (fun f₁ ↦ y ∈ causalUnionOp {x} f₁), ∏ j, w (f₁ j)) *
                 fwdCausalSum E w (k - m) {x} := by
             apply Finset.sum_congr rfl; intro x _
-            rw [Finset.sum_mul]
-            rw [← Finset.sum_filter]
-            apply Finset.sum_congr rfl; intro f₁ _
-            rw [Finset.mul_sum]; rfl
+            have hinner : ∀ f₁ ∈ cSeq x m,
+                (∑ f₂ ∈ cSeq x (k - m), if y ∈ causalUnionOp {x} f₁ then (∏ j, w (f₁ j)) * ∏ j, w (f₂ j) else 0) =
+                if y ∈ causalUnionOp {x} f₁ then (∏ j, w (f₁ j)) * fwdCausalSum E w (k - m) {x} else 0 := by
+              intro f₁ _
+              by_cases h1 : y ∈ causalUnionOp {x} f₁
+              · simp only [h1, ↓reduceIte, ← Finset.mul_sum]; rfl
+              · simp only [h1, ↓reduceIte, Finset.sum_const_zero]
+            rw [Finset.sum_congr rfl hinner, ← Finset.sum_filter, Finset.sum_mul]
           rw [hrew]
           have h1 : ∑ x : Fin N, (∑ f₁ ∈ (cSeq x m).filter (fun f₁ ↦ y ∈ causalUnionOp {x} f₁), ∏ j, w (f₁ j)) *
                 fwdCausalSum E w (k - m) {x} ≤
@@ -1149,9 +1156,14 @@ theorem bgShell_local_decomp {N r : ℕ} (hr : 2 ≤ r)
               ∑ x : Fin N, fwdCausalSum E w m {x} *
                 (∑ f₂ ∈ (cSeq x (k - m)).filter (fun f₂ ↦ y ∈ causalUnionOp {x} f₂), ∏ j, w (f₂ j)) := by
             apply Finset.sum_congr rfl; intro x _
-            rw [Finset.sum_mul]
-            apply Finset.sum_congr rfl; intro f₁ _
-            rw [← Finset.sum_filter, Finset.mul_sum]
+            have hinner : ∀ f₁ ∈ cSeq x m,
+                (∑ f₂ ∈ cSeq x (k - m), if y ∈ causalUnionOp {x} f₂ then (∏ j, w (f₁ j)) * ∏ j, w (f₂ j) else 0) =
+                (∏ j, w (f₁ j)) * ∑ f₂ ∈ (cSeq x (k - m)).filter (fun f₂ ↦ y ∈ causalUnionOp {x} f₂), ∏ j, w (f₂ j) := by
+              intro f₁ _
+              rw [Finset.mul_sum, Finset.sum_filter]
+              apply Finset.sum_congr rfl; intro f₂ _
+              split_ifs <;> ring
+            rw [Finset.sum_congr rfl hinner, ← Finset.sum_mul]; rfl
           rw [hrew]
           have h1 : ∑ x : Fin N, fwdCausalSum E w m {x} *
                 (∑ f₂ ∈ (cSeq x (k - m)).filter (fun f₂ ↦ y ∈ causalUnionOp {x} f₂), ∏ j, w (f₂ j)) ≤
