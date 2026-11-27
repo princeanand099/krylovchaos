@@ -1,4 +1,3 @@
-import KrylovChaos.AllTimeLiebRobinson
 import KrylovChaos.Araki1DConcrete
 import KrylovChaos.ArakiOneDim
 import KrylovChaos.Basic
@@ -12,13 +11,11 @@ import KrylovChaos.ClusterCumulantAndDecoupling
 import KrylovChaos.ConcreteCombinatorics
 import KrylovChaos.ConcreteEndToEndWiring
 import KrylovChaos.DepolarizedFrame
-import KrylovChaos.DoubleWellTunneling
 import KrylovChaos.EndToEndTheorems
 import KrylovChaos.Filtration
 import KrylovChaos.GibbsConstruction
 import KrylovChaos.GlauberDecoupling
 import KrylovChaos.HighTempConditioning
-import KrylovChaos.HighTempParams
 import KrylovChaos.HighTempReversePoincare
 import KrylovChaos.InfiniteChainLimit
 import KrylovChaos.JacobiSemigroup
@@ -34,8 +31,6 @@ import KrylovChaos.Milestone1InfiniteChain
 import KrylovChaos.Milestone2AnalyticFoundations
 import KrylovChaos.Milestone2SpectralAndVitali
 import KrylovChaos.Milestone3Bridges
-import KrylovChaos.Milestone3Sections678
-import KrylovChaos.Milestone4Section9AppB
 import KrylovChaos.Milestone4StructuralNecessity
 import KrylovChaos.MultiSiteCommutator
 import KrylovChaos.OperatorBridges
@@ -48,7 +43,6 @@ import KrylovChaos.ProductStateLambdaMSS
 import KrylovChaos.ProductStateMultiSite
 import KrylovChaos.QubitAlgebra
 import KrylovChaos.ShiftedCommutatorAndThm13c
-import KrylovChaos.ShiftedThermalSize
 import KrylovChaos.SpectralDyck
 import KrylovChaos.SpectralMeasure
 import KrylovChaos.SpectralSmearingAndDoubleWell
@@ -57,7 +51,15 @@ import KrylovChaos.SupportAndDualFrame
 import KrylovChaos.Theorem11bConcrete
 import KrylovChaos.Theorem12Concrete
 import KrylovChaos.ThermodynamicKMS
-import KrylovChaos.TimeOrderedOTOC
 import KrylovChaos.VitaliAnalytic
 import KrylovChaos.WightmanIsometry
 import KrylovChaos.WightmanProjectors
+import KrylovChaos.Milestone3Sections678
+import KrylovChaos.Milestone4Section9AppB
+import KrylovChaos.TimeOrderedOTOC
+import KrylovChaos.HighTempParams
+import KrylovChaos.ShiftedThermalSize
+import KrylovChaos.AllTimeLiebRobinson
+import KrylovChaos.DoubleWellTunneling
+import KrylovChaos.HighTempPolymerZ
+import KrylovChaos.HighTempCumulant
