@@ -1,8 +1,3 @@
-/-
-Copyright (c) 2026 Prince Anand. All rights reserved.
-Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Prince Anand
--/
 import KrylovChaos.HighTempPolymerZ
 
 /-!
@@ -55,9 +50,9 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     let K : QubitOp N := ((-β : ℝ) : ℂ) • H + ((lam : ℝ) : ℂ) • Xtilde
     have hK : K.IsHermitian := by
       have hXt : Xtilde.IsHermitian := by
-        simp only [Xtilde, Matrix.IsHermitian, Matrix.conjTranspose_sub, Matrix.conjTranspose_smul,
+        simp only [Xtilde, X, Matrix.IsHermitian, Matrix.conjTranspose_sub, Matrix.conjTranspose_smul,
           Matrix.conjTranspose_one, Complex.star_def, Complex.conj_ofReal, hX.eq]
-      simp only [K, Matrix.IsHermitian, Matrix.conjTranspose_add, Matrix.conjTranspose_smul,
+      simp only [K, H, Matrix.IsHermitian, Matrix.conjTranspose_add, Matrix.conjTranspose_smul,
         Complex.star_def, Complex.conj_ofReal, hH.eq, hXt.eq]
     let kr := max r k_X
     let Λ₀' := 1 / (16 * (kr : ℝ) * Real.exp (1 + (kr : ℝ) / (r : ℝ)) * gX)
@@ -208,7 +203,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
             have hnn : 0 ≤ β * opNorm (h Z) := mul_nonneg hβ0 (opNorm_nonneg _)
             calc β * opNorm (h Z) * (Real.exp 1 * Real.exp (2 * c * (Z.card : ℝ)))
                 ≤ β * opNorm (h Z) * Real.exp 2 := mul_le_mul_of_nonneg_left hexp2 hnn
-          · simp
+          · simp only [zero_mul, le_refl]
         · dsimp only [u2]; split_ifs with hZEX
           · have h2c : 2 * c * (Z.card : ℝ) ≤ (kr : ℝ) / (r : ℝ) := by
               dsimp only [c]
@@ -221,7 +216,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
               rw [← Real.exp_add]; exact Real.exp_le_exp.mpr (by linarith)
             have hnn : 0 ≤ Λ₀' * opNorm (xOp Z) := mul_nonneg hΛ_pos.le (opNorm_nonneg _)
             exact mul_le_mul_of_nonneg_left hexp2 hnn
-          · simp
+          · simp only [zero_mul, le_refl]
       have hsum := Finset.sum_le_sum hterm_le
       rw [Finset.sum_add_distrib] at hsum
       have hsumE : ∑ Z ∈ E_tot.filter (fun Z ↦ y ∈ Z), (if Z ∈ E then β * opNorm (h Z) * Real.exp 2 else 0) ≤
@@ -431,7 +426,10 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       dsimp only [Zslice]; rw [siteSlice_zero hEtot_ne]
       unfold polymerZ
       have : (∅ : Finset (Polymer N)).powerset.filter
-          (fun I ↦ ∀ u ∈ I, ∀ v ∈ I, u ≠ v → ¬polyIncompat u v) = {∅} := by ext I; simp
+          (fun I ↦ isCompatPolymer polyIncompat I) = {∅} := by
+        ext I; simp only [Finset.mem_filter, Finset.mem_powerset, Finset.subset_empty,
+          Finset.mem_singleton, and_iff_left_iff_imp]
+        rintro rfl u hu; exact absurd hu (Finset.notMem_empty u)
       rw [this, Finset.sum_singleton, Finset.prod_empty]
     rw [htel N le_rfl, hZ0, div_one]
   have hZslice_diff : ∀ k : ℕ, Differentiable ℂ (Zslice k) := by
@@ -463,7 +461,6 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     dsimp only [Zfn]
     apply tsum_congr; intro m
     simp only [zero_smul, add_zero, neg_smul, smul_pow, normalizedTrace_smul]
-    have hpow : (-(β : ℂ)) ^ m = (-1 : ℂ) ^ m * (β : ℂ) ^ m := by rw [← mul_pow]; congr 1; ring
     have hsm : (-(β : ℂ) • H) ^ m = (-(β : ℂ)) ^ m • H ^ m := smul_pow _ _ _
     simp only [neg_smul] at hsm
     rw [← neg_smul, hsm, normalizedTrace_smul]
@@ -507,9 +504,10 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     rw [hrew] at hΨ
     exact hΨ.tsum_eq
   have hμ_complex : (gibbsRho hH β * X).trace = (μ : ℂ) := by
+    have hXeq : Xᴴ = X := hX.eq
     have htr_re : (gibbsRho hH β * X).trace.im = 0 := by
       have hconj : star (gibbsRho hH β * X).trace = (gibbsRho hH β * X).trace := by
-        rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, hX.eq,
+        rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, hXeq,
           (gibbsRho_isHermitian hH β).eq, Matrix.trace_mul_comm]
       exact Complex.conj_eq_iff_im.mp hconj
     exact Complex.ext rfl (by simp [htr_re])
@@ -597,7 +595,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     (by rw [Metric.mem_closedBall, dist_zero_right, Complex.norm_real, Real.norm_eq_abs]; exact hlam)
   let K₀ : QubitOp N := ((-β : ℝ) : ℂ) • H + ((lam : ℝ) : ℂ) • X
   have hK₀ : K₀.IsHermitian := by
-    simp only [K₀, Matrix.IsHermitian, Matrix.conjTranspose_add, Matrix.conjTranspose_smul,
+    simp only [K₀, H, X, Matrix.IsHermitian, Matrix.conjTranspose_add, Matrix.conjTranspose_smul,
       Complex.star_def, Complex.conj_ofReal, hH.eq, hX.eq]
   have hZlam_re : Zfn (lam : ℂ) = (((2 : ℝ) ^ N : ℂ)⁻¹) * (gibbsPartitionFn hK₀ (-1) : ℂ) := by
     have h1 := trace_hermFunc_exp_eq_tsum hK₀ (1 : ℂ)

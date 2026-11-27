@@ -80,11 +80,16 @@ lemma card_oneDimAnnulus_le (N r : ℕ) (x : Fin N) (k : ℕ) :
   let L := A.filter (fun y : Fin N ↦ y.val < x.val)
   let R := A.filter (fun y : Fin N ↦ x.val ≤ y.val)
   have hcard_split : A.card = L.card + R.card := by
-    have h := Finset.filter_card_add_filter_neg_card_eq_card (s := A) (p := fun y : Fin N ↦ y.val < x.val)
-    have hR : A.filter (fun y : Fin N ↦ ¬y.val < x.val) = R := by
-      ext y; simp only [R, Finset.mem_filter, not_lt]
-    rw [hR] at h
-    exact h.symm
+    have hunion : L ∪ R = A := by
+      ext y; simp only [L, R, Finset.mem_union, Finset.mem_filter]; constructor
+      · rintro (⟨h, _⟩ | ⟨h, _⟩) <;> exact h
+      · intro h; rcases lt_or_ge y.val x.val with hlt | hge
+        · exact Or.inl ⟨h, hlt⟩
+        · exact Or.inr ⟨h, hge⟩
+    have hdisj : Disjoint L R := by
+      rw [Finset.disjoint_left]; intro y h1 h2
+      have := (Finset.mem_filter.mp h1).2; have := (Finset.mem_filter.mp h2).2; omega
+    rw [← hunion, Finset.card_union_of_disjoint hdisj]
   have hL_le : L.card ≤ r := by
     have hinj : Set.InjOn (fun y : Fin N ↦ y.val + (k + 1) * r - x.val) (L : Set (Fin N)) := by
       intro a ha b hb heq
@@ -341,7 +346,7 @@ lemma adPowMat_sum_eq_sum_iterShellComm {N : ℕ} (W : Fin (N + 1) → QubitOp N
           (W k * iterShellComm W w O - iterShellComm W w O * W k)
       · apply Finset.sum_congr rfl; intro k _
         rw [Finset.mul_sum, Finset.sum_mul, ← Finset.sum_sub_distrib]
-      · rw [Finset.sum_comm, ← Fintype.sum_prod_type']
+      · rw [Finset.sum_comm, ← Fintype.sum_prod_type]
     rw [hcomm_sum]
     refine Fintype.sum_equiv (Equiv.ofBijective (fun p : (Fin m → Fin (N + 1)) × Fin (N + 1) ↦ Fin.snoc p.1 p.2)
       ⟨fun p₁ p₂ heq ↦ by
@@ -443,9 +448,13 @@ lemma card_valid1DWords_eq_le (N : ℕ) :
     let S := Finset.univ.filter (fun w : Fin (m + 1) → Fin (N + 1) ↦ isValid1DWord w ∧ wordRunMax w = k)
     let S_stay := S.filter (fun w ↦ wordRunMax (Fin.init w) = k)
     let S_grow := S.filter (fun w ↦ wordRunMax (Fin.init w) ≠ k)
-    have hsplit : S.card = S_stay.card + S_grow.card :=
-      (Finset.filter_card_add_filter_neg_card_eq_card (s := S) (p := fun w ↦ wordRunMax (Fin.init w) = k)).symm
-    -- Bound `S_stay.card ≤ (k + 1) * v(m, k)`.
+    have hsplit : S.card = S_stay.card + S_grow.card := by
+      have hunion : S_stay ∪ S_grow = S := by
+        ext w; simp only [S_stay, S_grow, Finset.mem_union, Finset.mem_filter]; tauto
+      have hdisj : Disjoint S_stay S_grow := by
+        rw [Finset.disjoint_left]; intro w h1 h2
+        exact (Finset.mem_filter.mp h2).2 (Finset.mem_filter.mp h1).2
+      rw [← hunion, Finset.card_union_of_disjoint hdisj]
     let Vmk := Finset.univ.filter (fun u : Fin m → Fin (N + 1) ↦ isValid1DWord u ∧ wordRunMax u = k)
     have hstay_le : S_stay.card ≤ Vmk.card * (k + 1) := by
       have hinj : Set.InjOn (fun w : Fin (m + 1) → Fin (N + 1) ↦ (Fin.init w, (w (Fin.last m)).val))
@@ -487,7 +496,6 @@ lemma card_valid1DWords_eq_le (N : ℕ) :
         _ ≤ m.choose 0 * (0 + 1) ^ (m - 0) := hih0
         _ = (m + 1).choose 0 * (0 + 1) ^ (m + 1 - 0) := by simp
     | succ k =>
-      -- Bound `S_grow.card ≤ v(m, k)`.
       let Vmk' := Finset.univ.filter (fun u : Fin m → Fin (N + 1) ↦ isValid1DWord u ∧ wordRunMax u = k)
       have hgrow_le : S_grow.card ≤ Vmk'.card := by
         have hinj : Set.InjOn (fun w : Fin (m + 1) → Fin (N + 1) ↦ Fin.init w)
@@ -534,8 +542,7 @@ lemma card_valid1DWords_eq_le (N : ℕ) :
           _ = (m.choose k + m.choose (k + 1)) * (k + 1 + 1) ^ (m + 1 - (k + 1)) := by ring
           _ = (m + 1).choose (k + 1) * (k + 1 + 1) ^ (m + 1 - (k + 1)) := by
               rw [Nat.choose_succ_succ]
-      · -- `m < k + 1`, so `Vmk = ∅` (since `wordRunMax u ≤ m` for valid `u : Fin m → _`).
-        have hVmk_empty : Vmk = ∅ := by
+      · have hVmk_empty : Vmk = ∅ := by
           ext u; simp only [Vmk, Finset.mem_filter, Finset.mem_univ, true_and, Finset.notMem_empty,
             iff_false, not_and]
           intro hu hmax; have := wordRunMax_le_len u hu; omega
@@ -695,9 +702,11 @@ theorem heisenbergEvol_1d_all_temp_bound {N r : ℕ} (hr : 1 ≤ r)
         ∑ k ∈ Finset.range (m + 1), (m.choose k : ℝ) * ((k + 1 : ℝ) ^ (m - k)) := by
       have hnat : validAll.card ≤
           ∑ k ∈ Finset.range (m + 1), m.choose k * (k + 1) ^ (m - k) := by
-        have hfib := Finset.card_eq_sum_card_fiberwise (s := validAll) (t := Finset.range (m + 1))
-          (f := fun w : Fin m → Fin (N + 1) ↦ wordRunMax w)
-          (fun w hw ↦ Finset.mem_range.mpr (Nat.lt_succ_of_le (wordRunMax_le_len w (Finset.mem_filter.mp hw).2)))
+        have hfib : validAll.card = ∑ k ∈ Finset.range (m + 1), (validAll.filter (fun w ↦ wordRunMax w = k)).card := by
+          rw [Finset.card_eq_sum_ones, ← Finset.sum_fiberwise_of_maps_to
+            (g := fun w : Fin m → Fin (N + 1) ↦ wordRunMax w) (t := Finset.range (m + 1))]
+          · apply Finset.sum_congr rfl; intro k _; rw [Finset.card_eq_sum_ones]
+          · intro w hw; exact Finset.mem_range.mpr (Nat.lt_succ_of_le (wordRunMax_le_len w (Finset.mem_filter.mp hw).2))
         rw [hfib]
         apply Finset.sum_le_sum; intro k _
         have hfilt_eq : validAll.filter (fun w ↦ wordRunMax w = k) =
