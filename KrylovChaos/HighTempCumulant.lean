@@ -16,7 +16,7 @@ open Complex Matrix
 
 noncomputable section TraceCumulantMain
 
-/-- **Lemma 6.3 (Unconditional High-Temperature Combined-Exponential Trace Cumulant Bound)**:
+/-- **Lemma 6.3 (High-Temperature Combined-Exponential Trace Cumulant Bound)**:
 For any `r`-local (`r ≥ 2`) Hermitian Hamiltonian `H = ∑ Z ∈ E, h Z` with `h Z ∈ supportedOn Z`,
 `Z.Nonempty`, `Z.card ≤ r`, site strength `≤ Jsite` (`0 < Jsite`), any `k_X`-local (`1 ≤ k_X`)
 Hermitian observable `X = ∑ Z ∈ E_X, x Z` with `x Z ∈ supportedOn Z`, `Z.Nonempty`,
@@ -66,6 +66,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
   have hkr_ge_kX : k_X ≤ kr := le_max_right r k_X
   have hkr_pos : (0 : ℝ) < (kr : ℝ) := by exact_mod_cast (by omega : 0 < kr)
   have hΛ_pos : 0 < Λ₀' := by dsimp only [Λ₀']; positivity
+  -- Union hypergraph `E_tot = E ∪ E_X` with negated affine interaction `g_tot ζ`.
   let E_tot : Finset (Finset (Fin N)) := E ∪ E_X
   have hEtot_ne : ∀ Z ∈ E_tot, Z.Nonempty := by
     intro Z hZ; rcases Finset.mem_union.mp hZ with h1 | h2
@@ -98,6 +99,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       rw [← Finset.sum_filter, Finset.filter_mem_eq_inter, Finset.inter_eq_right.mpr Finset.subset_union_right,
         ← Finset.smul_sum, neg_smul]
     rw [h1, h2, sub_eq_add_neg]
+  -- Parameter `c = 1 / (2 * r)` and KP pinning verification on `closedBall 0 Λ₀'`.
   set c : ℝ := 1 / (2 * (r : ℝ))
   have hc_pos : 0 < c := by positivity
   have hc_le : c ≤ 1 / 4 := by
@@ -105,6 +107,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
   let Γ := connectedPolymers E_tot
   let a : Polymer N → ℝ := fun γ ↦ c * (polySupp γ).card
   have ha_nn : ∀ γ, 0 ≤ a γ := fun γ ↦ by dsimp only [a]; positivity
+  -- Key two-scale site-sum bound for all `‖ζ‖ ≤ Λ₀'`:
   have hsite_pin : ∀ ζ ∈ Metric.closedBall (0 : ℂ) Λ₀', ∀ x : Fin N,
       ∑ γ ∈ Γ.filter (fun γ ↦ x ∈ polySupp γ), ‖tracePolyWeight (g_tot ζ) 1 γ‖ * Real.exp (a γ) ≤ c / 2 := by
     intro ζ hζ x
@@ -146,8 +149,14 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
         have hZy : y ∈ Z := (Finset.mem_filter.mp hZ).2
         set u1 : ℝ := if Z ∈ E then β * opNorm (h Z) else 0
         set u2 : ℝ := if Z ∈ E_X then Λ₀' * opNorm (xOp Z) else 0
-        have hu1_nn : 0 ≤ u1 := by dsimp only [u1]; split_ifs; · exact mul_nonneg hβ0 (opNorm_nonneg _); · rfl
-        have hu2_nn : 0 ≤ u2 := by dsimp only [u2]; split_ifs; · exact mul_nonneg hΛ_pos.le (opNorm_nonneg _); · rfl
+        have hu1_nn : 0 ≤ u1 := by
+          dsimp only [u1]; split_ifs
+          · exact mul_nonneg hβ0 (opNorm_nonneg _)
+          · exact le_rfl
+        have hu2_nn : 0 ≤ u2 := by
+          dsimp only [u2]; split_ifs
+          · exact mul_nonneg hΛ_pos.le (opNorm_nonneg _)
+          · exact le_rfl
         have hop_le : opNorm (g_tot ζ Z) ≤ u1 + u2 := by
           dsimp only [g_tot, A_op, B_op, u1, u2]
           refine le_trans (opNorm_add_le _ _) (add_le_add ?_ ?_)
@@ -201,8 +210,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
             have hexp2 : Real.exp 1 * Real.exp (2 * c * (Z.card : ℝ)) ≤ Real.exp 2 := by
               rw [← Real.exp_add]; exact Real.exp_le_exp.mpr (by linarith)
             have hnn : 0 ≤ β * opNorm (h Z) := mul_nonneg hβ0 (opNorm_nonneg _)
-            calc β * opNorm (h Z) * (Real.exp 1 * Real.exp (2 * c * (Z.card : ℝ)))
-                ≤ β * opNorm (h Z) * Real.exp 2 := mul_le_mul_of_nonneg_left hexp2 hnn
+            exact mul_le_mul_of_nonneg_left hexp2 hnn
           · rw [zero_mul]
         · dsimp only [u2]; split_ifs with hZEX
           · have h2c : 2 * c * (Z.card : ℝ) ≤ (kr : ℝ) / (r : ℝ) := by
@@ -257,6 +265,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       have hc2 : 1 / (8 * (r : ℝ)) + 1 / (8 * (r : ℝ)) = c / 2 := by
         dsimp only [c]; field_simp [hr_pos.ne']; ring
       linarith
+    -- Now bound `∑_{γ ∋ x} ‖w γ‖ exp(a γ)` by `∑_{Z ∋ x} unorderedTreeSum ≤ c / 2`!
     have hpoly_le : ∀ γ ∈ Γ, ‖tracePolyWeight (g_tot ζ) 1 γ‖ * Real.exp (a γ) ≤ ∏ Z ∈ γ, η Z := by
       intro γ hγ
       have hcard_bi : (polySupp γ).card ≤ ∑ Z ∈ γ, Z.card := Finset.card_biUnion_le
@@ -308,6 +317,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       _ ≤ ∑ Z₀ ∈ E_tot.filter (fun Z ↦ x ∈ Z), η Z₀ * Real.exp (c * (Z₀.card : ℝ)) :=
           Finset.sum_le_sum fun Z₀ hZ₀ ↦ htree E_tot.card Z₀ (Finset.mem_filter.mp hZ₀).1
       _ ≤ c / 2 := hsite_w x
+  -- Derive KP half-budget & per-polymer smallness on `closedBall 0 Λ₀'`.
   have hkp_disk : ∀ ζ ∈ Metric.closedBall (0 : ℂ) Λ₀',
       (∀ γ ∈ Γ, ∑ δ ∈ Γ.filter (fun δ ↦ polyIncompat γ δ),
           ‖tracePolyWeight (g_tot ζ) 1 δ‖ * Real.exp (a δ) ≤ a γ / 2) ∧
@@ -337,6 +347,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
           ∑ γ ∈ Γ.filter (fun γ ↦ x ∈ polySupp γ), ‖tracePolyWeight (g_tot ζ) 1 γ‖ * Real.exp (a γ) :=
         Finset.single_le_sum (fun _ _ ↦ by positivity) (Finset.mem_filter.mpr ⟨hδ, hxδ⟩)
       linarith [hsite_pin ζ hζ x, hc_le]
+  -- Site-by-site ratio and telescoping logarithm `L(ζ)`.
   let Zslice : ℕ → ℂ → ℂ := fun k ζ ↦ polymerZ polyIncompat (tracePolyWeight (g_tot ζ) 1) (siteSlice Γ k)
   let siteRatio : ℕ → ℂ → ℂ := fun k ζ ↦ Zslice (k + 1) ζ / Zslice k ζ
   let L : ℂ → ℂ := fun ζ ↦ ∑ k ∈ Finset.range N, Complex.log (siteRatio k ζ)
@@ -387,6 +398,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
           Finset.sum_le_sum_of_subset_of_nonneg hsub_pin fun _ _ _ ↦ by positivity
       _ ≤ c / 2 := hsite_pin ζ hζ ⟨k, hkN⟩
       _ ≤ 1 / 4 := by linarith [hc_le]
+  -- Telescoping exponential identity: `Complex.exp (L ζ) = Z(ζ)`.
   let Zfn : ℂ → ℂ := fun ζ ↦ ∑' m : ℕ, ((m.factorial : ℂ)⁻¹ * normalizedTrace (((-β : ℂ) • H + ζ • X) ^ m))
   have hZfn_eq : ∀ ζ : ℂ, Zfn ζ = Zslice N ζ := by
     intro ζ
@@ -412,6 +424,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       have hslit := (complex_log_bound_of_norm_sub_one_le (hratio_close ζ hζ k hk)).1
       exact Complex.exp_log (Complex.slitPlane_ne_zero hslit)
     rw [Finset.prod_congr rfl hlog]
+    -- Telescope `∏ k < N, Zslice (k + 1) ζ / Zslice k ζ = Zslice N ζ / Zslice 0 ζ = Zslice N ζ`.
     have htel : ∀ M : ℕ, M ≤ N →
         ∏ k ∈ Finset.range M, siteRatio k ζ = Zslice M ζ / Zslice 0 ζ := by
       intro M
@@ -426,12 +439,10 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       dsimp only [Zslice]; rw [siteSlice_zero hEtot_ne]
       unfold polymerZ
       have : (∅ : Finset (Polymer N)).powerset.filter
-          (fun I ↦ isCompatPolymer polyIncompat I) = {∅} := by
-        ext I; simp only [Finset.mem_filter, Finset.mem_powerset, Finset.subset_empty,
-          Finset.mem_singleton, and_iff_left_iff_imp]
-        rintro rfl u hu; exact absurd hu (Finset.notMem_empty u)
+          (fun I ↦ isCompatPolymer polyIncompat I) = {∅} := by ext I; simp [isCompatPolymer]
       rw [this, Finset.sum_singleton, Finset.prod_empty]
     rw [htel N le_rfl, hZ0, div_one]
+  -- Differentiability of `Zslice k` and `L` on `closedBall 0 Λ₀'`.
   have hZslice_diff : ∀ k : ℕ, Differentiable ℂ (Zslice k) := by
     intro k
     dsimp only [Zslice]
@@ -445,6 +456,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     have hrat_d : DifferentiableAt ℂ (siteRatio k) ζ :=
       (hZslice_diff (k + 1) ζ).div (hZslice_diff k ζ) (hZslice_ne ζ hζ k)
     exact hrat_d.clog (complex_log_bound_of_norm_sub_one_le (hratio_close ζ hζ k hk)).1
+  -- Define centered holomorphic function `g(ζ) := L(ζ) - L(0) - (μ : ℂ) * ζ`.
   let g : ℂ → ℂ := fun ζ ↦ L ζ - L 0 - (μ : ℂ) * ζ
   have hg_cont : ContinuousOn g (Metric.closedBall 0 Λ₀') := by
     intro ζ hζ
@@ -456,11 +468,13 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     exact ((hL_diffAt ζ hcl).sub (differentiableAt_const _)).sub
       ((differentiableAt_const _).mul differentiableAt_id)
   have hg0 : g 0 = 0 := by simp [g]
+  -- Compute `deriv L 0 = (μ : ℂ)` via `Complex.exp (L ζ) = Zfn ζ`.
   have hZ0_eq : Zfn 0 = normalizedTrace (hermFunc hH (fun e ↦ Complex.exp (-(β : ℂ) * (e : ℂ)))) := by
     rw [trace_hermFunc_exp_eq_tsum hH (-(β : ℂ))]
     dsimp only [Zfn]
     apply tsum_congr; intro m
     simp only [zero_smul, add_zero, neg_smul, smul_pow, normalizedTrace_smul]
+    have hpow : (-(β : ℂ)) ^ m = (-1 : ℂ) ^ m * (β : ℂ) ^ m := by rw [← mul_pow]; congr 1; ring
     have hsm : (-(β : ℂ) • H) ^ m = (-(β : ℂ)) ^ m • H ^ m := smul_pow _ _ _
     simp only [neg_smul] at hsm
     rw [← neg_smul, hsm, normalizedTrace_smul]
@@ -504,10 +518,9 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     rw [hrew] at hΨ
     exact hΨ.tsum_eq
   have hμ_complex : (gibbsRho hH β * X).trace = (μ : ℂ) := by
-    have hXeq : Xᴴ = X := hX.eq
     have htr_re : (gibbsRho hH β * X).trace.im = 0 := by
       have hconj : star (gibbsRho hH β * X).trace = (gibbsRho hH β * X).trace := by
-        rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, hXeq,
+        rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, hX.eq,
           (gibbsRho_isHermitian hH β).eq, Matrix.trace_mul_comm]
       exact Complex.conj_eq_iff_im.mp hconj
     exact Complex.ext rfl (by simp [htr_re])
@@ -542,6 +555,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       have h1 := (hL0.sub (hasDerivAt_const (0 : ℂ) (L 0))).sub ((hasDerivAt_id (0 : ℂ)).const_mul (μ : ℂ))
       simpa using h1
     rw [hg_d.deriv, hL'_eq, sub_self]
+  -- Bound `‖g ζ‖ ≤ 2 * N` on `sphere 0 Λ₀'`.
   have hμ_le : |μ| ≤ (N : ℝ) * gX := by
     have h1 : ‖(gibbsRho hH β * X).trace‖ ≤ opNorm X := norm_trace_gibbsRho_mul_le_opNorm hH β X
     have h2 : |μ| ≤ ‖(gibbsRho hH β * X).trace‖ := Complex.abs_re_le_norm _
@@ -590,9 +604,11 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
           rw [Complex.norm_real, Real.norm_eq_abs, hζ]
           exact add_le_add (add_le_add (hL_norm ζ hcl) (hL_norm 0 (Metric.mem_closedBall_self hΛ_pos.le))) le_rfl
       _ ≤ 2 * (N : ℝ) := by linarith
+  -- Apply `cauchy_order2_schwarz_bound` at `w = (lam : ℂ)`!
   have hschwarz := cauchy_order2_schwarz_bound hΛ_pos (by positivity : (0 : ℝ) ≤ 2 * (N : ℝ))
     g hg_cont hg_diff hg0 hg'0 hg_bdd (lam : ℂ)
     (by rw [Metric.mem_closedBall, dist_zero_right, Complex.norm_real, Real.norm_eq_abs]; exact hlam)
+  -- Connect `(g (lam : ℂ)).re` to `Real.log (gibbsPartitionFn hK (-1) / gibbsPartitionFn hH β)`.
   let K₀ : QubitOp N := ((-β : ℝ) : ℂ) • H + ((lam : ℝ) : ℂ) • X
   have hK₀ : K₀.IsHermitian := by
     simp only [K₀, H, X, Matrix.IsHermitian, Matrix.conjTranspose_add, Matrix.conjTranspose_smul,
@@ -619,6 +635,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
       _ = ((∑ i : QubitIdx N, Real.exp (-(-1 : ℝ) * hK₀.eigenvalues i) : ℝ) : ℂ) := by
           push_cast; apply Finset.sum_congr rfl; intro i _; rw [Complex.ofReal_exp]; congr 1; simp
   have hK_part : gibbsPartitionFn hK (-1) = Real.exp (-lam * μ) * gibbsPartitionFn hK₀ (-1) := by
+    -- `exp(K) = exp(-lam * μ) • exp(K₀)` since `K = K₀ + (-lam * μ) • 1`.
     have hK_eq : K = K₀ + ((-lam * μ : ℝ) : ℂ) • (1 : QubitOp N) := by
       dsimp only [K, K₀, Xtilde]
       rw [smul_sub, smul_smul]; push_cast; rw [sub_eq_add_neg, neg_smul, ← add_assoc]
@@ -626,6 +643,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     have hexp_shift : hermFunc hK (fun e ↦ Complex.exp (e : ℂ)) =
         (Complex.exp ((-lam * μ : ℝ) : ℂ)) • hermFunc hK₀ (fun e ↦ Complex.exp (e : ℂ)) := by
       have h1 := hasSum_hermFunc_exp hK (1 : ℂ)
+      have h2 := hasSum_hermFunc_exp hK₀ (1 : ℂ)
       set U := (hK₀.eigenvectorUnitary : QubitOp N)
       have hUUH : U * Uᴴ = 1 := Matrix.mem_unitaryGroup_iff.mp hK₀.eigenvectorUnitary.prop
       have hUHU : Uᴴ * U = 1 := Matrix.mem_unitaryGroup_iff'.mp hK₀.eigenvectorUnitary.prop
@@ -725,6 +743,7 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
     rw [Matrix.trace_smul, smul_eq_mul, htrK, htrK₀, ← Complex.ofReal_exp] at htr_eq
     have hre := congrArg Complex.re htr_eq
     simpa using hre
+  -- Now relate `Real.log (gibbsPartitionFn hK (-1) / gibbsPartitionFn hH β)` to `(g (lam : ℂ)).re`!
   have hlam_mem : (lam : ℂ) ∈ Metric.closedBall (0 : ℂ) Λ₀' := by
     rw [Metric.mem_closedBall, dist_zero_right, Complex.norm_real, Real.norm_eq_abs]
     linarith

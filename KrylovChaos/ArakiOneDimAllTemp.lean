@@ -8,7 +8,6 @@ import KrylovChaos.QubitAlgebra
 import KrylovChaos.ManyBodySetup
 import KrylovChaos.GibbsConstruction
 import KrylovChaos.SupportAndDualFrame
-import KrylovChaos.CausalExpansion
 import KrylovChaos.CausalNormBounds
 import KrylovChaos.Araki1DConcrete
 import KrylovChaos.Milestone3Sections678
@@ -96,6 +95,7 @@ lemma card_oneDimAnnulus_le (N r : ℕ) (x : Fin N) (k : ℕ) :
       have haA := (Finset.mem_sdiff.mp (Finset.mem_filter.mp ha).1).1
       have hbA := (Finset.mem_sdiff.mp (Finset.mem_filter.mp hb).1).1
       simp only [oneDimBall, Finset.mem_filter, Finset.mem_univ, true_and] at haA hbA
+      dsimp only at heq
       exact Fin.ext (by omega)
     have himg : L.image (fun y : Fin N ↦ y.val + (k + 1) * r - x.val) ⊆ Finset.range r := by
       intro m hm
@@ -115,6 +115,7 @@ lemma card_oneDimAnnulus_le (N r : ℕ) (x : Fin N) (k : ℕ) :
       have haA := (Finset.mem_sdiff.mp (Finset.mem_filter.mp ha).1).1
       have hbA := (Finset.mem_sdiff.mp (Finset.mem_filter.mp hb).1).1
       simp only [oneDimBall, Finset.mem_filter, Finset.mem_univ, true_and] at haA hbA
+      dsimp only at heq
       exact Fin.ext (by omega)
     have himg : R.image (fun y : Fin N ↦ x.val + (k + 1) * r - y.val) ⊆ Finset.range r := by
       intro m hm
@@ -128,6 +129,7 @@ lemma card_oneDimAnnulus_le (N r : ℕ) (x : Fin N) (k : ℕ) :
           (Finset.card_image_of_injOn hinj).symm
       _ ≤ (Finset.range r).card := Finset.card_le_card himg
       _ = r := Finset.card_range r
+  change A.card ≤ 2 * r
   omega
 
 /-- Interactions in `E` belonging to the `k`-th concentric 1D shell around `x`. -/
@@ -145,6 +147,7 @@ lemma shellEdges_pairwiseDisjoint {N : ℕ} (E : Finset (Finset (Fin N))) (r : �
     Set.PairwiseDisjoint (↑(Finset.univ : Finset (Fin (N + 1))))
       (fun k : Fin (N + 1) ↦ shellEdges E r x k.val) := by
   intro k₁ _ k₂ _ hne
+  dsimp only [Function.onFun]
   rw [Finset.disjoint_left]
   intro X hX₁ hX₂
   have hlt_or : k₁.val < k₂.val ∨ k₂.val < k₁.val :=
@@ -188,13 +191,11 @@ lemma biUnion_shellEdges_eq {N r : ℕ} (hr : 1 ≤ r)
     have hk₀_le : k₀ ≤ N := Nat.find_min' hex (by rw [oneDimBall_full N r hr x]; exact Finset.subset_univ X)
     refine ⟨⟨k₀, Nat.lt_succ_of_le hk₀_le⟩, ?_⟩
     dsimp only
-    rcases Nat.eq_zero_or_pos k₀ with hk0 | hkpos
-    · rw [hk0] at hk₀_sub ⊢
-      exact Finset.mem_filter.mpr ⟨hXE, hk₀_sub⟩
-    · obtain ⟨m, hm⟩ := Nat.exists_eq_succ_of_ne_zero (by omega : k₀ ≠ 0)
-      rw [hm] at hk₀_sub ⊢
-      refine Finset.mem_filter.mpr ⟨hXE, hk₀_sub, ?_⟩
-      exact Nat.find_min hex (by dsimp only [k₀] at hm; omega)
+    rcases Nat.eq_zero_or_pos k₀ with h0 | hpos
+    · rw [h0]; exact Finset.mem_filter.mpr ⟨hXE, h0 ▸ hk₀_sub⟩
+    · obtain ⟨m, hm⟩ := Nat.exists_eq_succ_of_ne_zero (Nat.pos_iff_ne_zero.mp hpos)
+      rw [hm]
+      exact Finset.mem_filter.mpr ⟨hXE, hm ▸ hk₀_sub, Nat.find_min hex (by omega)⟩
 
 /-- Exact shell partition of the Hamiltonian: `∑ X ∈ E, h X = ∑ k : Fin (N + 1), shellOp E h r x k.val`. -/
 lemma sum_h_eq_sum_shellOp {N r : ℕ} (hr : 1 ≤ r)
@@ -341,22 +342,14 @@ lemma adPowMat_sum_eq_sum_iterShellComm {N : ℕ} (W : Fin (N + 1) → QubitOp N
     have hcomm_sum : matComm (∑ k : Fin (N + 1), W k) (∑ w : Fin m → Fin (N + 1), iterShellComm W w O) =
         ∑ p : (Fin m → Fin (N + 1)) × Fin (N + 1), matComm (W p.2) (iterShellComm W p.1 O) := by
       unfold matComm
-      calc (∑ k : Fin (N + 1), W k) * (∑ w : Fin m → Fin (N + 1), iterShellComm W w O) -
-              (∑ w : Fin m → Fin (N + 1), iterShellComm W w O) * (∑ k : Fin (N + 1), W k)
-          = (∑ k : Fin (N + 1), ∑ w : Fin m → Fin (N + 1), W k * iterShellComm W w O) -
-            (∑ k : Fin (N + 1), ∑ w : Fin m → Fin (N + 1), iterShellComm W w O * W k) := by
-              congr 1
-              · rw [Finset.sum_mul]; apply Finset.sum_congr rfl; intro k _; rw [Finset.mul_sum]
-              · rw [Finset.mul_sum]; apply Finset.sum_congr rfl; intro k _; rw [Finset.sum_mul]
-        _ = ∑ k : Fin (N + 1), ∑ w : Fin m → Fin (N + 1),
-              (W k * iterShellComm W w O - iterShellComm W w O * W k) := by
-              rw [← Finset.sum_sub_distrib]
-              apply Finset.sum_congr rfl; intro k _; rw [← Finset.sum_sub_distrib]
-        _ = ∑ w : Fin m → Fin (N + 1), ∑ k : Fin (N + 1),
-              (W k * iterShellComm W w O - iterShellComm W w O * W k) := Finset.sum_comm
-        _ = ∑ p : (Fin m → Fin (N + 1)) × Fin (N + 1),
-              (W p.2 * iterShellComm W p.1 O - iterShellComm W p.1 O * W p.2) := by
-              rw [← Fintype.sum_prod_type]
+      rw [Finset.sum_mul, Finset.mul_sum, ← Finset.sum_sub_distrib]
+      trans ∑ k : Fin (N + 1), ∑ w : Fin m → Fin (N + 1),
+          (W k * iterShellComm W w O - iterShellComm W w O * W k)
+      · apply Finset.sum_congr rfl; intro k _
+        rw [Finset.mul_sum, Finset.sum_mul, ← Finset.sum_sub_distrib]
+      · rw [Finset.sum_comm]
+        exact (Fintype.sum_prod_type (fun p : (Fin m → Fin (N + 1)) × Fin (N + 1) ↦
+          W p.2 * iterShellComm W p.1 O - iterShellComm W p.1 O * W p.2)).symm
     rw [hcomm_sum]
     refine Fintype.sum_equiv (Equiv.ofBijective (fun p : (Fin m → Fin (N + 1)) × Fin (N + 1) ↦ Fin.snoc p.1 p.2)
       ⟨fun p₁ p₂ heq ↦ by
@@ -371,7 +364,9 @@ lemma adPowMat_sum_eq_sum_iterShellComm {N : ℕ} (W : Fin (N + 1) → QubitOp N
         refine Fin.lastCases ?_ (fun j ↦ ?_) i
         · simp [Fin.snoc_last]
         · simp [Fin.snoc_castSucc, Fin.init]⟩⟩) _ _ fun p ↦ ?_
-    simp only [Equiv.ofBijective_apply, iterShellComm, Fin.snoc_last, Fin.init_snoc]
+    change matComm (W p.2) (iterShellComm W p.1 O) =
+      matComm (W (Fin.snoc p.1 p.2 (Fin.last m))) (iterShellComm W (Fin.init (Fin.snoc p.1 p.2)) O)
+    rw [Fin.snoc_last, Fin.init_snoc]
 
 /-- Support preservation and vanishing outside causally valid 1D words. -/
 lemma iterShellComm_support_and_vanish {N r : ℕ}
@@ -423,7 +418,12 @@ lemma opNorm_iterShellComm_le {N : ℕ} (W : Fin (N + 1) → QubitOp N)
     calc opNorm (W (w (Fin.last m)) * iterShellComm W (Fin.init w) O -
             iterShellComm W (Fin.init w) O * W (w (Fin.last m)))
         ≤ opNorm (W (w (Fin.last m)) * iterShellComm W (Fin.init w) O) +
-          opNorm (iterShellComm W (Fin.init w) O * W (w (Fin.last m))) := opNorm_sub_le _ _
+          opNorm (iterShellComm W (Fin.init w) O * W (w (Fin.last m))) := by
+            have hsub : ∀ X Y : QubitOp N, opNorm (X - Y) ≤ opNorm X + opNorm Y := fun X Y ↦ by
+              calc opNorm (X - Y) = opNorm (X + (-1 : ℂ) • Y) := by rw [neg_one_smul, sub_eq_add_neg]
+                _ ≤ opNorm X + opNorm ((-1 : ℂ) • Y) := opNorm_add_le _ _
+                _ = opNorm X + opNorm Y := by rw [opNorm_smul, norm_neg, norm_one, one_mul]
+            exact hsub _ _
       _ ≤ opNorm (W (w (Fin.last m))) * opNorm (iterShellComm W (Fin.init w) O) +
           opNorm (iterShellComm W (Fin.init w) O) * opNorm (W (w (Fin.last m))) :=
           add_le_add (opNorm_mul_le _ _) (opNorm_mul_le _ _)
@@ -465,6 +465,7 @@ lemma card_valid1DWords_eq_le (N : ℕ) :
         rw [Finset.disjoint_left]; intro w h1 h2
         exact (Finset.mem_filter.mp h2).2 (Finset.mem_filter.mp h1).2
       rw [← hunion, Finset.card_union_of_disjoint hdisj]
+    -- Bound `S_stay.card ≤ (k + 1) * v(m, k)`.
     let Vmk := Finset.univ.filter (fun u : Fin m → Fin (N + 1) ↦ isValid1DWord u ∧ wordRunMax u = k)
     have hstay_le : S_stay.card ≤ Vmk.card * (k + 1) := by
       have hinj : Set.InjOn (fun w : Fin (m + 1) → Fin (N + 1) ↦ (Fin.init w, (w (Fin.last m)).val))
@@ -506,6 +507,7 @@ lemma card_valid1DWords_eq_le (N : ℕ) :
         _ ≤ m.choose 0 * (0 + 1) ^ (m - 0) := hih0
         _ = (m + 1).choose 0 * (0 + 1) ^ (m + 1 - 0) := by simp
     | succ k =>
+      -- Bound `S_grow.card ≤ v(m, k)`.
       let Vmk' := Finset.univ.filter (fun u : Fin m → Fin (N + 1) ↦ isValid1DWord u ∧ wordRunMax u = k)
       have hgrow_le : S_grow.card ≤ Vmk'.card := by
         have hinj : Set.InjOn (fun w : Fin (m + 1) → Fin (N + 1) ↦ Fin.init w)
@@ -552,7 +554,8 @@ lemma card_valid1DWords_eq_le (N : ℕ) :
           _ = (m.choose k + m.choose (k + 1)) * (k + 1 + 1) ^ (m + 1 - (k + 1)) := by ring
           _ = (m + 1).choose (k + 1) * (k + 1 + 1) ^ (m + 1 - (k + 1)) := by
               rw [Nat.choose_succ_succ]
-      · have hVmk_empty : Vmk = ∅ := by
+      · -- `m < k + 1`, so `Vmk = ∅` (since `wordRunMax u ≤ m` for valid `u : Fin m → _`).
+        have hVmk_empty : Vmk = ∅ := by
           ext u; simp only [Vmk, Finset.mem_filter, Finset.mem_univ, true_and, Finset.notMem_empty,
             iff_false, not_and]
           intro hu hmax; have := wordRunMax_le_len u hu; omega
@@ -615,8 +618,8 @@ lemma araki1D_series_summable_and_le {a : ℝ} (ha : 0 ≤ a) :
         _ = a ^ k / (k.factorial : ℝ) * (a ^ (m - k) * (k + 1 : ℝ) ^ (m - k) / ((m - k).factorial : ℝ)) := by ring
     let g : ℕ × ℕ → ℝ := fun p ↦
       (a ^ p.1 / (p.1.factorial : ℝ)) * ((a * (p.1 + 1 : ℝ)) ^ p.2 / (p.2.factorial : ℝ))
-    let T : Finset (ℕ × ℕ) :=
-      ((Finset.range M).sigma (fun m ↦ Finset.range (m + 1))).image (fun p ↦ (p.2, p.1 - p.2))
+    let T : Finset (ℕ × ℕ) := (Finset.range M).sigma (fun m ↦ Finset.range (m + 1)) |>.image
+      (fun p ↦ (p.2, p.1 - p.2))
     have hsum_eq_T : ∑ m ∈ Finset.range M, f m = ∑ p ∈ T, g p := by
       have h1 : ∑ m ∈ Finset.range M, f m =
           ∑ p ∈ (Finset.range M).sigma (fun m ↦ Finset.range (m + 1)), g (p.2, p.1 - p.2) := by
@@ -674,7 +677,7 @@ lemma araki1D_series_summable_and_le {a : ℝ} (ha : 0 ≤ a) :
 /-- **Araki's 1969 All-Temperature 1D Complex-Time Norm Bound**:
 For ANY `N : ℕ`, ANY `r ≥ 1`, ANY 1D range-`r` Hermitian Hamiltonian `H = ∑ X ∈ E, h X`
 with local site strength `≤ J`, ANY site `x : Fin N`, ANY single-site observable
-`O ∈ supportedOn {x}`, and ANY complex time `z : ℂ` (arbitrarily large `‖z‖`!):
+`O ∈ supportedOn {x}`, and ANY complex time `z : ℂ`:
 `opNorm (heisenbergEvol hH z O) ≤ opNorm O * Real.exp (4 * r * J * ‖z‖ * (1 + Real.exp (4 * r * J * ‖z‖)))`. -/
 theorem heisenbergEvol_1d_all_temp_bound {N r : ℕ} (hr : 1 ≤ r)
     (E : Finset (Finset (Fin N))) (h1d : is1DFiniteRange N r E)
@@ -734,7 +737,7 @@ theorem heisenbergEvol_1d_all_temp_bound {N r : ℕ} (hr : 1 ≤ r)
           rw [Finset.sum_const, nsmul_eq_mul]; ring
       _ ≤ (∑ k ∈ Finset.range (m + 1), (m.choose k : ℝ) * ((k + 1 : ℝ) ^ (m - k))) *
             ((4 * (r : ℝ) * J) ^ m * opNorm O) :=
-          mul_le_mul_of_nonneg_right hcard_valid (by positivity)
+          mul_le_mul_of_nonneg_right hcard_valid (mul_nonneg (by positivity) (opNorm_nonneg O))
       _ = opNorm O * ((4 * (r : ℝ) * J) ^ m *
             ∑ k ∈ Finset.range (m + 1), (m.choose k : ℝ) * ((k + 1 : ℝ) ^ (m - k))) := by ring
   let f : ℕ → ℝ := fun m ↦
@@ -768,7 +771,10 @@ theorem heisenbergEvol_1d_all_temp_bound {N r : ℕ} (hr : 1 ≤ r)
   have hhas_clm := hhas.map φ φ.continuous
   calc opNorm (heisenbergEvol hH z O)
       = ‖∑' m : ℕ, opToCLM (((Complex.I * z) ^ m / (m.factorial : ℂ)) • adPowMat (∑ X ∈ E, h X) m O)‖ := by
-        unfold opNorm; rw [← hhas_clm.tsum_eq]
+        unfold opNorm
+        change ‖φ (heisenbergEvol hH z O)‖ = _
+        rw [← hhas_clm.tsum_eq]
+        rfl
     _ ≤ ∑' m : ℕ, opNorm (((Complex.I * z) ^ m / (m.factorial : ℂ)) • adPowMat (∑ X ∈ E, h X) m O) :=
         norm_tsum_le_tsum_norm hsumm_norm
     _ ≤ ∑' m : ℕ, opNorm O * f m :=
@@ -810,19 +816,20 @@ theorem opNorm_heisenbergEvol_pauliSite_1d_all_temp {N r : ℕ} (hr : 1 ≤ r)
       (Complex.I * ((β / 4 : ℝ) : ℂ))
     rw [hnorm_pos, ha_eq] at h1
     exact le_trans h1 (by
-      have := mul_le_mul_of_nonneg_right hpauli_norm (Real.exp_pos _).le
-      simpa [araki1DM] using this)
+      dsimp only [araki1DM]
+      simpa using mul_le_mul_of_nonneg_right hpauli_norm
+        (Real.exp_pos ((r : ℝ) * J * |β| * (1 + Real.exp ((r : ℝ) * J * |β|)))).le)
   · have h2 := heisenbergEvol_1d_all_temp_bound hr E h1d h hsupp hH hJ hsite x hpauli_supp
       (-(Complex.I * ((β / 4 : ℝ) : ℂ)))
     rw [hnorm_neg, ha_eq] at h2
     exact le_trans h2 (by
-      have := mul_le_mul_of_nonneg_right hpauli_norm (Real.exp_pos _).le
-      simpa [araki1DM] using this)
+      dsimp only [araki1DM]
+      simpa using mul_le_mul_of_nonneg_right hpauli_norm
+        (Real.exp_pos ((r : ℝ) * J * |β| * (1 + Real.exp ((r : ℝ) * J * |β|)))).le)
 
-/-- **Proposition 8.1 (Unconditional All-Temperature 1D Finite-Range Bounds, Eq. 8.1)**:
+/-- **Proposition 8.1 (All-Temperature 1D Finite-Range Bounds, Eq. 8.1)**:
 For ANY `N : ℕ`, ANY `r ≥ 1`, ANY 1D finite-range Hermitian Hamiltonian `H = ∑ X ∈ E, h X`
-with local site strength `≤ J`, ANY inverse temperature `β : ℝ` (ALL temperatures, no
-small-`β` restriction and no assumed `hM_bound`!), and EVERY observable `A : QubitOp N`:
+with local site strength `≤ J`, ANY inverse temperature `β : ℝ`, and EVERY observable `A : QubitOp N`:
 1. `otocCW G A ≤ (3 / 2) * (araki1DM β r J) ^ 2 * Re (A | 𝒬̃^{(β)} A)_β^W`,
 2. Under the 1D reverse-Poincaré bound `Re (A | 𝒬̃^{(β)} A)_β^W ≤ C_RP * Re (A | 𝒬^{(β)} A)_β^W`:
    `otocCW G A ≤ (3 / 2) * (araki1DM β r J) ^ 2 * C_RP * Re (A | 𝒬^{(β)} A)_β^W`,
