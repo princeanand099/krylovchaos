@@ -59,7 +59,6 @@ lemma sum_connectedPolymers_le_unorderedTreeSum {N : ℕ}
       (connectedPolymers E).filter (fun C ↦ Y ∈ C ∧ C.card ≤ h + 1)
     let dom := (connectedPolymers E).filter (fun γ ↦ X₀ ∈ γ ∧ γ.card ≤ h + 2)
     let target := N₀.powerset.sigma (fun T ↦ T.pi F)
-    -- For each `γ ∈ dom`, decompose `γ.erase X₀` into connected components `I`
     have hdecomp : ∀ γ ∈ dom,
         ∃ I ∈ (connectedPolymers E).powerset.filter (fun I ↦ isCompatPolymer polyIncompat I),
           I.biUnion id = γ.erase X₀ := by
@@ -67,7 +66,6 @@ lemma sum_connectedPolymers_le_unorderedTreeSum {N : ℕ}
       have hγE : γ ⊆ E := (mem_connectedPolymers.mp (Finset.mem_filter.mp hγ).1).1
       exact (compatible_connectedPolymers_bijection E hne).2 (γ.erase X₀)
         (Finset.mem_powerset.mpr (Finset.Subset.trans (Finset.erase_subset _ _) hγE))
-    -- Canonical representative `rep C ∈ C ∩ N₀`
     let rep : Polymer N → Finset (Fin N) := fun C ↦
       if hneCN : (C ∩ N₀).Nonempty then hneCN.choose else X₀
     have hcomp_hits : ∀ γ ∈ dom,
@@ -117,7 +115,6 @@ lemma sum_connectedPolymers_le_unorderedTreeSum {N : ℕ}
       have hcard_erase : (γ.erase X₀).card = γ.card - 1 := Finset.card_erase_of_mem hX₀γ
       have hle := Finset.card_le_card hCsub_erase
       omega
-    -- Map `γ ∈ dom` into `target`
     let toTarget : Polymer N → Σ T : Finset (Finset (Fin N)), (∀ Y ∈ T, Polymer N) := fun γ ↦
       if hγ : γ ∈ dom then
         let I := (hdecomp γ hγ).choose
@@ -387,7 +384,6 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
     rw [mul_assoc, ← Real.exp_add]
     have : c * (r : ℝ) + c * (r : ℝ) = 2 * c * (r : ℝ) := by ring
     rw [this]; exact hkp_param
-  -- Show `depolDualWeight s (exp(-(t * β/2) H)) ≠ 0` for every `t ∈ [0, 1]` and `s`
   have hnonzero : ∀ s : Fin N → Fin 6, ∀ t ∈ Set.Icc (0 : ℝ) 1,
       depolDualWeight s (hermFunc hH (fun e ↦ Complex.exp (-(t * (β / 2) : ℂ) * (e : ℂ)))) ≠ 0 := by
     intro s t ht
@@ -445,7 +441,6 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
           _ ≤ ηTilde Y * Real.exp (c * (Y.card : ℝ)) :=
               lemma_A_3_concrete_unordered_tree_sum E hcard ηTilde hηTilde_nn hc.le
                 hηTilde_site hcond_tilde E.card Y hY
-      -- Cover `{γ' ∈ Λ₀ | polyIncompat γ γ'}` by `x ∈ polySupp γ` and `Y ∈ E` with `x ∈ Y`
       have hcover : ∑ γ' ∈ Λ₀.filter (fun γ' ↦ polyIncompat γ γ'), ∏ X ∈ γ', ηTilde X ≤
           ∑ x ∈ polySupp γ, ∑ Y ∈ E.filter (fun Y ↦ x ∈ Y),
             ∑ γ' ∈ Λ₀.filter (fun γ' ↦ Y ∈ γ'), ∏ X ∈ γ', ηTilde X := by
@@ -524,7 +519,6 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
         _ = ((polySupp γ).card : ℝ) * c := by simp
         _ ≤ (∑ X ∈ γ, (X.card : ℝ)) * c := mul_le_mul_of_nonneg_right hcard_supp hc.le
         _ = a γ := by dsimp only [a]; ring
-    -- Apply Kotecký–Preiss on `Λ₀` (noting `polyIncompat` is reflexive on `Λ₀` since every `γ ∈ Λ₀` has nonempty support)
     let incompatRefl : Polymer N → Polymer N → Prop := fun γ₁ γ₂ ↦ γ₁ = γ₂ ∨ polyIncompat γ₁ γ₂
     have hrefl : ∀ γ, incompatRefl γ γ := fun _ ↦ Or.inl rfl
     have hsym : ∀ γ₁ γ₂, incompatRefl γ₁ γ₂ → incompatRefl γ₂ γ₁ := by
@@ -570,11 +564,9 @@ theorem lemma_7_2_concrete_positive_frame {N r : ℕ}
     rw [← heq] at hZ_ne
     convert hZ_ne using 2
     congr 1; funext e; push_cast; ring
-  -- By Intermediate Value Theorem on `t ∈ [0, 1]`, `0 < (depolDualWeight s (exp(-(β/2) H))).re`
   have hpos : ∀ s : Fin N → Fin 6,
       0 < (depolDualWeight s (hermFunc hH (fun e ↦ Complex.exp (-(β / 2 : ℂ) * (e : ℂ))))).re :=
     fun s ↦ depolDualWeight_exp_re_pos_of_nonzero hH s β (hnonzero s)
-  -- Assemble strictly positive `π s` for `gibbsRhoHalf hH β`
   let Zhalf : ℝ := Real.sqrt (gibbsPartitionFn hH β)
   have hZhalf_pos : 0 < Zhalf := Real.sqrt_pos.mpr (gibbsPartitionFn_pos hH β)
   let π : (Fin N → Fin 6) → ℝ := fun s ↦
@@ -657,6 +649,402 @@ theorem theorem_1_3b_CW_unconditional {N r : ℕ}
     ⟨π, hπ_pos, hρHalf⟩
   exact theorem_1_3b_concrete_CW (concreteGibbsData hH β) π
     (fun s ↦ (hπ_pos s).le) hρHalf A
+
+/-- **Lemma 7.2 Corollary (Normalized Probability Representation of `ρ_{β/2}`, Eq. 7.8)**:
+Under the same high-temperature Kotecký–Preiss hypotheses as `lemma_7_2_concrete_positive_frame`,
+the thermal state `gibbsRho hH (β / 2)` is a strictly positive convex combination of the
+depolarized product states `globalDepolP N s`:
+`∃ πTilde, (∀ s, 0 < πTilde s) ∧ (∑ s, πTilde s = 1) ∧ gibbsRho hH (β / 2) = ∑ s, (πTilde s : ℂ) • globalDepolP N s`. -/
+theorem lemma_7_2_concrete_rho_half_normalized {N r : ℕ}
+    (E : Finset (Finset (Fin N))) (hne : ∀ X ∈ E, X.Nonempty)
+    (hcard : ∀ X ∈ E, X.card ≤ r)
+    (h : Finset (Fin N) → QubitOp N) (hsupp : ∀ X, h X ∈ supportedOn X)
+    (hH : (∑ X ∈ E, h X).IsHermitian)
+    {β η₀ c : ℝ} (hβ : 0 ≤ β) (hc : 0 < c)
+    (hsite : ∀ x : Fin N,
+      ∑ X ∈ E.filter (fun X ↦ x ∈ X),
+        (6 : ℝ) ^ X.card * (Real.exp ((β / 2) * opNorm (h X)) - 1) ≤ η₀)
+    (hkp_param : η₀ * Real.exp (2 * c * (r : ℝ)) ≤ c) :
+    ∃ πTilde : (Fin N → Fin 6) → ℝ,
+      (∀ s, 0 < πTilde s) ∧
+      (∑ s : Fin N → Fin 6, πTilde s = 1) ∧
+      gibbsRho hH (β / 2) = ∑ s : Fin N → Fin 6, (πTilde s : ℂ) • globalDepolP N s := by
+  rcases lemma_7_2_concrete_positive_frame E hne hcard h hsupp hH hβ hc hsite hkp_param with
+    ⟨π, hπ_pos, hρHalf⟩
+  let c_norm : ℝ := Real.sqrt (gibbsPartitionFn hH β) / gibbsPartitionFn hH (β / 2)
+  have hc_pos : 0 < c_norm :=
+    div_pos (Real.sqrt_pos.mpr (gibbsPartitionFn_pos hH β)) (gibbsPartitionFn_pos hH (β / 2))
+  let πTilde : (Fin N → Fin 6) → ℝ := fun s ↦ c_norm * π s
+  have hπT_pos : ∀ s, 0 < πTilde s := fun s ↦ mul_pos hc_pos (hπ_pos s)
+  have hrel : gibbsRho hH (β / 2) = ((c_norm : ℝ) : ℂ) • gibbsRhoHalf hH β := by
+    unfold gibbsRho gibbsRhoHalf
+    rw [smul_smul]
+    congr 1
+    · have hZpos : (Real.sqrt (gibbsPartitionFn hH β) : ℂ) ≠ 0 := by
+        exact_mod_cast (Real.sqrt_pos.mpr (gibbsPartitionFn_pos hH β)).ne'
+      dsimp only [c_norm]
+      push_cast
+      field_simp [hZpos]
+    · congr 1; funext e; congr 1; ring
+  have hdecomp : gibbsRho hH (β / 2) = ∑ s : Fin N → Fin 6, (πTilde s : ℂ) • globalDepolP N s := by
+    rw [hrel, hρHalf, Finset.smul_sum]
+    apply Finset.sum_congr rfl; intro s _
+    rw [smul_smul]; dsimp only [πTilde]; push_cast; rfl
+  have hsum1 : ∑ s : Fin N → Fin 6, πTilde s = 1 := by
+    have htr1 : Matrix.trace (gibbsRho hH (β / 2)) = 1 := (concreteGibbsData hH (β / 2)).trace_ρβ
+    rw [hdecomp, map_sum] at htr1
+    have htr2 : ∑ s : Fin N → Fin 6, Matrix.trace ((πTilde s : ℂ) • globalDepolP N s) =
+        ((∑ s : Fin N → Fin 6, πTilde s : ℝ) : ℂ) := by
+      push_cast
+      apply Finset.sum_congr rfl; intro s _
+      rw [Matrix.trace_smul, globalDepolP_trace N s, smul_eq_mul, mul_one]
+    rw [htr2] at htr1
+    exact_mod_cast htr1
+  exact ⟨πTilde, hπT_pos, hsum1, hdecomp⟩
+
+/-- **Lemma A.1 Polymer-to-Binary-Tree Bridge**:
+The sum of `∏_{X ∈ γ} η X` over all forests `γ ⊆ E` of cardinality `m` whose every connected
+component intersects `S` is bounded above by the Knuth binary-tree sum `forestSum E η m S`. -/
+lemma sum_hittingForests_le_forestSum {N : ℕ}
+    (E : Finset (Finset (Fin N))) (hne : ∀ X ∈ E, X.Nonempty)
+    (η : Finset (Fin N) → ℝ) (hη_nn : ∀ X ∈ E, 0 ≤ η X) :
+    ∀ m : ℕ, ∀ S : Finset (Fin N),
+      ∑ γ ∈ E.powerset.filter (fun γ ↦ γ.card = m ∧
+        ∀ I ∈ (connectedPolymers E).powerset.filter (fun I ↦ isCompatPolymer polyIncompat I),
+          I.biUnion id = γ → ∀ C ∈ I, (polySupp C ∩ S).Nonempty),
+        ∏ X ∈ γ, η X ≤ forestSum E η m S := by
+  classical
+  intro m
+  induction m using Nat.strong_induction_on with
+  | h m ih =>
+    intro S
+    cases m with
+    | zero =>
+      rw [forestSum]
+      have hsub : E.powerset.filter (fun γ ↦ γ.card = 0 ∧
+          ∀ I ∈ (connectedPolymers E).powerset.filter (fun I ↦ isCompatPolymer polyIncompat I),
+            I.biUnion id = γ → ∀ C ∈ I, (polySupp C ∩ S).Nonempty) ⊆ {∅} := by
+        intro γ hγ
+        rw [Finset.mem_singleton]
+        exact Finset.card_eq_zero.mp (Finset.mem_filter.mp hγ).2.1
+      calc _ ≤ ∑ γ ∈ ({∅} : Finset (Polymer N)), ∏ X ∈ γ, η X :=
+            Finset.sum_le_sum_of_subset_of_nonneg hsub fun γ hγ _ ↦ by
+              rw [Finset.mem_singleton.mp hγ, Finset.prod_empty]; exact zero_le_one
+        _ = 1 := by simp
+    | succ m =>
+      rw [forestSum]
+      let HForest : ℕ → Finset (Fin N) → Finset (Polymer N) := fun k T ↦
+        E.powerset.filter (fun γ ↦ γ.card = k ∧
+          ∀ I ∈ (connectedPolymers E).powerset.filter (fun I ↦ isCompatPolymer polyIncompat I),
+            I.biUnion id = γ → ∀ C ∈ I, (polySupp C ∩ T).Nonempty)
+      let dom := HForest (m + 1) S
+      let target := S.sigma fun y ↦ (E.filter (fun X ↦ y ∈ X)).sigma fun X ↦
+        (Finset.range (m + 1)).sigma fun j ↦ (HForest j X).product (HForest (m - j) S)
+      have hdecomp_dom : ∀ γ ∈ dom,
+          ∃ y ∈ S, ∃ X₀ ∈ E.filter (fun X ↦ y ∈ X), ∃ j ∈ Finset.range (m + 1),
+          ∃ γL ∈ HForest j X₀, ∃ γR ∈ HForest (m - j) S,
+            Disjoint γL γR ∧ X₀ ∉ γL ∧ X₀ ∉ γR ∧ γ = insert X₀ (γL ∪ γR) := by
+        intro γ hγ
+        rcases Finset.mem_filter.mp hγ with ⟨hγE_pow, hcardγ, hhit⟩
+        have hγE : γ ⊆ E := Finset.mem_powerset.mp hγE_pow
+        rcases (compatible_connectedPolymers_bijection E hne).2 γ hγE_pow with ⟨I, hI, hIU⟩
+        have hIne : I.Nonempty := by
+          by_contra hempty
+          rw [Finset.not_nonempty_iff_eq_empty] at hempty
+          rw [hempty, Finset.biUnion_empty] at hIU
+          rw [← hIU] at hcardγ; simp at hcardγ
+        rcases hIne with ⟨C₀, hC₀I⟩
+        have hC₀_hits := hhit I hI hIU C₀ hC₀I
+        rcases hC₀_hits with ⟨y, hy⟩
+        rcases Finset.mem_inter.mp hy with ⟨hyC₀, hyS⟩
+        rcases Finset.mem_biUnion.mp hyC₀ with ⟨X₀, hX₀C₀, hyX₀⟩
+        have hC₀_mem : C₀ ∈ connectedPolymers E :=
+          Finset.mem_powerset.mp (Finset.mem_filter.mp hI).1 hC₀I
+        have hX₀E : X₀ ∈ E := (mem_connectedPolymers.mp hC₀_mem).1 hX₀C₀
+        have hC₀sub : C₀ ⊆ γ := by
+          intro Z hZ; rw [← hIU]; exact Finset.mem_biUnion.mpr ⟨C₀, hC₀I, hZ⟩
+        let γL : Polymer N := C₀.erase X₀
+        let γR : Polymer N := γ \ C₀
+        have hdisj : Disjoint γL γR :=
+          Finset.disjoint_of_subset_left (Finset.erase_subset _ _) Finset.disjoint_sdiff
+        have hX₀notL : X₀ ∉ γL := Finset.notMem_erase X₀ C₀
+        have hX₀notR : X₀ ∉ γR := fun h ↦ (Finset.mem_sdiff.mp h).2 hX₀C₀
+        have hγ_eq : γ = insert X₀ (γL ∪ γR) := by
+          ext Z
+          simp only [Finset.mem_insert, Finset.mem_union, γL, γR, Finset.mem_erase, Finset.mem_sdiff]
+          by_cases hZ : Z = X₀
+          · subst hZ; simp [hC₀sub hX₀C₀]
+          · by_cases hZC₀ : Z ∈ C₀
+            · simp [hZ, hZC₀, hC₀sub hZC₀]
+            · simp [hZ, hZC₀]
+        have hcardL_le : γL.card ≤ m := by
+          have h1 : γL.card + 1 = C₀.card := by
+            have := Finset.card_erase_add_one hX₀C₀; omega
+          have h2 : C₀.card ≤ γ.card := Finset.card_le_card hC₀sub
+          omega
+        have hcardR : γR.card = m - γL.card := by
+          have h1 : C₀.card + γR.card = γ.card := by
+            rw [← Finset.card_union_of_disjoint Finset.disjoint_sdiff, Finset.union_sdiff_of_subset hC₀sub]
+          have h2 : γL.card + 1 = C₀.card := by
+            have := Finset.card_erase_add_one hX₀C₀; omega
+          omega
+        have hγL_mem : γL ∈ HForest γL.card X₀ := by
+          refine Finset.mem_filter.mpr ⟨Finset.mem_powerset.mpr
+            (Finset.Subset.trans (Finset.erase_subset _ _) (Finset.Subset.trans hC₀sub hγE)), rfl, ?_⟩
+          intro IL hIL hILU D hDIL
+          have hDconn : isConnectedPolymer D :=
+            (mem_connectedPolymers.mp (Finset.mem_powerset.mp (Finset.mem_filter.mp hIL).1 hDIL)).2
+          have hDsubL : D ⊆ γL := by
+            intro Z hZ; rw [← hILU]; exact Finset.mem_biUnion.mpr ⟨D, hDIL, hZ⟩
+          have hDsubC₀ : D ⊆ C₀ := Finset.Subset.trans hDsubL (Finset.erase_subset _ _)
+          have hX₀notD : X₀ ∉ D := fun h ↦ hX₀notL (hDsubL h)
+          by_contra hempty
+          rw [Finset.not_nonempty_iff_eq_empty, ← Finset.disjoint_iff_inter_eq_empty] at hempty
+          have hdisj_rest : Disjoint (polySupp D) (polySupp (C₀ \ D)) := by
+            rw [Finset.disjoint_left]
+            intro x hxD hxR
+            rcases Finset.mem_biUnion.mp hxR with ⟨Z, hZR, hxZ⟩
+            rcases Finset.mem_sdiff.mp hZR with ⟨hZC₀, hZnotD⟩
+            by_cases hZX₀ : Z = X₀
+            · subst hZX₀; exact Finset.disjoint_left.mp hempty hxD hxZ
+            · have hZL : Z ∈ γL := Finset.mem_erase.mpr ⟨hZX₀, hZC₀⟩
+              rw [← hILU] at hZL
+              rcases Finset.mem_biUnion.mp hZL with ⟨D', hD'IL, hZD'⟩
+              have hDD' : D ≠ D' := fun h ↦ hZnotD (h ▸ hZD')
+              have hcomp := (Finset.mem_filter.mp hIL).2 D hDIL D' hD'IL hDD'
+              unfold polyIncompat at hcomp; push Not at hcomp
+              exact Finset.disjoint_left.mp hcomp hxD (Finset.mem_biUnion.mpr ⟨Z, hZD', hxZ⟩)
+          exact (mem_connectedPolymers.mp hC₀_mem).2.2 D (C₀ \ D) hDconn.1
+            ⟨X₀, Finset.mem_sdiff.mpr ⟨hX₀C₀, hX₀notD⟩⟩
+            (Finset.union_sdiff_of_subset hDsubC₀) Finset.disjoint_sdiff hdisj_rest
+        have hγR_mem : γR ∈ HForest (m - γL.card) S := by
+          refine Finset.mem_filter.mpr ⟨Finset.mem_powerset.mpr
+            (Finset.Subset.trans Finset.sdiff_subset hγE), hcardR, ?_⟩
+          intro IR hIR hIRU D hDIR
+          have hIer_mem : I.erase C₀ ∈ (connectedPolymers E).powerset.filter
+              (fun J ↦ isCompatPolymer polyIncompat J) := by
+            refine Finset.mem_filter.mpr ⟨Finset.mem_powerset.mpr
+              (Finset.Subset.trans (Finset.erase_subset _ _)
+                (Finset.mem_powerset.mp (Finset.mem_filter.mp hI).1)), ?_⟩
+            intro A hA B hB hAB
+            exact (Finset.mem_filter.mp hI).2 A (Finset.mem_of_mem_erase hA)
+              B (Finset.mem_of_mem_erase hB) hAB
+          have hIer_union : (I.erase C₀).biUnion id = γR := by
+            ext Z
+            simp only [Finset.mem_biUnion, Finset.mem_erase, id_eq, γR, Finset.mem_sdiff]
+            constructor
+            · rintro ⟨C, ⟨hCne, hCI⟩, hZC⟩
+              refine ⟨by rw [← hIU]; exact Finset.mem_biUnion.mpr ⟨C, hCI, hZC⟩, ?_⟩
+              intro hZC₀
+              have hZE : Z ∈ E := (mem_connectedPolymers.mp
+                (Finset.mem_powerset.mp (Finset.mem_filter.mp hI).1 hCI)).1 hZC
+              rcases hne Z hZE with ⟨x, hxZ⟩
+              have hcomp := (Finset.mem_filter.mp hI).2 C hCI C₀ hC₀I hCne
+              unfold polyIncompat at hcomp; push Not at hcomp
+              exact Finset.disjoint_left.mp hcomp
+                (Finset.mem_biUnion.mpr ⟨Z, hZC, hxZ⟩)
+                (Finset.mem_biUnion.mpr ⟨Z, hZC₀, hxZ⟩)
+            · rintro ⟨hZγ, hZnotC₀⟩
+              rw [← hIU] at hZγ
+              rcases Finset.mem_biUnion.mp hZγ with ⟨C, hCI, hZC⟩
+              exact ⟨C, ⟨fun h ↦ hZnotC₀ (h ▸ hZC), hCI⟩, hZC⟩
+          have hIR_eq : IR = I.erase C₀ :=
+            (compatible_connectedPolymers_bijection E hne).1 IR hIR (I.erase C₀) hIer_mem
+              (hIRU.trans hIer_union.symm)
+          rw [hIR_eq] at hDIR
+          exact hhit I hI hIU D (Finset.mem_of_mem_erase hDIR)
+        exact ⟨y, hyS, X₀, Finset.mem_filter.mpr ⟨hX₀E, hyX₀⟩, γL.card,
+          Finset.mem_range.mpr (by omega), γL, hγL_mem, γR, hγR_mem, hdisj, hX₀notL, hX₀notR, hγ_eq⟩
+      let toTgt : Polymer N →
+          Σ _y : Fin N, Σ _X : Finset (Fin N), Σ _j : ℕ, Polymer N × Polymer N := fun γ ↦
+        if hγ : γ ∈ dom then
+          let h1 := hdecomp_dom γ hγ
+          let y := h1.choose
+          let h2 := h1.choose_spec.2
+          let X₀ := h2.choose
+          let h3 := h2.choose_spec.2
+          let j := h3.choose
+          let h4 := h3.choose_spec.2
+          let γL := h4.choose
+          let h5 := h4.choose_spec.2
+          let γR := h5.choose
+          ⟨y, X₀, j, (γL, γR)⟩
+        else ⟨0, ∅, 0, (∅, ∅)⟩
+      have hmap : ∀ γ ∈ dom, toTgt γ ∈ target := by
+        intro γ hγ
+        simp only [toTgt, hγ, ↓reduceDIte, target, Finset.mem_sigma, Finset.mem_product]
+        have h1 := hdecomp_dom γ hγ
+        refine ⟨h1.choose_spec.1, h1.choose_spec.2.choose_spec.1,
+          h1.choose_spec.2.choose_spec.2.choose_spec.1,
+          h1.choose_spec.2.choose_spec.2.choose_spec.2.choose_spec.1,
+          h1.choose_spec.2.choose_spec.2.choose_spec.2.choose_spec.2.choose_spec.1⟩
+      have hrec : ∀ γ ∈ dom,
+          insert (toTgt γ).2.1 ((toTgt γ).2.2.2.1 ∪ (toTgt γ).2.2.2.2) = γ := by
+        intro γ hγ
+        simp only [toTgt, hγ, ↓reduceDIte]
+        exact (hdecomp_dom γ hγ).choose_spec.2.choose_spec.2.choose_spec.2.choose_spec.2.choose_spec.2.2.2.2.symm
+      have hinj : Set.InjOn toTgt (dom : Set (Polymer N)) := by
+        intro γ₁ hγ₁ γ₂ hγ₂ heq
+        rw [← hrec γ₁ hγ₁, ← hrec γ₂ hγ₂, heq]
+      have hw_eq : ∀ γ ∈ dom,
+          ∏ X ∈ γ, η X =
+            η (toTgt γ).2.1 * ((∏ X ∈ (toTgt γ).2.2.2.1, η X) * (∏ X ∈ (toTgt γ).2.2.2.2, η X)) := by
+        intro γ hγ
+        have hspec := (hdecomp_dom γ hγ).choose_spec.2.choose_spec.2.choose_spec.2.choose_spec.2.choose_spec.2
+        have hdisj := hspec.1
+        have hnotL := hspec.2.1
+        have hnotR := hspec.2.2.1
+        have hγ_eq := hspec.2.2.2
+        simp only [toTgt, hγ, ↓reduceDIte]
+        conv_lhs => rw [hγ_eq]
+        rw [Finset.prod_insert (by simp [hnotL, hnotR]), Finset.prod_union hdisj]
+      have hsum_le : ∑ γ ∈ dom, ∏ X ∈ γ, η X ≤
+          ∑ p ∈ target, η p.2.1 * ((∏ X ∈ p.2.2.2.1, η X) * (∏ X ∈ p.2.2.2.2, η X)) := by
+        calc ∑ γ ∈ dom, ∏ X ∈ γ, η X
+            = ∑ γ ∈ dom, η (toTgt γ).2.1 * ((∏ X ∈ (toTgt γ).2.2.2.1, η X) * (∏ X ∈ (toTgt γ).2.2.2.2, η X)) :=
+              Finset.sum_congr rfl hw_eq
+          _ = ∑ p ∈ dom.image toTgt, η p.2.1 * ((∏ X ∈ p.2.2.2.1, η X) * (∏ X ∈ p.2.2.2.2, η X)) := by
+              rw [Finset.sum_image hinj]
+          _ ≤ ∑ p ∈ target, η p.2.1 * ((∏ X ∈ p.2.2.2.1, η X) * (∏ X ∈ p.2.2.2.2, η X)) := by
+              refine Finset.sum_le_sum_of_subset_of_nonneg (Finset.image_subset_iff.mpr hmap) ?_
+              intro p hp _
+              rcases Finset.mem_sigma.mp hp with ⟨_, hp2⟩
+              rcases Finset.mem_sigma.mp hp2 with ⟨hX, hp3⟩
+              rcases Finset.mem_sigma.mp hp3 with ⟨_, hp4⟩
+              rcases Finset.mem_product.mp hp4 with ⟨hL, hR⟩
+              exact mul_nonneg (hη_nn _ (Finset.mem_filter.mp hX).1)
+                (mul_nonneg (Finset.prod_nonneg fun Z hZ ↦ hη_nn Z (Finset.mem_powerset.mp (Finset.mem_filter.mp hL).1 hZ))
+                            (Finset.prod_nonneg fun Z hZ ↦ hη_nn Z (Finset.mem_powerset.mp (Finset.mem_filter.mp hR).1 hZ)))
+      have htgt_eq : ∑ p ∈ target, η p.2.1 * ((∏ X ∈ p.2.2.2.1, η X) * (∏ X ∈ p.2.2.2.2, η X)) =
+          ∑ y ∈ S, ∑ X ∈ E.filter (fun X ↦ y ∈ X),
+            η X * ∑ j ∈ Finset.range (m + 1),
+              (∑ γL ∈ HForest j X, ∏ Z ∈ γL, η Z) * (∑ γR ∈ HForest (m - j) S, ∏ Z ∈ γR, η Z) := by
+        dsimp only [target]
+        rw [Finset.sum_sigma]
+        apply Finset.sum_congr rfl; intro y _
+        rw [Finset.sum_sigma]
+        apply Finset.sum_congr rfl; intro X _
+        rw [Finset.sum_sigma, Finset.mul_sum]
+        apply Finset.sum_congr rfl; intro j _
+        rw [Finset.sum_product, Finset.sum_mul]
+        simp_rw [Finset.mul_sum]
+      calc ∑ γ ∈ dom, ∏ X ∈ γ, η X
+          ≤ ∑ y ∈ S, ∑ X ∈ E.filter (fun X ↦ y ∈ X),
+              η X * ∑ j ∈ Finset.range (m + 1),
+                (∑ γL ∈ HForest j X, ∏ Z ∈ γL, η Z) * (∑ γR ∈ HForest (m - j) S, ∏ Z ∈ γR, η Z) :=
+            htgt_eq ▸ hsum_le
+        _ ≤ ∑ y ∈ S, ∑ X ∈ E.filter (fun X ↦ y ∈ X),
+              η X * ∑ j ∈ Finset.range (m + 1),
+                forestSum E η j X * forestSum E η (m - j) S := by
+            apply Finset.sum_le_sum; intro y _
+            apply Finset.sum_le_sum; intro X hX
+            apply mul_le_mul_of_nonneg_left _ (hη_nn X (Finset.mem_filter.mp hX).1)
+            apply Finset.sum_le_sum; intro j hj
+            have hj' : j < m + 1 := Finset.mem_range.mp hj
+            exact mul_le_mul (ih j (by omega) X) (ih (m - j) (by omega) S)
+              (Finset.sum_nonneg fun γR hγR ↦ Finset.prod_nonneg fun Z hZ ↦
+                hη_nn Z (Finset.mem_powerset.mp (Finset.mem_filter.mp hγR).1 hZ))
+              (forestSum_nonneg E η hη_nn j X)
+
+/-- **Lemma A.1 Connected-Polymer to Binary-Tree Bridge (Sharp `4^(m - 1)` Constant)**:
+For any finite hypergraph `E` with nonempty edges of size `≤ r`, nonnegative weights `η` with
+`∀ x, ∑_{X ∋ x} η X ≤ η₀`, and any `m ≥ 1`, `x : Fin N`:
+`∑_{γ ∈ connectedPolymers E, |γ| = m, x ∈ polySupp γ} ∏_{X ∈ γ} η X ≤ 4^(m - 1) * (r * η₀)^(m - 1) * η₀`. -/
+theorem lemma_A_1_polymer_to_bintree_bridge {N r : ℕ}
+    (E : Finset (Finset (Fin N))) (hne : ∀ X ∈ E, X.Nonempty)
+    (hcard : ∀ X ∈ E, X.card ≤ r)
+    (η : Finset (Fin N) → ℝ) (hη_nn : ∀ X ∈ E, 0 ≤ η X)
+    {η₀ : ℝ} (hη₀ : 0 ≤ η₀)
+    (hsite : ∀ x : Fin N, ∑ X ∈ E.filter (fun X ↦ x ∈ X), η X ≤ η₀)
+    {m : ℕ} (hm : 1 ≤ m) (x : Fin N) :
+    ∑ γ ∈ (connectedPolymers E).filter (fun γ ↦ γ.card = m ∧ x ∈ polySupp γ), ∏ X ∈ γ, η X ≤
+      (4 : ℝ) ^ (m - 1) * ((r : ℝ) * η₀) ^ (m - 1) * η₀ := by
+  classical
+  have hsub : (connectedPolymers E).filter (fun γ ↦ γ.card = m ∧ x ∈ polySupp γ) ⊆
+      E.powerset.filter (fun γ ↦ γ.card = m ∧
+        ∀ I ∈ (connectedPolymers E).powerset.filter (fun I ↦ isCompatPolymer polyIncompat I),
+          I.biUnion id = γ → ∀ C ∈ I, (polySupp C ∩ {x}).Nonempty) := by
+    intro γ hγ
+    rcases Finset.mem_filter.mp hγ with ⟨hγconn, hcardγ, hxγ⟩
+    refine Finset.mem_filter.mpr ⟨Finset.mem_powerset.mpr (mem_connectedPolymers.mp hγconn).1, hcardγ, ?_⟩
+    intro I hI hIU C hCI
+    have hsing_mem : ({γ} : Finset (Polymer N)) ∈
+        (connectedPolymers E).powerset.filter (fun J ↦ isCompatPolymer polyIncompat J) := by
+      refine Finset.mem_filter.mpr ⟨Finset.mem_powerset.mpr (Finset.singleton_subset_iff.mpr hγconn), ?_⟩
+      intro A hA B hB hAB
+      rw [Finset.mem_singleton.mp hA, Finset.mem_singleton.mp hB] at hAB
+      exact absurd rfl hAB
+    have hI_eq : I = {γ} :=
+      (compatible_connectedPolymers_bijection E hne).1 I hI {γ} hsing_mem
+        (by rw [hIU, Finset.biUnion_singleton, id_eq])
+    rw [hI_eq, Finset.mem_singleton] at hCI
+    subst hCI
+    exact ⟨x, Finset.mem_inter.mpr ⟨hxγ, Finset.mem_singleton_self x⟩⟩
+  have h1 : ∑ γ ∈ (connectedPolymers E).filter (fun γ ↦ γ.card = m ∧ x ∈ polySupp γ), ∏ X ∈ γ, η X ≤
+      forestSum E η m {x} := by
+    calc ∑ γ ∈ (connectedPolymers E).filter (fun γ ↦ γ.card = m ∧ x ∈ polySupp γ), ∏ X ∈ γ, η X
+        ≤ ∑ γ ∈ E.powerset.filter (fun γ ↦ γ.card = m ∧
+            ∀ I ∈ (connectedPolymers E).powerset.filter (fun I ↦ isCompatPolymer polyIncompat I),
+              I.biUnion id = γ → ∀ C ∈ I, (polySupp C ∩ {x}).Nonempty), ∏ X ∈ γ, η X :=
+          Finset.sum_le_sum_of_subset_of_nonneg hsub fun γ hγ _ ↦
+            Finset.prod_nonneg fun X hX ↦ hη_nn X (Finset.mem_powerset.mp (Finset.mem_filter.mp hγ).1 hX)
+      _ ≤ forestSum E η m {x} := sum_hittingForests_le_forestSum E hne η hη_nn m {x}
+  have h2 : forestSum E η m {x} ≤ (4 : ℝ) ^ (m - 1) * ((r : ℝ) * η₀) ^ (m - 1) * η₀ := by
+    obtain ⟨m', rfl⟩ := Nat.exists_eq_add_of_le' hm
+    rw [forestSum, Finset.sum_singleton]
+    by_cases hE : (E.filter (fun X ↦ x ∈ X)).Nonempty
+    · rcases hE with ⟨X₁, hX₁⟩
+      have h1r : ({x} : Finset (Fin N)).card ≤ r := by
+        simp only [Finset.card_singleton]
+        exact le_trans (Finset.card_pos.mpr ⟨x, (Finset.mem_filter.mp hX₁).2⟩)
+          (hcard X₁ (Finset.mem_filter.mp hX₁).1)
+      have hterm : ∀ X ∈ E.filter (fun X ↦ x ∈ X),
+          η X * (∑ j ∈ Finset.range (m' + 1), forestSum E η j X * forestSum E η (m' - j) {x}) ≤
+          η X * ((catalanRec (m' + 1) : ℝ) * ((r : ℝ) * η₀) ^ m') := by
+        intro X hX
+        have hXE : X ∈ E := (Finset.mem_filter.mp hX).1
+        apply mul_le_mul_of_nonneg_left _ (hη_nn X hXE)
+        calc ∑ j ∈ Finset.range (m' + 1), forestSum E η j X * forestSum E η (m' - j) {x}
+            ≤ ∑ j ∈ Finset.range (m' + 1),
+              ((catalanRec j : ℝ) * ((r : ℝ) * η₀) ^ j) *
+              ((catalanRec (m' - j) : ℝ) * ((r : ℝ) * η₀) ^ (m' - j)) := by
+              apply Finset.sum_le_sum; intro j hj
+              have hj' : j ≤ m' := Nat.lt_succ_iff.mp (Finset.mem_range.mp hj)
+              exact mul_le_mul
+                (lemma_A_1_concrete_forest_sum E hcard η hη_nn hη₀ hsite j X (hcard X hXE))
+                (lemma_A_1_concrete_forest_sum E hcard η hη_nn hη₀ hsite (m' - j) {x} h1r)
+                (forestSum_nonneg E η hη_nn (m' - j) {x}) (by positivity)
+          _ = ∑ j ∈ Finset.range (m' + 1),
+              ((catalanRec j : ℝ) * (catalanRec (m' - j) : ℝ)) * ((r : ℝ) * η₀) ^ m' := by
+              apply Finset.sum_congr rfl; intro j hj
+              have hj' : j ≤ m' := Nat.lt_succ_iff.mp (Finset.mem_range.mp hj)
+              have hexp : ((r : ℝ) * η₀) ^ j * ((r : ℝ) * η₀) ^ (m' - j) = ((r : ℝ) * η₀) ^ m' := by
+                rw [← pow_add, Nat.add_sub_cancel' hj']
+              linear_combination (catalanRec j : ℝ) * (catalanRec (m' - j) : ℝ) * hexp
+          _ = (∑ j ∈ Finset.range (m' + 1), (catalanRec j : ℝ) * (catalanRec (m' - j) : ℝ)) *
+              ((r : ℝ) * η₀) ^ m' := by rw [← Finset.sum_mul]
+          _ = (catalanRec (m' + 1) : ℝ) * ((r : ℝ) * η₀) ^ m' := by
+              simp only [catalanRec, Nat.cast_sum, Nat.cast_mul]
+      calc ∑ X ∈ E.filter (fun X ↦ x ∈ X),
+            η X * (∑ j ∈ Finset.range (m' + 1), forestSum E η j X * forestSum E η (m' - j) {x})
+          ≤ ∑ X ∈ E.filter (fun X ↦ x ∈ X),
+            η X * ((catalanRec (m' + 1) : ℝ) * ((r : ℝ) * η₀) ^ m') :=
+            Finset.sum_le_sum hterm
+        _ = (∑ X ∈ E.filter (fun X ↦ x ∈ X), η X) *
+            ((catalanRec (m' + 1) : ℝ) * ((r : ℝ) * η₀) ^ m') := by rw [← Finset.sum_mul]
+        _ ≤ η₀ * ((catalanRec (m' + 1) : ℝ) * ((r : ℝ) * η₀) ^ m') :=
+            mul_le_mul_of_nonneg_right (hsite x) (by positivity)
+        _ ≤ η₀ * ((4 : ℝ) ^ m' * ((r : ℝ) * η₀) ^ m') := by
+            apply mul_le_mul_of_nonneg_left _ hη₀
+            have hcat := catalanRec_le_four_pow_pred (m' + 1) (by omega)
+            simp only [Nat.add_sub_cancel] at hcat
+            exact mul_le_mul_of_nonneg_right hcat (by positivity)
+        _ = (4 : ℝ) ^ ((m' + 1) - 1) * ((r : ℝ) * η₀) ^ ((m' + 1) - 1) * η₀ := by
+            simp only [Nat.add_sub_cancel]; ring
+    · rw [Finset.not_nonempty_iff_eq_empty] at hE
+      rw [hE, Finset.sum_empty]
+      positivity
+  exact le_trans h1 h2
 
 end Lemma72AndUnconditionalThm13
 
