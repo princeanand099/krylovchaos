@@ -64,3 +64,4 @@ import KrylovChaos.DoubleWellTunneling
 import KrylovChaos.HighTempPolymerZ
 import KrylovChaos.HighTempCumulant
 import KrylovChaos.EntropicDecoupling
+import KrylovChaos.HighTempChaosBound
