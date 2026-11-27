@@ -65,3 +65,4 @@ import KrylovChaos.HighTempPolymerZ
 import KrylovChaos.HighTempCumulant
 import KrylovChaos.EntropicDecoupling
 import KrylovChaos.HighTempChaosBound
+import KrylovChaos.Cor65LatticeBound

@@ -827,22 +827,22 @@ theorem normalizedTrace_tsum_exp_eq_polymerZ {N : ℕ}
   symm
   refine Finset.sum_bij (fun I _ ↦ I.biUnion id) ?_ ?_ ?_ ?_
   · intro I hI
-    rw [Finset.mem_filter, Finset.mem_powerset] at hI
-    rw [Finset.mem_powerset]
+    have hI' := (@Finset.mem_filter _ _ _ _ _).mp hI
+    rw [Finset.mem_powerset] at hI' ⊢
     intro X hX
     rcases Finset.mem_biUnion.mp hX with ⟨γ, hγI, hXγ⟩
-    exact (mem_connectedPolymers.mp (hI.1 hγI)).1 hXγ
+    exact (mem_connectedPolymers.mp (hI'.1 hγI)).1 hXγ
   · intro I₁ hI₁ I₂ hI₂ heq
-    rw [Finset.mem_filter] at hI₁ hI₂
-    exact hinj I₁ (by rw [Finset.mem_filter]; exact hI₁) I₂ (by rw [Finset.mem_filter]; exact hI₂) heq
+    exact hinj I₁ ((@Finset.mem_filter _ _ _ _ _).mpr ((@Finset.mem_filter _ _ _ _ _).mp hI₁))
+      I₂ ((@Finset.mem_filter _ _ _ _ _).mpr ((@Finset.mem_filter _ _ _ _ _).mp hI₂)) heq
   · intro S hS
     rcases hsurj S hS with ⟨I, hI, hEq⟩
-    rw [Finset.mem_filter] at hI
-    exact ⟨I, by rw [Finset.mem_filter]; exact hI, hEq⟩
+    exact ⟨I, (@Finset.mem_filter _ _ _ _ _).mpr ((@Finset.mem_filter _ _ _ _ _).mp hI), hEq⟩
   · intro I hI
-    simp only [Finset.mem_filter, Finset.mem_powerset] at hI
-    exact (normalizedTrace_polyOp_biUnion g hsupp I hI.2
-      (fun γ hγ X hXγ ↦ hne X ((mem_connectedPolymers.mp (hI.1 hγ)).1 hXγ))).symm
+    have hI' := (@Finset.mem_filter _ _ _ _ _).mp hI
+    rw [Finset.mem_powerset] at hI'
+    exact (normalizedTrace_polyOp_biUnion g hsupp I hI'.2
+      (fun γ hγ X hXγ ↦ hne X ((mem_connectedPolymers.mp (hI'.1 hγ)).1 hXγ))).symm
 
 /-- Holomorphy of `ζ ↦ tracePolyWeight (g_tot ζ) 1 γ` for any affine-in-`ζ` local interaction
 `g_tot ζ Z = A Z + ζ • B Z`. -/
