@@ -735,7 +735,7 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
         _ = (-(majoranaProbe n j * fermionParityOp n)) * E * (majoranaProbe n j * fermionParityOp n) := by
               rw [hPjm]
         _ = (-(majoranaProbe n j * fermionParityOp n)) * E * (-(fermionParityOp n * majoranaProbe n j)) := by
-              congr 1; exact hPjr
+              congr 1
         _ = majoranaProbe n j * (fermionParityOp n * E * fermionParityOp n) * majoranaProbe n j := by
               simp only [Matrix.neg_mul, Matrix.mul_neg, neg_neg, Matrix.mul_assoc]
         _ = majoranaProbe n j * E * majoranaProbe n j := by rw [hPe]
@@ -762,7 +762,7 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
         _ = (-(majoranaProbe n j * fermionParityOp n)) * oddPart n X * (majoranaProbe n j * fermionParityOp n) := by
               rw [hPjm]
         _ = (-(majoranaProbe n j * fermionParityOp n)) * oddPart n X * (-(fermionParityOp n * majoranaProbe n j)) := by
-              congr 1; exact hPjr
+              congr 1
         _ = majoranaProbe n j * (fermionParityOp n * oddPart n X * fermionParityOp n) * majoranaProbe n j := by
               simp only [Matrix.neg_mul, Matrix.mul_neg, neg_neg, Matrix.mul_assoc]
         _ = -(majoranaProbe n j * oddPart n X * majoranaProbe n j) := by
@@ -803,7 +803,7 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
         have hc : ((oddPart n X)ᴴ * majoranaTotalSizeOp n (evenPart n X)).trace =
             starRingEnd ℂ (((majoranaTotalSizeOp n (evenPart n X))ᴴ * oddPart n X).trace) := by
           rw [← Complex.star_def, ← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-        rw [hc, horth_eo _ _ (hpar_even_pres X) (hodd_par X), map_zero]
+        have h0 : ((majoranaTotalSizeOp n (evenPart n X))ᴴ * oddPart n X).trace = 0 := horth_eo _ _ (hpar_even_pres X) (hodd_par X); rw [hc, h0, map_zero]
       rw [h1, h2]; simp
     have hb_e := majoranaParitySizeOp_bounds_of_parity (evenPart n X) (Or.inl (heven_par X))
     have hb_o := majoranaParitySizeOp_bounds_of_parity (oddPart n X) (Or.inr (hodd_par X))
@@ -842,7 +842,7 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
         have hc : ((oddPart n X)ᴴ * majoranaTotalSizeOp n (evenPart n Y)).trace =
             starRingEnd ℂ (((majoranaTotalSizeOp n (evenPart n Y))ᴴ * oddPart n X).trace) := by
           rw [← Complex.star_def, ← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-        rw [hc, horth_eo _ _ (hpar_even_pres Y) (hodd_par X), map_zero]
+        have h0 : ((majoranaTotalSizeOp n (evenPart n Y))ᴴ * oddPart n X).trace = 0 := horth_eo _ _ (hpar_even_pres Y) (hodd_par X); rw [hc, h0, map_zero]
       rw [h1, h2]; simp
     rw [hinner_split P Q, hinner_split Q P]
     congr 1
@@ -910,7 +910,7 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
         rw [← Complex.ofReal_mul, Complex.re_ofReal_mul]
         change c * c * gibbsWightmanNormSq G A_M = 1
         dsimp only [c]
-        rw [← inv_mul, Real.mul_self_sqrt hpos.le, inv_mul_cancel₀ hpos.ne']
+        rw [← mul_inv, Real.mul_self_sqrt hpos.le, inv_mul_cancel₀ hpos.ne']
       have hB_le : majoranaThermalSize G B ≤ majoranaLambdaMSS G (s₀ + (M - 1) * (r - 1)) :=
         le_csSup hS_bdd ⟨B, hB_mem, hB_norm, rfl⟩
       have hAM_eq : (hsInner (jBeta G.ρQuarter A_M) (majoranaParitySizeOp n (jBeta G.ρQuarter A_M))).re =
@@ -924,8 +924,8 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
           Matrix.trace_smul, smul_smul, smul_eq_mul, Complex.star_def, Complex.conj_ofReal]
         rw [← Complex.ofReal_mul, Complex.re_ofReal_mul]
         have hcc : gibbsWightmanNormSq G A_M * (c * c) = 1 := by
-          dsimp only [c]; rw [← inv_mul, Real.mul_self_sqrt hpos.le, mul_inv_cancel₀ hpos.ne']
-        nlinarith [hcc]
+          dsimp only [c]; rw [← mul_inv, Real.mul_self_sqrt hpos.le, mul_inv_cancel₀ hpos.ne']
+        rw [← mul_assoc, hcc, one_mul]
       unfold majoranaThermalSize at hB_le ⊢
       have hbg_nn := (hmaj_bounds G.ρHalf).1
       have hB_hs_nn := (hmaj_bounds (jBeta G.ρQuarter B)).1
@@ -978,8 +978,7 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
           Complex.add_re, Complex.re_ofReal_mul]
         have hsym := hS_sa X Y
         unfold hsInner at hsym
-        rw [← Complex.ofReal_mul, Complex.re_ofReal_mul]
-        ring_nf; linarith
+        rw [hsym]; ring
       linarith
     have hcs_sq : ((hsInner X (majoranaParitySizeOp n Y)).re) ^ 2 ≤
         (hsInner X (majoranaParitySizeOp n X)).re * (hsInner Y (majoranaParitySizeOp n Y)).re := by
@@ -990,7 +989,7 @@ theorem lemma_4_2_majorana_concrete {n r s₀ M : ℕ} (hr : 1 ≤ r) (hM : 1 �
           have hq := hquad_exp α
           rw [hY0, mul_zero, add_zero] at hq
           have : 2 * α * (hsInner X (majoranaParitySizeOp n Y)).re = -(hsInner X (majoranaParitySizeOp n X)).re - 2 := by
-            dsimp only [α]; field_simp [hne]; ring
+            dsimp only [α]; field_simp [hne]
           linarith
         rw [h0, hY0]; norm_num
       · have hYpos : 0 < (hsInner Y (majoranaParitySizeOp n Y)).re :=

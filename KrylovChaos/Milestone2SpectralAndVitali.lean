@@ -294,7 +294,7 @@ theorem adPowOp_eq_jacobi_lanczos_sum {N D : ℕ} {H O : QubitOp N}
         intro j; unfold jacobiMat
         simp only [Matrix.of_apply]
         split_ifs with h1 h2 h3
-        all_goals first | rfl | omega | ring | (rw [add_zero]; congr 1; omega) | (rw [zero_add]; congr 1; omega)
+        all_goals first | rfl | omega | (congr 1; omega) | ring | (rw [add_zero]; congr 1; omega) | (rw [zero_add]; congr 1; omega)
       simp_rw [hjac, Complex.ofReal_add, add_smul, Finset.sum_add_distrib]
       congr 1
       · by_cases hk1 : k.1 + 1 < D
@@ -601,15 +601,17 @@ private lemma cauchy_lipschitz_on_half_ball {S δ M : ℝ} (hδ : 0 < δ) (hM : 
   have hc2 := Complex.two_pi_I_inv_smul_circleIntegral_sub_inv_smul_of_differentiable_on_off_countable
     Set.countable_empty hw2_ball hcont hdiff_ball
   have hci1 : CircleIntegrable (fun z ↦ (z - w₁)⁻¹ • f z) z₀ (2 * δ) := by
-    refine (ContinuousOn.smul ?_ (hcont.mono Metric.sphere_subset_closedBall)).circleIntegrable h2δ.le
-    refine ContinuousOn.inv₀ (continuousOn_id.sub continuousOn_const) ?_
-    intro z hz; rw [sub_ne_zero]; intro heq; subst heq
-    rw [Metric.mem_sphere] at hz; rw [Metric.mem_closedBall] at hw₁; linarith
+    have hc_inv : ContinuousOn (fun z : ℂ ↦ (z - w₁)⁻¹) (Metric.sphere z₀ (2 * δ)) := by
+      refine ContinuousOn.inv₀ (continuousOn_id.sub continuousOn_const) ?_
+      intro z hz; rw [sub_ne_zero]; intro heq; subst heq
+      rw [Metric.mem_sphere] at hz; rw [Metric.mem_closedBall] at hw₁; linarith
+    simpa only [smul_eq_mul] using (hc_inv.mul (hcont.mono Metric.sphere_subset_closedBall)).circleIntegrable h2δ.le
   have hci2 : CircleIntegrable (fun z ↦ (z - w₂)⁻¹ • f z) z₀ (2 * δ) := by
-    refine (ContinuousOn.smul ?_ (hcont.mono Metric.sphere_subset_closedBall)).circleIntegrable h2δ.le
-    refine ContinuousOn.inv₀ (continuousOn_id.sub continuousOn_const) ?_
-    intro z hz; rw [sub_ne_zero]; intro heq; subst heq
-    rw [Metric.mem_sphere] at hz; rw [Metric.mem_closedBall] at hw₂; linarith
+    have hc_inv : ContinuousOn (fun z : ℂ ↦ (z - w₂)⁻¹) (Metric.sphere z₀ (2 * δ)) := by
+      refine ContinuousOn.inv₀ (continuousOn_id.sub continuousOn_const) ?_
+      intro z hz; rw [sub_ne_zero]; intro heq; subst heq
+      rw [Metric.mem_sphere] at hz; rw [Metric.mem_closedBall] at hw₂; linarith
+    simpa only [smul_eq_mul] using (hc_inv.mul (hcont.mono Metric.sphere_subset_closedBall)).circleIntegrable h2δ.le
   have hsub_eq : f w₂ - f w₁ =
       (2 * Real.pi * Complex.I : ℂ)⁻¹ •
         ∮ z in C(z₀, 2 * δ), ((z - w₂)⁻¹ • f z - (z - w₁)⁻¹ • f z) := by
