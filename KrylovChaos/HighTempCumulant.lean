@@ -698,12 +698,14 @@ theorem lemma_6_3_combined_cumulant_bound {N r k_X : ℕ}
               (fun i : QubitIdx N ↦ Complex.exp ((hK₀.eigenvalues i + (-lam * μ) : ℝ) : ℂ)) := by
             rw [Pi.hasSum]; intro a
             simp only [one_pow, one_div]
-            simpa [div_eq_inv_mul] using Complex.hasSum_exp ((hK₀.eigenvalues a + (-lam * μ) : ℝ) : ℂ)
+            have hce := NormedSpace.expSeries_div_hasSum_exp (((hK₀.eigenvalues a + (-lam * μ) : ℝ) : ℂ))
+            rw [← Complex.exp_eq_exp_ℂ] at hce
+            simpa [div_eq_inv_mul, mul_comm] using hce
           let Dmap : (QubitIdx N → ℂ) →L[ℂ] QubitOp N :=
             LinearMap.toContinuousLinearMap
               { toFun := Matrix.diagonal
                 map_add' := fun v w ↦ by ext i j; simp [Matrix.diagonal_apply]; split_ifs <;> simp
-                map_smul' := fun c v ↦ by ext i j; simp [Matrix.diagonal_apply]; split_ifs <;> simp }
+                map_smul' := fun c v ↦ by ext i j; simp [Matrix.diagonal_apply] }
           exact hvec.map Dmap Dmap.continuous
         let Lmul : QubitOp N →L[ℂ] QubitOp N :=
           LinearMap.toContinuousLinearMap
