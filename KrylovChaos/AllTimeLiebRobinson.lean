@@ -221,7 +221,7 @@ theorem opNorm_le_add_integral_of_deriv_comm_herm {N : ℕ}
       have hK_s0 : HasDerivAt (fun u : ℝ ↦ K u i j)
           ((Complex.I • matComm (M s₀) (K s₀) + R s₀) i j) (s₀ + 0) := by
         simpa using hK_deriv s₀ i j
-      have h2 := hK_s0.comp (0 : ℝ) h1
+      have h2 := hK_s0.scomp (0 : ℝ) h1
       simpa using h2
     have hE_deriv : HasDerivAt (fun δ : ℝ ↦ heisenbergEvol (hM_herm s₀) (δ : ℂ) (K s₀) i j)
         ((Complex.I • matComm (M s₀) (K s₀)) i j) 0 := by
@@ -357,7 +357,8 @@ private lemma heisenbergEvol_self {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     funext E
     calc Complex.exp (Complex.I * z * (E : ℂ)) * (E : ℂ) * Complex.exp (Complex.I * -z * (E : ℂ))
         = (Complex.exp (Complex.I * z * (E : ℂ)) * Complex.exp (Complex.I * -z * (E : ℂ))) * (E : ℂ) := by ring
-      _ = Complex.exp (Complex.I * z * (E : ℂ) + Complex.I * -z * (E : ℂ)) * (E : ℂ) := by rw [← Complex.exp_add]
+      _ = Complex.exp (Complex.I * z * (E : ℂ) + Complex.I * -z * (E : ℂ)) * (E : ℂ) := by
+          rw [← Complex.exp_add]
       _ = (E : ℂ) := by
           have : Complex.I * z * (E : ℂ) + Complex.I * -z * (E : ℂ) = 0 := by ring
           rw [this, Complex.exp_zero, one_mul]
@@ -514,7 +515,7 @@ noncomputable def lrPathCoeff {N : ℕ} [DecidableEq (Finset (Fin N))]
   | k + 1, X => 2 * opNorm (h X) *
       ∑ Y ∈ E.filter (fun Y ↦ ¬Disjoint Y X), lrPathCoeff E h B V k Y
 
-/-- Vanishing of `lrPathCoeff` outside the light cone `k * R_int < dist(X, V)`. -/
+/-- Vanishing of Lieb–Robinson path-sum coefficients below the light-cone distance. -/
 lemma lrPathCoeff_zero_of_sep {N R_int : ℕ} [DecidableEq (Finset (Fin N))]
     (dist : Fin N → Fin N → ℕ)
     (hself : ∀ x : Fin N, dist x x = 0)
@@ -652,6 +653,7 @@ lemma lieb_robinson_iterated_bound {N r : ℕ}
         ((hcont_sum.add hcont_rem).intervalIntegrable (μ := MeasureTheory.volume) 0 t)
         (fun s hs ↦ ih Y hYE s hs.1)
       refine le_trans hmono ?_
+      dsimp only [Pi.add_apply]
       rw [intervalIntegral.integral_add
         (hcont_sum.intervalIntegrable (μ := MeasureTheory.volume) 0 t)
         (hcont_rem.intervalIntegrable (μ := MeasureTheory.volume) 0 t)]

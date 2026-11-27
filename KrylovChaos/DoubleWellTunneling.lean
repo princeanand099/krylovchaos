@@ -34,8 +34,8 @@ Formalizes Section 9 and Appendix B strictly on top of Mathlib:
    - Real symmetry and parity commutation `P ℒ = ℒ P`, `P² = 1`.
    - Sturm simplicity (`v_0 = 0 → v = 0`, every eigenspace is 1-dimensional).
    - Definite parity of every eigenvector (`P v = v` or `P v = -v`).
-   - Eigenvalue localization (`-(E_B - 2)⁻¹ ≤ E ≤ E_B + 2`, with exactly 2 distinct eigenvalues
-     in `[-(E_B - 2)⁻¹, 0]` and the remaining `D - 2` eigenvalues in `[E_B - 2, E_B + 2]`).
+   - Eigenvalue localization (`-(E_B - 2)⁻¹ ≤ E ≤ E_B + 2`, with interior vectors obeying
+     `(E_B - 2) ‖v‖² ≤ ⟨v, ℒ v⟩`).
    - Discrete maximum principle yielding exponential eigenvector decay Eq. (B.2)
      `|v_j| ≤ |v_0| (q^j + q^{D - 1 - j})` (`q = (E_B - √(E_B² - 4)) / 2 < 1`) and
      boundary localization Eq. (B.3) `1 - 2 v_0² ≤ 4 (q² / (1 - q²)) v_0²`.
@@ -412,7 +412,8 @@ theorem doubleWellTridiag_eigenvec_parity {D : ℕ} (hD : 2 ≤ D) (E_B E : ℝ)
       by_contra hall; push Not at hall; exact hv_ne (funext hall)
     have h1 := congrFun hsq i
     simp only [Pi.smul_apply, smul_eq_mul] at h1
-    nlinarith
+    have h2 : (c * c - 1) * v i = 0 := by linarith
+    exact sub_eq_zero.mp ((mul_eq_zero.mp h2).resolve_right hi)
   have hc_pm : c = 1 ∨ c = -1 := by
     have : (c - 1) * (c + 1) = 0 := by nlinarith
     rcases mul_eq_zero.mp this with h | h <;> [left; right] <;> linarith
@@ -451,7 +452,7 @@ lemma doubleWellTridiag_quadForm {D : ℕ} (hD : 2 ≤ D) (E_B : ℝ) (v : Fin D
     symm
     refine Finset.sum_bij (fun (j : Fin (D - 1)) _ ↦ ⟨j.val, by omega⟩) ?_ ?_ ?_ ?_
     · intro j _; simp only [Finset.mem_filter, Finset.mem_univ, true_and]; omega
-    · intro a _ b _ h; ext; exact congrArg Fin.val h
+    · intro a _ b _ h; exact Fin.ext (by simpa using congrArg Fin.val h)
     · intro i hi
       have hlt : i.val + 1 < D := (Finset.mem_filter.mp hi).2
       exact ⟨⟨i.val, by omega⟩, Finset.mem_univ _, by ext; rfl⟩
@@ -467,7 +468,8 @@ lemma doubleWellTridiag_quadForm {D : ℕ} (hD : 2 ≤ D) (E_B : ℝ) (v : Fin D
     symm
     refine Finset.sum_bij (fun (j : Fin (D - 1)) _ ↦ ⟨j.val + 1, by omega⟩) ?_ ?_ ?_ ?_
     · intro j _; simp only [Finset.mem_filter, Finset.mem_univ, true_and]; omega
-    · intro a _ b _ h; ext; have := congrArg Fin.val h; omega
+    · intro a _ b _ h; have h1 : a.val + 1 = b.val + 1 := by simpa using congrArg Fin.val h
+      exact Fin.ext (by omega)
     · intro i hi
       have hpos : 0 < i.val := (Finset.mem_filter.mp hi).2
       exact ⟨⟨i.val - 1, by omega⟩, Finset.mem_univ _, by ext; simp; omega⟩
@@ -492,12 +494,14 @@ lemma path_hopping_quad_le {D : ℕ} (hD : 2 ≤ D) (v : Fin D → ℝ) :
           nlinarith [sq_abs (v ⟨j.val, by omega⟩), sq_abs (v ⟨j.val + 1, by omega⟩)]
   have hL : ∑ j : Fin (D - 1), v ⟨j.val, by omega⟩ ^ 2 ≤ ∑ i : Fin D, v i ^ 2 := by
     let f : Fin (D - 1) → Fin D := fun j ↦ ⟨j.val, by omega⟩
-    have hf : Function.Injective f := fun a b h ↦ by ext; exact congrArg Fin.val h
+    have hf : Function.Injective f := fun a b h ↦ Fin.ext (by simpa [f] using congrArg Fin.val h)
     rw [← Finset.sum_image (f := fun i : Fin D ↦ v i ^ 2) (g := f) (fun a _ b _ h ↦ hf h)]
     exact Finset.sum_le_univ_sum_of_nonneg fun _ ↦ sq_nonneg _
   have hR : ∑ j : Fin (D - 1), v ⟨j.val + 1, by omega⟩ ^ 2 ≤ ∑ i : Fin D, v i ^ 2 := by
     let f : Fin (D - 1) → Fin D := fun j ↦ ⟨j.val + 1, by omega⟩
-    have hf : Function.Injective f := fun a b h ↦ by ext; have := congrArg Fin.val h; omega
+    have hf : Function.Injective f := fun a b h ↦ by
+      have h1 : a.val + 1 = b.val + 1 := by simpa [f] using congrArg Fin.val h
+      exact Fin.ext (by omega)
     rw [← Finset.sum_image (f := fun i : Fin D ↦ v i ^ 2) (g := f) (fun a _ b _ h ↦ hf h)]
     exact Finset.sum_le_univ_sum_of_nonneg fun _ ↦ sq_nonneg _
   have hsum : ∑ j : Fin (D - 1), ((v ⟨j.val, by omega⟩ ^ 2 + v ⟨j.val + 1, by omega⟩ ^ 2) / 2) ≤
@@ -568,7 +572,8 @@ theorem doubleWellTridiag_rayleigh_bounds {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} (
           have hj1 : j.val ≠ D - 2 := fun h ↦ hnot (by simp [j1, Fin.ext_iff, h])
           have ha : ¬(j.val = 0 ∨ j.val = D - 1) := by omega
           have hb : ¬(j.val + 1 = 0 ∨ j.val + 1 = D - 1) := by omega
-          simp [v_int, ha, hb]
+          dsimp only [v_int]
+          rw [if_neg ha, if_neg hb, sub_self]
       rw [Finset.sum_sub_distrib] at hsub
       linarith
     have hEB2 : 0 < E_B - 2 := by linarith
@@ -637,11 +642,11 @@ lemma doubleWellDecayQ_props {E_B : ℝ} (hEB : 2 < E_B) :
   have hdisc : 0 < E_B ^ 2 - 4 := by nlinarith
   have hsq : Real.sqrt (E_B ^ 2 - 4) ^ 2 = E_B ^ 2 - 4 := Real.sq_sqrt hdisc.le
   have hsqrt_lt : Real.sqrt (E_B ^ 2 - 4) < E_B := by
-    rw [← Real.sqrt_sq (by linarith : 0 ≤ E_B)]
-    exact Real.sqrt_lt_sqrt hdisc.le (by linarith)
+    calc Real.sqrt (E_B ^ 2 - 4) < Real.sqrt (E_B ^ 2) := Real.sqrt_lt_sqrt hdisc.le (by linarith)
+      _ = E_B := Real.sqrt_sq (by linarith)
   have hsqrt_gt : E_B - 2 < Real.sqrt (E_B ^ 2 - 4) := by
-    rw [← Real.sqrt_sq (by linarith : 0 ≤ E_B - 2)]
-    exact Real.sqrt_lt_sqrt (sq_nonneg _) (by nlinarith)
+    calc E_B - 2 = Real.sqrt ((E_B - 2) ^ 2) := (Real.sqrt_sq (by linarith)).symm
+      _ < Real.sqrt (E_B ^ 2 - 4) := Real.sqrt_lt_sqrt (sq_nonneg _) (by nlinarith)
   have hq_pos : 0 < doubleWellDecayQ E_B := by unfold doubleWellDecayQ; linarith
   have hq_lt1 : doubleWellDecayQ E_B < 1 := by unfold doubleWellDecayQ; linarith
   have hquad : doubleWellDecayQ E_B ^ 2 - E_B * doubleWellDecayQ E_B + 1 = 0 := by
@@ -696,8 +701,8 @@ theorem lemma_B_1_eigenvec_decay_eq_B2_B3 {D : ℕ} (hD : 4 ≤ D) {E_B E : ℝ}
     rw [hbd_eq, Nat.sub_self, pow_zero]
     have hq_nn : 0 ≤ q ^ (D - 1) := pow_nonneg hq_pos.le _
     nlinarith [abs_nonneg (v ⟨0, by omega⟩)]
-  have hw_int : ∀ j : Fin D, 0 < j.val → j.val + 1 < D →
-      E_B * w j ≤ w ⟨j.val - 1, by omega⟩ + w ⟨j.val + 1, by omega⟩ := by
+  have hw_int : ∀ (j : Fin D) (_ : 0 < j.val) (hj1 : j.val + 1 < D),
+      E_B * w j ≤ w ⟨j.val - 1, by omega⟩ + w ⟨j.val + 1, hj1⟩ := by
     intro j hj0 hj1
     have hrow := congrFun heig j
     rw [doubleWellTridiag_mulVec_apply hD2 E_B v j] at hrow
@@ -708,24 +713,34 @@ theorem lemma_B_1_eigenvec_decay_eq_B2_B3 {D : ℕ} (hD : 4 ≤ D) {E_B E : ℝ}
       have h1 : (E_B - E) * v j = -(v ⟨j.val - 1, by omega⟩ + v ⟨j.val + 1, by omega⟩) := by linarith
       have h2 : (E_B - E) * |v j| ≤ |v ⟨j.val - 1, by omega⟩| + |v ⟨j.val + 1, by omega⟩| := by
         calc (E_B - E) * |v j| = |(E_B - E) * v j| := by
-              rw [abs_mul, abs_of_pos (by linarith)]
+              rw [abs_mul, abs_of_pos (by linarith : 0 < E_B - E)]
           _ = |-(v ⟨j.val - 1, by omega⟩ + v ⟨j.val + 1, by omega⟩)| := by rw [h1]
           _ = |v ⟨j.val - 1, by omega⟩ + v ⟨j.val + 1, by omega⟩| := abs_neg _
           _ ≤ |v ⟨j.val - 1, by omega⟩| + |v ⟨j.val + 1, by omega⟩| := abs_add_le _ _
       nlinarith [abs_nonneg (v j)]
     have hf_eq : E_B * f j = f ⟨j.val - 1, by omega⟩ + f ⟨j.val + 1, by omega⟩ := by
       dsimp only [f]
+      have hq_sum : 1 + q ^ 2 = E_B * q := by linarith [hq_quad]
       have ha : q ^ (j.val - 1) + q ^ (j.val + 1) = E_B * q ^ j.val := by
-        have h1 : j.val = (j.val - 1) + 1 := by omega
-        have h2 : j.val + 1 = (j.val - 1) + 2 := by omega
-        rw [h2, h1, pow_succ, pow_succ, pow_succ]
-        nlinarith [hq_quad]
+        calc q ^ (j.val - 1) + q ^ (j.val + 1)
+            = q ^ (j.val - 1) * (1 + q ^ 2) := by
+                rw [show j.val + 1 = (j.val - 1) + 2 by omega, pow_add]; ring
+          _ = q ^ (j.val - 1) * (E_B * q) := by rw [hq_sum]
+          _ = E_B * q ^ j.val := by
+                rw [show j.val = (j.val - 1) + 1 by omega, pow_succ]; ring
       have hb : q ^ (D - 1 - (j.val - 1)) + q ^ (D - 1 - (j.val + 1)) = E_B * q ^ (D - 1 - j.val) := by
-        have h1 : D - 1 - j.val = (D - 1 - (j.val + 1)) + 1 := by omega
-        have h2 : D - 1 - (j.val - 1) = (D - 1 - (j.val + 1)) + 2 := by omega
-        rw [h2, h1, pow_succ, pow_succ, pow_succ]
-        nlinarith [hq_quad]
-      linarith [ha, hb]
+        calc q ^ (D - 1 - (j.val - 1)) + q ^ (D - 1 - (j.val + 1))
+            = q ^ (D - 1 - (j.val + 1)) * (1 + q ^ 2) := by
+                rw [show D - 1 - (j.val - 1) = (D - 1 - (j.val + 1)) + 2 by omega, pow_add]; ring
+          _ = q ^ (D - 1 - (j.val + 1)) * (E_B * q) := by rw [hq_sum]
+          _ = E_B * q ^ (D - 1 - j.val) := by
+                rw [show D - 1 - j.val = (D - 1 - (j.val + 1)) + 1 by omega, pow_succ]; ring
+      calc E_B * (|v ⟨0, by omega⟩| * (q ^ j.val + q ^ (D - 1 - j.val)))
+          = |v ⟨0, by omega⟩| * (E_B * q ^ j.val + E_B * q ^ (D - 1 - j.val)) := by ring
+        _ = |v ⟨0, by omega⟩| * ((q ^ (j.val - 1) + q ^ (j.val + 1)) +
+              (q ^ (D - 1 - (j.val - 1)) + q ^ (D - 1 - (j.val + 1)))) := by rw [← ha, ← hb]
+        _ = |v ⟨0, by omega⟩| * (q ^ (j.val - 1) + q ^ (D - 1 - (j.val - 1))) +
+            |v ⟨0, by omega⟩| * (q ^ (j.val + 1) + q ^ (D - 1 - (j.val + 1))) := by ring
     dsimp only [w]; linarith
   have hw_le : ∀ j : Fin D, w j ≤ 0 := by
     have hne : (Finset.univ : Finset (Fin D)).Nonempty := ⟨⟨0, by omega⟩, Finset.mem_univ _⟩
@@ -733,10 +748,10 @@ theorem lemma_B_1_eigenvec_decay_eq_B2_B3 {D : ℕ} (hD : 4 ≤ D) {E_B E : ℝ}
     have hj₀_le : w j₀ ≤ 0 := by
       by_contra hpos; push Not at hpos
       have h0 : 0 < j₀.val := by
-        by_contra hle; have heq : j₀ = ⟨0, by omega⟩ := Fin.ext (by omega)
+        by_contra hle; have heq : j₀ = ⟨0, by omega⟩ := Fin.ext (by dsimp; omega)
         rw [heq] at hpos; linarith
       have h1 : j₀.val + 1 < D := by
-        by_contra hge; have heq : j₀ = ⟨D - 1, by omega⟩ := Fin.ext (by omega)
+        by_contra hge; have heq : j₀ = ⟨D - 1, by omega⟩ := Fin.ext (by dsimp; omega)
         rw [heq] at hpos; linarith
       have hint := hw_int j₀ h0 h1
       have hm1 := hj₀_max ⟨j₀.val - 1, by omega⟩ (Finset.mem_univ _)
@@ -814,7 +829,7 @@ theorem lemma_B_1_eigenvec_decay_eq_B2_B3 {D : ℕ} (hD : 4 ≤ D) {E_B E : ℝ}
         · intro j hj; rw [Finset.mem_filter] at hj; rw [Finset.mem_Ico]; omega
         · intro a _ b _ h; exact Fin.ext h
         · intro k hk; rw [Finset.mem_Ico] at hk
-          exact ⟨⟨k, by omega⟩, Finset.mem_filter.mpr ⟨Finset.mem_univ _, by omega⟩, rfl⟩
+          exact ⟨⟨k, by omega⟩, Finset.mem_filter.mpr ⟨Finset.mem_univ _, by dsimp; omega⟩, rfl⟩
         · intro _ _; rfl
       rw [heq]; exact hgeom (D - 1)
     have hsum2 : ∑ j ∈ Finset.univ.filter (fun j : Fin D ↦ ¬(j.val = 0 ∨ j.val = D - 1)),
@@ -825,7 +840,7 @@ theorem lemma_B_1_eigenvec_decay_eq_B2_B3 {D : ℕ} (hD : 4 ≤ D) {E_B E : ℝ}
         · intro j hj; rw [Finset.mem_filter] at hj; rw [Finset.mem_Ico]; omega
         · intro a ha b hb h; rw [Finset.mem_filter] at ha hb; ext; omega
         · intro k hk; rw [Finset.mem_Ico] at hk
-          exact ⟨⟨D - 1 - k, by omega⟩, Finset.mem_filter.mpr ⟨Finset.mem_univ _, by omega⟩, by dsimp; omega⟩
+          exact ⟨⟨D - 1 - k, by omega⟩, Finset.mem_filter.mpr ⟨Finset.mem_univ _, by dsimp; omega⟩, by dsimp; omega⟩
         · intro _ _; rfl
       rw [heq]; exact hgeom (D - 1)
     calc ∑ j ∈ Finset.univ.filter (fun j : Fin D ↦ ¬(j.val = 0 ∨ j.val = D - 1)), v j ^ 2
@@ -859,7 +874,8 @@ theorem prop_9_1_part3_exact_D_limit_eq_9_3 (D : ℕ)
   have hden : Tendsto (fun E_B : ℝ ↦ K E_B + σ₀ E_B * Real.sqrt (K E_B)) atTop (nhds (1 + 0 * 1)) :=
     hK.add (hσ₀.mul hsqrt)
   rw [zero_mul, add_zero] at hden
-  have hdiv := hΔQ.div hden (by norm_num)
+  have hdiv : Tendsto (fun E_B : ℝ ↦ ΔQ E_B / (K E_B + σ₀ E_B * Real.sqrt (K E_B)))
+      atTop (nhds (((D : ℝ) - 1) / 1)) := hΔQ.div hden (by norm_num)
   simpa using hdiv
 
 /-- Convergence of the Appendix B decay factor `doubleWellDecayQ E_B → 0` as `E_B → ∞`. -/
