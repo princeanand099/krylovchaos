@@ -43,15 +43,20 @@ private lemma concreteKrylovWavefn_re_ode {N : ℕ} {H O : QubitOp N}
       (lanczosCoeff G H O n * φ (n - 1) t - lanczosCoeff G H O (n + 1) * φ (n + 1) t) t := by
   intro G φ
   have hd := concreteKrylovWavefn_hasDerivAt hH hO β n t
-  have hre := Complex.reCLM.hasFDerivAt.comp_hasDerivAt t hd
+  have hre : HasDerivAt (φ n)
+      (((lanczosCoeff G H O n : ℂ) *
+          (if n = 0 then 0 else concreteKrylovWavefn hH β O (n - 1) t) -
+        (lanczosCoeff G H O (n + 1) : ℂ) * concreteKrylovWavefn hH β O (n + 1) t).re) t := by
+    simpa only [Function.comp_def, Complex.reCLM_apply] using
+      Complex.reCLM.hasFDerivAt.comp_hasDerivAt t hd
   have hval : ((lanczosCoeff G H O n : ℂ) *
         (if n = 0 then 0 else concreteKrylovWavefn hH β O (n - 1) t) -
       (lanczosCoeff G H O (n + 1) : ℂ) * concreteKrylovWavefn hH β O (n + 1) t).re =
       lanczosCoeff G H O n * φ (n - 1) t - lanczosCoeff G H O (n + 1) * φ (n + 1) t := by
     rw [Complex.sub_re, Complex.re_ofReal_mul, Complex.re_ofReal_mul]
     by_cases hn0 : n = 0
-    · subst hn0; simp [lanczosCoeff_zero]
-    · simp [hn0, φ]
+    · subst hn0; simp only [lanczosCoeff_zero, zero_mul, ↓reduceIte, φ]
+    · simp only [hn0, ↓reduceIte, φ]
   rw [hval] at hre
   exact hre
 

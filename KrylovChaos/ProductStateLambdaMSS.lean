@@ -35,6 +35,8 @@ namespace KrylovChaos
 
 open Matrix
 
+private abbrev Mat2 := Matrix (Fin 2) (Fin 2) ℂ
+
 section KroneckerMultilinearity
 
 private lemma kronOp_update_zero {N : ℕ} (F : Fin N → Mat2) (x : Fin N) :
@@ -399,7 +401,6 @@ lemma partialTraceSite_localUnitary_conj {N : ℕ}
     (x : Fin N) (M : QubitOp N) :
     partialTraceSite x ((kronOp u)ᴴ * M * kronOp u) =
       (kronOp u)ᴴ * partialTraceSite x M * kronOp u := by
-  -- Both sides are ℂ-linear in `M`; check on Pauli string basis `pauliString a`!
   have hspan : M ∈ Submodule.span ℂ { P : QubitOp N | ∃ a : Fin N → Fin 4, P = pauliString a } := by
     rw [Matrix.matrix_eq_sum_single M]
     refine Submodule.sum_mem _ fun σ _ ↦ Submodule.sum_mem _ fun τ _ ↦ ?_
