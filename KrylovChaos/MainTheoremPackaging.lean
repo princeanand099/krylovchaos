@@ -433,6 +433,7 @@ private lemma abs_pow_le_cosh_bound {r₀ : ℝ} (hr₀ : 0 < r₀) (k : ℕ) (�
     linarith [Real.exp_pos (-(r₀ * |ω|))]
   have h1 : (r₀ * |ω|) ^ k ≤ (k.factorial : ℝ) * (2 * Real.cosh (r₀ * ω)) := by
     have hfac : (0 : ℝ) < (k.factorial : ℝ) := Nat.cast_pos.mpr (Nat.factorial_pos k)
+    rw [mul_comm]
     exact (div_le_iff₀ hfac).mp (le_trans hpow hcosh)
   rw [mul_pow] at h1
   have hrk : 0 < r₀ ^ k := pow_pos hr₀ k
@@ -517,8 +518,13 @@ theorem iteratedDeriv_holo_eq_spectral_moment (μ : Measure ℝ)
       exact (hderiv_gk m t).deriv
   have hS_open : IsOpen {z : ℂ | |z.im| < R} :=
     isOpen_lt (continuous_abs.comp Complex.continuous_im) continuous_const
-  have hF_ana : AnalyticOnNhd ℂ F {z : ℂ | |z.im| < R} :=
-    hF_holo.analyticOnNhd hS_open
+  have hdiff_iter : ∀ m : ℕ, DifferentiableOn ℂ (iteratedDeriv m F) {z : ℂ | |z.im| < R} := by
+    intro m
+    induction m with
+    | zero => simpa only [iteratedDeriv_zero] using hF_holo
+    | succ m ih =>
+      rw [iteratedDeriv_succ]
+      exact ih.deriv hS_open
   have hcomplex_eq_real : ∀ (m : ℕ) (t : ℝ),
       iteratedDeriv m F (t : ℂ) = iteratedDeriv m (fun x : ℝ ↦ F (x : ℂ)) t := by
     intro m
@@ -530,8 +536,7 @@ theorem iteratedDeriv_holo_eq_spectral_moment (μ : Measure ℝ)
         simp only [Set.mem_setOf_eq, Complex.ofReal_im, abs_zero]
         exact hR
       have hdiff_m : DifferentiableAt ℂ (iteratedDeriv m F) (t : ℂ) :=
-        ((hF_ana.iteratedDeriv m).differentiableOn (t : ℂ) ht_mem).differentiableAt
-          (hS_open.mem_nhds ht_mem)
+        (hdiff_iter m (t : ℂ) ht_mem).differentiableAt (hS_open.mem_nhds ht_mem)
       have hcomp : HasDerivAt (fun x : ℝ ↦ iteratedDeriv m F (x : ℂ))
           (deriv (iteratedDeriv m F) (t : ℂ)) t :=
         hdiff_m.hasDerivAt.comp_ofReal
@@ -559,10 +564,19 @@ theorem iteratedDeriv_even_holo_eq_spectral_moment (μ : Measure ℝ)
   rw [iteratedDeriv_holo_eq_spectral_moment μ hr₀ hcosh hR F hF_holo hF_real (2 * n)]
   have hI : Complex.I ^ (2 * n) = (-1 : ℂ) ^ n := by
     rw [pow_mul, Complex.I_sq]
+  have hint_real : Integrable (fun ω : ℝ ↦ ω ^ (2 * n)) μ := by
+    have hcont : Continuous (fun ω : ℝ ↦ ω ^ (2 * n)) := by fun_prop
+    refine (hcosh.const_mul (2 * ((2 * n).factorial : ℝ) / r₀ ^ (2 * n))).mono'
+      hcont.aestronglyMeasurable ?_
+    filter_upwards with ω
+    rw [Real.norm_eq_abs, abs_pow]
+    exact abs_pow_le_cosh_bound hr₀ (2 * n) ω
   have hint : (∫ ω : ℝ, (ω : ℂ) ^ (2 * n) ∂μ) = ((∫ ω : ℝ, ω ^ (2 * n) ∂μ : ℝ) : ℂ) := by
-    have hfn : (fun ω : ℝ ↦ (ω : ℂ) ^ (2 * n)) = fun ω : ℝ ↦ ((ω ^ (2 * n) : ℝ) : ℂ) := by
-      funext ω; push_cast; rfl
-    rw [hfn, integral_ofReal]
+    have hfn : (fun ω : ℝ ↦ (ω : ℂ) ^ (2 * n)) =
+        fun ω : ℝ ↦ Complex.ofRealCLM (ω ^ (2 * n)) := by
+      funext ω; simp
+    rw [hfn]
+    exact Complex.ofRealCLM.integral_comp_comm hint_real
   rw [hI, hint]
 
 /-- Unconditional Cauchy even-moment bound without any external `hF_deriv` hypothesis. -/
