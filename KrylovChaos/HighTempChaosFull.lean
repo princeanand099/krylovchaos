@@ -54,6 +54,7 @@ theorem kms_rate_bound_from_thermo_limit_spectral_measure
       have hne2 : β + 2 * κ' ≠ 0 := by linarith
       field_simp [hne1, hne2]
     rwa [hrew] at h12b
+  -- Take `κ' = κ - 1 / (m + 2)` as `m → ∞` using continuity of `κ' ↦ 2 * π / (β + 2 * κ')`.
   let seq : ℕ → ℝ := fun m ↦ κ - κ / ((m : ℝ) + 2)
   have hseq_tend : Tendsto seq atTop (nhds κ) := by
     have hdiv : Tendsto (fun m : ℕ ↦ κ / ((m : ℝ) + 2)) atTop (nhds 0) :=
@@ -64,7 +65,7 @@ theorem kms_rate_bound_from_thermo_limit_spectral_measure
       (by linarith)
   have hfn_tend : Tendsto (fun m : ℕ ↦ 2 * Real.pi / (β + 2 * seq m)) atTop
       (nhds (2 * Real.pi / (β + 2 * κ))) := hcont.tendsto.comp hseq_tend
-  refine le_of_tendsto hfn_tend ?_
+  refine ge_of_tendsto hfn_tend ?_
   filter_upwards with m
   have hm2 : (2 : ℝ) ≤ (m : ℝ) + 2 := by linarith [Nat.cast_nonneg (α := ℝ) m]
   have hseq_nn : 0 ≤ seq m := by
@@ -104,6 +105,7 @@ theorem theorem_1_3c_full_with_kms_discharge {r s₀ : ℕ} (hr : 2 ≤ r)
     (hCO : ∀ N, opNorm (O N) ≤ C_O)
     (hb_lin : ∀ N n, 1 ≤ n → n ≤ 4 ^ N - 1 →
       lanczosCoeff (concreteGibbsData (hH N) β) (∑ Z ∈ E N, h N Z) (O N) n ≤ α * (n : ℝ) + γ)
+    -- Thermodynamic-limit Wightman spectral measure and Lanczos sequence (Theorem 1.2(a)–(b) inputs)
     (μ_N : ℕ → Measure ℝ) (μ : Measure ℝ)
     [∀ N, IsFiniteMeasure (μ_N N)] [IsFiniteMeasure μ]
     (hweak : ∀ f : ℝ → ℝ, Continuous f → HasCompactSupport f →
@@ -116,6 +118,7 @@ theorem theorem_1_3c_full_with_kms_discharge {r s₀ : ℕ} (hr : 2 ≤ r)
     (hmom_eq : ∀ n : ℕ,
       ((jacobiMat (2 * n + 1) b_inf) ^ (2 * n)) ⟨0, Nat.succ_pos _⟩ ⟨0, Nat.succ_pos _⟩ =
         ∫ ω : ℝ, ω ^ (2 * n) ∂μ)
+    -- Scrambling hypotheses (H1_W) and (H1)
     (hH1_W : ∀ ε₀ > 0, ∃ ε ∈ Set.Ioo (0 : ℝ) ε₀, ∃ c > 0, ∃ N₁ : ℕ,
       ∀ N ≥ N₁,
         let tN := ((1 - ε) / lamW) * Real.log (N : ℝ)

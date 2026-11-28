@@ -8,7 +8,7 @@ import KrylovChaos.Milestone4Section9AppB
 import KrylovChaos.Milestone2AnalyticFoundations
 import Mathlib.Analysis.Calculus.ParametricIntegral
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.IntegrationByParts
-import Mathlib.MeasureTheory.Integral.ImproperIntegral
+import Mathlib.MeasureTheory.Integral.IntegralEqImproper
 import Mathlib.Tactic
 
 /-!
@@ -19,11 +19,12 @@ Establishes two concrete upgrades for Proposition 9.1(1):
    Proves that for every `σ > 0`, Hermitian `H : QubitOp N`, and operator `O : QubitOp N`,
    the Bochner-integral Gaussian time-smeared operator `gaussianSmearBochner hH σ O` equals
    the spectral-basis operator `gaussianSmear hH σ O`, and consequently its Wightman spectral
-   weights obey `w_σ(a, b) = exp(-σ² (E_a - E_b)²) w_0(a, b)`.
+   weights and spectral measure obey `w_σ(a, b) = exp(-σ² (E_a - E_b)²) w_0(a, b)` and
+   `wightmanSpectralMeasure hH β W_σ = (wightmanSpectralMeasure hH β W₀).withDensity (exp(-σ² ω²))`.
 2. **2D Double-Time Finite-Window Gaussian OTOC Convolution (`prop_9_1_part1_2d_finite_window_otoc`)**:
    For a bounded double-time OTOC `|F(t₁, t₂)| ≤ M_bound` obeying the finite-window scrambling
    asymptotics `|F(t + s₁, t + s₂) - (F_d - ε e^{λ_L (t + (s₁ + s₂)/2)})| ≤ C_R` on
-   `|s₁|, |s₂| ≤ Δt` (`Δt ≥ σ² λ_L / 2`), proves that the 2D Gaussian-smeared OTOC satisfies
+   `|s₁|, |s₂| ≤ Δt` (`Δt > σ² λ_L / 2`), proves that the 2D Gaussian-smeared OTOC satisfies
    `|F_σ(t) - (F_d - ε e^{σ² λ_L² / 4} e^{λ_L t})| ≤ C_R + tail_bound` with explicit Gaussian tail
    cutoff `O(e^{-Δt² / (2 σ²)})` and exact prefactor `exp(σ² λ_L² / 4)`.
 -/
@@ -89,6 +90,7 @@ theorem integral_gaussianKernel_mul_cos {σ : ℝ} (hσ : 0 < σ) (ω : ℝ) :
     dsimp only [f]; simp [integral_gaussianKernel_eq_one hσ]
   have hf_deriv : ∀ u : ℝ, HasDerivAt f (-(σ ^ 2) * u * f u) u := by
     intro u
+    -- Step 1: Differentiate under the integral sign.
     have hparam : HasDerivAt f (∫ s : ℝ, -(gaussianKernel σ s * s * Real.sin (u * s))) u := by
       have h1 := hasDerivAt_integral_of_dominated_loc_of_deriv_le
         (F := fun u s ↦ gaussianKernel σ s * Real.cos (u * s))
@@ -116,6 +118,7 @@ theorem integral_gaussianKernel_mul_cos {σ : ℝ} (hσ : 0 < σ) (ω : ℝ) :
             simpa using (Real.hasDerivAt_cos (v * s)).comp v ((hasDerivAt_id v).mul_const s)
           convert hc.const_mul (gaussianKernel σ s) using 1; ring)
       exact h1.2
+    -- Step 2: Integration by parts on `[-R, R]` and `R → ∞`.
     have hibp : ∫ s : ℝ, -(gaussianKernel σ s * s * Real.sin (u * s)) = -(σ ^ 2) * u * f u := by
       have hg_deriv : ∀ s : ℝ, HasDerivAt (gaussianKernel σ) (-(s / σ ^ 2) * gaussianKernel σ s) s := by
         intro s
@@ -217,6 +220,7 @@ theorem integral_gaussianKernel_mul_cos {σ : ℝ} (hσ : 0 < σ) (ω : ℝ) :
       field_simp [hσ2] at hmul
       linarith
     rw [← hibp]; exact hparam
+  -- Step 3: Conclude `exp (σ² u² / 2) * f u = 1` for all `u`.
   let g : ℝ → ℝ := fun u ↦ Real.exp (σ ^ 2 * u ^ 2 / 2) * f u
   have hg_deriv : ∀ u : ℝ, HasDerivAt g 0 u := by
     intro u
@@ -361,6 +365,7 @@ theorem gaussianSmearBochner_eq_gaussianSmear {N : ℕ} {H : QubitOp N} (hH : H.
       funext s; ring
     rw [hrew, integral_const_mul, integral_gaussianKernel_mul_cexp hσ]
   simp_rw [hinner]
+  -- Match the RHS `(U * Matrix.of (...) * Uᴴ) i j`.
   change ∑ a : QubitIdx N, ∑ b : QubitIdx N,
       U i a * B a b * Uᴴ b j *
         ((Real.exp (-(σ ^ 2 / 2) * (hH.eigenvalues a - hH.eigenvalues b) ^ 2) : ℝ) : ℂ) =
@@ -387,7 +392,7 @@ end GaussianFourierBridge
 
 section TwoDimFiniteWindowOTOC
 
-/-- Elementary 1D Gaussian tail bound: for `σ > 0` and `Δt ≥ 0`,
+/-- Elementary 1D Gaussian tail bound: for `σ > 0` and `Δt > 0`,
 `∫ s in {s | Δt < |s|}, gaussianKernel σ s ≤ exp (-Δt² / (2 σ²))`. -/
 lemma gaussianKernel_tail_le {σ Δt : ℝ} (hσ : 0 < σ) (hΔ : 0 ≤ Δt) :
     ∫ s in {s : ℝ | Δt < |s|}, gaussianKernel σ s ≤ Real.exp (-(Δt ^ 2) / (2 * σ ^ 2)) := by
@@ -509,7 +514,10 @@ finite-window scrambling form on `|s₁|, |s₂| ≤ Δt` (with `Δt ≥ σ² λ
 `|F(t + s₁, t + s₂) - (F_d - ε e^{λ_L (t + (s₁ + s₂)/2)})| ≤ C_R`.
 Then the 2D Gaussian-smeared OTOC
 `F_σ(t) = ∫ s₁, g_σ(s₁) * (∫ s₂, g_σ(s₂) * F(t + s₁, t + s₂))`
-obeys the exact `exp(σ² λ_L² / 4)` prefactor law with explicit Gaussian tail cutoff. -/
+obeys the exact `exp(σ² λ_L² / 4)` prefactor law with explicit Gaussian tail cutoff:
+`|F_σ(t) - (F_d - ε * exp(σ² λ_L² / 4) * exp(λ_L * t))| ≤
+  C_R + 2 * (M_bound + |F_d|) * exp(-Δt² / (2 σ²))
+      + 2 * |ε| * exp(λ_L * t) * exp(σ² λ_L² / 4) * exp(-(Δt - σ² λ_L / 2)² / (2 σ²))`. -/
 theorem prop_9_1_part1_2d_finite_window_otoc
     {σ Δt lamL F_d ε M_bound C_R t : ℝ}
     (hσ : 0 < σ) (hlam : 0 < lamL) (hΔ : σ ^ 2 * (lamL / 2) ≤ Δt)
@@ -615,6 +623,7 @@ theorem prop_9_1_part1_2d_finite_window_otoc
             rw [abs_mul, abs_of_nonneg (hg_nn s₂), mul_comm]
             exact mul_le_mul_of_nonneg_right (hF_bdd _ _) (hg_nn s₂)
         _ = M_bound := by rw [integral_const_mul, integral_gaussianKernel_eq_one hσ, mul_one]
+  -- Pointwise bound on `|∫ s₂, g(s₂) (F - model)|` for `|s₁| ≤ Δt` vs `|s₁| > Δt`.
   let E_tail : ℝ := Real.exp (-(Δt ^ 2) / (2 * σ ^ 2))
   let E_exp_tail : ℝ := Real.exp (-((Δt - σ ^ 2 * (lamL / 2)) ^ 2) / (2 * σ ^ 2))
   have hinner_diff_le : ∀ s₁ : ℝ,
@@ -651,7 +660,8 @@ theorem prop_9_1_part1_2d_finite_window_otoc
             rw [abs_mul, abs_mul, abs_mul, abs_of_pos (Real.exp_pos _),
               abs_of_pos (Real.exp_pos _), abs_of_pos (Real.exp_pos _)]; ring
     split_ifs with hs1
-    · have hmeas_win : MeasurableSet {s₂ : ℝ | |s₂| ≤ Δt} :=
+    · -- Case `|s₁| ≤ Δt`: split `s₂` into `|s₂| ≤ Δt` and `|s₂| > Δt`.
+      have hmeas_win : MeasurableSet {s₂ : ℝ | |s₂| ≤ Δt} :=
         measurableSet_le continuous_abs.measurable measurable_const
       have hmeas_tail : MeasurableSet {s₂ : ℝ | Δt < |s₂|} :=
         measurableSet_lt measurable_const continuous_abs.measurable
@@ -707,7 +717,8 @@ theorem prop_9_1_part1_2d_finite_window_otoc
         _ = C_R + (M_bound + |F_d|) * E_tail +
             |ε| * Real.exp (lamL * t) * Real.exp ((lamL / 2) * s₁) *
               Real.exp (σ ^ 2 * lamL ^ 2 / 8) * E_exp_tail := by ring
-    · calc |∫ s₂ : ℝ, gaussianKernel σ s₂ * (F (t + s₁) (t + s₂) - model s₁ s₂)|
+    · -- Case `|s₁| > Δt`: bound globally over `s₂`.
+      calc |∫ s₂ : ℝ, gaussianKernel σ s₂ * (F (t + s₁) (t + s₂) - model s₁ s₂)|
           ≤ ∫ s₂ : ℝ, |gaussianKernel σ s₂ * (F (t + s₁) (t + s₂) - model s₁ s₂)| :=
             abs_integral_le_integral_abs
         _ ≤ ∫ s₂ : ℝ, ((M_bound + |F_d|) * gaussianKernel σ s₂ +
@@ -725,6 +736,7 @@ theorem prop_9_1_part1_2d_finite_window_otoc
               integral_const_mul, integral_const_mul,
               integral_gaussianKernel_eq_one hσ, hexp_val]
             ring
+  -- Integrate the outer difference over `s₁ ∈ ℝ` by splitting `|s₁| ≤ Δt` and `|s₁| > Δt`.
   have houter_sub : (∫ s₁ : ℝ, gaussianKernel σ s₁ * ∫ s₂ : ℝ, gaussianKernel σ s₂ * F (t + s₁) (t + s₂)) -
       (F_d - ε * Real.exp (σ ^ 2 * lamL ^ 2 / 4) * Real.exp (lamL * t)) =
       ∫ s₁ : ℝ, gaussianKernel σ s₁ *
