@@ -50,7 +50,7 @@ private lemma opNorm_unitary_le_one {N : ℕ} (U : QubitOp N) (hU' : Uᴴ * U = 
   have heq : ‖opToCLM U v‖ ^ 2 = ‖v‖ ^ 2 := by
     rw [EuclideanSpace.norm_sq_eq, EuclideanSpace.norm_sq_eq]
     have hcoord : ∀ i, ‖(opToCLM U v) i‖ ^ 2 = ‖(U.mulVec v.ofLp) i‖ ^ 2 := fun i ↦ by
-      congr 1; simp [opToCLM]; rfl
+      congr 1; simp [opToCLM]
     have hinner : ∀ w : QubitIdx N → ℂ,
         (∑ i, star (w i) * w i) = ∑ i, ((‖w i‖ ^ 2 : ℝ) : ℂ) := by
       intro w; apply Finset.sum_congr rfl; intro i _
@@ -61,7 +61,7 @@ private lemma opNorm_unitary_le_one {N : ℕ} (U : QubitOp N) (hU' : Uᴴ * U = 
           star v.ofLp ⬝ᵥ v.ofLp := by
         calc star (U.mulVec v.ofLp) ⬝ᵥ (U.mulVec v.ofLp)
             = (star v.ofLp ᵥ* Uᴴ) ⬝ᵥ (U.mulVec v.ofLp) := by rw [Matrix.star_mulVec]
-          _ = star v.ofLp ⬝ᵥ (Uᴴ.mulVec (U.mulVec v.ofLp)) := by rw [Matrix.dotProduct_mulVec]
+          _ = star v.ofLp ⬝ᵥ (Uᴴ.mulVec (U.mulVec v.ofLp)) := by rw [← Matrix.dotProduct_mulVec]
           _ = star v.ofLp ⬝ᵥ ((Uᴴ * U).mulVec v.ofLp) := by rw [Matrix.mulVec_mulVec]
           _ = star v.ofLp ⬝ᵥ v.ofLp := by rw [hU', Matrix.one_mulVec]
       simpa [dotProduct] using hmul
@@ -79,8 +79,6 @@ lemma gibbsWightmanNormSq_le_opNorm_sq {N : ℕ} {H : QubitOp N} (hH : H.IsHermi
     (β : ℝ) (X : QubitOp N) :
     gibbsWightmanNormSq (concreteGibbsData hH β) X ≤ opNorm X ^ 2 := by
   set G := concreteGibbsData hH β
-  have hρ_herm : G.ρβ.IsHermitian := G.ρβ_herm
-  have hρ_tr : G.ρβ.trace = 1 := G.ρβ_trace
   set U : QubitOp N := (hH.eigenvectorUnitary : QubitOp N)
   set Z : ℝ := gibbsPartitionFn hH β
   have hZpos : 0 < Z := gibbsPartitionFn_pos hH β
@@ -125,7 +123,17 @@ lemma gibbsWightmanNormSq_le_opNorm_sq {N : ℕ} {H : QubitOp N} (hH : H.IsHermi
   have hW_eq : gibbsWightmanNormSq G X =
       ∑ i : QubitIdx N, ∑ j : QubitIdx N, Real.sqrt (p i) * Real.sqrt (p j) * ‖Y i j‖ ^ 2 := by
     unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
-    rw [hJ_eq]
+    have hJ_tr : (G.ρHalf * Xᴴ * G.ρHalf * X).trace = ((jBeta G.ρQuarter X)ᴴ * jBeta G.ρQuarter X).trace := by
+      unfold jBeta
+      have hQh : G.ρQuarterᴴ = G.ρQuarter := G.ρQuarter_herm
+      have hQsq : G.ρQuarter * G.ρQuarter = G.ρHalf := G.ρQuarter_sq
+      simp only [Matrix.conjTranspose_mul, hQh]
+      calc (G.ρHalf * Xᴴ * G.ρHalf * X).trace
+          = (G.ρQuarter * (G.ρQuarter * Xᴴ * G.ρQuarter * G.ρQuarter * X)).trace := by
+            rw [← hQsq]; simp only [Matrix.mul_assoc]
+        _ = ((G.ρQuarter * Xᴴ * G.ρQuarter * G.ρQuarter * X) * G.ρQuarter).trace := Matrix.trace_mul_comm _ _
+        _ = (G.ρQuarter * Xᴴ * G.ρQuarter * (G.ρQuarter * X * G.ρQuarter)).trace := by simp only [Matrix.mul_assoc]
+    rw [hJ_tr, hJ_eq]
     set M : QubitOp N := Matrix.diagonal (fun i ↦ ((Real.sqrt (Real.sqrt (p i)) : ℝ) : ℂ)) * Y *
       Matrix.diagonal (fun j ↦ ((Real.sqrt (Real.sqrt (p j)) : ℝ) : ℂ))
     have htr : ((U * M * Uᴴ)ᴴ * (U * M * Uᴴ)).trace = (Mᴴ * M).trace := by
@@ -216,7 +224,7 @@ lemma gibbsWightmanNormSq_le_opNorm_sq {N : ℕ} {H : QubitOp N} (hH : H.IsHermi
           (Finset.sum_le_sum fun i _ ↦ mul_le_mul_of_nonneg_left (hrow_le i) (hp_pos i).le)
           (Finset.sum_le_sum fun j _ ↦ mul_le_mul_of_nonneg_left (hcol_le j) (hp_pos j).le)
     _ = opNorm Y ^ 2 := by
-        rw [← Finset.sum_mul, ← Finset.sum_mul, hp_sum]; ring
+        rw [← Finset.sum_mul, hp_sum]; ring
     _ ≤ opNorm X ^ 2 := pow_le_pow_left₀ (opNorm_nonneg Y) hnorm_Y 2
 
 /-- Real-time Heisenberg evolution preserves operator norm: `opNorm (heisenbergEvol hH (t : ℂ) O) ≤ opNorm O`. -/
@@ -567,8 +575,7 @@ theorem cor_6_5_all_time_eq_6_10 {N r R_int s₀ d : ℕ}
             Summable.of_nonneg_of_le (fun _ ↦ opNorm_nonneg _) (hterm_norm x α) hsg
           have htsum : opToCLM (heisenbergEvol hH zβ (pauliSite x α.succ)) =
               ∑' k : ℕ, opToCLM (((Complex.I * zβ) ^ k / (k.factorial : ℂ)) •
-                adPowMat (∑ Z ∈ E, h Z) k (pauliSite x α.succ)) := by
-            simpa [φ, Function.comp] using hclm.tsum_eq.symm
+                adPowMat (∑ Z ∈ E, h Z) k (pauliSite x α.succ)) := hclm.tsum_eq.symm
           calc opNorm (heisenbergEvol hH zβ (pauliSite x α.succ))
               = ‖∑' k : ℕ, opToCLM (((Complex.I * zβ) ^ k / (k.factorial : ℂ)) •
                   adPowMat (∑ Z ∈ E, h Z) k (pauliSite x α.succ))‖ := by unfold opNorm; rw [htsum]
@@ -683,7 +690,10 @@ theorem cor_6_5_all_time_eq_6_10 {N r R_int s₀ d : ℕ}
           (summable_geometric_of_lt_one (by norm_num) (by norm_num)).mul_left _
         have hsg2 : Summable (fun k : ℕ ↦ if m < k then 4 * C_O * (1 / 2 : ℝ) ^ k else 0) :=
           Summable.of_nonneg_of_le (fun _ ↦ by split_ifs <;> positivity)
-            (fun k ↦ by split_ifs; · exact le_rfl; · positivity)
+            (fun k ↦ by
+              split_ifs
+              · exact le_rfl
+              · positivity)
             ((summable_geometric_of_lt_one (r := (1 / 2 : ℝ)) (by norm_num) (by norm_num)).mul_left (4 * C_O))
         have hdom : ∀ k : ℕ, opNorm (matComm Ot (T k)) ≤
             4 * C_O * (s₀ : ℝ) * Real.exp (-(n : ℝ) / 4) * (1 / 2 : ℝ) ^ k +
@@ -702,8 +712,6 @@ theorem cor_6_5_all_time_eq_6_10 {N r R_int s₀ d : ℕ}
             8 * C_O * Real.exp (-(n : ℝ) / 4) := by
           have hshift : (∑' k : ℕ, if m < k then 4 * C_O * (1 / 2 : ℝ) ^ k else 0) =
               ∑' j : ℕ, 4 * C_O * (1 / 2 : ℝ) ^ (j + (m + 1)) := by
-            have h1 := (Equiv.addRight (m + 1)).tsum_eq (fun k : ℕ ↦ if m < k then 4 * C_O * (1 / 2 : ℝ) ^ k else 0)
-            -- Use `tsum_eq_tsum_of_ne_zero_bij` or `Nat.sum_add_tsum_nat_add`!
             have hsum_split := hsg2.sum_add_tsum_nat_add (m + 1)
             have hfin0 : ∑ i ∈ Finset.range (m + 1), (if m < i then 4 * C_O * (1 / 2 : ℝ) ^ i else 0) = 0 := by
               apply Finset.sum_eq_zero; intro i hi
@@ -752,7 +760,7 @@ theorem cor_6_5_all_time_eq_6_10 {N r R_int s₀ d : ℕ}
           _ ≤ (8 * C_O * ((s₀ : ℝ) + 1) * Real.exp (-(n : ℝ) / 4)) ^ 2 :=
               pow_le_pow_left₀ (opNorm_nonneg _) hcomm_op 2
           _ = 64 * C_O ^ 2 * ((s₀ : ℝ) + 1) ^ 2 * Real.exp (-(n : ℝ) / 2) := by
-              rw [mul_pow, mul_pow, mul_pow, ← Real.exp_nat_mul]; congr 1 <;> ring
+              rw [mul_pow, mul_pow, mul_pow, ← Real.exp_nat_mul]; congr 1; ring
       -- Partition `Fin N` into `S_in` and `shell n` (`0 ≤ n < M_max`).
       let S_in : Finset (Fin N) := Finset.univ.filter (fun x ↦ ∃ u ∈ U₀, dist u x ≤ (L₀ + 2) * R_int)
       let shell : ℕ → Finset (Fin N) := fun n ↦
