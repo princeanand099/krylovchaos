@@ -16,12 +16,13 @@ import KrylovChaos.StructuralNecessity
 import KrylovChaos.WightmanIsometry
 import KrylovChaos.HighTempSharpBounds
 import KrylovChaos.Section9EndToEnd
+import KrylovChaos.MainTheoremPackaging
 
 /-!
 # Non-Vacuity Witnesses and Concrete Small-Case Sanity Checks
 
 Verifies that the hypotheses of the main theorems are non-vacuously satisfiable
-and confirms concrete evaluations at small system sizes (`N = 2`, `D = 4`, `r = 2`).
+and confirms concrete evaluations at small system sizes (`N = 2`, `N = 4`, `D = 4`, `r = 2`).
 -/
 
 namespace KrylovChaos
@@ -143,5 +144,24 @@ theorem sanity_prop_6_2_sharp_N2 :
     (by simp) (fun _ ↦ 0) (fun _ ↦ Submodule.zero_mem _) (by simp)
     (Jsite := 1) (β := 1) (by norm_num)
     (fun _ ↦ by simp) (by norm_num) (by norm_num) (1 : QubitOp 2)
+
+/-- Concrete `N = 4, Δ = 2 < N - 1` non-vacuity witness for the 1D nearest-neighbor Ising chain,
+confirming active-edge degree `Δ = 2 < 3` in `prop_8_3_ising_explicit_eq_8_4_cosh`. -/
+theorem sanity_ising_1d_chain_N4_Delta2 (f : SpinConfig 4 → ℝ) :
+    let J : Fin 4 → Fin 4 → ℝ := fun i j ↦ if i.val + 1 = j.val then 1 else 0
+    glauberDirichlet (isingGibbsMeasure 1 J (fun _ ↦ 0)) f ≤
+      (Real.cosh (1 * 2 + ((2 : ℕ) : ℝ) / 2 * Real.log 2)) ^ 2 *
+        degreeFiltrationQ (isingGibbsMeasure 1 J (fun _ ↦ 0)) f := by
+  intro J
+  refine prop_8_3_ising_explicit_eq_8_4_cosh (N := 4) (Δ := 2) (β := 1) (H_max := 2)
+    (by norm_num) (by norm_num) J (fun _ ↦ 0) ?_ ?_ f
+  · intro i
+    fin_cases i <;>
+    · simp only [Fin.sum_univ_def, Fintype.sum_subtype_add_sum_subtype, IsingEdge]
+      decide +revert
+  · intro i
+    fin_cases i <;>
+    · simp only [abs_zero, zero_add]
+      decide +revert
 
 end KrylovChaos
