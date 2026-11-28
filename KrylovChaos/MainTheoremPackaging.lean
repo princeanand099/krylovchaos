@@ -433,8 +433,8 @@ private lemma abs_pow_le_cosh_bound {r₀ : ℝ} (hr₀ : 0 < r₀) (k : ℕ) (�
     linarith [Real.exp_pos (-(r₀ * |ω|))]
   have h1 : (r₀ * |ω|) ^ k ≤ (k.factorial : ℝ) * (2 * Real.cosh (r₀ * ω)) := by
     have hfac : (0 : ℝ) < (k.factorial : ℝ) := Nat.cast_pos.mpr (Nat.factorial_pos k)
-    rw [mul_comm]
-    exact (div_le_iff₀ hfac).mp (le_trans hpow hcosh)
+    have hmul := (div_le_iff₀ hfac).mp (le_trans hpow hcosh)
+    linarith
   rw [mul_pow] at h1
   have hrk : 0 < r₀ ^ k := pow_pos hr₀ k
   rw [show 2 * (k.factorial : ℝ) / r₀ ^ k * Real.cosh (r₀ * ω) =
