@@ -51,7 +51,7 @@ private lemma sum_union_cover_prod {α : Type*} [DecidableEq α]
     ∏ Z ∈ S, (u Z + v Z + u Z * v Z) := by
   classical
   induction S using Finset.induction with
-  | empty => simp
+  | empty => simp [Finset.filter_eq']
   | @insert a S' ha ih =>
     rw [Finset.prod_insert ha]
     let P_full := ((insert a S').powerset ×ˢ (insert a S').powerset).filter
@@ -186,18 +186,21 @@ private lemma sum_union_cover_prod {α : Type*} [DecidableEq α]
         exact ha (hC (hC_eq ▸ Finset.mem_insert_self a E))
     have hinj1 : Set.InjOn f1 (P_sub : Set _) := by
       intro p₁ hp₁ p₂ hp₂ heq
+      dsimp only [f1] at heq
       have ha1 : a ∉ p₁.1 := fun h ↦ ha (Finset.mem_powerset.mp (Finset.mem_product.mp (Finset.mem_filter.mp hp₁).1).1 h)
       have ha2 : a ∉ p₂.1 := fun h ↦ ha (Finset.mem_powerset.mp (Finset.mem_product.mp (Finset.mem_filter.mp hp₂).1).1 h)
       exact Prod.ext (by have := congrArg (fun s ↦ s.erase a) (congrArg Prod.fst heq); simpa [Finset.erase_insert ha1, Finset.erase_insert ha2] using this)
         (congrArg Prod.snd heq)
     have hinj2 : Set.InjOn f2 (P_sub : Set _) := by
       intro p₁ hp₁ p₂ hp₂ heq
+      dsimp only [f2] at heq
       have ha1 : a ∉ p₁.2 := fun h ↦ ha (Finset.mem_powerset.mp (Finset.mem_product.mp (Finset.mem_filter.mp hp₁).1).2 h)
       have ha2 : a ∉ p₂.2 := fun h ↦ ha (Finset.mem_powerset.mp (Finset.mem_product.mp (Finset.mem_filter.mp hp₂).1).2 h)
       exact Prod.ext (congrArg Prod.fst heq)
         (by have := congrArg (fun s ↦ s.erase a) (congrArg Prod.snd heq); simpa [Finset.erase_insert ha1, Finset.erase_insert ha2] using this)
     have hinj3 : Set.InjOn f3 (P_sub : Set _) := by
       intro p₁ hp₁ p₂ hp₂ heq
+      dsimp only [f3] at heq
       have ha1 : a ∉ p₁.1 := fun h ↦ ha (Finset.mem_powerset.mp (Finset.mem_product.mp (Finset.mem_filter.mp hp₁).1).1 h)
       have ha2 : a ∉ p₂.1 := fun h ↦ ha (Finset.mem_powerset.mp (Finset.mem_product.mp (Finset.mem_filter.mp hp₂).1).1 h)
       have hb1 : a ∉ p₁.2 := fun h ↦ ha (Finset.mem_powerset.mp (Finset.mem_product.mp (Finset.mem_filter.mp hp₁).1).2 h)
@@ -342,24 +345,24 @@ lemma prodPolyOp_union_of_disjoint {N : ℕ} (A B : Finset (Fin N) → QubitOp N
         Finset.mem_powerset.mpr Finset.inter_subset_right⟩, ?_⟩
       rw [← Finset.union_inter_distrib_right, hTu, Finset.inter_eq_right.mpr Finset.subset_union_right]
     · apply Prod.ext
-      · rw [← Finset.inter_union_distrib_left, Finset.inter_eq_left.mpr hT1]
-      · rw [← Finset.inter_union_distrib_left, Finset.inter_eq_left.mpr hT2]
+      · dsimp only; rw [← Finset.inter_union_distrib_left, Finset.inter_eq_left.mpr hT1]
+      · dsimp only; rw [← Finset.inter_union_distrib_left, Finset.inter_eq_left.mpr hT2]
   · rintro ⟨⟨A₁, B₁⟩, ⟨A₂, B₂⟩⟩ hq
     have hA1 : A₁ ⊆ S₁ := Finset.mem_powerset.mp (Finset.mem_product.mp (Finset.mem_filter.mp (Finset.mem_product.mp hq).1).1).1
     have hB1 : B₁ ⊆ S₁ := Finset.mem_powerset.mp (Finset.mem_product.mp (Finset.mem_filter.mp (Finset.mem_product.mp hq).1).1).2
     have hA2 : A₂ ⊆ S₂ := Finset.mem_powerset.mp (Finset.mem_product.mp (Finset.mem_filter.mp (Finset.mem_product.mp hq).2).1).1
     have hB2 : B₂ ⊆ S₂ := Finset.mem_powerset.mp (Finset.mem_product.mp (Finset.mem_filter.mp (Finset.mem_product.mp hq).2).1).2
     have hdA_supp : Disjoint (polySupp A₁) (polySupp A₂) :=
-      Finset.disjoint_of_subset (Finset.biUnion_subset_biUnion_of_subset_left _ hA1)
-        (Finset.biUnion_subset_biUnion_of_subset_left _ hA2) hdisj_supp
+      hdisj_supp.mono (Finset.biUnion_subset_biUnion_of_subset_left _ hA1)
+        (Finset.biUnion_subset_biUnion_of_subset_left _ hA2)
     have hdB_supp : Disjoint (polySupp B₁) (polySupp B₂) :=
-      Finset.disjoint_of_subset (Finset.biUnion_subset_biUnion_of_subset_left _ hB1)
-        (Finset.biUnion_subset_biUnion_of_subset_left _ hB2) hdisj_supp
+      hdisj_supp.mono (Finset.biUnion_subset_biUnion_of_subset_left _ hB1)
+        (Finset.biUnion_subset_biUnion_of_subset_left _ hB2)
     have hdA2B1_supp : Disjoint (polySupp A₂) (polySupp B₁) :=
-      (Finset.disjoint_of_subset (Finset.biUnion_subset_biUnion_of_subset_left _ hB1)
-        (Finset.biUnion_subset_biUnion_of_subset_left _ hA2) hdisj_supp).symm
-    have hdA : Disjoint A₁ A₂ := Finset.disjoint_of_subset hA1 hA2 hdisj
-    have hdB : Disjoint B₁ B₂ := Finset.disjoint_of_subset hB1 hB2 hdisj
+      (hdisj_supp.mono (Finset.biUnion_subset_biUnion_of_subset_left _ hB1)
+        (Finset.biUnion_subset_biUnion_of_subset_left _ hA2)).symm
+    have hdA : Disjoint A₁ A₂ := hdisj.mono hA1 hA2
+    have hdB : Disjoint B₁ B₂ := hdisj.mono hB1 hB2
     rw [polyOp_union_of_disjoint A hA 1 hdA_supp hdA, polyOp_union_of_disjoint B hB 1 hdB_supp hdB]
     have hcomm := supportedOn_comm_of_disjoint hdA2B1_supp
       (polyOp_mem_supportedOn A hA 1 A₂) (polyOp_mem_supportedOn B hB 1 B₁)
@@ -383,7 +386,7 @@ lemma normalizedTrace_prodPolyOp_biUnion {N : ℕ}
     have h1 : prodPolyOp A B ∅ = 1 := by
       unfold prodPolyOp
       simp only [Finset.powerset_empty, Finset.sum_singleton, Finset.empty_union,
-        Finset.filter_true_of_mem, Finset.mem_singleton]
+        Finset.sum_filter, if_pos rfl]
       have hpoly0 : ∀ g : Finset (Fin N) → QubitOp N, polyOp g 1 ∅ = 1 := by
         intro g; unfold polyOp
         have hterm : ∀ n : ℕ, ((-(1 : ℝ) : ℂ) ^ n / (n.factorial : ℂ)) • polyTermSum g ∅ n =
@@ -563,7 +566,10 @@ theorem normalizedTrace_exp_mul_exp_eq_polymerZ {N : ℕ}
     convert h1 using 1
     have hhas1 := hasSum_hermFunc_exp hH (-(β : ℂ))
     have hhas2 := hasSum_hermFunc_exp hH_tot (-(β : ℂ))
-    rw [hH_sum] at hhas2
+    have hfun : (fun m : ℕ ↦ ((-(β : ℂ)) ^ m / (m.factorial : ℂ)) • (∑ Z ∈ E_tot, if Z ∈ E then h Z else 0) ^ m) =
+        fun m : ℕ ↦ ((-(β : ℂ)) ^ m / (m.factorial : ℂ)) • (∑ Z ∈ E, h Z) ^ m := by
+      funext m; rw [hH_sum]
+    rw [hfun] at hhas2
     exact hhas1.unique hhas2
   have hexpX : hermFunc hX (fun e ↦ Complex.exp (ζ * (e : ℂ))) =
       ∑ T₂ ∈ E_tot.powerset, polyOp B_op 1 T₂ := by
@@ -572,7 +578,10 @@ theorem normalizedTrace_exp_mul_exp_eq_polymerZ {N : ℕ}
     convert h1 using 1
     have hhas1 := hasSum_hermFunc_exp hX ζ
     have hhas2 := hasSum_hermFunc_exp hX_tot ζ
-    rw [hX_sum] at hhas2
+    have hfun : (fun m : ℕ ↦ (ζ ^ m / (m.factorial : ℂ)) • (∑ Z ∈ E_tot, if Z ∈ E_X then xOp Z else 0) ^ m) =
+        fun m : ℕ ↦ (ζ ^ m / (m.factorial : ℂ)) • (∑ Z ∈ E_X, xOp Z) ^ m := by
+      funext m; rw [hX_sum]
+    rw [hfun] at hhas2
     exact hhas1.unique hhas2
   have hprod_eq : hermFunc hH (fun e ↦ Complex.exp (-(β : ℂ) * (e : ℂ))) *
       hermFunc hX (fun e ↦ Complex.exp (ζ * (e : ℂ))) =
@@ -630,9 +639,9 @@ theorem normalizedTrace_exp_mul_exp_eq_polymerZ {N : ℕ}
   · intro I₁ hI₁ I₂ hI₂ heq
     have h1 := hmem_filt.mp hI₁
     have h2 := hmem_filt.mp hI₂
-    exact hinj (Finset.mem_powerset.mp h1.1) h1.2 (Finset.mem_powerset.mp h2.1) h2.2 heq
+    exact hinj I₁ I₂ (Finset.mem_powerset.mp h1.1) h1.2 (Finset.mem_powerset.mp h2.1) h2.2 heq
   · intro S hS
-    rcases hsurj (Finset.mem_powerset.mp hS) with ⟨I, hIsub, hIcomp, hIeq⟩
+    rcases hsurj S (Finset.mem_powerset.mp hS) with ⟨I, hIsub, hIcomp, hIeq⟩
     exact ⟨I, hmem_filt.mpr ⟨Finset.mem_powerset.mpr hIsub, hIcomp⟩, hIeq⟩
   · intro I hI
     have hI' := hmem_filt.mp hI
@@ -693,7 +702,8 @@ lemma differentiable_prodPolyWeight {N : ℕ}
     dsimp only [f]
     rw [norm_mul, norm_div, norm_pow, norm_neg, Complex.norm_real, Real.norm_eq_abs, abs_one,
       one_pow, Complex.norm_natCast]
-    have htr := le_trans (norm_normalizedTrace_le _) (opNorm_mul_le M _)
+    have htr := le_trans (norm_normalizedTrace_le (M * polyTermSum (fun Z ↦ (-ζ) • B Z) T₂ m))
+      (opNorm_mul_le M (polyTermSum (fun Z ↦ (-ζ) • B Z) T₂ m))
     have hpt := opNorm_polyTermSum_le (fun Z ↦ (-ζ) • B Z) T₂ m
     have hsum_le : ∑ Z ∈ T₂, opNorm ((-ζ) • B Z) ≤ C := by
       apply Finset.sum_le_sum; intro Z _
@@ -722,11 +732,11 @@ lemma differentiable_prodPolyWeight {N : ℕ}
           map_add' := fun P₁ P₂ ↦ by rw [Matrix.mul_add, normalizedTrace_add]
           map_smul' := fun α P ↦ by simp [Matrix.mul_smul, normalizedTrace_smul] }
     have hs := (hasSum_polyOp (fun Z ↦ (-ζ) • B Z) 1 T₂).map Φ Φ.continuous
-    have hrew : (fun m : ℕ ↦ Φ (((-(1 : ℝ) : ℂ) ^ m / (m.factorial : ℂ)) •
-        polyTermSum (fun Z ↦ (-ζ) • B Z) T₂ m)) = fun m ↦ f m ζ := by
-      funext m; exact by dsimp only [Φ, f]; simp [Matrix.mul_smul, normalizedTrace_smul]
-    rw [hrew] at hs
-    exact hs.tsum_eq
+    have hs' : HasSum (fun m : ℕ ↦ f m ζ) (Φ (polyOp (fun Z ↦ (-ζ) • B Z) 1 T₂)) := by
+      refine hs.congr_fun fun m ↦ ?_
+      change Φ (((-(1 : ℝ) : ℂ) ^ m / (m.factorial : ℂ)) • polyTermSum (fun Z ↦ (-ζ) • B Z) T₂ m) = f m ζ
+      dsimp only [Φ, f]; simp [Matrix.mul_smul, normalizedTrace_smul]
+    exact hs'.tsum_eq
   have hloc := (htend.mono Metric.ball_subset_closedBall).tendstoLocallyUniformlyOn
   have hdiff_ball : DifferentiableOn ℂ
       (fun ζ : ℂ ↦ normalizedTrace (M * polyOp (fun Z ↦ (-ζ) • B Z) 1 T₂)) (Metric.ball 0 R) :=
@@ -756,10 +766,10 @@ private lemma hasDerivAt_normalizedTrace_mul_hermFunc_exp {N : ℕ}
           simp only [Matrix.mul_assoc]
       _ = ∑ i : QubitIdx N, (Uᴴ * M * U) i i * Complex.exp (ζ * (hX.eigenvalues i : ℂ)) := by
           simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.diagonal_apply,
-            mul_ite, mul_zero, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
+            mul_ite, mul_zero, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
   have hval : normalizedTrace (M * X) =
       ((2 : ℝ) ^ N : ℂ)⁻¹ * ∑ i : QubitIdx N, (Uᴴ * M * U) i i * (hX.eigenvalues i : ℂ) := by
-    rw [← hermFunc_id hX]
+    conv_lhs => rw [← hermFunc_id hX]
     unfold normalizedTrace hermFunc
     dsimp only
     congr 1
@@ -770,15 +780,131 @@ private lemma hasDerivAt_normalizedTrace_mul_hermFunc_exp {N : ℕ}
           simp only [Matrix.mul_assoc]
       _ = ∑ i : QubitIdx N, (Uᴴ * M * U) i i * (hX.eigenvalues i : ℂ) := by
           simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.diagonal_apply,
-            mul_ite, mul_zero, Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
+            mul_ite, mul_zero, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
   rw [hrew, hval]
   refine HasDerivAt.const_mul _ (HasDerivAt.fun_sum fun i _ ↦ ?_)
-  have hd : HasDerivAt (fun ζ : ℂ ↦ Complex.exp (ζ * (hX.eigenvalues i : ℂ)))
-      (Complex.exp (0 * (hX.eigenvalues i : ℂ)) * (hX.eigenvalues i : ℂ)) 0 :=
-    (Complex.hasDerivAt_exp _).comp 0 ((hasDerivAt_id (0 : ℂ)).mul_const (hX.eigenvalues i : ℂ))
+  have hlin : HasDerivAt (fun ζ : ℂ ↦ ζ * (hX.eigenvalues i : ℂ)) (hX.eigenvalues i : ℂ) 0 := by
+    simpa using (hasDerivAt_id (0 : ℂ)).mul_const (hX.eigenvalues i : ℂ)
+  have hd := hlin.cexp
   simpa [zero_mul, Complex.exp_zero, one_mul] using hd.const_mul ((Uᴴ * M * U) i i)
 
-set_option maxHeartbeats 800000 in
+/-- Shift identity for centered Hermitian exponentials:
+`hermFunc hXt (exp (lam * ·)) = cexp (-lam * μ) • hermFunc hX (exp (lam * ·))`. -/
+private lemma hermFunc_sub_scalar_exp {N : ℕ} {X : QubitOp N} (hX : X.IsHermitian)
+    (μ lam : ℝ)
+    (hXt : (X - (μ : ℂ) • (1 : QubitOp N)).IsHermitian) :
+    hermFunc hXt (fun e ↦ Complex.exp ((lam : ℂ) * (e : ℂ))) =
+      Complex.exp (-(lam : ℂ) * (μ : ℂ)) • hermFunc hX (fun e ↦ Complex.exp ((lam : ℂ) * (e : ℂ))) := by
+  let U : QubitOp N := (hX.eigenvectorUnitary : QubitOp N)
+  have hU1 : U * Uᴴ = 1 := Matrix.mem_unitaryGroup_iff.mp hX.eigenvectorUnitary.prop
+  have hU2 : Uᴴ * U = 1 := Matrix.mem_unitaryGroup_iff'.mp hX.eigenvectorUnitary.prop
+  have hXt_diag : X - (μ : ℂ) • (1 : QubitOp N) =
+      U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ)) * Uᴴ := by
+    have hX_id := (hermFunc_id hX).symm
+    unfold hermFunc at hX_id
+    conv_lhs => rw [hX_id]
+    calc U * Matrix.diagonal (fun i ↦ (hX.eigenvalues i : ℂ)) * Uᴴ - (μ : ℂ) • (1 : QubitOp N)
+        = U * Matrix.diagonal (fun i ↦ (hX.eigenvalues i : ℂ)) * Uᴴ -
+          U * Matrix.diagonal (fun _ ↦ (μ : ℂ)) * Uᴴ := by
+          congr 1
+          rw [← Matrix.smul_eq_diagonal_mul, Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one, hU1]
+      _ = U * (Matrix.diagonal (fun i ↦ (hX.eigenvalues i : ℂ)) - Matrix.diagonal (fun _ ↦ (μ : ℂ))) * Uᴴ := by
+          rw [Matrix.mul_sub, Matrix.sub_mul]
+      _ = U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ)) * Uᴴ := by
+          congr 2; ext i j; simp [Matrix.diagonal_apply]; split_ifs <;> simp
+  have hXt_pow : ∀ k : ℕ, (X - (μ : ℂ) • (1 : QubitOp N)) ^ k =
+      U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ) ^ k) * Uᴴ := by
+    intro k
+    induction k with
+    | zero => simp [Matrix.diagonal_one, hU1]
+    | succ k ih =>
+      rw [pow_succ, ih, hXt_diag]
+      calc U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ) ^ k) * Uᴴ *
+            (U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ)) * Uᴴ)
+          = U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ) ^ k) * (Uᴴ * U) *
+            Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ)) * Uᴴ := by
+            simp only [Matrix.mul_assoc]
+        _ = U * (Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ) ^ k) *
+            Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ))) * Uᴴ := by
+            rw [hU2, Matrix.mul_one]; simp only [Matrix.mul_assoc]
+        _ = U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ) ^ (k + 1)) * Uᴴ := by
+            rw [Matrix.diagonal_mul_diagonal]; congr 2; funext i; rw [pow_succ]
+  have hhas1 := hasSum_hermFunc_exp hXt (lam : ℂ)
+  have hhas2 : HasSum (fun k : ℕ ↦ ((lam : ℂ) ^ k / (k.factorial : ℂ)) • (X - (μ : ℂ) • (1 : QubitOp N)) ^ k)
+      (U * Matrix.diagonal (fun i ↦ Complex.exp ((lam : ℂ) * ((hX.eigenvalues i - μ : ℝ) : ℂ))) * Uᴴ) := by
+    let Ψ : (QubitIdx N → ℂ) →L[ℂ] QubitOp N :=
+      LinearMap.toContinuousLinearMap
+        { toFun := fun v ↦ U * Matrix.diagonal v * Uᴴ
+          map_add' := fun v w ↦ by rw [Matrix.diagonal_add, Matrix.mul_add, Matrix.add_mul]
+          map_smul' := fun c v ↦ by simp [Matrix.diagonal_smul, Matrix.mul_smul, Matrix.smul_mul] }
+    have hvec : HasSum (fun k : ℕ ↦ fun i : QubitIdx N ↦
+        ((lam : ℂ) * ((hX.eigenvalues i - μ : ℝ) : ℂ)) ^ k / (k.factorial : ℂ))
+        (fun i : QubitIdx N ↦ Complex.exp ((lam : ℂ) * ((hX.eigenvalues i - μ : ℝ) : ℂ))) := by
+      rw [hasSum_pi_iff]
+      intro i
+      simpa [Complex.exp_eq_exp_ℂ, NormedSpace.exp_eq_tsum_div] using
+        (NormedSpace.expSeries_div_hasSum_exp ((lam : ℂ) * ((hX.eigenvalues i - μ : ℝ) : ℂ)))
+    have hmapped := hvec.map Ψ Ψ.continuous
+    refine hmapped.congr_fun fun k ↦ ?_
+    change U * Matrix.diagonal (fun i ↦ ((lam : ℂ) * ((hX.eigenvalues i - μ : ℝ) : ℂ)) ^ k / (k.factorial : ℂ)) * Uᴴ = _
+    rw [hXt_pow k, ← Matrix.smul_mul, ← Matrix.mul_smul, ← Matrix.diagonal_smul]
+    congr 2; funext i; simp only [Pi.smul_apply, smul_eq_mul, mul_pow]; ring
+  rw [hhas1.unique hhas2]
+  unfold hermFunc
+  rw [← Matrix.smul_mul, ← Matrix.mul_smul, ← Matrix.diagonal_smul]
+  congr 2; funext i
+  simp only [Pi.smul_apply, smul_eq_mul, ← Complex.exp_add]
+  congr 1; push_cast; ring
+
+/-- Reality and non-negativity of `Tr(gibbsRho hH β * hermFunc hXt (exp (lam * ·)))`. -/
+private lemma trace_gibbsRho_mul_hermFunc_exp_real_nonneg {N : ℕ}
+    {H Xt : QubitOp N} (hH : H.IsHermitian) (hXt : Xt.IsHermitian) (β lam : ℝ) :
+    (gibbsRho hH β * hermFunc hXt (fun e ↦ Complex.exp ((lam : ℂ) * (e : ℂ)))).trace.im = 0 ∧
+    0 ≤ (gibbsRho hH β * hermFunc hXt (fun e ↦ Complex.exp ((lam : ℂ) * (e : ℂ)))).trace.re := by
+  let B : QubitOp N := ((Real.sqrt (gibbsPartitionFn hH β)⁻¹ : ℝ) : ℂ) •
+    hermFunc hH (fun e ↦ ((Real.exp (-(β * e / 2)) : ℝ) : ℂ))
+  let D : QubitOp N := hermFunc hXt (fun e ↦ ((Real.exp (lam * e / 2) : ℝ) : ℂ))
+  have hB_herm : Bᴴ = B := by
+    dsimp only [B]; rw [Matrix.conjTranspose_smul, hermFunc_conjTranspose]
+    congr 1; · simp [Complex.star_def, Complex.conj_ofReal]
+    · congr 1; funext e; simp [Complex.star_def, Complex.conj_ofReal]
+  have hD_herm : Dᴴ = D := by
+    dsimp only [D]; rw [hermFunc_conjTranspose]
+    congr 1; funext e; simp [Complex.star_def, Complex.conj_ofReal]
+  have hBB : B * B = gibbsRho hH β := by
+    dsimp only [B]; unfold gibbsRho
+    rw [Matrix.smul_mul, Matrix.mul_smul, smul_smul, hermFunc_mul]
+    congr 1
+    · rw [← Complex.ofReal_mul, Real.mul_self_sqrt (inv_nonneg.mpr (gibbsPartitionFn_pos hH β).le),
+        Complex.ofReal_inv]
+    · congr 1; funext e
+      rw [← Complex.ofReal_mul, ← Real.exp_add]; congr 2; ring
+  have hDD : D * D = hermFunc hXt (fun e ↦ Complex.exp ((lam : ℂ) * (e : ℂ))) := by
+    dsimp only [D]; rw [hermFunc_mul]
+    congr 1; funext e
+    rw [← Complex.ofReal_mul, ← Real.exp_add, Complex.ofReal_exp]
+    congr 1; push_cast; ring
+  have htr_eq : (gibbsRho hH β * hermFunc hXt (fun e ↦ Complex.exp ((lam : ℂ) * (e : ℂ)))).trace =
+      ((B * D)ᴴ * (B * D)).trace := by
+    rw [← hBB, ← hDD, Matrix.conjTranspose_mul, hB_herm, hD_herm]
+    calc (B * B * (D * D)).trace = (B * (B * D * D)).trace := by simp only [Matrix.mul_assoc]
+      _ = (B * D * D * B).trace := Matrix.trace_mul_comm B (B * D * D)
+      _ = (D * B * (B * D)).trace := by
+          rw [Matrix.trace_mul_comm (B * D) (D * B)]; simp only [Matrix.mul_assoc]
+  rw [htr_eq]
+  have hsum : ((B * D)ᴴ * (B * D)).trace =
+      ∑ i : QubitIdx N, ∑ j : QubitIdx N, (((‖(B * D) j i‖ ^ 2 : ℝ)) : ℂ) := by
+    simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply]
+    apply Finset.sum_congr rfl; intro i _
+    apply Finset.sum_congr rfl; intro j _
+    rw [Complex.star_def, Complex.conj_mul', Complex.ofReal_pow]
+  rw [hsum]
+  constructor
+  · simp [Complex.im_sum]
+  · simp only [Complex.re_sum, Complex.ofReal_re]
+    exact Finset.sum_nonneg fun _ _ ↦ Finset.sum_nonneg fun _ _ ↦ sq_nonneg _
+
+set_option maxHeartbeats 1200000 in
 /-- **Lemma 6.3 (Literal Product-Exponential Trace Cumulant Bound, Eq. 6.3)**:
 Under the exact high-temperature hypotheses of Lemma 6.3 (`r ≥ 2`, `k_X ≥ 1`, `β ∈ [0, (8 e² r Jsite)⁻¹]`,
 `k_r = max r k_X`, `Λ₀' = (16 k_r exp(1 + k_r / r) gX)⁻¹`, `|lam| ≤ Λ₀' / 2`):
@@ -846,7 +972,7 @@ theorem lemma_6_3_product_exp_cumulant_bound {N r k_X : ℕ}
       (Real.exp (opNorm (A_op Z) + opNorm (B_op ζ Z)) - 1) * Real.exp (c * (Z.card : ℝ))
     have hη_nn : ∀ Z ∈ E_tot, 0 ≤ η Z := fun Z _ ↦ by
       dsimp only [η]
-      exact mul_nonneg (by linarith [Real.one_le_exp (add_nonneg (opNorm_nonneg _) (opNorm_nonneg _))])
+      exact mul_nonneg (by linarith [Real.one_le_exp (add_nonneg (opNorm_nonneg (A_op Z)) (opNorm_nonneg (B_op ζ Z)))])
         (Real.exp_pos _).le
     have hβJ_lt : β * Jsite < 1 / 8 := by
       have h1 : β * Jsite ≤ 1 / (8 * Real.exp 2 * (r : ℝ)) := by
@@ -1046,7 +1172,6 @@ theorem lemma_6_3_product_exp_cumulant_bound {N r k_X : ℕ}
       _ ≤ ∑ Z₀ ∈ E_tot.filter (fun Z ↦ x ∈ Z), η Z₀ * Real.exp (c * (Z₀.card : ℝ)) :=
           Finset.sum_le_sum fun Z₀ hZ₀ ↦ htree E_tot.card Z₀ (Finset.mem_filter.mp hZ₀).1
       _ ≤ c / 2 := hsite_w x
-  -- Derive KP half-budget & per-polymer smallness on `closedBall 0 Λ₀'`.
   have hkp_disk : ∀ ζ ∈ Metric.closedBall (0 : ℂ) Λ₀',
       (∀ γ ∈ Γ, ∑ δ ∈ Γ.filter (fun δ ↦ polyIncompat γ δ),
           ‖prodPolyWeight A_op (B_op ζ) δ‖ * Real.exp (a δ) ≤ a γ / 2) ∧
@@ -1077,7 +1202,6 @@ theorem lemma_6_3_product_exp_cumulant_bound {N r k_X : ℕ}
         Finset.single_le_sum (f := fun γ ↦ ‖prodPolyWeight A_op (B_op ζ) γ‖ * Real.exp (a γ))
           (fun _ _ ↦ by positivity) (Finset.mem_filter.mpr ⟨hδ, hxδ⟩)
       linarith [hsite_pin ζ hζ x, hc_le]
-  -- Site-by-site ratio and telescoping logarithm `L(ζ)`.
   let Zslice : ℕ → ℂ → ℂ := fun k ζ ↦ polymerZ polyIncompat (prodPolyWeight A_op (B_op ζ)) (siteSlice Γ k)
   let siteRatio : ℕ → ℂ → ℂ := fun k ζ ↦ Zslice (k + 1) ζ / Zslice k ζ
   let L : ℂ → ℂ := fun ζ ↦ ∑ k ∈ Finset.range N, Complex.log (siteRatio k ζ)
@@ -1128,7 +1252,6 @@ theorem lemma_6_3_product_exp_cumulant_bound {N r k_X : ℕ}
           Finset.sum_le_sum_of_subset_of_nonneg hsub_pin fun _ _ _ ↦ by positivity
       _ ≤ c / 2 := hsite_pin ζ hζ ⟨k, hkN⟩
       _ ≤ 1 / 4 := by linarith [hc_le]
-  -- Telescoping exponential identity: `Complex.exp (L ζ) = Zfn ζ`.
   let Zfn : ℂ → ℂ := fun ζ ↦
     normalizedTrace (hermFunc hH (fun e ↦ Complex.exp (-(β : ℂ) * (e : ℂ))) *
       hermFunc hX (fun e ↦ Complex.exp (ζ * (e : ℂ))))
@@ -1171,7 +1294,6 @@ theorem lemma_6_3_product_exp_cumulant_bound {N r k_X : ℕ}
       · intro hnot; exfalso; apply hnot
         simp [isCompatPolymer]
     rw [htel N le_rfl, hZ0, div_one]
-  -- Differentiability of `Zslice k` and `L` on `closedBall 0 Λ₀'`.
   have hZslice_diff : ∀ k : ℕ, Differentiable ℂ (Zslice k) := by
     intro k
     dsimp only [Zslice]
@@ -1185,7 +1307,6 @@ theorem lemma_6_3_product_exp_cumulant_bound {N r k_X : ℕ}
     have hrat_d : DifferentiableAt ℂ (siteRatio k) ζ :=
       (hZslice_diff (k + 1) ζ).div (hZslice_diff k ζ) (hZslice_ne ζ hζ k)
     exact hrat_d.clog (complex_log_bound_of_norm_sub_one_le (hratio_close ζ hζ k hk)).1
-  -- Define centered holomorphic function `g(ζ) := L(ζ) - L(0) - (μ : ℂ) * ζ`.
   let g : ℂ → ℂ := fun ζ ↦ L ζ - L 0 - (μ : ℂ) * ζ
   have hg_cont : ContinuousOn g (Metric.closedBall 0 Λ₀') := by
     intro ζ hζ
@@ -1197,7 +1318,6 @@ theorem lemma_6_3_product_exp_cumulant_bound {N r k_X : ℕ}
     exact ((hL_diffAt ζ hcl).sub (differentiableAt_const _)).sub
       ((differentiableAt_const _).mul differentiableAt_id)
   have hg0 : g 0 = 0 := by simp [g]
-  -- Compute `Zfn 0` and `deriv L 0 = (μ : ℂ)`.
   have hZ0_re : Zfn 0 = (((2 : ℝ) ^ N : ℂ)⁻¹) * (gibbsPartitionFn hH β : ℂ) := by
     have hX0 : hermFunc hX (fun e ↦ Complex.exp ((0 : ℂ) * (e : ℂ))) = 1 := by
       unfold hermFunc
@@ -1273,7 +1393,6 @@ theorem lemma_6_3_product_exp_cumulant_bound {N r k_X : ℕ}
         (hL0.sub (hasDerivAt_const (0 : ℂ) (L 0))).sub ((hasDerivAt_id (0 : ℂ)).const_mul (μ : ℂ))
       simpa [g] using h1
     rw [hg_d.deriv, hL'_eq, sub_self]
-  -- Bound `‖g ζ‖ ≤ 2 * N` on `sphere 0 Λ₀'`.
   have hμ_le : |μ| ≤ (N : ℝ) * gX := by
     have h1 : ‖(gibbsRho hH β * X).trace‖ ≤ opNorm X := norm_trace_gibbsRho_mul_le_opNorm hH β X
     have h2 : |μ| ≤ ‖(gibbsRho hH β * X).trace‖ := Complex.abs_re_le_norm _
@@ -1322,74 +1441,10 @@ theorem lemma_6_3_product_exp_cumulant_bound {N r k_X : ℕ}
           rw [Complex.norm_real, Real.norm_eq_abs, hζ]
           exact add_le_add (add_le_add (hL_norm ζ hcl) (hL_norm 0 (Metric.mem_closedBall_self hΛ_pos.le))) le_rfl
       _ ≤ 2 * (N : ℝ) := by linarith
-  -- Apply `cauchy_order2_schwarz_bound` at `w = (lam : ℂ)`.
   have hschwarz := cauchy_order2_schwarz_bound hΛ_pos (by positivity : (0 : ℝ) ≤ 2 * (N : ℝ))
     g hg_cont hg_diff hg0 hg'0 hg_bdd (lam : ℂ)
     (by rw [Metric.mem_closedBall, dist_zero_right, Complex.norm_real, Real.norm_eq_abs]; exact hlam)
-  -- Shift identity: `hermFunc hXt (exp (lam * ·)) = cexp (-lam * μ) • hermFunc hX (exp (lam * ·))`.
-  have hXt_exp : hermFunc hXt (fun e ↦ Complex.exp ((lam : ℂ) * (e : ℂ))) =
-      Complex.exp (-(lam : ℂ) * (μ : ℂ)) • hermFunc hX (fun e ↦ Complex.exp ((lam : ℂ) * (e : ℂ))) := by
-    let U : QubitOp N := (hX.eigenvectorUnitary : QubitOp N)
-    have hU1 : U * Uᴴ = 1 := Matrix.mem_unitaryGroup_iff.mp hX.eigenvectorUnitary.prop
-    have hU2 : Uᴴ * U = 1 := Matrix.mem_unitaryGroup_iff'.mp hX.eigenvectorUnitary.prop
-    have hXt_diag : Xtilde = U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ)) * Uᴴ := by
-      have hX_id := (hermFunc_id hX).symm
-      unfold hermFunc at hX_id
-      dsimp only [Xtilde]
-      rw [hX_id]
-      calc U * Matrix.diagonal (fun i ↦ (hX.eigenvalues i : ℂ)) * Uᴴ - (μ : ℂ) • (1 : QubitOp N)
-          = U * Matrix.diagonal (fun i ↦ (hX.eigenvalues i : ℂ)) * Uᴴ -
-            U * Matrix.diagonal (fun _ ↦ (μ : ℂ)) * Uᴴ := by
-            congr 1
-            rw [← Matrix.smul_eq_diagonal_mul, Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one, hU1]
-        _ = U * (Matrix.diagonal (fun i ↦ (hX.eigenvalues i : ℂ)) - Matrix.diagonal (fun _ ↦ (μ : ℂ))) * Uᴴ := by
-            rw [Matrix.mul_sub, Matrix.sub_mul]
-        _ = U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ)) * Uᴴ := by
-            congr 2; ext i j; simp [Matrix.diagonal_apply]; split_ifs <;> simp
-    have hXt_pow : ∀ k : ℕ, Xtilde ^ k = U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ) ^ k) * Uᴴ := by
-      intro k
-      induction k with
-      | zero => simp [Matrix.diagonal_one, hU1]
-      | succ k ih =>
-        rw [pow_succ, ih, hXt_diag]
-        calc U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ) ^ k) * Uᴴ *
-              (U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ)) * Uᴴ)
-            = U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ) ^ k) * (Uᴴ * U) *
-              Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ)) * Uᴴ := by
-              simp only [Matrix.mul_assoc]
-          _ = U * (Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ) ^ k) *
-              Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ))) * Uᴴ := by
-              rw [hU2, Matrix.mul_one]; simp only [Matrix.mul_assoc]
-          _ = U * Matrix.diagonal (fun i ↦ ((hX.eigenvalues i - μ : ℝ) : ℂ) ^ (k + 1)) * Uᴴ := by
-              rw [Matrix.diagonal_mul_diagonal]; congr 2; funext i; rw [pow_succ]
-    have hhas1 := hasSum_hermFunc_exp hXt (lam : ℂ)
-    have hhas2 : HasSum (fun k : ℕ ↦ ((lam : ℂ) ^ k / (k.factorial : ℂ)) • Xtilde ^ k)
-        (U * Matrix.diagonal (fun i ↦ Complex.exp ((lam : ℂ) * ((hX.eigenvalues i - μ : ℝ) : ℂ))) * Uᴴ) := by
-      let Ψ : (QubitIdx N → ℂ) →L[ℂ] QubitOp N :=
-        LinearMap.toContinuousLinearMap
-          { toFun := fun v ↦ U * Matrix.diagonal v * Uᴴ
-            map_add' := fun v w ↦ by rw [Matrix.diagonal_add, Matrix.mul_add, Matrix.add_mul]
-            map_smul' := fun c v ↦ by simp [Matrix.diagonal_smul, Matrix.mul_smul, Matrix.smul_mul] }
-      have hvec : HasSum (fun k : ℕ ↦ fun i : QubitIdx N ↦
-          ((lam : ℂ) * ((hX.eigenvalues i - μ : ℝ) : ℂ)) ^ k / (k.factorial : ℂ))
-          (fun i : QubitIdx N ↦ Complex.exp ((lam : ℂ) * ((hX.eigenvalues i - μ : ℝ) : ℂ))) := by
-        rw [hasSum_pi_iff]
-        intro i
-        simpa [Complex.exp_eq_exp_ℂ, NormedSpace.exp_eq_tsum_div] using
-          (NormedSpace.expSeries_div_hasSum_exp ((lam : ℂ) * ((hX.eigenvalues i - μ : ℝ) : ℂ)))
-      have hmapped := hvec.map Ψ Ψ.continuous
-      refine hmapped.congr_fun fun k ↦ ?_
-      change U * Matrix.diagonal (fun i ↦ ((lam : ℂ) * ((hX.eigenvalues i - μ : ℝ) : ℂ)) ^ k / (k.factorial : ℂ)) * Uᴴ = _
-      rw [hXt_pow k]
-      rw [← Matrix.smul_mul, ← Matrix.mul_smul, ← Matrix.diagonal_smul]
-      congr 2; funext i; simp only [Pi.smul_apply, smul_eq_mul, mul_pow]; ring
-    rw [hhas1.unique hhas2]
-    unfold hermFunc
-    rw [← Matrix.smul_mul, ← Matrix.mul_smul, ← Matrix.diagonal_smul]
-    congr 2; funext i
-    simp only [Pi.smul_apply, smul_eq_mul, ← Complex.exp_add]
-    congr 1; push_cast; ring
-  -- Identify `Complex.exp (g (lam : ℂ)) = (gibbsRho hH β * hermFunc hXt (exp (lam * ·))).trace`.
+  have hXt_exp := hermFunc_sub_scalar_exp hX μ lam hXt
   have hlam_cl : (lam : ℂ) ∈ Metric.closedBall (0 : ℂ) Λ₀' := by
     rw [Metric.mem_closedBall, dist_zero_right, Complex.norm_real, Real.norm_eq_abs]
     linarith
@@ -1410,53 +1465,7 @@ theorem lemma_6_3_product_exp_cumulant_bound {N r k_X : ℕ}
       rw [← Complex.exp_neg]; congr 1; ring
     rw [div_eq_mul_inv, hexp_neg]
     field_simp [h2ne, hZne]
-  -- Show the trace is real and non-negative via `B * Bᴴ` factorization.
-  have htr_real_nn :
-      (gibbsRho hH β * hermFunc hXt (fun e ↦ Complex.exp ((lam : ℂ) * (e : ℂ)))).trace.im = 0 ∧
-      0 ≤ (gibbsRho hH β * hermFunc hXt (fun e ↦ Complex.exp ((lam : ℂ) * (e : ℂ)))).trace.re := by
-    let B : QubitOp N := ((Real.sqrt (gibbsPartitionFn hH β)⁻¹ : ℝ) : ℂ) •
-      hermFunc hH (fun e ↦ ((Real.exp (-(β * e / 2)) : ℝ) : ℂ))
-    let D : QubitOp N := hermFunc hXt (fun e ↦ ((Real.exp (lam * e / 2) : ℝ) : ℂ))
-    have hB_herm : Bᴴ = B := by
-      dsimp only [B]; rw [Matrix.conjTranspose_smul, hermFunc_conjTranspose]
-      congr 1; · simp [Complex.star_def, Complex.conj_ofReal]
-      · congr 1; funext e; simp [Complex.star_def, Complex.conj_ofReal]
-    have hD_herm : Dᴴ = D := by
-      dsimp only [D]; rw [hermFunc_conjTranspose]
-      congr 1; funext e; simp [Complex.star_def, Complex.conj_ofReal]
-    have hBB : B * B = gibbsRho hH β := by
-      dsimp only [B]; unfold gibbsRho
-      rw [Matrix.smul_mul, Matrix.mul_smul, smul_smul, hermFunc_mul]
-      congr 1
-      · rw [← Complex.ofReal_mul, Real.mul_self_sqrt (inv_nonneg.mpr (gibbsPartitionFn_pos hH β).le),
-          Complex.ofReal_inv]
-      · congr 1; funext e
-        rw [← Complex.ofReal_mul, ← Real.exp_add]; congr 2; ring
-    have hDD : D * D = hermFunc hXt (fun e ↦ Complex.exp ((lam : ℂ) * (e : ℂ))) := by
-      dsimp only [D]; rw [hermFunc_mul]
-      congr 1; funext e
-      rw [← Complex.ofReal_mul, ← Real.exp_add, Complex.ofReal_exp]
-      congr 1; push_cast; ring
-    have htr_eq : (gibbsRho hH β * hermFunc hXt (fun e ↦ Complex.exp ((lam : ℂ) * (e : ℂ)))).trace =
-        ((B * D)ᴴ * (B * D)).trace := by
-      rw [← hBB, ← hDD, Matrix.conjTranspose_mul, hB_herm, hD_herm]
-      calc (B * B * (D * D)).trace = (B * (B * D * D)).trace := by simp only [Matrix.mul_assoc]
-        _ = (B * D * D * B).trace := Matrix.trace_mul_comm B (B * D * D)
-        _ = (D * B * (B * D)).trace := by
-            rw [Matrix.trace_mul_comm (B * D) (D * B)]; simp only [Matrix.mul_assoc]
-    rw [htr_eq]
-    have hsum : ((B * D)ᴴ * (B * D)).trace =
-        ∑ i : QubitIdx N, ∑ j : QubitIdx N, (Complex.normSq ((B * D) j i) : ℂ) := by
-      simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply]
-      apply Finset.sum_congr rfl; intro i _
-      apply Finset.sum_congr rfl; intro j _
-      rw [Complex.star_def, Complex.conj_mul]
-    rw [hsum]
-    constructor
-    · simp [Complex.im_sum]
-    · simp only [Complex.re_sum, Complex.ofReal_re]
-      exact Finset.sum_nonneg fun _ _ ↦ Finset.sum_nonneg fun _ _ ↦ Complex.normSq_nonneg _
-  -- Extract `Real.log (trace.re) = (g (lam : ℂ)).re ≤ ‖g (lam : ℂ)‖ ≤ 8 * N * lam² / (Λ₀')²`.
+  have htr_real_nn := trace_gibbsRho_mul_hermFunc_exp_real_nonneg hH hXt β lam
   have htr_re_eq : (gibbsRho hH β * hermFunc hXt (fun e ↦ Complex.exp ((lam : ℂ) * (e : ℂ)))).trace.re =
       Real.exp (g (lam : ℂ)).re := by
     have hnorm := congrArg norm hexp_g
