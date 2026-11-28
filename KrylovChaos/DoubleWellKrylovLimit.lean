@@ -16,13 +16,13 @@ the `D × D` symmetric tridiagonal double-well matrix `doubleWellTridiag D E_B` 
 and proves Proposition 9.1(3) (Eq. 9.3) end-to-end without abstract limit hypotheses:
 1. `doubleWellTridiag_exists_even_odd_ground_states`: extracts normalized even and odd eigenstates
    `φ_+, φ_- : Fin D → ℝ` with `φ_± 0 > 0`, `E_± ∈ [-(E_B - 2)⁻¹, 0]`, and `E_+ ≠ E_-`.
-2. `doubleWellPsi0`, `doubleWellPsiEvol`, `doubleWellKrylovK`, `doubleWellQExp`,
+2. `doubleWellPsi0`, `doubleWellPsiEvol`, `doubleWellKrylovComplexity`, `doubleWellQExp`,
    `doubleWellDeltaQ`, `doubleWellSigma0`: defines `|ψ₀(E_B)⟩ = (|φ_+⟩ + |φ_-⟩) / √2`, its
    unitary evolution `|ψ(t)⟩ = e^{-i ℒ t} |ψ₀⟩`, `Q = diag(0, 1, …, D - 1)`, `σ₀(E_B) = √Var_{ψ₀}(Q)`,
    `ΔQ(t_*)`, and 2D Krylov complexity `K(t_*)` at `t_*(E_B) = π / |E_- - E_+|`.
-3. `doubleWellPsiEvol_schrodinger_ode`: verifies `d/dt |ψ(t)⟩ = -i ℒ |ψ(t)⟩` and `|ψ(0)⟩ = |ψ₀⟩`.
-4. `prop_9_1_part3_doubleWell_end_to_end_eq_9_3`: proves directly from `lemma_B_1_eigenvec_decay_eq_B2_B3`
-   and `tendsto_doubleWellDecayQ_zero` that `K(t_*) = 1`, `σ₀(E_B) → 0`, `ΔQ(t_*(E_B)) → D - 1`,
+3. `doubleWellPsiEvol_hasDerivAt`: verifies `d/dt |ψ(t)⟩ = -i ℒ |ψ(t)⟩` and `|ψ(0)⟩ = |ψ₀⟩`.
+4. `doubleWell_exact_eq_9_3`: proves directly from `lemma_B_1_eigenvec_decay_eq_B2_B3` and
+   `tendsto_doubleWellDecayQ_zero` that `K(t_*) = 1`, `σ₀(E_B) → 0`, `ΔQ(t_*(E_B)) → D - 1`,
    and `ΔQ(t_*) / (K(t_*) + σ₀ * √K(t_*)) → D - 1` as `E_B → ∞`.
 -/
 
@@ -184,8 +184,7 @@ private lemma dwOddTest_props {D : ℕ} (hD : 4 ≤ D) (E_B : ℝ) :
       apply Finset.sum_eq_zero; intro j _
       unfold dwOddTest
       dsimp only
-      split_ifs <;> try omega
-      all_goals ring
+      split_ifs <;> first | contradiction | omega | ring
     rw [h1, h2]; ring
 
 /-- Package for the two lowest distinct-parity normalized eigenstates of `doubleWellTridiag D E_B`. -/
@@ -241,6 +240,8 @@ theorem doubleWellTridiag_exists_even_odd_ground_states {D : ℕ} (hD : 4 ≤ D)
     intro k h0
     have h := hnorm_e k
     rw [h0] at h; simp at h
+  -- Helper: from a normalized test vector `u` of fixed parity `s ∈ {+1, -1}` with `⟨u, L u⟩ = 0`,
+  -- extract an eigenindex `k` of the same parity with `λ_k ≤ 0`.
   have extract_eigen : ∀ (u : Fin D → ℝ) (s : ℝ), (s = 1 ∨ s = -1) →
       parityMat D *ᵥ u = s • u →
       dotProduct u u = 1 →
@@ -290,10 +291,10 @@ theorem doubleWellTridiag_exists_even_odd_ground_states {D : ℕ} (hD : 4 ≤ D)
         · exact dotProduct_eq_zero_of_opposite_parity (e k) u hp (by simpa using hpar_u)
         · exfalso; apply hne_par; simpa using hm
     by_contra hall
-    push Not at hall
+    push_neg at hall
     have hpos_sum : 0 < ∑ k : Fin D, hL.eigenvalues k * c k ^ 2 := by
       have hex_nz : ∃ k : Fin D, c k ≠ 0 := by
-        by_contra h0; push Not at h0
+        by_contra h0; push_neg at h0
         have : ∑ k : Fin D, c k ^ 2 = 0 := Finset.sum_eq_zero fun k _ ↦ by rw [h0 k]; norm_num
         linarith
       rcases hex_nz with ⟨k₀, hk₀⟩
@@ -315,6 +316,7 @@ theorem doubleWellTridiag_exists_even_odd_ground_states {D : ℕ} (hD : 4 ≤ D)
     ⟨kp, hkp_par, hkp_le⟩
   rcases extract_eigen (dwOddTest hD) (-1) (Or.inr rfl) (by simpa using ho_par) ho_norm ho_ray with
     ⟨km, hkm_par, hkm_le⟩
+  -- Orient both eigenvectors so `φ 0 > 0` (using Sturm non-vanishing at site `0`).
   have hkp0_ne : e kp ⟨0, by omega⟩ ≠ 0 := fun h0 ↦
     hne_e kp (doubleWellTridiag_sturm_zero hD2 E_B (hL.eigenvalues kp) (e kp) (heig kp) h0)
   have hkm0_ne : e km ⟨0, by omega⟩ ≠ 0 := fun h0 ↦
@@ -461,7 +463,8 @@ theorem doubleWellPsiEvol_schrodinger_ode {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} (
   · ext j
     simp only [doubleWellPsiEvol, doubleWellPsi0, P, Complex.ofReal_zero, mul_zero,
       Complex.exp_zero, one_mul, Complex.ofReal_div, Complex.ofReal_add]
-  · have hL_apply : ((doubleWellTridiag D E_B).map Complex.ofReal *ᵥ
+  · -- Compute `(ℒ_ℂ *ᵥ ψ(t)) j` from `ℒ *ᵥ φ_± = E_± • φ_±`.
+    have hL_apply : ((doubleWellTridiag D E_B).map Complex.ofReal *ᵥ
         doubleWellPsiEvol hD hEB t) j =
         ((P.Ep : ℂ) * Complex.exp (-Complex.I * (P.Ep : ℂ) * (t : ℂ)) * (P.φp j : ℂ) +
          (P.Em : ℂ) * Complex.exp (-Complex.I * (P.Em : ℂ) * (t : ℂ)) * (P.φm j : ℂ)) /
@@ -599,16 +602,21 @@ lemma doubleWellDeltaQ_at_tunnelTime {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} (hEB :
       ((D : ℝ) - 1) - 2 * doubleWellQExp (doubleWellPsi0 hD hEB) := by
   unfold doubleWellDeltaQ doubleWellQExp
   simp_rw [doubleWellPsiEvol_normSq_at_tunnelTime hD hEB]
+  -- Reindex `j ↦ revFin j`.
   have hbij : ∑ j : Fin D, (j.val : ℝ) * ‖doubleWellPsi0 hD hEB (revFin j)‖ ^ 2 =
       ∑ j : Fin D, ((D : ℝ) - 1 - (j.val : ℝ)) * ‖doubleWellPsi0 hD hEB j‖ ^ 2 := by
-    refine Fintype.sum_equiv (Function.Involutive.toPerm (revFin (D := D)) (fun i ↦ revFin_revFin i)) _ _ fun j ↦ ?_
-    simp only [Function.Involutive.coe_toPerm, revFin_revFin]
+    let e : Equiv.Perm (Fin D) :=
+      { toFun := revFin, invFun := revFin, left_inv := revFin_revFin, right_inv := revFin_revFin }
+    refine Fintype.sum_equiv e _ _ fun j ↦ ?_
+    change (j.val : ℝ) * ‖doubleWellPsi0 hD hEB (revFin j)‖ ^ 2 =
+      ((D : ℝ) - 1 - ((revFin j).val : ℝ)) * ‖doubleWellPsi0 hD hEB (revFin j)‖ ^ 2
     congr 1
     have hj : j.val ≤ D - 1 := by omega
     have hD1 : 1 ≤ D := by omega
-    have hcast : ((D - 1 - j.val : ℕ) : ℝ) = (D : ℝ) - 1 - (j.val : ℝ) := by
+    have hcast : ((revFin j).val : ℝ) = (D : ℝ) - 1 - (j.val : ℝ) := by
+      change ((D - 1 - j.val : ℕ) : ℝ) = (D : ℝ) - 1 - (j.val : ℝ)
       rw [Nat.cast_sub hj, Nat.cast_sub hD1, Nat.cast_one]
-    exact hcast
+    linarith
   rw [hbij]
   have hsub : ∑ j : Fin D, ((D : ℝ) - 1 - (j.val : ℝ)) * ‖doubleWellPsi0 hD hEB j‖ ^ 2 =
       ((D : ℝ) - 1) * (∑ j : Fin D, ‖doubleWellPsi0 hD hEB j‖ ^ 2) -
@@ -671,10 +679,12 @@ lemma doubleWellPsi0_tail_le {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} (hEB : 2 < E_B
   have hBm := lemma_B_1_eigenvec_decay_eq_B2_B3 hD hEB P.hEm_le P.φm P.heig_m P.hnorm_m
   have hsqp := eigenvec_zero_sq_bounds hD hEB P.hEp_le P.φp P.heig_p (Or.inl P.hpar_p) P.hnorm_p
   have hsqm := eigenvec_zero_sq_bounds hD hEB P.hEm_le P.φm P.heig_m (Or.inr P.hpar_m) P.hnorm_m
+  -- Split `{j | j.val ≠ 0}` into `{D - 1}` and interior `{j | j.val ≠ 0 ∧ j.val ≠ D - 1}`.
   let jD : Fin D := ⟨D - 1, by omega⟩
   have hjD_mem : jD ∈ Finset.univ.filter (fun j : Fin D ↦ j.val ≠ 0) := by
     simp only [Finset.mem_filter, Finset.mem_univ, true_and, jD]; omega
   rw [← Finset.add_sum_erase _ _ hjD_mem]
+  -- 1. Bound `‖ψ₀ (D - 1)‖² = (φp 0 - φm 0)² / 2 ≤ 4 * q² / (1 - q²)`.
   have hD_term : ‖doubleWellPsi0 hD hEB jD‖ ^ 2 ≤ 4 * (q ^ 2 / (1 - q ^ 2)) := by
     have hpp : P.φp jD = P.φp ⟨0, by omega⟩ := by
       have h := congrFun P.hpar_p ⟨0, by omega⟩
@@ -713,6 +723,7 @@ lemma doubleWellPsi0_tail_le {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} (hEB : 2 < E_B
         _ = |(P.φp ⟨0, by omega⟩ - P.φm ⟨0, by omega⟩) *
             (P.φp ⟨0, by omega⟩ + P.φm ⟨0, by omega⟩)| := (abs_mul _ _).symm
         _ = |P.φp ⟨0, by omega⟩ ^ 2 - P.φm ⟨0, by omega⟩ ^ 2| := by ring_nf
+    -- From Eq. (B.3), `1/2 - a² ≤ 2 (q²/(1-q²)) a² ≤ q²/(1-q²)`, so `|a² - b²| ≤ q²/(1-q²)`.
     have hp_gap : 1 / 2 - P.φp ⟨0, by omega⟩ ^ 2 ≤ q ^ 2 / (1 - q ^ 2) := by
       have h1 := hBp.2
       have h2 := hsqp.2
@@ -727,6 +738,7 @@ lemma doubleWellPsi0_tail_le {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} (hEB : 2 < E_B
       rw [abs_le]; constructor <;> linarith [hsqp.2, hsqm.2, hp_gap, hm_gap]
     have hq_nn : 0 ≤ q ^ 2 / (1 - q ^ 2) := by positivity
     linarith
+  -- 2. Bound each interior term `‖ψ₀ j‖² ≤ 4 q²`.
   have hint_term : ∀ j ∈ (Finset.univ.filter (fun j : Fin D ↦ j.val ≠ 0)).erase jD,
       ‖doubleWellPsi0 hD hEB j‖ ^ 2 ≤ 4 * q ^ 2 := by
     intro j hj
@@ -817,6 +829,7 @@ theorem prop_9_1_part3_doubleWell_end_to_end_eq_9_3 {D : ℕ} (hD : 4 ≤ D) :
     refine tendsto_const_nhds.congr' ?_
     filter_upwards [eventually_gt_atTop (2 : ℝ)] with E_B hEB
     exact (hK_eq E_B hEB).symm
+  -- Tail upper bound `B(E_B) = 4 * (q² / (1 - q²)) + 4 * D * q² → 0`.
   let B_fn : ℝ → ℝ := fun E_B ↦
     4 * (doubleWellDecayQ E_B ^ 2 / (1 - doubleWellDecayQ E_B ^ 2)) +
     4 * (D : ℝ) * doubleWellDecayQ E_B ^ 2
@@ -837,6 +850,7 @@ theorem prop_9_1_part3_doubleWell_end_to_end_eq_9_3 {D : ℕ} (hD : 4 ≤ D) :
     have h2 : Tendsto (fun E_B ↦ 4 * (D : ℝ) * doubleWellDecayQ E_B ^ 2) atTop (nhds 0) := by
       simpa using hq2.const_mul (4 * (D : ℝ))
     simpa [B_fn] using h1.add h2
+  -- Show `⟨Q⟩_{ψ₀} → 0`.
   let Q0_fn : ℝ → ℝ := fun E_B ↦
     if h : 2 < E_B then doubleWellQExp (doubleWellPsi0 hD h) else 0
   have hQ0_lim : Tendsto Q0_fn atTop (nhds 0) := by
@@ -870,6 +884,7 @@ theorem prop_9_1_part3_doubleWell_end_to_end_eq_9_3 {D : ℕ} (hD : 4 ≤ D) :
               ‖doubleWellPsi0 hD hEB j‖ ^ 2 := (Finset.mul_sum _ _ _).symm
         _ ≤ (D : ℝ) * B_fn E_B :=
             mul_le_mul_of_nonneg_left (doubleWellPsi0_tail_le hD hEB) (by positivity)
+  -- Show `σ₀(E_B) → 0` via `0 ≤ σ₀(E_B) ≤ √(D² * B_fn E_B) → 0`.
   have hσ₀_lim : Tendsto σ₀_fn atTop (nhds 0) := by
     have hupper : Tendsto (fun E_B ↦ Real.sqrt ((D : ℝ) ^ 2 * B_fn E_B)) atTop (nhds 0) := by
       have h1 : Tendsto (fun E_B ↦ (D : ℝ) ^ 2 * B_fn E_B) atTop (nhds 0) := by
@@ -909,6 +924,7 @@ theorem prop_9_1_part3_doubleWell_end_to_end_eq_9_3 {D : ℕ} (hD : 4 ≤ D) :
           _ ≤ (D : ℝ) ^ 2 * B_fn E_B :=
               mul_le_mul_of_nonneg_left (doubleWellPsi0_tail_le hD hEB) (by positivity)
       linarith
+  -- Show `ΔQ(t_*(E_B)) → D - 1`.
   have hΔQ_lim : Tendsto ΔQ_fn atTop (nhds ((D : ℝ) - 1)) := by
     have h1 : Tendsto (fun E_B ↦ ((D : ℝ) - 1) - 2 * Q0_fn E_B) atTop (nhds ((D : ℝ) - 1)) := by
       simpa using tendsto_const_nhds.sub (hQ0_lim.const_mul 2)
