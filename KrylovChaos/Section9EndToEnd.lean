@@ -8,6 +8,7 @@ import KrylovChaos.BimodalFullRank
 import KrylovChaos.DoubleWellKrylovLimit
 import KrylovChaos.DoubleWellTunneling
 import KrylovChaos.TimeOrderedOTOC
+import KrylovChaos.AllTimeLiebRobinson
 import KrylovChaos.Milestone4Section9AppB
 import Mathlib.Tactic
 
@@ -49,7 +50,8 @@ noncomputable def concreteTwoTimeOTOC {N : ℕ} {H : QubitOp N} (hH : H.IsHermit
 
 lemma concreteTwoTimeOTOC_diag {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (W V : QubitOp N) (t : ℝ) :
-    concreteTwoTimeOTOC hH β W V t t = concreteOTOC hH β W V (t : ℂ) := rfl
+    concreteTwoTimeOTOC hH β W V t t = concreteOTOC hH β W V (t : ℂ) := by
+  unfold concreteTwoTimeOTOC concreteOTOC; rfl
 
 private lemma continuous_heisenbergEvol_entry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (W : QubitOp N) (i j : QubitIdx N) :
@@ -72,7 +74,11 @@ private lemma continuous_heisenbergEvol_entry {N : ℕ} {H : QubitOp N} (hH : H.
       ((hH.eigenvectorUnitary : QubitOp N) *
         Matrix.diagonal (fun k : QubitIdx N ↦ Complex.exp (Complex.I * (-(s : ℂ)) * (hH.eigenvalues k : ℂ))) *
         (hH.eigenvectorUnitary : QubitOp N)ᴴ)) := by
-    have h1 := ((continuous_const.mul (hdiag Complex.I)).mul continuous_const)
+    have h1 : Continuous (fun s : ℝ ↦
+        (hH.eigenvectorUnitary : QubitOp N) *
+          Matrix.diagonal (fun k : QubitIdx N ↦ Complex.exp (Complex.I * (s : ℂ) * (hH.eigenvalues k : ℂ))) *
+          (hH.eigenvectorUnitary : QubitOp N)ᴴ) :=
+      (continuous_const.mul (hdiag Complex.I)).mul continuous_const
     have h2 : Continuous (fun s : ℝ ↦
         (hH.eigenvectorUnitary : QubitOp N) *
           Matrix.diagonal (fun k : QubitIdx N ↦ Complex.exp (Complex.I * (-(s : ℂ)) * (hH.eigenvalues k : ℂ))) *
@@ -97,7 +103,7 @@ private lemma norm_heisenbergEvol_entry_le {N : ℕ} {H : QubitOp N} (hH : H.IsH
     have hv := ContinuousLinearMap.le_opNorm (opToCLM (heisenbergEvol hH (s : ℂ) W))
       (EuclideanSpace.single j (1 : ℂ))
     have hunit : ‖(EuclideanSpace.single j (1 : ℂ) : EuclideanSpace ℂ (QubitIdx N))‖ = 1 := by
-      simp [EuclideanSpace.norm_single]
+      simp
     rw [hunit, mul_one] at hv
     have hcoord : ‖(heisenbergEvol hH (s : ℂ) W) i j‖ ≤
         ‖opToCLM (heisenbergEvol hH (s : ℂ) W) (EuclideanSpace.single j (1 : ℂ))‖ := by
@@ -111,17 +117,18 @@ private lemma norm_heisenbergEvol_entry_le {N : ℕ} {H : QubitOp N} (hH : H.IsH
     exact hunit.le
   exact le_trans h1 h2
 
+private lemma integrable_gaussianKernel {σ : ℝ} (hσ : 0 < σ) : Integrable (gaussianKernel σ) := by
+  have hconst : Integrable (fun s : ℝ ↦ Real.exp (-(1 / (2 * σ ^ 2)) * s ^ 2)) :=
+    integrable_exp_neg_mul_sq (by positivity)
+  exact (hconst.const_mul (1 / (Real.sqrt (2 * Real.pi) * σ))).congr (Eventually.of_forall fun s ↦ by
+    unfold gaussianKernel
+    rw [div_eq_mul_inv, mul_comm (Real.exp _), ← one_div]
+    congr 1; congr 1; ring)
+
 private lemma integrable_gaussianKernel_mul_heisenbergEvol_entry {N : ℕ} {H : QubitOp N}
     (hH : H.IsHermitian) {σ : ℝ} (hσ : 0 < σ) (W : QubitOp N) (i j : QubitIdx N) :
     Integrable (fun s : ℝ ↦ ((gaussianKernel σ s : ℝ) : ℂ) * (heisenbergEvol hH (s : ℂ) W) i j) := by
-  have hg_int : Integrable (gaussianKernel σ) := by
-    have h1 := integral_gaussianKernel_eq_one hσ
-    have hpos : ∀ s, 0 < gaussianKernel σ s := fun s ↦ by unfold gaussianKernel; positivity
-    unfold gaussianKernel
-    have hconst : Integrable (fun s : ℝ ↦ Real.exp (-(1 / (2 * σ ^ 2)) * s ^ 2)) :=
-      integrable_exp_neg_mul_sq (by positivity)
-    exact (hconst.const_mul (1 / (Real.sqrt (2 * Real.pi) * σ))).congr (Eventually.of_forall fun s ↦ by
-      dsimp only; congr 1; congr 1; ring)
+  have hg_int : Integrable (gaussianKernel σ) := integrable_gaussianKernel hσ
   refine (hg_int.const_mul (opNorm W)).mono' ?_ ?_
   · exact ((Complex.continuous_ofReal.comp (by unfold gaussianKernel; fun_prop)).mul
       (continuous_heisenbergEvol_entry hH W i j)).aestronglyMeasurable
@@ -134,6 +141,7 @@ private lemma integrable_gaussianKernel_mul_heisenbergEvol_entry {N : ℕ} {H : 
 For every `σ > 0`, Hermitian `H : QubitOp N`, `W₀, V : QubitOp N`, and `β, t : ℝ`:
 `concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V t =
   ∬ g_σ(s₁) g_σ(s₂) F_{W₀,V}(t + s₁, t + s₂) ds₁ ds₂`. -/
+set_option maxHeartbeats 400000 in
 theorem concreteOTOC_gaussianSmearBochner_eq_2d_conv {N : ℕ} {H : QubitOp N}
     (hH : H.IsHermitian) (β : ℝ) {σ : ℝ} (hσ : 0 < σ) (W₀ V : QubitOp N) (t : ℝ) :
     concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V (t : ℂ) =
@@ -149,21 +157,21 @@ theorem concreteOTOC_gaussianSmearBochner_eq_2d_conv {N : ℕ} {H : QubitOp N}
       L * heisenbergEvol hH (s : ℂ) W₀ * R =
       jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH ((t + s : ℝ) : ℂ) W₀) * V := by
     intro s
-    rw [← hLR, ← heisenbergEvol_add hH (t : ℂ) (s : ℂ) W₀, Complex.ofReal_add]
+    rw [← hLR, Complex.ofReal_add, ← heisenbergEvol_add hH (t : ℂ) (s : ℂ) W₀]
   have htrace_expand : ∀ (A B : QubitOp N),
       Matrix.trace (L * A * R * (L * B * R)) =
       ∑ i : QubitIdx N, ∑ j : QubitIdx N, ∑ k : QubitIdx N,
         ∑ l : QubitIdx N, ∑ p : QubitIdx N, ∑ q : QubitIdx N,
           ((L i j * R k l * L l p * R q i) * A j k * B p q) := by
     intro A B
-    simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Finset.sum_mul, Finset.mul_sum]
+    simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply]
     refine Finset.sum_congr rfl fun i _ ↦ ?_
     calc ∑ l : QubitIdx N, (∑ k : QubitIdx N, (∑ j : QubitIdx N, L i j * A j k) * R k l) *
           (∑ q : QubitIdx N, (∑ p : QubitIdx N, L l p * B p q) * R q i)
         = ∑ l : QubitIdx N, ∑ k : QubitIdx N, ∑ j : QubitIdx N, ∑ q : QubitIdx N, ∑ p : QubitIdx N,
             ((L i j * R k l * L l p * R q i) * A j k * B p q) := by
           refine Finset.sum_congr rfl fun l _ ↦ ?_
-          simp only [Finset.sum_mul, Finset.mul_sum]
+          simp_rw [Finset.sum_mul, Finset.mul_sum]
           refine Finset.sum_congr rfl fun k _ ↦ Finset.sum_congr rfl fun j _ ↦
             Finset.sum_congr rfl fun q _ ↦ Finset.sum_congr rfl fun p _ ↦ by ring
       _ = ∑ j : QubitIdx N, ∑ k : QubitIdx N, ∑ l : QubitIdx N, ∑ p : QubitIdx N, ∑ q : QubitIdx N,
@@ -270,18 +278,14 @@ theorem concreteOTOC_gaussianSmearBochner_eq_2d_conv {N : ℕ} {H : QubitOp N}
   ring
 
 /-- Real-part 2D Gaussian convolution identity for `concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V t`. -/
+set_option maxHeartbeats 400000 in
 theorem concreteOTOC_gaussianSmearBochner_re_eq_2d_conv {N : ℕ} {H : QubitOp N}
     (hH : H.IsHermitian) (β : ℝ) {σ : ℝ} (hσ : 0 < σ) (W₀ V : QubitOp N) (t : ℝ) :
     (concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V (t : ℂ)).re =
       ∫ s₁ : ℝ, gaussianKernel σ s₁ *
         (∫ s₂ : ℝ, gaussianKernel σ s₂ *
           (concreteTwoTimeOTOC hH β W₀ V (t + s₁) (t + s₂)).re) := by
-  have hg_int : Integrable (gaussianKernel σ) := by
-    unfold gaussianKernel
-    have hconst : Integrable (fun s : ℝ ↦ Real.exp (-(1 / (2 * σ ^ 2)) * s ^ 2)) :=
-      integrable_exp_neg_mul_sq (by positivity)
-    exact (hconst.const_mul (1 / (Real.sqrt (2 * Real.pi) * σ))).congr (Eventually.of_forall fun s ↦ by
-      dsimp only; congr 1; congr 1; ring)
+  have hg_int : Integrable (gaussianKernel σ) := integrable_gaussianKernel hσ
   have hcont_two : Continuous (fun p : ℝ × ℝ ↦ concreteTwoTimeOTOC hH β W₀ V p.1 p.2) := by
     unfold concreteTwoTimeOTOC
     have htr : Continuous (fun M : QubitOp N ↦ Matrix.trace M) :=
@@ -303,7 +307,7 @@ theorem concreteOTOC_gaussianSmearBochner_re_eq_2d_conv {N : ℕ} {H : QubitOp N
         _ ≤ ∑ _i : QubitIdx N, opNorm A := Finset.sum_le_sum fun i _ ↦ by
             have hv := ContinuousLinearMap.le_opNorm (opToCLM A) (EuclideanSpace.single i (1 : ℂ))
             have hu : ‖(EuclideanSpace.single i (1 : ℂ) : EuclideanSpace ℂ (QubitIdx N))‖ = 1 := by
-              simp [EuclideanSpace.norm_single]
+              simp
             rw [hu, mul_one] at hv
             exact le_trans (by simpa [opToCLM, Matrix.mulVec, dotProduct] using
               PiLp.norm_apply_le (opToCLM A (EuclideanSpace.single i (1 : ℂ))) i) hv
@@ -337,7 +341,8 @@ theorem concreteOTOC_gaussianSmearBochner_re_eq_2d_conv {N : ℕ} {H : QubitOp N
         _ ≤ opNorm (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₁ : ℂ) W₀) * V) *
             opNorm (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₂ : ℂ) W₀) * V) :=
               opNorm_mul_le _ _
-        _ ≤ _ := mul_le_mul h1 h2 (opNorm_nonneg _) (by positivity)
+        _ ≤ _ := mul_le_mul h1 h2 (opNorm_nonneg _)
+            (mul_nonneg (mul_nonneg (sq_nonneg _) (opNorm_nonneg _)) (opNorm_nonneg _))
     calc (2 : ℝ) ^ N * opNorm (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₁ : ℂ) W₀) * V *
             jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₂ : ℂ) W₀) * V)
         ≤ (2 : ℝ) ^ N * (((opNorm G.ρQuarter) ^ 2 * opNorm W₀ * opNorm V) *
@@ -405,6 +410,7 @@ theorem concreteOTOC_gaussianSmearBochner_re_eq_2d_conv {N : ℕ} {H : QubitOp N
 /-- **Proposition 9.1(1) — Concrete 2D Finite-Window OTOC Lyapunov Preservation**:
 Applies `concreteOTOC_gaussianSmearBochner_re_eq_2d_conv` directly to `prop_9_1_part1_2d_finite_window_otoc`
 so the finite-window OTOC Lyapunov bound holds directly on `concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V t`. -/
+set_option maxHeartbeats 400000 in
 theorem prop_9_1_part1_concrete_2d_otoc_smearing {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (W₀ V : QubitOp N) {σ Δt lamL F_d ε M_bound C_R t : ℝ}
     (hσ : 0 < σ) (hlam : 0 < lamL) (hΔ : σ ^ 2 * (lamL / 2) ≤ Δt)
@@ -431,12 +437,7 @@ theorem prop_9_1_part1_concrete_2d_otoc_smearing {N : ℕ} {H : QubitOp N} (hH :
       exact continuous_matrix fun i j ↦ continuous_heisenbergEvol_entry hH W₀ i j
     exact htr.comp ((((hj.comp continuous_fst).mul continuous_const).mul
       (hj.comp continuous_snd)).mul continuous_const)
-  have hg_int : Integrable (gaussianKernel σ) := by
-    unfold gaussianKernel
-    have hconst : Integrable (fun s : ℝ ↦ Real.exp (-(1 / (2 * σ ^ 2)) * s ^ 2)) :=
-      integrable_exp_neg_mul_sq (by positivity)
-    exact (hconst.const_mul (1 / (Real.sqrt (2 * Real.pi) * σ))).congr (Eventually.of_forall fun s ↦ by
-      dsimp only; congr 1; congr 1; ring)
+  have hg_int : Integrable (gaussianKernel σ) := integrable_gaussianKernel hσ
   have hF_meas : ∀ s₁ : ℝ, AEStronglyMeasurable
       (fun s₂ : ℝ ↦ (concreteTwoTimeOTOC hH β W₀ V (t + s₁) (t + s₂)).re) volume := fun s₁ ↦
     (hcont_two.comp (continuous_const.prodMk (continuous_const.add continuous_id))).aestronglyMeasurable
@@ -464,6 +465,7 @@ theorem prop_9_1_part1_concrete_2d_otoc_smearing {N : ℕ} {H : QubitOp N} (hH :
 private lemma jacobiMat_entry_nonneg {D : ℕ} (b : ℕ → ℝ) (hb : ∀ k, 0 ≤ b k) (i j : Fin D) :
     0 ≤ jacobiMat D b i j := by
   unfold jacobiMat
+  simp only [Matrix.of_apply]
   split_ifs <;> [exact hb _; exact hb _; exact le_rfl]
 
 private lemma jacobiMat_pow_entry_nonneg {D : ℕ} (b : ℕ → ℝ) (hb : ∀ k, 0 ≤ b k) :
@@ -500,15 +502,22 @@ private lemma jacobiMat_pow_desc_lower {D : ℕ} (b : ℕ → ℝ) (hb : ∀ k, 
         (fun k _ ↦ mul_nonneg (jacobiMat_entry_nonneg b hb _ k) (jacobiMat_pow_entry_nonneg b hb m k _))
         (Finset.mem_univ ⟨m, by omega⟩)
       have hstep : jacobiMat D b ⟨m + 1, hm⟩ ⟨m, by omega⟩ = b (m + 1) := by
-        unfold jacobiMat; simp
+        unfold jacobiMat; simp only [Matrix.of_apply]
+        rw [if_neg (by omega), if_pos rfl]
       rw [hstep] at hterm
-      exact le_trans (by rw [mul_comm]; exact mul_le_mul_of_nonneg_left
-        (jacobiMat_pow_desc_lower b hb m (by omega)) (hb (m + 1))) hterm
+      have hmul : (∏ k ∈ Finset.range m, b (k + 1)) * b (m + 1) ≤
+          b (m + 1) * ((jacobiMat D b) ^ m) ⟨m, by omega⟩ ⟨0, by omega⟩ := by
+        rw [mul_comm]
+        exact mul_le_mul_of_nonneg_left (jacobiMat_pow_desc_lower b hb m (by omega)) (hb (m + 1))
+      exact le_trans hmul hterm
 
 private lemma jacobiMat_pow_two_n_ge_prod_sq (b : ℕ → ℝ) (hb : ∀ k, 0 ≤ b k) (n : ℕ) :
     (∏ k ∈ Finset.range n, b (k + 1)) ^ 2 ≤
       ((jacobiMat (2 * n + 1) b) ^ (2 * n)) ⟨0, Nat.succ_pos _⟩ ⟨0, Nat.succ_pos _⟩ := by
-  rw [two_mul, pow_add, Matrix.mul_apply]
+  have hpow : (jacobiMat (2 * n + 1) b) ^ (2 * n) =
+      (jacobiMat (2 * n + 1) b) ^ n * (jacobiMat (2 * n + 1) b) ^ n := by
+    rw [two_mul, pow_add]
+  rw [hpow, Matrix.mul_apply]
   have hterm := Finset.single_le_sum
     (f := fun k : Fin (2 * n + 1) ↦
       ((jacobiMat (2 * n + 1) b) ^ n) ⟨0, Nat.succ_pos _⟩ k *
@@ -553,9 +562,9 @@ theorem prop_9_1_part1_geom_mean_sqrt_n (μ : Measure ℝ) [IsFiniteMeasure μ]
         pow_le_pow_left₀ (by positivity) h1 n
       have h3 : (Real.exp (x / (n : ℝ) - 1)) ^ n = Real.exp x * (Real.exp 1)⁻¹ ^ n := by
         rw [← Real.exp_nat_mul]
-        have harg : (n : ℝ) * (x / (n : ℝ) - 1) = x + -(n : ℝ) * 1 := by
+        have harg : (n : ℝ) * (x / (n : ℝ) - 1) = x + -(n : ℝ) := by
           field_simp [hn_pos.ne']
-        rw [harg, Real.exp_add, mul_one, ← neg_mul, show -(n : ℝ) = (n : ℝ) * (-1) by ring,
+        rw [harg, Real.exp_add, show -(n : ℝ) = (n : ℝ) * (-1) by ring,
           Real.exp_nat_mul, Real.exp_neg]
       rw [h3, div_pow] at h2
       have h4 := mul_le_mul_of_nonneg_right h2 (show 0 ≤ (n : ℝ) ^ n * Real.exp (-x) by positivity)
@@ -650,7 +659,7 @@ section Prop91Part2Eq91Bimodal
 
 /-- Bit-flip on site `x` of `QubitIdx N`. -/
 private def eq91Flip {N : ℕ} (x : Fin N) (s : QubitIdx N) : QubitIdx N :=
-  Function.update s x (if s x = 0 then 1 else 0)
+  Function.update s x (1 - s x)
 
 private lemma eq91Flip_eq91Flip {N : ℕ} (x : Fin N) (s : QubitIdx N) :
     eq91Flip x (eq91Flip x s) = s := by
@@ -665,7 +674,7 @@ private lemma eq91Flip_ne_self {N : ℕ} (x : Fin N) (s : QubitIdx N) :
   intro h
   have hx := congrFun h x
   unfold eq91Flip at hx; simp only [Function.update_self] at hx
-  generalize hb : s x = b; rw [hb] at hx; fin_cases b <;> simp at hx
+  generalize hb : s x = b; rw [hb] at hx; fin_cases b <;> simp_all
 
 /-- The unique peak basis state `|1⟩_{x₀} ⊗ |0⋯0⟩_{y ≠ x₀}` in Eq. (9.1). -/
 def eq91PeakIdx (N : ℕ) (x₀ : Fin N) : QubitIdx N :=
@@ -724,7 +733,11 @@ private lemma card_qubitIdx_at_site {N : ℕ} (x₀ : Fin N) (v : Fin 2) :
   have h2N : 2 ^ N = 2 * 2 ^ (N - 1) := by
     conv_lhs => rw [show N = (N - 1) + 1 by omega, pow_succ]
     ring
-  fin_cases v <;> omega
+  have hc0 : (Finset.univ.filter (fun s : QubitIdx N ↦ s x₀ = 0)).card = 2 ^ (N - 1) := by omega
+  have hc1 : (Finset.univ.filter (fun s : QubitIdx N ↦ s x₀ = 1)).card = 2 ^ (N - 1) := by omega
+  fin_cases v
+  · exact hc0
+  · exact hc1
 
 lemma eq91BimodalProb_sum_one_sector {N : ℕ} (x₀ : Fin N) (ε : ℝ) :
     ∑ s ∈ Finset.univ.filter (fun s : QubitIdx N ↦ s x₀ = 1), eq91BimodalProb N x₀ ε s = 1 / 2 := by
@@ -870,12 +883,12 @@ lemma eq91WitnessOp_mem_filtration {N : ℕ} (x₀ : Fin N) :
   · have h1 : (1 : QubitOp N) = pauliString (fun _ : Fin N ↦ (0 : Fin 4)) := by
       ext s t; unfold pauliString kronOp; simp only [Matrix.one_apply, Matrix.of_apply]
       by_cases hst : s = t
-      · subst hst; rw [if_pos rfl]; apply Finset.prod_eq_one; intro y _
+      · subst hst; rw [if_pos rfl]; symm; apply Finset.prod_eq_one; intro y _
         generalize hb : s y = b; fin_cases b <;> simp [pauliMat]
       · rw [if_neg hst]
         have hne_c : ∃ y : Fin N, s y ≠ t y := by by_contra h; push Not at h; exact hst (funext h)
         rcases hne_c with ⟨y, hy⟩
-        apply Finset.prod_eq_zero (Finset.mem_univ y)
+        symm; apply Finset.prod_eq_zero (Finset.mem_univ y)
         generalize h1 : s y = v1; generalize h2 : t y = v2
         rw [h1, h2] at hy; fin_cases v1 <;> fin_cases v2 <;> simp_all [pauliMat]
     rw [h1]; apply Submodule.subset_span
@@ -902,10 +915,10 @@ theorem eq91WitnessOp_wightmanNormSq {N : ℕ} (x₀ : Fin N) {ε : ℝ} (hε0 :
   set G := eq91BimodalGibbs N x₀ hε0 hε1
   unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
   rw [(eq91WitnessOp_isHermitian x₀).eq, eq91WitnessOp_eq_diagonal]
-  change (Matrix.diagonal (fun s ↦ (Real.sqrt (eq91BimodalProb N x₀ ε s) : ℂ)) *
-    Matrix.diagonal (fun s ↦ ((if s x₀ = 1 then Real.sqrt 2 else 0 : ℝ) : ℂ)) *
-    Matrix.diagonal (fun s ↦ (Real.sqrt (eq91BimodalProb N x₀ ε s) : ℂ)) *
-    Matrix.diagonal (fun s ↦ ((if s x₀ = 1 then Real.sqrt 2 else 0 : ℝ) : ℂ))).trace.re = 1
+  change (Matrix.diagonal (fun s : QubitIdx N ↦ (Real.sqrt (eq91BimodalProb N x₀ ε s) : ℂ)) *
+    Matrix.diagonal (fun s : QubitIdx N ↦ ((if s x₀ = 1 then Real.sqrt 2 else 0 : ℝ) : ℂ)) *
+    Matrix.diagonal (fun s : QubitIdx N ↦ (Real.sqrt (eq91BimodalProb N x₀ ε s) : ℂ)) *
+    Matrix.diagonal (fun s : QubitIdx N ↦ ((if s x₀ = 1 then Real.sqrt 2 else 0 : ℝ) : ℂ))).trace.re = 1
   simp only [Matrix.diagonal_mul_diagonal, Matrix.trace_diagonal, Complex.re_sum]
   have hterm : ∀ s : QubitIdx N,
       ((Real.sqrt (eq91BimodalProb N x₀ ε s) : ℂ) *
@@ -1002,9 +1015,10 @@ theorem eq91Bimodal_mssThermalSize_lower {N : ℕ} (hN : 2 ≤ N) (x₀ : Fin N)
         intro s; dsimp only [a, r]
         by_cases hs1 : s x₀ = 1
         · have hfl : eq91Flip x₀ s x₀ ≠ 1 := by simp [eq91Flip, hs1]
-          rw [if_pos hs1, if_neg hfl, mul_zero, sub_zero, mul_pow,
-            Real.sq_sqrt (by norm_num), Real.sq_sqrt (eq91BimodalProb_pos x₀ hε0 hε1 s).le]
-        · rw [if_neg hs1]; simp
+          simp only [hs1, ↓reduceIte, hfl, mul_zero, sub_zero, mul_pow,
+            Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2),
+            Real.sq_sqrt (eq91BimodalProb_pos x₀ hε0 hε1 s).le]
+        · simp only [hs1, ↓reduceIte]; ring
       simp_rw [hterm, ← Finset.sum_filter, ← Finset.mul_sum, eq91BimodalProb_sum_one_sector]
       norm_num
     have hr_x0 : (hsInner (Matrix.diagonal (fun s ↦ (r s : ℂ)))
@@ -1066,7 +1080,8 @@ theorem eq91Bimodal_mssThermalSize_lower {N : ℕ} (hN : 2 ≤ N) (x₀ : Fin N)
         (if eq91Flip y pk x₀ = 1 then (r (eq91Flip y pk) - r (eq91Flip y (eq91Flip y pk))) ^ 2 else 0)) ≤
         ∑ s : QubitIdx N, (if s x₀ = 1 then (r s - r (eq91Flip y s)) ^ 2 else 0) := by
       have hpair := Finset.sum_le_sum_of_subset_of_nonneg
-        (s₁ := ({pk, eq91Flip y pk} : Finset (QubitIdx N))) (s₂ := Finset.univ)
+        (s := ({pk, eq91Flip y pk} : Finset (QubitIdx N))) (t := Finset.univ)
+        (f := fun s : QubitIdx N ↦ if s x₀ = 1 then (r s - r (eq91Flip y s)) ^ 2 else 0)
         (Finset.subset_univ _) (fun s _ _ ↦ by split_ifs <;> positivity)
       rwa [Finset.sum_pair hne_pk] at hpair
     rw [if_pos hpk1, if_pos hflpk1, eq91Flip_eq91Flip] at hsub_le
@@ -1096,7 +1111,8 @@ theorem eq91Bimodal_mssThermalSize_lower {N : ℕ} (hN : 2 ≤ N) (x₀ : Fin N)
         linarith
       have h2sqrt : 2 * Real.sqrt (u * v) ≤ Real.sqrt (2 * ε / (2 : ℝ) ^ N) := by
         have huv : 4 * (u * v) ≤ 2 * ε / (2 : ℝ) ^ N := by
-          dsimp only [v]; nlinarith
+          calc 4 * (u * v) ≤ 4 * ((1 / 2 : ℝ) * v) := by nlinarith
+            _ = 2 * ε / (2 : ℝ) ^ N := by dsimp only [v]; ring
         calc 2 * Real.sqrt (u * v) = Real.sqrt 4 * Real.sqrt (u * v) := by
                 rw [show (4 : ℝ) = 2 ^ 2 by norm_num, Real.sqrt_sq (by norm_num)]
           _ = Real.sqrt (4 * (u * v)) := (Real.sqrt_mul (by norm_num) _).symm
@@ -1124,26 +1140,64 @@ theorem eq91Bimodal_mssThermalSize_lower {N : ℕ} (hN : 2 ≤ N) (x₀ : Fin N)
 private lemma eq91_mssThermalSize_bddAbove {N : ℕ} (G : GibbsData N) (s : ℕ) :
     BddAbove { r : ℝ | ∃ A ∈ filtrationSubmodule N s,
       gibbsWightmanNormSq G A = 1 ∧ r = mssThermalSize G A } := by
-  refine ⟨(N : ℝ), ?_⟩
+  refine ⟨(3 / 2 : ℝ) * (N : ℝ) + |(hsInner G.ρHalf (totalSizeOp G.ρHalf)).re|, ?_⟩
   rintro r ⟨A, _, hAnorm, rfl⟩
-  unfold mssThermalSize totalSizeOp
-  have h1 : ∀ M : QubitOp N, (hsInner M (∑ y : Fin N, siteSizeOp y M)).re =
-      ∑ y : Fin N, (hsInner M (siteSizeOp y M)).re := fun M ↦ by
-    unfold hsInner; rw [Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum]
-  rw [h1, h1]
-  have hsub : 0 ≤ ∑ y : Fin N, (hsInner G.ρHalf (siteSizeOp y G.ρHalf)).re :=
-    Finset.sum_nonneg fun y _ ↦ siteSizeOp_hsInner_nonneg y G.ρHalf
-  have htop : ∑ y : Fin N, (hsInner (jBeta G.ρQuarter A) (siteSizeOp y (jBeta G.ρQuarter A))).re ≤ (N : ℝ) := by
-    have hnorm : hsNormSq (jBeta G.ρQuarter A) = 1 := by
-      rw [hsNormSq_jBeta_eq_wightmanNormSq G A, hAnorm]
-    have hsite_le : ∀ y : Fin N,
-        (hsInner (jBeta G.ρQuarter A) (siteSizeOp y (jBeta G.ρQuarter A))).re ≤ 1 := fun y ↦ by
-      have hle := siteSizeOp_hsInner_le_hsNormSq y (jBeta G.ρQuarter A)
-      linarith
-    calc ∑ y : Fin N, (hsInner (jBeta G.ρQuarter A) (siteSizeOp y (jBeta G.ρQuarter A))).re
-        ≤ ∑ _y : Fin N, (1 : ℝ) := Finset.sum_le_sum fun y _ ↦ hsite_le y
-      _ = (N : ℝ) := by simp
-  linarith
+  unfold mssThermalSize
+  have hM_norm : (hsInner (jBeta G.ρQuarter A) (jBeta G.ρQuarter A)).re = 1 := by
+    have hiso := (prop_2_2_lanczos_invariance G 0 (by simp)).1 A A
+    unfold gibbsWightmanNormSq at hAnorm
+    rw [← hiso]; exact hAnorm
+  have htotal : (hsInner (jBeta G.ρQuarter A) (totalSizeOp (jBeta G.ρQuarter A))).re =
+      ∑ x : Fin N, (hsInner (jBeta G.ρQuarter A) (siteSizeOp x (jBeta G.ρQuarter A))).re := by
+    unfold totalSizeOp hsInner; rw [Matrix.mul_sum, Matrix.trace_sum, Complex.re_sum]
+  have hle : (hsInner (jBeta G.ρQuarter A) (totalSizeOp (jBeta G.ρQuarter A))).re ≤ (3 / 2 : ℝ) * (N : ℝ) := by
+    rw [htotal]
+    calc ∑ x : Fin N, (hsInner (jBeta G.ρQuarter A) (siteSizeOp x (jBeta G.ρQuarter A))).re
+        ≤ ∑ _x : Fin N, (3 / 2 : ℝ) := by
+          apply Finset.sum_le_sum; intro x _
+          set M := jBeta G.ρQuarter A
+          have hsite_eq : siteSizeOp x M = (1 / 4 : ℂ) • ∑ α : Fin 3,
+              (M - pauliSite x α.succ * M * pauliSite x α.succ) := by
+            unfold siteSizeOp partialTraceSite
+            rw [Fin.sum_univ_succ, pauliSite_zero, Matrix.one_mul, Matrix.mul_one,
+              Finset.sum_sub_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin]
+            ext i j; simp; ring
+          rw [hsite_eq]; unfold hsInner
+          rw [Matrix.mul_smul, Matrix.trace_smul, smul_eq_mul, Matrix.mul_sum, Matrix.trace_sum,
+            show (1 / 4 : ℂ) = ((1 / 4 : ℝ) : ℂ) by push_cast; rfl, Complex.re_ofReal_mul, Complex.re_sum]
+          have h3 : ∑ α : Fin 3, (Mᴴ * (M - pauliSite x α.succ * M * pauliSite x α.succ)).trace.re ≤
+              ∑ _α : Fin 3, (2 : ℝ) := by
+            apply Finset.sum_le_sum; intro α _
+            set U := pauliSite x α.succ
+            have hU_h : Uᴴ = U := (pauliSite_herm x α.succ).eq
+            have hU_sq : U * U = 1 := pauliSite_sq x α.succ
+            have hnn : 0 ≤ (hsInner (M + U * M * U) (M + U * M * U)).re := hsNormSq_nonneg _
+            have hUMU : (hsInner (U * M * U) (U * M * U)).re = (hsInner M M).re := by
+              unfold hsInner
+              rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hU_h]
+              have h1 : U * Mᴴ * U * (U * M * U) = U * (Mᴴ * M) * U := by
+                calc U * Mᴴ * U * (U * M * U) = U * Mᴴ * (U * U) * M * U := by simp only [Matrix.mul_assoc]
+                  _ = U * (Mᴴ * M) * U := by rw [hU_sq, Matrix.mul_one]; simp only [Matrix.mul_assoc]
+              rw [h1, Matrix.trace_mul_cycle, hU_sq, Matrix.one_mul]
+            have hsym : (hsInner (U * M * U) M).re = (hsInner M (U * M * U)).re := by
+              unfold hsInner
+              rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hU_h]
+              have h1 : (U * Mᴴ * U * M).trace = (Mᴴ * (U * M * U)).trace := by
+                rw [Matrix.trace_mul_cycle]; simp only [Matrix.mul_assoc]
+              rw [h1]
+            have hexp : (hsInner (M + U * M * U) (M + U * M * U)).re =
+                2 * (hsInner M M).re + 2 * (hsInner M (U * M * U)).re := by
+              unfold hsInner at hUMU hsym ⊢
+              simp only [Matrix.conjTranspose_add, Matrix.add_mul, Matrix.mul_add, Matrix.trace_add,
+                Complex.add_re]
+              linarith
+            have hdiff : (Mᴴ * (M - U * M * U)).trace.re = (hsInner M M).re - (hsInner M (U * M * U)).re := by
+              unfold hsInner; rw [Matrix.mul_sub, Matrix.trace_sub, Complex.sub_re]
+            linarith
+          simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul] at h3
+          linarith
+      _ = (3 / 2 : ℝ) * (N : ℝ) := by simp [mul_comm]
+  linarith [neg_abs_le (hsInner G.ρHalf (totalSizeOp G.ρHalf)).re]
 
 /-- **Proposition 9.1(2) — Exact Eq. (9.1) `lambdaMSS` Lower Bound at `s = 1`**. -/
 theorem eq91Bimodal_lambdaMSS_lower {N : ℕ} (hN : 2 ≤ N) (x₀ : Fin N)
@@ -1178,29 +1232,29 @@ theorem prop_9_1_part2_eq91_violates_H2 {δ C₁ C₂ : ℝ} (hδ0 : 0 ≤ δ) (
   have hN : 2 ≤ N := le_max_right _ _
   have hN_ge : N₀ ≤ N := le_max_left _ _
   have hN_pos : (0 : ℝ) < (N : ℝ) := by exact_mod_cast (by omega : 0 < N)
-  refine ⟨N, hN, 1 / 16, by norm_num, by norm_num, ?_⟩
-  have hlow := eq91Bimodal_lambdaMSS_lower hN ⟨0, by omega⟩ (by norm_num : (0 : ℝ) < 1 / 16)
-    (by norm_num : (1 / 16 : ℝ) < 1)
+  refine ⟨N, hN, 1 / 32, by norm_num, by norm_num, ?_⟩
+  have hlow := eq91Bimodal_lambdaMSS_lower hN ⟨0, by omega⟩ (by norm_num : (0 : ℝ) < 1 / 32)
+    (by norm_num : (1 / 32 : ℝ) < 1)
   have h2N : (4 : ℝ) ≤ (2 : ℝ) ^ N := by
     have : 2 ^ 2 ≤ 2 ^ N := Nat.pow_le_pow_right (by norm_num) hN
     exact_mod_cast this
-  have hsqrt_le : Real.sqrt (2 * (1 / 16 : ℝ) / (2 : ℝ) ^ N) ≤ 1 / 4 := by
-    have hle : 2 * (1 / 16 : ℝ) / (2 : ℝ) ^ N ≤ (1 / 4 : ℝ) ^ 2 := by
-      calc 2 * (1 / 16 : ℝ) / (2 : ℝ) ^ N ≤ (1 / 8 : ℝ) / 4 := by
-              rw [show (2 : ℝ) * (1 / 16 : ℝ) = 1 / 8 by norm_num]
+  have hsqrt_le : Real.sqrt (2 * (1 / 32 : ℝ) / (2 : ℝ) ^ N) ≤ 1 / 8 := by
+    have hle : 2 * (1 / 32 : ℝ) / (2 : ℝ) ^ N ≤ (1 / 8 : ℝ) ^ 2 := by
+      calc 2 * (1 / 32 : ℝ) / (2 : ℝ) ^ N ≤ (1 / 16 : ℝ) / 4 := by
+              rw [show (2 : ℝ) * (1 / 32 : ℝ) = 1 / 16 by norm_num]
               exact div_le_div_of_nonneg_left (by norm_num) (by norm_num) h2N
-        _ ≤ (1 / 4 : ℝ) ^ 2 := by norm_num
-    calc Real.sqrt (2 * (1 / 16 : ℝ) / (2 : ℝ) ^ N) ≤ Real.sqrt ((1 / 4 : ℝ) ^ 2) := Real.sqrt_le_sqrt hle
-      _ = 1 / 4 := Real.sqrt_sq (by norm_num)
+        _ = (1 / 8 : ℝ) ^ 2 := by norm_num
+    calc Real.sqrt (2 * (1 / 32 : ℝ) / (2 : ℝ) ^ N) ≤ Real.sqrt ((1 / 8 : ℝ) ^ 2) := Real.sqrt_le_sqrt hle
+      _ = 1 / 8 := Real.sqrt_sq (by norm_num)
   have hge_eighth : ((N : ℝ) - 1) / 8 ≤ lambdaMSS (eq91BimodalGibbs N ⟨0, by omega⟩
-      (by norm_num : (0 : ℝ) < 1 / 16) (by norm_num : (1 / 16 : ℝ) < 1)) 1 := by
-    have hfac : (1 / 2 : ℝ) ≤ 1 - (1 / 16 : ℝ) - 2 * Real.sqrt (2 * (1 / 16 : ℝ) / (2 : ℝ) ^ N) := by
+      (by norm_num : (0 : ℝ) < 1 / 32) (by norm_num : (1 / 32 : ℝ) < 1)) 1 := by
+    have hfac : (1 / 2 : ℝ) ≤ 1 - (1 / 32 : ℝ) - 2 * Real.sqrt (2 * (1 / 32 : ℝ) / (2 : ℝ) ^ N) := by
       linarith
     have hnn : 0 ≤ ((N : ℝ) - 1) / 4 := by
       have : (2 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
       linarith
     calc ((N : ℝ) - 1) / 8 = (((N : ℝ) - 1) / 4) * (1 / 2) := by ring
-      _ ≤ (((N : ℝ) - 1) / 4) * (1 - (1 / 16 : ℝ) - 2 * Real.sqrt (2 * (1 / 16 : ℝ) / (2 : ℝ) ^ N)) :=
+      _ ≤ (((N : ℝ) - 1) / 4) * (1 - (1 / 32 : ℝ) - 2 * Real.sqrt (2 * (1 / 32 : ℝ) / (2 : ℝ) ^ N)) :=
           mul_le_mul_of_nonneg_left hfac hnn
       _ ≤ _ := hlow
   have hsmall := hN₀ N hN_ge
@@ -1317,20 +1371,27 @@ theorem doubleWell_lanczos_tridiag_closure {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} 
     have h := congrFun P.heig_m j
     simp only [Matrix.mulVec, dotProduct, Pi.smul_apply, smul_eq_mul] at h
     exact_mod_cast h
-  constructor <;> (
-    ext j
+  have hsplit : ∀ (j : Fin D) (s : ℂ), ∑ k : Fin D, (doubleWellTridiag D E_B j k : ℂ) *
+      (((P.φp k : ℂ) + s * (P.φm k : ℂ)) / (Real.sqrt 2 : ℂ)) =
+      ((∑ k : Fin D, (doubleWellTridiag D E_B j k : ℂ) * (P.φp k : ℂ)) +
+       s * (∑ k : Fin D, (doubleWellTridiag D E_B j k : ℂ) * (P.φm k : ℂ))) / (Real.sqrt 2 : ℂ) := by
+    intro j s; rw [Finset.mul_sum, ← Finset.sum_add_distrib, Finset.sum_div]
+    refine Finset.sum_congr rfl fun k _ ↦ by ring
+  constructor
+  · ext j
     simp only [L_ℂ, doubleWellK0, doubleWellPsi0, doubleWellK1, a₀, b₁,
       Matrix.mulVec, dotProduct, Matrix.map_apply, Pi.add_apply, Pi.smul_apply, smul_eq_mul,
       Complex.ofReal_div, Complex.ofReal_add, Complex.ofReal_sub]
-    have hsplit : ∀ s : ℂ, ∑ k : Fin D, (doubleWellTridiag D E_B j k : ℂ) *
-        (((P.φp k : ℂ) + s * (P.φm k : ℂ)) / (Real.sqrt 2 : ℂ)) =
-        ((∑ k : Fin D, (doubleWellTridiag D E_B j k : ℂ) * (P.φp k : ℂ)) +
-         s * (∑ k : Fin D, (doubleWellTridiag D E_B j k : ℂ) * (P.φm k : ℂ))) / (Real.sqrt 2 : ℂ) := by
-      intro s; rw [Finset.mul_sum, ← Finset.sum_add_distrib, Finset.sum_div]
-      refine Finset.sum_congr rfl fun k _ ↦ by ring
-    try (have h1 := hsplit 1; simp only [one_mul] at h1; rw [h1, hp_j j, hm_j j]; push_cast; ring)
-    try (have h1 := hsplit (-1); simp only [neg_one_mul, ← sub_eq_add_neg] at h1;
-      rw [h1, hp_j j, hm_j j]; push_cast; ring))
+    have h1 := hsplit j 1; simp only [one_mul] at h1
+    change ∑ k : Fin D, (doubleWellTridiag D E_B j k : ℂ) * (((P.φp k : ℂ) + (P.φm k : ℂ)) / (Real.sqrt 2 : ℂ)) = _
+    rw [h1, hp_j j, hm_j j]; push_cast; ring
+  · ext j
+    simp only [L_ℂ, doubleWellK0, doubleWellPsi0, doubleWellK1, a₀, b₁,
+      Matrix.mulVec, dotProduct, Matrix.map_apply, Pi.add_apply, Pi.smul_apply, smul_eq_mul,
+      Complex.ofReal_div, Complex.ofReal_add, Complex.ofReal_sub]
+    have h1 := hsplit j (-1); simp only [neg_one_mul, ← sub_eq_add_neg] at h1
+    change ∑ k : Fin D, (doubleWellTridiag D E_B j k : ℂ) * (((P.φp k : ℂ) - (P.φm k : ℂ)) / (Real.sqrt 2 : ℂ)) = _
+    rw [h1, hp_j j, hm_j j]; push_cast; ring
 
 /-- **Exact Derivation of `doubleWellKrylovK` from `doubleWellPsiEvol` and `{|K₀⟩, |K₁⟩}`**:
 For every `t : ℝ`, the Lanczos amplitudes `c₀(t) = ⟨K₀ | ψ(t)⟩` and `c₁(t) = ⟨K₁ | ψ(t)⟩` of
@@ -1362,6 +1423,8 @@ theorem doubleWell_krylov_complexity_from_lanczos {D : ℕ} (hD : 4 ≤ D) {E_B 
     exact_mod_cast this
   have hc0 : vecInner (doubleWellK0 hD hEB) (doubleWellPsiEvol hD hEB t) = (ep + em) / 2 := by
     unfold vecInner doubleWellK0 doubleWellPsi0 doubleWellPsiEvol
+    change ∑ j : Fin D, (starRingEnd ℂ) ((((P.φp j : ℝ) + P.φm j) / Real.sqrt 2 : ℝ) : ℂ) *
+      ((ep * (P.φp j : ℂ) + em * (P.φm j : ℂ)) / (Real.sqrt 2 : ℂ)) = (ep + em) / 2
     simp only [Complex.conj_ofReal, Complex.ofReal_div, Complex.ofReal_add]
     have hsum : ∑ j : Fin D, ((P.φp j : ℂ) + (P.φm j : ℂ)) / (Real.sqrt 2 : ℂ) *
         ((ep * (P.φp j : ℂ) + em * (P.φm j : ℂ)) / (Real.sqrt 2 : ℂ)) =
@@ -1373,10 +1436,12 @@ theorem doubleWell_krylov_complexity_from_lanczos {D : ℕ} (hD : 4 ≤ D) {E_B 
       refine Finset.sum_congr rfl fun j _ ↦ ?_
       have hden : (Real.sqrt 2 : ℂ) ≠ 0 := by
         exact_mod_cast (Real.sqrt_pos.mpr (by norm_num : (0 : ℝ) < 2)).ne'
-      field_simp [hden]; rw [show (Real.sqrt 2 : ℂ) ^ 2 = 2 by rw [sq, hsq2]]; ring
+      field_simp [hden]; rw [show (Real.sqrt 2 : ℂ) ^ 2 = 2 by rw [sq, hsq2]]
     rw [hsum, hφp2, hφpm, hφmp, hφm2]; ring
   have hc1 : vecInner (doubleWellK1 hD hEB) (doubleWellPsiEvol hD hEB t) = (ep - em) / 2 := by
     unfold vecInner doubleWellK1 doubleWellPsiEvol
+    change ∑ j : Fin D, (starRingEnd ℂ) ((((P.φp j : ℝ) - P.φm j) / Real.sqrt 2 : ℝ) : ℂ) *
+      ((ep * (P.φp j : ℂ) + em * (P.φm j : ℂ)) / (Real.sqrt 2 : ℂ)) = (ep - em) / 2
     simp only [Complex.conj_ofReal, Complex.ofReal_div, Complex.ofReal_sub]
     have hsum : ∑ j : Fin D, ((P.φp j : ℂ) - (P.φm j : ℂ)) / (Real.sqrt 2 : ℂ) *
         ((ep * (P.φp j : ℂ) + em * (P.φm j : ℂ)) / (Real.sqrt 2 : ℂ)) =
@@ -1388,7 +1453,7 @@ theorem doubleWell_krylov_complexity_from_lanczos {D : ℕ} (hD : 4 ≤ D) {E_B 
       refine Finset.sum_congr rfl fun j _ ↦ ?_
       have hden : (Real.sqrt 2 : ℂ) ≠ 0 := by
         exact_mod_cast (Real.sqrt_pos.mpr (by norm_num : (0 : ℝ) < 2)).ne'
-      field_simp [hden]; rw [show (Real.sqrt 2 : ℂ) ^ 2 = 2 by rw [sq, hsq2]]; ring
+      field_simp [hden]; rw [show (Real.sqrt 2 : ℂ) ^ 2 = 2 by rw [sq, hsq2]]
     rw [hsum, hφp2, hφpm, hφmp, hφm2]; ring
   set θ : ℝ := (P.Em - P.Ep) * t / 2
   set φ : ℝ := -(P.Ep + P.Em) * t / 2
@@ -1419,9 +1484,9 @@ theorem doubleWell_krylov_complexity_from_lanczos {D : ℕ} (hD : 4 ≤ D) {E_B 
       Complex.norm_real, Real.norm_eq_abs, sq_abs]
   rw [hc0, hc1, hnorm_c0, hnorm_c1]
   refine ⟨Real.cos_sq_add_sin_sq θ, ?_⟩
-  simp [doubleWellKrylovK, θ]
+  simp only [zero_mul, one_mul, zero_add, doubleWellKrylovK, θ, P]
 
-/-- Elementary linear algebra: any 3 pairs `(a₁, b₁), (a₂, b₂), (a₃, b₃) ∈ ℝ²` admit a nonzero
+/-- Elementary linear algebra: any 3 pairs `(a₁, b₁), (a₂, b₂), (a₃, b₃) ∈ ℝ²` have a nonzero
 real linear combination `(c₁, c₂, c₃) ≠ (0, 0, 0)` with `∑ cᵢ aᵢ = 0` and `∑ cᵢ bᵢ = 0`. -/
 private lemma exists_nonzero_annihilator_three_pairs (a₁ a₂ a₃ b₁ b₂ b₃ : ℝ) :
     ∃ c₁ c₂ c₃ : ℝ, (c₁ ≠ 0 ∨ c₂ ≠ 0 ∨ c₃ ≠ 0) ∧
@@ -1486,14 +1551,14 @@ theorem lemma_B_1_bulk_eigenvalues_in_band {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} 
     have hsum1 : ∑ i : Fin D, e k i ^ 2 = 1 := by simpa [dotProduct, sq] using hdot1
     have hlhs : dotProduct (e k) (doubleWellTridiag D E_B *ᵥ e k) = hL.eigenvalues k := by
       rw [heig k, dotProduct_smul, smul_eq_mul, hdot1, mul_one]
-    have hbulk_le : ∑ i : Fin D, (if i.val ≠ 0 ∧ i.val ≠ D - 1 then e k i ^ 2 else 0) ≤
-        ∑ i : Fin D, e k i ^ 2 := Finset.sum_le_sum fun i _ ↦ by split_ifs <;> positivity
+    have hbulk_le : ∑ i ∈ Finset.univ.filter (fun i : Fin D ↦ ¬(i.val = 0 ∨ i.val = D - 1)), e k i ^ 2 ≤
+        ∑ i : Fin D, e k i ^ 2 :=
+      Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _) fun i _ _ ↦ sq_nonneg _
     have hEB_nn : 0 ≤ E_B := by linarith
-    have h1 : E_B * ∑ i : Fin D, (if i.val ≠ 0 ∧ i.val ≠ D - 1 then e k i ^ 2 else 0) ≤ E_B * 1 :=
-      mul_le_mul_of_nonneg_left (hsum1 ▸ hbulk_le) hEB_nn
-    have h2 : -(2 * ∑ i : Fin (D - 1), e k ⟨i.val, by omega⟩ * e k ⟨i.val + 1, by omega⟩) ≤
-        2 * ∑ i : Fin D, e k i ^ 2 := by
-      have := (abs_le.mp hhop).1; linarith
+    have h1 : E_B * ∑ i ∈ Finset.univ.filter (fun i : Fin D ↦ ¬(i.val = 0 ∨ i.val = D - 1)), e k i ^ 2 ≤
+        E_B * 1 := mul_le_mul_of_nonneg_left (hsum1 ▸ hbulk_le) hEB_nn
+    have h2 : 2 * ∑ i : Fin (D - 1), e k ⟨i.val, by omega⟩ * e k ⟨i.val + 1, by omega⟩ ≤
+        2 * ∑ i : Fin D, e k i ^ 2 := (abs_le.mp hhop).2
     linarith
   have hlow_card : (Finset.univ.filter (fun k : Fin D ↦ hL.eigenvalues k < E_B - 2)).card ≤ 2 := by
     by_contra hgt; push Not at hgt
@@ -1523,7 +1588,7 @@ theorem lemma_B_1_bulk_eigenvalues_in_band {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} 
     have hv_norm : dotProduct v v = c₁ ^ 2 + c₂ ^ 2 + c₃ ^ 2 := by
       dsimp only [v]
       simp only [dotProduct_add, add_dotProduct, dotProduct_smul, smul_dotProduct, smul_eq_mul,
-        hortho, if_pos rfl, if_neg hne12, if_neg hne12.symm, if_neg hne13, if_neg hne13.symm,
+        hortho, ↓reduceIte, if_neg hne12, if_neg hne12.symm, if_neg hne13, if_neg hne13.symm,
         if_neg hne23, if_neg hne23.symm]
       ring
     have hv_pos : 0 < dotProduct v v := by
@@ -1542,7 +1607,7 @@ theorem lemma_B_1_bulk_eigenvalues_in_band {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} 
           hL.eigenvalues k₁ * c₁ ^ 2 + hL.eigenvalues k₂ * c₂ ^ 2 + hL.eigenvalues k₃ * c₃ ^ 2 := by
         rw [hLv]; dsimp only [v]
         simp only [dotProduct_add, add_dotProduct, dotProduct_smul, smul_dotProduct, smul_eq_mul,
-          hortho, if_pos rfl, if_neg hne12, if_neg hne12.symm, if_neg hne13, if_neg hne13.symm,
+          hortho, ↓reduceIte, if_neg hne12, if_neg hne12.symm, if_neg hne13, if_neg hne13.symm,
           if_neg hne23, if_neg hne23.symm]
         ring
       rw [hval, hv_norm]
@@ -1562,20 +1627,21 @@ theorem lemma_B_1_bulk_eigenvalues_in_band {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} 
     have hv_quad_ge : (E_B - 2) * dotProduct v v ≤ dotProduct v (doubleWellTridiag D E_B *ᵥ v) := by
       have hq := doubleWellTridiag_quadForm hD2 E_B v
       have hhop := path_hopping_quad_le hD2 v
-      have hbulk_eq : ∑ i : Fin D, (if i.val ≠ 0 ∧ i.val ≠ D - 1 then v i ^ 2 else 0) =
+      have hbulk_eq : ∑ i ∈ Finset.univ.filter (fun i : Fin D ↦ ¬(i.val = 0 ∨ i.val = D - 1)), v i ^ 2 =
           ∑ i : Fin D, v i ^ 2 := by
+        rw [Finset.sum_filter]
         refine Finset.sum_congr rfl fun i _ ↦ ?_
         split_ifs with hi
         · rfl
         · push Not at hi
-          by_cases h0 : i.val = 0
+          rcases hi with h0 | h1
           · have hi0 : i = ⟨0, by omega⟩ := Fin.ext h0
             rw [hi0, hv0]; norm_num
-          · have hi1 : i = ⟨D - 1, by omega⟩ := Fin.ext (hi h0)
+          · have hi1 : i = ⟨D - 1, by omega⟩ := Fin.ext h1
             rw [hi1, hv1]; norm_num
       have hdot_eq : dotProduct v v = ∑ i : Fin D, v i ^ 2 := by simp [dotProduct, sq]
-      have hhop_up : 2 * ∑ i : Fin (D - 1), v ⟨i.val, by omega⟩ * v ⟨i.val + 1, by omega⟩ ≤
-          2 * ∑ i : Fin D, v i ^ 2 := (abs_le.mp hhop).2
+      have hhop_lo : -(2 * ∑ i : Fin D, v i ^ 2) ≤
+          2 * ∑ i : Fin (D - 1), v ⟨i.val, by omega⟩ * v ⟨i.val + 1, by omega⟩ := (abs_le.mp hhop).1
       rw [hbulk_eq] at hq
       rw [hdot_eq]; linarith
     linarith
@@ -1585,7 +1651,7 @@ theorem lemma_B_1_bulk_eigenvalues_in_band {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} 
         Finset.univ.filter (fun k : Fin D ↦ E_B - 2 ≤ hL.eigenvalues k ∧ hL.eigenvalues k ≤ E_B + 2) := by
       ext k; simp only [Finset.mem_filter, Finset.mem_univ, true_and, not_lt]
       exact ⟨fun h ↦ ⟨h, hupper k⟩, fun h ↦ h.1⟩
-    have hadd := Finset.filter_card_add_filter_neg_card_eq_card
+    have hadd := Finset.card_filter_add_card_filter_not
       (s := Finset.univ) (p := fun k : Fin D ↦ hL.eigenvalues k < E_B - 2)
     rw [Finset.card_univ, Fintype.card_fin, hcomp] at hadd
     omega
