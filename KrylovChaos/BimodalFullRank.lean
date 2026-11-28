@@ -165,7 +165,8 @@ private lemma siteSizeOp_eq_three_avg {N : ℕ} (x : Fin N) (M : QubitOp N) :
     rw [hfun, kronOp_one]
   unfold siteSizeOp partialTraceSite
   rw [Fin.sum_univ_four, Fin.sum_univ_three]
-  simp only [Fin.succ_zero_eq_one, Fin.succ_one_eq_two, h0, Matrix.one_mul, Matrix.mul_one]
+  have hs2 : (Fin.succ (2 : Fin 3) : Fin 4) = 3 := by decide
+  simp only [Fin.succ_zero_eq_one, Fin.succ_one_eq_two, hs2, h0, Matrix.one_mul, Matrix.mul_one]
   ext s t
   simp only [Matrix.sub_apply, Matrix.smul_apply, Matrix.add_apply, smul_eq_mul]
   ring
@@ -175,7 +176,7 @@ private lemma pauliSite_conj_diagonal_Z {N : ℕ} (x : Fin N) (d : QubitIdx N �
     pauliSite x 3 * Matrix.diagonal d * pauliSite x 3 = Matrix.diagonal d := by
   ext s t
   simp only [Matrix.mul_apply, Matrix.diagonal_apply, mul_ite, mul_zero, Finset.sum_ite_eq,
-    Finset.mem_univ, ↓reduceIte]
+    Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
   simp_rw [pauliSite_entry]
   have h1 : ∀ a b : QubitIdx N,
       (∏ y : Fin N, if y = x then pauliMat 3 (a y) (b y) else if a y = b y then 1 else 0) =
@@ -186,15 +187,16 @@ private lemma pauliSite_conj_diagonal_Z {N : ℕ} (x : Fin N) (d : QubitIdx N �
       rw [if_pos rfl]
       calc ∏ y : Fin N, (if y = x then pauliMat 3 (a y) (a y) else if a y = a y then 1 else 0)
           = ∏ y : Fin N, (if y = x then pauliMat 3 (a y) (a y) else 1) := by
-            apply Finset.prod_congr rfl; intro y _; split_ifs <;> rfl
+            apply Finset.prod_congr rfl; intro y _; by_cases hy : y = x <;> simp [hy]
         _ = pauliMat 3 (a x) (a x) := by rw [Finset.prod_ite_eq']; simp
     · rw [if_neg hab]
       obtain ⟨y₀, hy₀⟩ : ∃ y₀ : Fin N, a y₀ ≠ b y₀ := by
-        by_contra h; push_neg at h; exact hab (funext h)
+        by_contra h; push Not at h; exact hab (funext h)
       apply Finset.prod_eq_zero (Finset.mem_univ y₀)
       by_cases hyx : y₀ = x
       · subst hyx; rw [if_pos rfl]
-        generalize ha : a y₀ = ay; generalize hb : b y₀ = by_; rw [ha, hb] at *; fin_cases ay <;> fin_cases by_ <;> simp_all [pauliMat]
+        generalize ha : a y₀ = ay at hy₀ ⊢; generalize hb : b y₀ = by_ at hy₀ ⊢
+        fin_cases ay <;> fin_cases by_ <;> first | exact absurd rfl hy₀ | simp [pauliMat]
       · rw [if_neg hyx, if_neg hy₀]
   simp only [h1]
   have hsum : ∑ u : QubitIdx N, (if s = u then pauliMat 3 (s x) (s x) else 0) * d u *
@@ -223,7 +225,7 @@ private lemma pauliSite_conj_diagonal_XY {N : ℕ} (x : Fin N) (α : Fin 4)
       Matrix.diagonal (fun s ↦ d (bmFlip x s)) := by
   ext s t
   simp only [Matrix.mul_apply, Matrix.diagonal_apply, mul_ite, mul_zero, Finset.sum_ite_eq,
-    Finset.mem_univ, ↓reduceIte]
+    Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
   simp_rw [pauliSite_entry]
   have h1 : ∀ a b : QubitIdx N,
       (∏ y : Fin N, if y = x then pauliMat α (a y) (b y) else if a y = b y then 1 else 0) =
@@ -242,12 +244,14 @@ private lemma pauliSite_conj_diagonal_XY {N : ℕ} (x : Fin N) (α : Fin 4)
         _ = pauliMat α (a x) (1 - a x) := by rw [Finset.prod_ite_eq']; simp
     · rw [if_neg hab]
       obtain ⟨y₀, hy₀⟩ : ∃ y₀ : Fin N, b y₀ ≠ bmFlip x a y₀ := by
-        by_contra h; push_neg at h; exact hab (funext h)
+        by_contra h; push Not at h; exact hab (funext h)
       apply Finset.prod_eq_zero (Finset.mem_univ y₀)
       by_cases hyx : y₀ = x
       · subst hyx; rw [if_pos rfl]
         simp only [bmFlip, Function.update_self] at hy₀
-        rcases hα with rfl | rfl <;> generalize ha : a y₀ = ay <;> generalize hb : b y₀ = by_ <;> rw [ha, hb] at * <;> fin_cases ay <;> fin_cases by_ <;> simp_all [pauliMat]
+        generalize ha : a y₀ = ay at hy₀ ⊢; generalize hb : b y₀ = by_ at hy₀ ⊢
+        rcases hα with rfl | rfl <;> fin_cases ay <;> fin_cases by_ <;>
+          first | exact absurd rfl hy₀ | simp [pauliMat]
       · rw [if_neg hyx]
         simp only [bmFlip, Function.update_of_ne hyx] at hy₀
         rw [if_neg (Ne.symm hy₀)]
@@ -339,11 +343,12 @@ lemma bimodalWitnessOp_mem_filtration {N : ℕ} (x₀ : Fin N) (ε : ℝ) :
       ext s t
       simp only [pauliString, kronOp, Matrix.of_apply, Matrix.one_apply]
       by_cases h : s = t
-      · subst h; rw [if_pos rfl]; apply Finset.prod_eq_one; intro y _; simp [pauliMat]
+      · subst h; rw [if_pos rfl]; symm; apply Finset.prod_eq_one; intro y _; simp [pauliMat]
       · rw [if_neg h]
-        obtain ⟨y₀, hy₀⟩ : ∃ y₀, s y₀ ≠ t y₀ := by by_contra h0; push_neg at h0; exact h (funext h0)
-        apply Finset.prod_eq_zero (Finset.mem_univ y₀)
-        generalize ha : s y₀ = sy; generalize hb : t y₀ = ty; rw [ha, hb] at *; fin_cases sy <;> fin_cases ty <;> simp_all [pauliMat]⟩
+        obtain ⟨y₀, hy₀⟩ : ∃ y₀, s y₀ ≠ t y₀ := by by_contra h0; push Not at h0; exact h (funext h0)
+        symm; apply Finset.prod_eq_zero (Finset.mem_univ y₀)
+        generalize ha : s y₀ = sy at hy₀ ⊢; generalize hb : t y₀ = ty at hy₀ ⊢
+        fin_cases sy <;> fin_cases ty <;> first | exact absurd rfl hy₀ | simp [pauliMat]⟩
   · refine Submodule.subset_span ⟨Function.update 0 x₀ 3, ?_, ?_⟩
     · have hle : (Finset.univ.filter fun y : Fin N ↦ Function.update (0 : Fin N → Fin 4) x₀ 3 y ≠ 0).card ≤
           ({x₀} : Finset (Fin N)).card := by
@@ -366,16 +371,17 @@ private lemma one_add_pauliSiteZ_eq_diagonal {N : ℕ} (x₀ : Fin N) :
         pauliMat 3 (s x₀) (s x₀) := by
       calc ∏ y : Fin N, (if y = x₀ then pauliMat 3 (s y) (s y) else if s y = s y then 1 else 0)
           = ∏ y : Fin N, (if y = x₀ then pauliMat 3 (s y) (s y) else 1) := by
-            apply Finset.prod_congr rfl; intro y _; split_ifs <;> rfl
+            apply Finset.prod_congr rfl; intro y _; by_cases hy : y = x₀ <;> simp [hy]
         _ = pauliMat 3 (s x₀) (s x₀) := by rw [Finset.prod_ite_eq']; simp
     rw [hprod]
     generalize hb : s x₀ = b; fin_cases b <;> simp [pauliMat] <;> norm_num
   · rw [if_neg hst, if_neg hst, zero_add]
-    obtain ⟨y₀, hy₀⟩ : ∃ y₀, s y₀ ≠ t y₀ := by by_contra h0; push_neg at h0; exact hst (funext h0)
+    obtain ⟨y₀, hy₀⟩ : ∃ y₀, s y₀ ≠ t y₀ := by by_contra h0; push Not at h0; exact hst (funext h0)
     apply Finset.prod_eq_zero (Finset.mem_univ y₀)
     by_cases hyx : y₀ = x₀
     · subst hyx; rw [if_pos rfl]
-      generalize ha : s y₀ = sy; generalize hb : t y₀ = ty; rw [ha, hb] at *; fin_cases sy <;> fin_cases ty <;> simp_all [pauliMat]
+      generalize ha : s y₀ = sy at hy₀ ⊢; generalize hb : t y₀ = ty at hy₀ ⊢
+      fin_cases sy <;> fin_cases ty <;> first | exact absurd rfl hy₀ | simp [pauliMat]
     · rw [if_neg hyx, if_neg hy₀]
 
 /-- Exact Wightman normalization:
@@ -666,16 +672,17 @@ private lemma hsInner_sub_conj_le_two {N : ℕ} (P M : QubitOp N)
     (hPh : Pᴴ = P) (hP2 : P * P = 1) :
     (hsInner M (M - P * M * P)).re ≤ 2 * (hsInner M M).re := by
   have hnn : 0 ≤ (hsInner (M + P * M * P) (M + P * M * P)).re := by
-    set K := M + P * M * P
-    unfold hsInner
-    have htr : (Kᴴ * K).trace.re = ∑ i : QubitIdx N, ∑ j : QubitIdx N, Complex.normSq (K j i) := by
-      simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply,
-        Complex.re_sum]
-      apply Finset.sum_congr rfl; intro i _
-      apply Finset.sum_congr rfl; intro j _
-      rw [Complex.star_def, Complex.conj_mul, Complex.ofReal_re]
-    rw [htr]
-    exact Finset.sum_nonneg fun _ _ ↦ Finset.sum_nonneg fun _ _ ↦ Complex.normSq_nonneg _
+    have hgen : ∀ K : QubitOp N, 0 ≤ (hsInner K K).re := by
+      intro K; unfold hsInner
+      have htr : (Kᴴ * K).trace.re = ∑ i : QubitIdx N, ∑ j : QubitIdx N, ‖K j i‖ ^ 2 := by
+        simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply,
+          Complex.re_sum]
+        apply Finset.sum_congr rfl; intro i _
+        apply Finset.sum_congr rfl; intro j _
+        rw [Complex.star_def, Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
+      rw [htr]
+      exact Finset.sum_nonneg fun _ _ ↦ Finset.sum_nonneg fun _ _ ↦ sq_nonneg _
+    exact hgen (M + P * M * P)
   have hPMP_norm : hsInner (P * M * P) (P * M * P) = hsInner M M := by
     unfold hsInner
     rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hPh]
@@ -738,6 +745,7 @@ private lemma mssThermalSize_bddAbove_unit {N : ℕ} (G : GibbsData N) (s : ℕ)
             unfold hsInner at h1 hM_norm
             linarith
           simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul] at hsum3
+          norm_num at hsum3
           linarith
       _ = (3 / 2 : ℝ) * (N : ℝ) := by
           rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]; ring
