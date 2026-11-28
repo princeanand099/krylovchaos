@@ -4,11 +4,13 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Prince Anand
 -/
 import KrylovChaos.CarlemanJacobi
+import KrylovChaos.LanczosMoments
 import KrylovChaos.SpectralDyck
 import Mathlib.Analysis.Complex.CauchyIntegral
 import Mathlib.Analysis.Complex.RemovableSingularity
 import Mathlib.Analysis.Calculus.ParametricIntegral
 import Mathlib.Analysis.Calculus.IteratedDeriv.Defs
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.ArctanDeriv
 import Mathlib.MeasureTheory.Integral.IntegralEqImproper
 import Mathlib.Tactic
@@ -30,8 +32,8 @@ inequality of Lemma 5.1 (Eq. 5.5) from Mathlib alone:
    exact Meixner `η = 1` identity:
    `((jacobiMat (2 * m + 1) (fun k ↦ α₁ * (k : ℝ))) ^ (2 * m)) 0 0 = (1 / α₁) * ∫ ω in Set.Ioi (0 : ℝ), ω ^ (2 * m) * (Real.cosh (Real.pi * ω / (2 * α₁)))⁻¹`.
 4. `lemma_5_1_eq_5_5_exact_sech_comparison`:
-   For any `b : ℕ → ℝ` with `b k ≥ 0` and `b k ≥ α₁ * k` (`k > N₀`), proves the verbatim
-   non-asymptotic Lemma 5.1 Eq. (5.5) lower bound for every `n ≥ N₀`.
+   For any `b : ℕ → ℝ` with `b k > 0` (`k ≥ 1`) and `b k ≥ α₁ * k` (`k > N₀`), proves the
+   verbatim non-asymptotic Lemma 5.1 Eq. (5.5) lower bound for every `n > N₀`.
 -/
 
 namespace KrylovChaos
@@ -71,22 +73,26 @@ lemma jacobiMat_pow_even_zero_eq_skew (D : ℕ) (hD : 0 < D) (b : ℕ → ℝ) (
     simp only [U, Uinv, Matrix.diagonal_mul, Matrix.mul_diagonal, Matrix.map_apply,
       Matrix.smul_apply, smul_eq_mul, jacobiMat, skewJacobiMat, Matrix.of_apply]
     by_cases h1 : l.val + 1 = i.val
-    · have h2 : ¬(i.val + 1 = l.val) := by omega
-      rw [if_pos h1, if_pos h1, if_neg h2]
+    · have h2 : ¬(l.val = i.val + 1) := by omega
+      have h1' : i.val = l.val + 1 := h1.symm
+      rw [if_neg h2, if_pos h1', if_pos h1, h1]
       have hpow : Complex.I ^ i.val * (-Complex.I) ^ l.val = Complex.I := by
         rw [← h1, pow_succ, mul_assoc, mul_comm Complex.I, ← mul_assoc, ← mul_pow]; norm_num
       calc Complex.I ^ i.val * (b i.val : ℂ) * (-Complex.I) ^ l.val
           = (Complex.I ^ i.val * (-Complex.I) ^ l.val) * (b i.val : ℂ) := by ring
         _ = Complex.I * (b i.val : ℂ) := by rw [hpow]
     · by_cases h2 : i.val + 1 = l.val
-      · rw [if_neg h1, if_pos h2, if_neg h1, if_pos h2]
+      · have h2' : l.val = i.val + 1 := h2.symm
+        rw [if_pos h2', if_neg h1, if_pos h2, h2]
         have hpow : Complex.I ^ i.val * (-Complex.I) ^ l.val = -Complex.I := by
           rw [← h2, pow_succ, ← mul_assoc, ← mul_pow]; norm_num
         calc Complex.I ^ i.val * (b l.val : ℂ) * (-Complex.I) ^ l.val
             = (Complex.I ^ i.val * (-Complex.I) ^ l.val) * (b l.val : ℂ) := by ring
           _ = -Complex.I * (b l.val : ℂ) := by rw [hpow]
           _ = Complex.I * ((-b l.val : ℝ) : ℂ) := by push_cast; ring
-      · rw [if_neg h1, if_neg h2, if_neg h1, if_neg h2]; simp
+      · have h1' : ¬(i.val = l.val + 1) := by omega
+        have h2' : ¬(l.val = i.val + 1) := by omega
+        rw [if_neg h2', if_neg h1', if_neg h1, if_neg h2]; simp
   have hpow_conj : ∀ k : ℕ,
       U * ((jacobiMat D b) ^ k).map Complex.ofReal * Uinv =
         (Complex.I ^ k) • ((skewJacobiMat D b) ^ k).map Complex.ofReal := by
@@ -155,7 +161,9 @@ lemma meixnerPhi_hasDerivAt (n : ℕ) (t : ℝ) :
     cases n with
     | zero => simp [hasDerivAt_const]
     | succ m =>
-      have h1 := (hasDerivAt_tanh t).pow (m + 1)
+      have h1 : HasDerivAt (fun s ↦ Real.tanh s ^ (m + 1))
+          (((m + 1 : ℕ) : ℝ) * Real.tanh t ^ m * (1 - Real.tanh t ^ 2)) t :=
+        (hasDerivAt_tanh t).fun_pow (m + 1)
       simpa [Nat.add_sub_cancel] using h1
   have hdiv := hnum.div (Real.hasDerivAt_cosh t) hc_ne
   convert hdiv using 1
@@ -186,7 +194,10 @@ lemma skewJacobiMat_pow_eq_zero_of_lt {D : ℕ} (b : ℕ → ℝ) (k : ℕ) :
     · rw [ih j r hr, zero_mul]
     · have hS0 : skewJacobiMat D b r l = 0 := by
         unfold skewJacobiMat; simp only [Matrix.of_apply]
-        split_ifs <;> omega
+        split_ifs with h1 h2
+        · omega
+        · omega
+        · rfl
       rw [hS0, mul_zero]
 
 /-- Exact `k`-th derivative formula for `meixnerPhi`:
@@ -287,6 +298,17 @@ end MeixnerLanczosODE
 
 section SechFourierTransform
 
+private lemma real_sinh_eq_zero_imp {x : ℝ} (h : Real.sinh x = 0) : x = 0 := by
+  rw [Real.sinh_eq] at h
+  have heq : Real.exp x = Real.exp (-x) := by linarith
+  have h1 := Real.exp_injective heq
+  linarith
+
+private lemma real_sinh_pos_of_pos {x : ℝ} (hx : 0 < x) : 0 < Real.sinh x := by
+  rw [Real.sinh_eq]
+  have hlt : Real.exp (-x) < Real.exp x := Real.exp_lt_exp.mpr (by linarith)
+  linarith
+
 /-- Lower bound on `‖Complex.cosh (a + i b)‖`: `|Real.sinh a| ≤ ‖Complex.cosh (a + i b)‖`. -/
 private lemma abs_sinh_le_norm_cosh (z : ℂ) :
     |Real.sinh z.re| ≤ ‖Complex.cosh z‖ := by
@@ -298,7 +320,7 @@ private lemma abs_sinh_le_norm_cosh (z : ℂ) :
       conv_lhs => rw [hz]
       rw [Complex.cosh_add, Complex.cosh_mul_I, Complex.sinh_mul_I,
         ← Complex.ofReal_cosh, ← Complex.ofReal_sinh, ← Complex.ofReal_cos, ← Complex.ofReal_sin]
-      ring
+      push_cast; ring
     rw [h1, ← Complex.normSq_eq_norm_sq]
     simp only [Complex.normSq_apply, Complex.add_re, Complex.add_im, Complex.ofReal_re,
       Complex.ofReal_im, Complex.mul_re, Complex.mul_im, Complex.I_re, Complex.I_im,
@@ -322,7 +344,7 @@ private lemma cosh_pi_half_eq_zero_iff_in_strip {z : ℂ} (h0 : 0 ≤ z.im) (h2 
       rw [hz, norm_zero, hre] at h1
       exact abs_nonpos_iff.mp h1
     have hzre : z.re = 0 := by
-      have h1 : Real.pi / 2 * z.re = 0 := Real.sinh_eq_zero.mp hsinh0
+      have h1 : Real.pi / 2 * z.re = 0 := real_sinh_eq_zero_imp hsinh0
       exact (mul_eq_zero.mp h1).resolve_left (by positivity)
     have hcos0 : Real.cos (Real.pi / 2 * z.im) = 0 := by
       have h1 : Complex.cosh ((Real.pi / 2 : ℝ) * z) = (Real.cos (Real.pi / 2 * z.im) : ℂ) := by
@@ -357,10 +379,7 @@ private lemma intervalIntegral_inv_sub_I (R : ℝ) :
       ((x / (x ^ 2 + 1) : ℝ) : ℂ) + ((1 / (x ^ 2 + 1) : ℝ) : ℂ) * Complex.I := by
     intro x
     have hden : (x ^ 2 + 1 : ℝ) ≠ 0 := by positivity
-    have hne : ((x : ℂ) - Complex.I) ≠ 0 := by
-      intro h; have := congrArg Complex.im h; simp at this
-    rw [inv_eq_iff_eq_inv.symm]
-    apply (eq_inv_of_mul_eq_one_right ?_).symm
+    apply inv_eq_of_mul_eq_one_right
     have hmul : ((x : ℂ) - Complex.I) *
         (((x / (x ^ 2 + 1) : ℝ) : ℂ) + ((1 / (x ^ 2 + 1) : ℝ) : ℂ) * Complex.I) =
         (((x ^ 2 + 1) / (x ^ 2 + 1) : ℝ) : ℂ) := by
@@ -384,11 +403,12 @@ private lemma intervalIntegral_inv_sub_I (R : ℝ) :
     rw [intervalIntegral.integral_mul_const, intervalIntegral.integral_ofReal]
     congr 1; congr 1
     have hftc := intervalIntegral.integral_eq_sub_of_hasDerivAt
-      (f := Real.arctan) (f' := fun x : ℝ ↦ (1 + x ^ 2)⁻¹)
+      (f := Real.arctan) (f' := fun x : ℝ ↦ 1 / (1 + x ^ 2)) (a := -R) (b := R)
       (fun x _ ↦ Real.hasDerivAt_arctan x)
-      ((continuous_const.add (continuous_pow 2)).inv₀ (fun x ↦ by positivity)).intervalIntegrable
-    have hrew2 : (fun x : ℝ ↦ 1 / (x ^ 2 + 1)) = fun x : ℝ ↦ (1 + x ^ 2)⁻¹ := by
-      funext x; rw [one_div, add_comm]
+      ((continuous_const.div (continuous_const.add (continuous_pow 2))
+        (fun x ↦ by positivity)).intervalIntegrable (-R) R)
+    have hrew2 : (fun x : ℝ ↦ 1 / (x ^ 2 + 1)) = fun x : ℝ ↦ 1 / (1 + x ^ 2) := by
+      funext x; rw [add_comm]
     rw [hrew2, hftc, Real.arctan_neg]; ring
   rw [hodd, zero_add, harc]
 
@@ -411,18 +431,24 @@ lemma integrable_pow_abs_mul_inv_cosh {c : ℝ} (hc : 0 < c) (k : ℕ) :
   have hC : 0 < C := by dsimp only [C]; positivity
   have hdom : Integrable (fun u : ℝ ↦ C * Real.exp (-(c / 2) * |u|)) := by
     have h1 : Integrable (fun u : ℝ ↦ Real.exp (-(c / 2) * |u|)) := by
-      have hpos : IntegrableOn (fun u : ℝ ↦ Real.exp (-(c / 2) * u)) (Set.Ioi 0) :=
-        integrableOn_exp_mul_Ioi (by linarith : -(c / 2) < 0) 0
-      have hneg : IntegrableOn (fun u : ℝ ↦ Real.exp ((c / 2) * u)) (Set.Iic 0) := by
-        have hcomp := (Measure.integrableOn_comp_neg (f := fun u : ℝ ↦ Real.exp (-(c / 2) * u))
-          (s := Set.Ici 0)).mpr (integrableOn_exp_mul_Ioi (by linarith) 0 |>.mono_set Set.Ioi_subset_Ici_self |>.congr_set_ae Ioi_ae_eq_Ici.symm)
-        simpa [Set.neg_Ici, mul_neg, neg_mul, neg_neg] using hcomp
-      have h1' : IntegrableOn (fun u : ℝ ↦ Real.exp (-(c / 2) * |u|)) (Set.Ioi 0) :=
-        hpos.congr_fun (fun u hu ↦ by rw [abs_of_pos hu]) measurableSet_Ioi
-      have h2' : IntegrableOn (fun u : ℝ ↦ Real.exp (-(c / 2) * |u|)) (Set.Iic 0) :=
-        hneg.congr_fun (fun u hu ↦ by rw [abs_of_nonpos hu]; ring_nf) measurableSet_Iic
-      rw [← integrableOn_univ, ← Set.Iic_union_Ioi (a := (0 : ℝ))]
-      exact h2'.union h1'
+      have hpos : Integrable (Set.indicator (Set.Ioi (0 : ℝ)) (fun u : ℝ ↦ Real.exp (-(c / 2) * u))) :=
+        (integrableOn_exp_mul_Ioi (by linarith : -(c / 2) < 0) 0).integrable_indicator measurableSet_Ioi
+      have hneg : Integrable (fun u : ℝ ↦ Set.indicator (Set.Ioi (0 : ℝ)) (fun v : ℝ ↦ Real.exp (-(c / 2) * v)) (-u)) :=
+        hpos.comp_neg
+      have hsum : Integrable (fun u : ℝ ↦
+          Set.indicator (Set.Ioi (0 : ℝ)) (fun v : ℝ ↦ Real.exp (-(c / 2) * v)) u +
+          Set.indicator (Set.Ioi (0 : ℝ)) (fun v : ℝ ↦ Real.exp (-(c / 2) * v)) (-u)) :=
+        hpos.add hneg
+      refine hsum.congr ?_
+      filter_upwards [compl_mem_ae_iff.mpr (measure_singleton (0 : ℝ))] with u hu
+      have hne : u ≠ 0 := hu
+      rcases lt_or_gt_of_ne hne with hlt | hgt
+      · have h1u : u ∉ Set.Ioi (0 : ℝ) := by simp [hlt.le]
+        have h2u : -u ∈ Set.Ioi (0 : ℝ) := by simp [hlt]
+        rw [Set.indicator_of_notMem h1u, Set.indicator_of_mem h2u, zero_add, abs_of_neg hlt]
+      · have h1u : u ∈ Set.Ioi (0 : ℝ) := hgt
+        have h2u : -u ∉ Set.Ioi (0 : ℝ) := by simp [hgt.le]
+        rw [Set.indicator_of_mem h1u, Set.indicator_of_notMem h2u, add_zero, abs_of_pos hgt]
     exact h1.const_mul C
   refine hdom.mono' ?_ (Eventually.of_forall fun u ↦ ?_)
   · exact ((continuous_abs.pow k).mul ((Real.continuous_cosh.comp (continuous_const.mul continuous_id)).inv₀
@@ -488,7 +514,7 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
       rw [heq, norm_zero, hre] at h1
       exact abs_nonpos_iff.mp h1
     have hzre : z.re = 0 :=
-      (mul_eq_zero.mp (Real.sinh_eq_zero.mp hsinh0)).resolve_left (by positivity)
+      (mul_eq_zero.mp (real_sinh_eq_zero_imp hsinh0)).resolve_left (by positivity)
     have hcos0 : Real.cos (Real.pi / 2 * z.im) = 0 := by
       have h1 : Complex.cosh ((Real.pi / 2 : ℝ) * z) = (Real.cos (Real.pi / 2 * z.im) : ℂ) := by
         have hzeq : (Real.pi / 2 : ℝ) * z = ((Real.pi / 2 * z.im : ℝ) : ℂ) * Complex.I := by
@@ -515,8 +541,11 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
     have hcosh_ne := hcosh_ne_punct w hw.1 hne
     have hf_d : DifferentiableAt ℂ f w := by
       dsimp only [f]
-      exact ((differentiableAt_const _).mul differentiableAt_id).cexp.div
-        (((differentiableAt_const _).mul differentiableAt_id).ccosh) hcosh_ne
+      have hlin : DifferentiableAt ℂ (fun u : ℂ ↦ ((Real.pi / 2 : ℝ) : ℂ) * u) w :=
+        (differentiableAt_const _).mul differentiableAt_id
+      have hcd : DifferentiableAt ℂ (fun u : ℂ ↦ Complex.cosh (((Real.pi / 2 : ℝ) : ℂ) * u)) w :=
+        (Complex.hasDerivAt_cosh _).differentiableAt.comp w hlin
+      exact ((differentiableAt_const _).mul differentiableAt_id).cexp.div hcd hcosh_ne
     have hp_d : DifferentiableAt ℂ (fun u ↦ res / (u - Complex.I)) w :=
       (differentiableAt_const _).div (differentiableAt_id.sub (differentiableAt_const _)) (sub_ne_zero.mpr hne)
     exact (hf_d.sub hp_d).differentiableWithinAt
@@ -535,7 +564,7 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
         (cosh_pi_half_eq_zero_iff_in_strip (by simp) (by simp)).mpr rfl
       have hs := hasDerivAt_iff_tendsto_slope.mp hderiv_cosh
       refine hs.congr' (Eventually.of_forall fun w ↦ ?_)
-      simp [slope, vsub_eq_sub, h0, div_eq_inv_mul]
+      rw [slope_def_field, h0, sub_zero]
     have hden_ne : (((Real.pi / 2 : ℝ) : ℂ) * Complex.I) ≠ 0 :=
       mul_ne_zero (Complex.ofReal_ne_zero.mpr (by positivity)) Complex.I_ne_zero
     have hinv_slope : Tendsto (fun w : ℂ ↦ (w - Complex.I) / Complex.cosh ((Real.pi / 2 : ℝ) * w))
@@ -552,6 +581,7 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
     have hres_eq : Complex.exp (-(t : ℂ)) * ((((Real.pi / 2 : ℝ) : ℂ) * Complex.I)⁻¹) = res := by
       dsimp only [res]
       have hpi : (Real.pi : ℂ) ≠ 0 := Complex.ofReal_ne_zero.mpr Real.pi_ne_zero
+      push_cast
       field_simp [hpi, Complex.I_ne_zero]
       rw [Complex.I_sq]; ring
     rw [hres_eq] at hprod
@@ -562,12 +592,21 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
     have hne : w - Complex.I ≠ 0 := sub_ne_zero.mpr hw
     dsimp only [f]
     field_simp [hne]
-  have hiso : (fun w ↦ f w - res / (w - Complex.I)) =o[𝓝[≠] Complex.I] fun w ↦ (w - Complex.I)⁻¹ := by
+  have hiso : (fun w ↦ (f w - res / (w - Complex.I)) - (f Complex.I - res / (Complex.I - Complex.I)))
+      =o[𝓝[≠] Complex.I] fun w ↦ (w - Complex.I)⁻¹ := by
     rw [Asymptotics.isLittleO_iff_tendsto' (by
       filter_upwards [self_mem_nhdsWithin] with w hw h0
       exact absurd h0 (inv_ne_zero (sub_ne_zero.mpr hw)))]
-    refine hlim_zero.congr' (Eventually.of_forall fun w ↦ ?_)
-    rw [div_inv_eq_mul, mul_comm]
+    have hconst_lim : Tendsto (fun w : ℂ ↦ (w - Complex.I) * (f Complex.I - res / (Complex.I - Complex.I)))
+        (𝓝[≠] Complex.I) (nhds 0) := by
+      have h1 : Tendsto (fun w : ℂ ↦ w - Complex.I) (𝓝[≠] Complex.I) (nhds 0) := by
+        simpa using ((continuous_id.sub continuous_const).tendsto Complex.I).mono_left nhdsWithin_le_nhds
+      simpa using h1.mul_const (f Complex.I - res / (Complex.I - Complex.I))
+    have hsub_lim : Tendsto (fun w : ℂ ↦ (w - Complex.I) * (f w - res / (w - Complex.I)) -
+        (w - Complex.I) * (f Complex.I - res / (Complex.I - Complex.I))) (𝓝[≠] Complex.I) (nhds 0) := by
+      simpa using hlim_zero.sub hconst_lim
+    refine hsub_lim.congr' (Eventually.of_forall fun w ↦ ?_)
+    dsimp only; rw [div_inv_eq_mul]; ring
   have hg_diff : DifferentiableOn ℂ g Ω := by
     rw [hg_eq_upd]
     exact Complex.differentiableOn_update_limUnder_of_isLittleO (hΩ_open.mem_nhds hI_mem) hdiff_punct hiso
@@ -596,9 +635,9 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
       Complex.mul_im, zero_add] at hzero
     have hbot : ∀ x : ℝ, g ((x : ℂ) + (0 : ℝ) * Complex.I) = f (x : ℂ) - res * ((x : ℂ) - Complex.I)⁻¹ := by
       intro x
-      have hne : ((x : ℂ) + (0 : ℝ) * Complex.I) ≠ Complex.I := by
+      have hne : (x : ℂ) ≠ Complex.I := by
         intro h; have := congrArg Complex.im h; simp at this
-      simp [g, hne, div_eq_mul_inv]
+      simp only [Complex.ofReal_zero, zero_mul, add_zero, g, if_neg hne, div_eq_mul_inv]
     have htop : ∀ x : ℝ, g ((x : ℂ) + (2 : ℝ) * Complex.I) =
         -Complex.exp (-2 * (t : ℂ)) * f (x : ℂ) - res * ((x : ℂ) + Complex.I)⁻¹ := by
       intro x
@@ -623,13 +662,19 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
         f ((R : ℂ) + (y : ℂ) * Complex.I) - res * ((R : ℂ) + (y : ℂ) * Complex.I - Complex.I)⁻¹ := by
       intro y
       have hne : (R : ℂ) + (y : ℂ) * Complex.I ≠ Complex.I := by
-        intro h; have := congrArg Complex.re h; simp at this; linarith
+        intro h; have := congrArg Complex.re h
+        simp only [Complex.add_re, Complex.ofReal_re, Complex.mul_re, Complex.I_re, Complex.I_im,
+          Complex.ofReal_im, mul_zero, sub_zero, add_zero] at this
+        linarith
       simp [g, hne, div_eq_mul_inv]
     have hleft : ∀ y : ℝ, g (-(R : ℂ) + (y : ℂ) * Complex.I) =
         f (-(R : ℂ) + (y : ℂ) * Complex.I) - res * (-(R : ℂ) + (y : ℂ) * Complex.I - Complex.I)⁻¹ := by
       intro y
       have hne : -(R : ℂ) + (y : ℂ) * Complex.I ≠ Complex.I := by
-        intro h; have := congrArg Complex.re h; simp at this; linarith
+        intro h; have := congrArg Complex.re h
+        simp only [Complex.add_re, Complex.neg_re, Complex.ofReal_re, Complex.mul_re, Complex.I_re,
+          Complex.I_im, Complex.ofReal_im, mul_zero, sub_zero, add_zero] at this
+        linarith
       simp [g, hne, div_eq_mul_inv]
     simp_rw [hbot, htop, hright, hleft] at hzero
     have hcf_bot : Continuous (fun x : ℝ ↦ f (x : ℂ)) := by
@@ -654,7 +699,7 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
       intro heq
       have h1 := abs_sinh_le_norm_cosh ((Real.pi / 2 : ℝ) * ((R : ℂ) + (y : ℂ) * Complex.I))
       rw [heq, norm_zero, hre] at h1
-      have h2 : 0 < Real.sinh (Real.pi / 2 * R) := Real.sinh_pos_iff.mpr (by positivity)
+      have h2 : 0 < Real.sinh (Real.pi / 2 * R) := real_sinh_pos_of_pos (by positivity)
       linarith [abs_of_pos h2]
     have hcf_left : Continuous (fun y : ℝ ↦ f (-(R : ℂ) + (y : ℂ) * Complex.I)) := by
       dsimp only [f]
@@ -666,16 +711,22 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
       intro heq
       have h1 := abs_sinh_le_norm_cosh ((Real.pi / 2 : ℝ) * (-(R : ℂ) + (y : ℂ) * Complex.I))
       rw [heq, norm_zero, hre, Real.sinh_neg, abs_neg] at h1
-      have h2 : 0 < Real.sinh (Real.pi / 2 * R) := Real.sinh_pos_iff.mpr (by positivity)
+      have h2 : 0 < Real.sinh (Real.pi / 2 * R) := real_sinh_pos_of_pos (by positivity)
       linarith [abs_of_pos h2]
     have hcp_right : Continuous (fun y : ℝ ↦ res * ((R : ℂ) + (y : ℂ) * Complex.I - Complex.I)⁻¹) :=
       continuous_const.mul (((continuous_const.add (Complex.continuous_ofReal.mul continuous_const)).sub
         continuous_const).inv₀ fun y h ↦ by
-        have := congrArg Complex.re h; simp at this; linarith)
+        have := congrArg Complex.re h
+        simp only [Complex.sub_re, Complex.add_re, Complex.neg_re, Complex.ofReal_re, Complex.mul_re,
+          Complex.I_re, Complex.I_im, Complex.ofReal_im, mul_zero, sub_zero, add_zero] at this
+        linarith)
     have hcp_left : Continuous (fun y : ℝ ↦ res * (-(R : ℂ) + (y : ℂ) * Complex.I - Complex.I)⁻¹) :=
       continuous_const.mul (((continuous_const.add (Complex.continuous_ofReal.mul continuous_const)).sub
         continuous_const).inv₀ fun y h ↦ by
-        have := congrArg Complex.re h; simp at this; linarith)
+        have := congrArg Complex.re h
+        simp only [Complex.sub_re, Complex.add_re, Complex.neg_re, Complex.ofReal_re, Complex.mul_re,
+          Complex.I_re, Complex.I_im, Complex.ofReal_im, mul_zero, sub_zero, add_zero] at this
+        linarith)
     rw [intervalIntegral.integral_sub (hcf_bot.intervalIntegrable _ _) (hcp_bot.intervalIntegrable _ _),
       intervalIntegral.integral_sub ((continuous_const.mul hcf_bot).intervalIntegrable _ _) (hcp_top.intervalIntegrable _ _),
       intervalIntegral.integral_sub (hcf_right.intervalIntegrable _ _) (hcp_right.intervalIntegrable _ _),
@@ -686,8 +737,10 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
       intervalIntegral_inv_sub_I R, intervalIntegral_inv_add_I R] at hzero
     linear_combination hzero
   have hf_real_int : Integrable (fun x : ℝ ↦ f (x : ℂ)) := by
-    refine ((integrable_pow_abs_mul_inv_cosh (by positivity : 0 < Real.pi / 2) 0).congr
-      (Eventually.of_forall fun x ↦ by simp)).mono' ?_ (Eventually.of_forall fun x ↦ ?_)
+    have hbase : Integrable (fun x : ℝ ↦ (Real.cosh (Real.pi / 2 * x))⁻¹) :=
+      (integrable_pow_abs_mul_inv_cosh (by positivity : 0 < Real.pi / 2) 0).congr
+        (Eventually.of_forall fun x ↦ by simp)
+    refine hbase.mono' ?_ (Eventually.of_forall fun x ↦ ?_)
     · dsimp only [f]
       exact ((Complex.continuous_exp.comp (continuous_const.mul Complex.continuous_ofReal)).div
         (Complex.continuous_cosh.comp (continuous_const.mul Complex.continuous_ofReal)) fun x ↦ by
@@ -742,18 +795,18 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
           have hre_c : ((Real.pi / 2 : ℝ) * ((s * R : ℝ) + (y : ℂ) * Complex.I)).re =
               s * (Real.pi / 2 * R) := by simp; ring
           rw [hre_c] at h1
+          have hspos : 0 < Real.sinh (Real.pi / 2 * R) := real_sinh_pos_of_pos (by positivity)
           rcases hs with rfl | rfl
-          · rw [one_mul, abs_of_pos (Real.sinh_pos_iff.mpr (by positivity))] at h1; exact h1
-          · rw [neg_one_mul, Real.sinh_neg, abs_neg, abs_of_pos (Real.sinh_pos_iff.mpr (by positivity))] at h1
-            exact h1
-        exact div_le_div₀ (Real.exp_pos _).le hnum_le (Real.sinh_pos_iff.mpr (by positivity)) hden_ge)
+          · rw [one_mul, abs_of_pos hspos] at h1; exact h1
+          · rw [neg_one_mul, Real.sinh_neg, abs_neg, abs_of_pos hspos] at h1; exact h1
+        exact div_le_div₀ (Real.exp_pos _).le hnum_le (real_sinh_pos_of_pos (by positivity)) hden_ge)
     simpa [abs_of_pos (by norm_num : (0 : ℝ) < 2), mul_comm] using hbd
   have hvert_p : ∀ s : ℝ, s = 1 ∨ s = -1 →
       Tendsto (fun R : ℝ ↦ ∫ y in (0 : ℝ)..2, ((s * R : ℝ) + (y : ℂ) * Complex.I - Complex.I)⁻¹)
         atTop (nhds 0) := by
     intro s hs
     have hupper : Tendsto (fun R : ℝ ↦ 2 * R⁻¹) atTop (nhds 0) := by
-      simpa using tendsto_inv_atTop_zero.const_mul 2
+      simpa using (tendsto_inv_atTop_zero (𝕜 := ℝ)).const_mul 2
     refine squeeze_zero_norm' ?_ hupper
     filter_upwards [eventually_gt_atTop (0 : ℝ)] with R hR
     have hbd := intervalIntegral.norm_integral_le_of_norm_le_const (a := (0 : ℝ)) (b := 2)
@@ -830,8 +883,10 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
     rw [h2]
     field_simp [hden]
     nlinarith [h3]
-  have hre_int := congrArg Complex.re hf_int_val
-  rw [Complex.ofReal_re, ← integral_re hf_real_int] at hre_int
+  have hre_int : ∫ x : ℝ, (f (x : ℂ)).re = 2 * (Real.cosh t)⁻¹ := by
+    have h1 := Complex.reCLM.integral_comp_comm hf_real_int
+    change ∫ x : ℝ, (f (x : ℂ)).re = (∫ x : ℝ, f (x : ℂ)).re at h1
+    rw [h1, hf_int_val, Complex.ofReal_re]
   convert hre_int using 1
   congr 1; funext u
   dsimp only [f]
@@ -900,6 +955,7 @@ lemma iteratedDeriv_sech_fourier (k : ℕ) :
           simpa using ((hasDerivAt_id v).const_mul u).add_const ((k : ℝ) * Real.pi / 2)
         have hcos := (Real.hasDerivAt_cos _).comp v hlin
         have hmul := (hcos.const_mul (u ^ k)).mul_const (Real.cosh (Real.pi * u / 2))⁻¹
+        dsimp only [Function.comp_apply] at hmul
         convert hmul using 1
         have hshift : Real.cos (u * v + ((k + 1 : ℕ) : ℝ) * Real.pi / 2) =
             -Real.sin (u * v + (k : ℝ) * Real.pi / 2) := by
@@ -934,30 +990,23 @@ theorem jacobiMat_meixner_unit_moment_eq_sech_integral (m : ℕ) :
   have hint : Integrable (fun u : ℝ ↦ u ^ (2 * m) * (Real.cosh (Real.pi * u / 2))⁻¹) := by
     have h := integrable_pow_abs_mul_inv_cosh (by positivity : 0 < Real.pi / 2) (2 * m)
     refine h.congr (Eventually.of_forall fun u ↦ ?_)
+    dsimp only
     have : |u| ^ (2 * m) = u ^ (2 * m) := by rw [pow_mul, sq_abs, ← pow_mul]
     rw [this]; congr 2; ring
   have heven_split : ∫ u : ℝ, u ^ (2 * m) * (Real.cosh (Real.pi * u / 2))⁻¹ =
       2 * ∫ u in Set.Ioi (0 : ℝ), u ^ (2 * m) * (Real.cosh (Real.pi * u / 2))⁻¹ := by
-    have hneg : ∫ u in Set.Iio (0 : ℝ), u ^ (2 * m) * (Real.cosh (Real.pi * u / 2))⁻¹ =
+    have hneg : ∫ u in Set.Iic (0 : ℝ), u ^ (2 * m) * (Real.cosh (Real.pi * u / 2))⁻¹ =
         ∫ u in Set.Ioi (0 : ℝ), u ^ (2 * m) * (Real.cosh (Real.pi * u / 2))⁻¹ := by
       have hcomp := integral_comp_neg_Ioi (f := fun u : ℝ ↦ u ^ (2 * m) * (Real.cosh (Real.pi * u / 2))⁻¹) 0
-      have hev : ∀ u : ℝ, (-u) ^ (2 * m) * (Real.cosh (Real.pi * (-u) / 2))⁻¹ =
-          u ^ (2 * m) * (Real.cosh (Real.pi * u / 2))⁻¹ := fun u ↦ by
-        rw [Even.neg_pow (even_two_mul m), mul_neg, neg_div, Real.cosh_neg]
-      simpa [hev] using hcomp.symm
-    have hunion : (∫ u in Set.Iio (0 : ℝ), u ^ (2 * m) * (Real.cosh (Real.pi * u / 2))⁻¹) +
+      rw [neg_zero] at hcomp
+      rw [← hcomp]
+      apply setIntegral_congr_fun measurableSet_Ioi fun u _ ↦ ?_
+      rw [Even.neg_pow (even_two_mul m), mul_neg, neg_div, Real.cosh_neg]
+    have hunion : (∫ u in Set.Iic (0 : ℝ), u ^ (2 * m) * (Real.cosh (Real.pi * u / 2))⁻¹) +
         (∫ u in Set.Ioi (0 : ℝ), u ^ (2 * m) * (Real.cosh (Real.pi * u / 2))⁻¹) =
         ∫ u : ℝ, u ^ (2 * m) * (Real.cosh (Real.pi * u / 2))⁻¹ := by
       rw [← setIntegral_union (by rw [Set.disjoint_left]; intro x h1 h2; simp at h1 h2; linarith)
-        measurableSet_Ioi hint.integrableOn hint.integrableOn]
-      have hae : (Set.Iio (0 : ℝ) ∪ Set.Ioi (0 : ℝ) : Set ℝ) =ᵐ[volume] (Set.univ : Set ℝ) := by
-        rw [Filter.EventuallyEq, ae_iff]
-        have hsub : {x : ℝ | ¬(x ∈ Set.Iio (0 : ℝ) ∪ Set.Ioi (0 : ℝ) ↔ x ∈ Set.univ)} ⊆ ({0} : Set ℝ) := by
-          intro x hx; simp only [Set.mem_setOf_eq, Set.mem_union, Set.mem_Iio, Set.mem_Ioi,
-            Set.mem_univ, iff_true, not_or, not_lt] at hx
-          exact Set.mem_singleton_iff.mpr (le_antisymm hx.2 hx.1)
-        exact measure_mono_null hsub (measure_singleton 0)
-      rw [setIntegral_congr_set hae, setIntegral_univ]
+        measurableSet_Ioi hint.integrableOn hint.integrableOn, Set.Iic_union_Ioi, setIntegral_univ]
     linarith
   linarith
 
@@ -1020,7 +1069,7 @@ private lemma jacobiMat_pow_asc_ge {D : ℕ} (b : ℕ → ℝ) (hb : ∀ k, 0 �
     have hsingle := Finset.single_le_sum (fun l _ ↦ hnn l) (Finset.mem_univ (⟨m, by omega⟩ : Fin D))
     have hstep : jacobiMat D b ⟨m, by omega⟩ ⟨m + 1, hm⟩ = b (m + 1) := by
       unfold jacobiMat; simp only [Matrix.of_apply]
-      rw [if_neg (by omega), if_pos rfl]
+      rw [if_pos rfl]
     rw [hstep] at hsingle
     exact le_trans (mul_le_mul_of_nonneg_right (ih (by omega)) (hb (m + 1))) hsingle
 
@@ -1031,9 +1080,10 @@ private lemma jacobiMat_pow_desc_ge {D : ℕ} (b : ℕ → ℝ) (hb : ∀ k, 0 �
   intro m hm
   have hsym : (jacobiMat D b)ᵀ = jacobiMat D b := by
     ext i j; unfold jacobiMat; simp only [Matrix.transpose_apply, Matrix.of_apply]
-    by_cases h1 : i.val + 1 = j.val
-    · rw [if_pos h1, if_neg (by omega), if_pos h1]
-    · by_cases h2 : j.val + 1 = i.val
+    by_cases h1 : i.val = j.val + 1
+    · have h2 : ¬(j.val = i.val + 1) := by omega
+      rw [if_pos h1, if_neg h2, if_pos h1]
+    · by_cases h2 : j.val = i.val + 1
       · rw [if_neg h1, if_pos h2, if_pos h2]
       · rw [if_neg h1, if_neg h2, if_neg h2, if_neg h1]
   have hpow_sym : ((jacobiMat D b) ^ m)ᵀ = (jacobiMat D b) ^ m := by
@@ -1092,19 +1142,20 @@ private lemma jacobiMat_pow_shifted_ge {D D' N₀ : ℕ} (hsub : N₀ + D' ≤ D
       apply Finset.sum_le_sum; intro l _
       have hstep_le : jacobiMat D' b' l j ≤ jacobiMat D b (emb l) ⟨N₀ + j.val, by omega⟩ := by
         dsimp only [emb]; unfold jacobiMat; simp only [Matrix.of_apply]
-        by_cases h1 : j.val + 1 = l.val
-        · rw [if_pos h1, if_pos (by omega)]; exact hge l.val (by omega)
-        · by_cases h2 : l.val + 1 = j.val
-          · rw [if_neg h1, if_pos h2, if_neg (by omega), if_pos (by omega)]; exact hge j.val (by omega)
+        by_cases h1 : j.val = l.val + 1
+        · rw [if_pos h1, if_pos (by omega), show N₀ + l.val + 1 = N₀ + (l.val + 1) by omega]
+          exact hge (l.val + 1) (by omega)
+        · by_cases h2 : l.val = j.val + 1
+          · rw [if_neg h1, if_pos h2, if_neg (by omega), if_pos (by omega),
+              show N₀ + j.val + 1 = N₀ + (j.val + 1) by omega]
+            exact hge (j.val + 1) (by omega)
           · rw [if_neg h1, if_neg h2, if_neg (by omega), if_neg (by omega)]
       exact mul_le_mul (ih i l).2 hstep_le (hnn_b' l) (le_trans (ih i l).1 (ih i l).2)
 
 /-- **Lemma 5.1 (Eq. 5.5 — Verbatim Non-Asymptotic `sech`-Integral Comparison)**:
 Let `b : ℕ → ℝ` satisfy `b k ≥ 0` for all `k` and `b k ≥ α₁ * k` for all `k > N₀` (with `α₁ > 0`).
 Then for EVERY `n ≥ N₀`:
-1. `(∏ k ∈ Finset.range N₀, b (k + 1) ^ 2) * ((1 / α₁) * ∫ ω in Set.Ioi (0 : ℝ), ω ^ (2 * (n - N₀)) * (Real.cosh (Real.pi * ω / (2 * α₁)))⁻¹) ≤ ((jacobiMat (2 * n + 1) b) ^ (2 * n)) 0 0`.
-2. In particular, when `N₀ = 0` (`b k ≥ α₁ * k` for all `k ≥ 1`), for EVERY `n : ℕ`:
-   `(1 / α₁) * ∫ ω in Set.Ioi (0 : ℝ), ω ^ (2 * n) * (Real.cosh (Real.pi * ω / (2 * α₁)))⁻¹ ≤ ((jacobiMat (2 * n + 1) b) ^ (2 * n)) 0 0`. -/
+`(∏ k ∈ Finset.range N₀, b (k + 1) ^ 2) * ((1 / α₁) * ∫ ω in Set.Ioi (0 : ℝ), ω ^ (2 * (n - N₀)) * (Real.cosh (Real.pi * ω / (2 * α₁)))⁻¹) ≤ ((jacobiMat (2 * n + 1) b) ^ (2 * n)) 0 0`. -/
 theorem lemma_5_1_eq_5_5_exact_sech_comparison (b : ℕ → ℝ) (N₀ : ℕ) {α₁ : ℝ}
     (hα : 0 < α₁) (hb_nn : ∀ k, 0 ≤ b k) (hb_ge : ∀ k, N₀ < k → α₁ * (k : ℝ) ≤ b k)
     (n : ℕ) (hn : N₀ ≤ n) :
@@ -1114,6 +1165,7 @@ theorem lemma_5_1_eq_5_5_exact_sech_comparison (b : ℕ → ℝ) (N₀ : ℕ) {�
       ((jacobiMat (2 * n + 1) b) ^ (2 * n)) ⟨0, Nat.succ_pos _⟩ ⟨0, Nat.succ_pos _⟩ := by
   set D : ℕ := 2 * n + 1
   set m : ℕ := n - N₀
+  have h2n : 2 * n = N₀ + (2 * m + N₀) := by omega
   have hT_nn : ∀ i j : Fin D, 0 ≤ jacobiMat D b i j := fun i j ↦ by
     unfold jacobiMat; simp only [Matrix.of_apply]; split_ifs <;> [exact hb_nn _; exact hb_nn _; exact le_rfl]
   have hpow_nn : ∀ (k : ℕ) (i j : Fin D), 0 ≤ ((jacobiMat D b) ^ k) i j :=
