@@ -10,10 +10,10 @@ import Mathlib.Analysis.Complex.CauchyIntegral
 import Mathlib.Tactic
 
 /-!
-# Concrete Wightman Spectral Measure, Holomorphic Strip Half-Width, and Thermodynamic-Limit Moments
+# Concrete Wightman Spectral Measure, Holomorphic Strip Half-Width, and Thermodynamic-Limit OTOC Analyticity
 
 Bridges the concrete `QubitOp N` framework directly to `Measure ℝ`, holomorphic strip half-widths,
-and thermodynamic-limit Lanczos moments:
+Lanczos moments, thermodynamic-limit OTOC analyticity, and high-temperature chaos bounds:
 1. `concreteWightmanSpectralMeasure`: constructs the finite Borel spectral measure on `ℝ` directly
    from `wightmanSpectralWeight hH β W` and proves `theorem_1_2a_concrete_eq54_r_local_bound`
    discharges uniform `cosh` integrability for any uniform `r`-local family `(H_N, W_N)`.
@@ -27,6 +27,11 @@ and thermodynamic-limit Lanczos moments:
 4. `holoStrip_even_moment_bound` and `theorem_1_2b_from_holoStripHalfWidth`:
    prove the complex-analytic Cauchy–Hadamard upper bound directly from holomorphy on `{|Im z| < R}`,
    yielding Eq. (1.16) `2 * liminf (b n / n) ≤ π / r_W ≤ 2π / (β + 2κ) < 2π / β` with holomorphic `r_W`.
+5. `differentiable_concreteOTOC`, `concreteWightmanNormAtShift_eq_autocorr`, and
+   `theorem_1_2c_thermo_limit_otoc_strip`: assemble end-to-end thermodynamic-limit OTOC holomorphy
+   on `{|Im z| < β/4 + κ/2}` (and general compactly bounded strips) with `liminf` Eq. (1.17) RHS.
+6. `theorem_1_3c_concrete_family_complete`: discharges the KMS rate bound in Theorem 1.3(c)
+   directly from the concrete `r`-local family `(H_N, O_N)`.
 -/
 
 namespace KrylovChaos
@@ -137,6 +142,7 @@ theorem holoStripHalfWidth_finite_eq_top {N : ℕ} {H : QubitOp N}
   rw [eq_top_iff]
   unfold holoStripHalfWidth
   refine le_of_forall_lt_imp_le_of_dense fun x hx ↦ ?_
+  -- Every finite `x : EReal` is bounded above by some `R : ℝ` with `R > 0`.
   cases x using EReal.rec with
   | bot => exact bot_le
   | top => exact absurd hx (lt_irrefl _)
@@ -219,7 +225,12 @@ theorem theorem_1_2a_concrete_family_holoStrip {r sW : ℕ} (hr : 2 ≤ r)
     · have h12 := theorem_1_2a_thermo_limit_eq_1_15_and_rW
         (fun N ↦ concreteWightmanSpectralMeasure (hH N) β (W N)) μ hweak hpos hM_nn hunif
       exact ⟨h12.1, h12.2.1⟩
-    · have hzero : β / 2 + κ' = 0 := le_antisymm (le_of_not_gt hpos) (by linarith)
+    · -- `β = 0` and `κ' = 0`: `cosh 0 = 1`, bound follows from any `0 < κ'' < κ` since `1 ≤ cosh`.
+      have hzero : β / 2 + κ' = 0 := le_antisymm (le_of_not_gt hpos) (by linarith)
+      have hκ'0_eq : κ' = 0 := by linarith
+      have hM_eq : M = 2 * C_W ^ 2 := by
+        dsimp only [M]; rw [hκ'0_eq, zero_div, sub_zero, Real.one_rpow, mul_one]
+      -- Use weak convergence with `κ'' = 0`: `∫ 1 dμ_N ≤ 2 C_W^2` → `∫ 1 dμ ≤ 2 C_W^2`.
       have hlint : ∫⁻ ω, ENNReal.ofReal (Real.cosh ((β / 2 + κ') * ω)) ∂μ ≤ ENNReal.ofReal M := by
         have h0 : ∫⁻ ω, ENNReal.ofReal (Real.cosh (2 * (0 : ℝ) * ω)) ∂μ ≤ ENNReal.ofReal M := by
           refine lintegral_cosh_le_of_weak_limit (fun N ↦ concreteWightmanSpectralMeasure (hH N) β (W N))
@@ -234,9 +245,10 @@ theorem theorem_1_2a_concrete_family_holoStrip {r sW : ℕ} (hr : 2 ≤ r)
           rw [← ofReal_integral_eq_lintegral_ofReal (integrable_const 1) hnn]
           exact ENNReal.ofReal_le_ofReal h1
         refine le_trans (le_of_eq ?_) h0
-        congr 1; funext ω; rw [hzero]; simp
+        congr 1; funext ω; rw [hzero, zero_mul, mul_zero, zero_mul]
       exact integrable_cosh_of_lintegral_le μ hM_nn hlint
   refine ⟨hcosh_all, ?_⟩
+  -- For every `R < β / 2 + κ` with `0 < R`, `R ≤ holoStripHalfWidth μ`.
   have hle_all : ∀ κ' : ℝ, 0 < κ' → κ' < κ → ((β / 2 + κ' : ℝ) : EReal) ≤ holoStripHalfWidth μ := by
     intro κ' hκ'_pos hκ'_lt
     have hhint := (hcosh_all κ' hκ'_pos.le hκ'_lt).1
@@ -313,6 +325,7 @@ lemma adPowOp_eigen_entry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (O : Qu
 
 /-- **Concrete Moment–Spectral-Measure Identity**:
 `Re (O | (ad_H)^{2n} O)_β^W = ∫ ω, ω^(2n) ∂(concreteWightmanSpectralMeasure hH β O)`. -/
+set_option maxHeartbeats 800000 in
 theorem concrete_adPowOp_eq_spectralMeasure_moment {N : ℕ} {H O : QubitOp N}
     (hH : H.IsHermitian) (hO : O.IsHermitian) (β : ℝ) (n : ℕ) :
     (gibbsWightmanInner (concreteGibbsData hH β) O (adPowOp H (2 * n) O)).re =
@@ -328,6 +341,7 @@ theorem concrete_adPowOp_eq_spectralMeasure_moment {N : ℕ} {H O : QubitOp N}
       Matrix.mul_assoc]
   set Z : ℝ := gibbsPartitionFn hH β
   let d : QubitIdx N → ℂ := fun i ↦ ((Real.exp (-(β / 2) * hH.eigenvalues i) : ℝ) : ℂ)
+  -- Direct trace expansion in eigenbasis `U`:
   have hρHalf_eq : Uᴴ * (concreteGibbsData hH β).ρHalf * U =
       (((Real.sqrt Z)⁻¹ : ℝ) : ℂ) • Matrix.diagonal d := by
     change Uᴴ * gibbsRhoHalf hH β * U = _
@@ -420,6 +434,7 @@ lemma jacobiMat_pow_zero_trunc_eq {D₁ D₂ : ℕ} (b : ℕ → ℝ) {k : ℕ}
     (h1 : k < D₁) (h2 : k < D₂) :
     (jacobiMat D₁ b ^ k) ⟨0, by omega⟩ ⟨0, by omega⟩ =
       (jacobiMat D₂ b ^ k) ⟨0, by omega⟩ ⟨0, by omega⟩ := by
+  -- Generalize to all `m ≤ k` and all `j ≤ m`: `(T_{D₁}^m)_{0, j} = (T_{D₂}^m)_{0, j}`.
   have hgen : ∀ m : ℕ, m ≤ k → ∀ (j : ℕ) (hj1 : j < D₁) (hj2 : j < D₂),
       (jacobiMat D₁ b ^ m) ⟨0, by omega⟩ ⟨j, hj1⟩ =
         (jacobiMat D₂ b ^ m) ⟨0, by omega⟩ ⟨j, hj2⟩ := by
@@ -444,7 +459,8 @@ lemma jacobiMat_pow_zero_trunc_eq {D₁ D₂ : ℕ} (b : ℕ → ℝ) {k : ℕ}
           apply Finset.sum_eq_zero; intro l _
           by_cases hl : r < l.1
           · rw [ihr l hl, zero_mul]
-          · have hT0 : jacobiMat D b l c = 0 := by
+          · have hnotadj : ¬(l.1 + 1 = c.1 ∨ c.1 + 1 = l.1) := by omega
+            have hT0 : jacobiMat D b l c = 0 := by
               unfold jacobiMat; simp only [Matrix.of_apply]
               split_ifs with h1' h2'
               · omega
@@ -452,6 +468,7 @@ lemma jacobiMat_pow_zero_trunc_eq {D₁ D₂ : ℕ} (b : ℕ → ℝ) {k : ℕ}
               · rfl
             rw [hT0, mul_zero]
       rw [pow_succ, pow_succ, Matrix.mul_apply, Matrix.mul_apply]
+      -- Only `l = j - 1` (if `0 < j`) and `l = j + 1` (if `j + 1 ≤ m`) contribute!
       have hsum_eq : ∀ (D : ℕ) (hD : k < D) (hjD : j < D),
           ∑ l : Fin D, (jacobiMat D b ^ m) ⟨0, by omega⟩ l * jacobiMat D b l ⟨j, hjD⟩ =
           (if h0 : 0 < j then
@@ -529,11 +546,11 @@ lemma tendsto_even_moment_of_weak_limit_cosh (μ_N : ℕ → Measure ℝ) (μ : 
       Tendsto (fun N ↦ ∫ ω, f ω ∂(μ_N N)) atTop (nhds (∫ ω, f ω ∂μ)))
     {r M : ℝ} (hr : 0 < r) (hM : 0 ≤ M)
     (hunif : ∀ N, Integrable (fun ω : ℝ ↦ Real.cosh (r * ω)) (μ_N N) ∧
-      ∫ ω : ℝ, Real.cosh (r * ω) ∂(μ_N N) ≤ M)
-    (n : ℕ) :
+      ∫ ω : ℝ, Real.cosh (r * ω) ∂(μ_N N) ≤ M) (n : ℕ) :
     Tendsto (fun N ↦ ∫ ω : ℝ, ω ^ (2 * n) ∂(μ_N N)) atTop
       (nhds (∫ ω : ℝ, ω ^ (2 * n) ∂μ)) := by
   have h12 := theorem_1_2a_thermo_limit_eq_1_15_and_rW μ_N μ hweak hr hM hunif
+  -- Pointwise domination `ω^(2n) ≤ C_n * cosh((r/2) ω)` and tail factor `1 / cosh((r/2) R) → 0`.
   set C_n : ℝ := 2 * ((2 * n).factorial : ℝ) * (r / 2)⁻¹ ^ (2 * n)
   have hCn_pos : 0 < C_n := by dsimp only [C_n]; positivity
   have hdom_half : ∀ ω : ℝ, ω ^ (2 * n) ≤ C_n * Real.cosh ((r / 2) * ω) := by
@@ -599,6 +616,7 @@ lemma tendsto_even_moment_of_weak_limit_cosh (μ_N : ℕ → Measure ℝ) (μ : 
     Integrable.mono' (hν.const_mul C_n) (continuous_pow (2 * n)).aestronglyMeasurable
       (Eventually.of_forall fun ω ↦ by
         rw [Real.norm_eq_abs, abs_of_nonneg (Even.pow_nonneg (even_two_mul n) ω)]; exact hdom_full ω)
+  -- For every `ε > 0`, choose cutoff `R > 0` with `C_n * M / cosh((r/2) R) < ε / 3`.
   rw [Metric.tendsto_atTop]
   intro ε hε
   have htail_lim : Tendsto (fun R : ℝ ↦ C_n * M / Real.cosh ((r / 2) * R)) atTop (nhds 0) := by
@@ -615,8 +633,10 @@ lemma tendsto_even_moment_of_weak_limit_cosh (μ_N : ℕ → Measure ℝ) (μ : 
     have h := hR₀ (max R₀ 1) (le_max_left _ _)
     rw [Real.dist_eq, sub_zero, abs_of_nonneg (by positivity)] at h
     exact h
+  -- Continuous compactly supported cutoff `χ(ω) = max 0 (min 1 (R + 1 - |ω|))`.
   let χ : ℝ → ℝ := fun ω ↦ max 0 (min 1 (R + 1 - |ω|))
-  have hχ_cont : Continuous χ := by dsimp only [χ]; fun_prop
+  have hχ_cont : Continuous χ := by
+    dsimp only [χ]; fun_prop
   have hχ_01 : ∀ ω, 0 ≤ χ ω ∧ χ ω ≤ 1 := fun ω ↦
     ⟨le_max_left _ _, max_le zero_le_one (min_le_left _ _)⟩
   have hχ_one : ∀ ω, |ω| ≤ R → χ ω = 1 := fun ω hω ↦ by
@@ -756,7 +776,7 @@ theorem thermo_limit_lanczos_moment_eq_spectralMeasure
 
 /-- **Holomorphic Cauchy–Hadamard Even Moment Upper Bound**:
 If `F : ℂ → ℂ` is holomorphic on `{|Im z| < R}` (`R > 0`) and agrees on `ℝ` with
-`t ↦ ∫ ω, exp(i t ω) dμ` (with `iteratedDeriv (2n) F 0 = (-1)^n ∫ ω^(2n) dμ`),
+`t ↦ ∫ ω, exp(i t ω) dμ` (with `∫ ω^(2n) dμ` finite and `iteratedDeriv (2n) F 0 = (-1)^n ∫ ω^(2n) dμ`),
 then for every `0 < ρ < R` there exists `M_ρ > 0` such that for all `n : ℕ`:
 `∫ ω, ω^(2n) dμ ≤ (2n)! * M_ρ * ρ⁻¹ ^ (2n)`. -/
 theorem holoStrip_even_moment_bound (μ : Measure ℝ) {R ρ : ℝ} (hρ_pos : 0 < ρ) (hρ_lt : ρ < R)
@@ -799,9 +819,9 @@ theorem holoStrip_even_moment_bound (μ : Measure ℝ) {R ρ : ℝ} (hρ_pos : 0
       rw [iteratedDeriv_zero]
       have hc := Complex.two_pi_I_inv_smul_circleIntegral_sub_inv_smul_of_differentiable_on_off_countable
         (f := F) (c := (0 : ℂ)) (R := ρ) (w := w) (s := ∅) Set.countable_empty hw
-        (hF_holo.continuousOn.mono hsub) (fun z hz ↦ (hF_holo.mono (Metric.ball_subset_closedBall.trans hsub)) z hz.1)
+        (hF_holo.continuousOn.mono hsub) (fun z hz ↦ ((hF_holo.mono (Metric.ball_subset_closedBall.trans hsub)).differentiableAt (Metric.isOpen_ball.mem_nhds hz.1)))
       rw [← hc]
-      simp only [Nat.factorial_zero, Nat.cast_one, one_mul, pow_one, smul_eq_mul, circleIntegral]
+      simp only [Nat.factorial_zero, Nat.cast_one, Complex.ofReal_one, one_mul, pow_one, smul_eq_mul, circleIntegral]
       congr 1; apply intervalIntegral.integral_congr; intro θ _; ring
     | succ k ih =>
       intro w hw
@@ -832,12 +852,12 @@ theorem holoStrip_even_moment_bound (μ : Measure ℝ) {R ρ : ℝ} (hρ_pos : 0
       have hG_cont : ∀ u ∈ Metric.ball w δ, Continuous (G u) := fun u hu ↦ by
         dsimp only [G]
         refine (hdcm_cont.mul (((hcm_cont.sub continuous_const).pow (k + 1)).inv₀ fun θ ↦ ?_)).mul hFcm_cont
-        exact pow_ne_zero _ (norm_ne_zero_iff.mp (by linarith [hdist_lb u hu θ]))
+        exact pow_ne_zero _ (norm_ne_zero_iff.mp (by dsimp only [Pi.sub_apply]; linarith [hdist_lb u hu θ]))
       have hG'_cont : Continuous (G' w) := by
         dsimp only [G']
         refine ((continuous_const.mul hdcm_cont).mul
           (((hcm_cont.sub continuous_const).pow (k + 2)).inv₀ fun θ ↦ ?_)).mul hFcm_cont
-        exact pow_ne_zero _ (norm_ne_zero_iff.mp (by linarith [hdist_lb w (Metric.mem_ball_self hδ_pos) θ]))
+        exact pow_ne_zero _ (norm_ne_zero_iff.mp (by dsimp only [Pi.sub_apply]; linarith [hdist_lb w (Metric.mem_ball_self hδ_pos) θ]))
       have hparam := intervalIntegral.hasDerivAt_integral_of_dominated_loc_of_deriv_le
         (F := G) (F' := G') (s := Metric.ball w δ) (x₀ := w)
         (a := (0 : ℝ)) (b := 2 * Real.pi)
@@ -863,7 +883,7 @@ theorem holoStrip_even_moment_bound (μ : Measure ℝ) {R ρ : ℝ} (hρ_pos : 0
           have hne : circleMap (0 : ℂ) ρ θ - u ≠ 0 :=
             norm_ne_zero_iff.mp (by linarith [hdist_lb u hu θ])
           have h1 : HasDerivAt (fun x : ℂ ↦ circleMap (0 : ℂ) ρ θ - x) (-1) u := by
-            simpa using (hasDerivAt_const u (circleMap (0 : ℂ) ρ θ)).sub (hasDerivAt_id u)
+            simpa using (hasDerivAt_const u (circleMap (0 : ℂ) ρ θ)).fun_sub (hasDerivAt_id u)
           have h2 : HasDerivAt (fun x : ℂ ↦ (circleMap (0 : ℂ) ρ θ - x) ^ (k + 1))
               (((k + 1 : ℕ) : ℂ) * (circleMap (0 : ℂ) ρ θ - u) ^ k * (-1)) u :=
             h1.fun_pow (k + 1)
@@ -924,8 +944,14 @@ theorem holoStrip_even_moment_bound (μ : Measure ℝ) {R ρ : ℝ} (hρ_pos : 0
           rw [sub_zero, norm_circleMap_zero, abs_of_pos hρ_pos]
         have hF_le : ‖F (circleMap (0 : ℂ) ρ θ)‖ ≤ M_ρ :=
           hbound_sphere _ (circleMap_mem_sphere 0 hρ_pos.le θ)
-        rw [norm_mul, norm_mul, hd_norm, norm_inv, norm_pow, hcm_norm]
-        exact mul_le_mul_of_nonneg_left hF_le (by positivity))
+        calc ‖deriv (circleMap (0 : ℂ) ρ) θ *
+                ((circleMap (0 : ℂ) ρ θ - 0) ^ (2 * n + 1))⁻¹ * F (circleMap (0 : ℂ) ρ θ)‖
+            = ‖deriv (circleMap (0 : ℂ) ρ) θ‖ *
+                ‖((circleMap (0 : ℂ) ρ θ - 0) ^ (2 * n + 1))⁻¹‖ * ‖F (circleMap (0 : ℂ) ρ θ)‖ := by
+                rw [norm_mul, norm_mul]
+          _ = ρ * (ρ ^ (2 * n + 1))⁻¹ * ‖F (circleMap (0 : ℂ) ρ θ)‖ := by
+                rw [hd_norm, norm_inv, norm_pow, hcm_norm]
+          _ ≤ ρ * (ρ ^ (2 * n + 1))⁻¹ * M_ρ := mul_le_mul_of_nonneg_left hF_le (by positivity))
     rwa [sub_zero, abs_of_pos (by positivity : (0 : ℝ) < 2 * Real.pi)] at hbd
   calc ((2 * n).factorial : ℝ) * (2 * Real.pi)⁻¹ *
         ‖∫ θ in (0 : ℝ)..(2 * Real.pi),
@@ -939,8 +965,9 @@ theorem holoStrip_even_moment_bound (μ : Measure ℝ) {R ρ : ℝ} (hρ_pos : 0
         field_simp [Real.pi_pos.ne', hρ_pos.ne']
 
 /-- **Theorem 1.2(b) from Holomorphic Strip Half-Width `holoStripHalfWidth μ` (Eq. 1.16)**:
-For ANY `R > 0` where the holomorphic extension `F` on `{|Im z| < R}` has even derivatives
-`iteratedDeriv (2n) F 0 = (-1)^n μ_{2n}` and `b` matches the moments of `μ`:
+For ANY `R > 0` with `(R : EReal) ≤ holoStripHalfWidth μ` (in particular `R = β/2 + κ`) where the
+holomorphic extension `F` on `{|Im z| < R}` has even derivatives `iteratedDeriv (2n) F 0 = (-1)^n μ_{2n}`
+and `b` matches the moments of `μ`:
 `2 * Filter.liminf (fun n ↦ b n / (n : ℝ)) atTop ≤ Real.pi / R`. -/
 theorem theorem_1_2b_from_holoStripHalfWidth (μ : Measure ℝ) {R : ℝ} (b : ℕ → ℝ)
     (hR_pos : 0 < R)

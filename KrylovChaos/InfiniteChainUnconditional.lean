@@ -13,10 +13,10 @@ import Mathlib.Tactic
 Glues the finite-truncation semigroup limit `KrylovChaos/InfiniteChainLimit.lean` to the real
 infinite Krylov ODE, Carleman `ℓ²`-uniqueness, exact single-exponential tail and complexity bounds
 Eqs. (1.12)–(1.13), and `limsup` rate bound in `KrylovChaos/Milestone1InfiniteChain.lean`:
-1. `jacobiWavefn_neg_t`: time-reversal symmetry `jacobiWavefn hD b (-t) n = (-1)^n * jacobiWavefn hD b t n`.
+1. `jacobiWavefn_neg_t`: time-reversal symmetry `jacobiWavefn D b (-t) n = (-1)^n * jacobiWavefn D b t n`.
 2. `infiniteKrylovWavefn_tendsto_all_time`: extends pointwise convergence to all `t : ℝ`.
 3. `realFiniteKrylovWavefn` & `realInfiniteKrylovWavefn`: unitary gauge
-   `φ_N(m, t) = ((-I)^m * jacobiWavefn (Nat.succ_pos N) b t m).re`, proved to be purely real, satisfy the
+   `φ_N(m, t) = ((-I)^m * jacobiWavefn (N + 1) b t m).re`, proved to be purely real, satisfy the
    exact finite Krylov ODE, initial condition, and uniform bound `|φ_N(m, t)| ≤ 1`.
 4. `theorem_1_1a_infinite_chain_complete`: single unconditional headline theorem taking only
    `b : ℕ → ℝ` (`b 0 = 0`, `0 ≤ b n ≤ α n + γ` for `n ≥ 1`, `α > 0`, `γ ≥ 0`) and proving:
@@ -43,7 +43,7 @@ private lemma jacobiWavefn_coord_hasDerivAt {D : ℕ} (hD : 0 < D) (b : ℕ → 
   have hode := jacobiWavefn_ode hD b t
   let L : EuclideanSpace ℂ (Fin D) →L[ℝ] ℂ :=
     (EuclideanSpace.proj n : EuclideanSpace ℂ (Fin D) →L[ℂ] ℂ).restrictScalars ℝ
-  have hcoord := L.hasDerivAt.comp t hode
+  have hcoord := L.hasFDerivAt.comp_hasDerivAt t hode
   convert hcoord using 1
   simp only [L, ContinuousLinearMap.coe_restrictScalars', EuclideanSpace.proj_apply,
     ContinuousLinearMap.smul_apply, PiLp.smul_apply, smul_eq_mul]
@@ -107,17 +107,17 @@ theorem jacobiWavefn_neg_t {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) (t : ℝ) (n
       unfold jacobiWavefn; rw [jacobiUnitary_zero]; simp
     rw [h0]
     by_cases hk : k = ⟨0, hD⟩
-    · subst hk; simp [EuclideanSpace.single_apply]
-    · simp [EuclideanSpace.single_apply, hk]
+    · subst hk; simp [EuclideanSpace.single, Pi.single_apply]
+    · simp [EuclideanSpace.single, Pi.single_apply, hk]
   have hu_deriv : ∀ s : ℝ, HasDerivAt u ((Complex.I • jacobiCLM D b) (u s)) s := by
     intro s
     have hneg : HasDerivAt (fun r : ℝ ↦ jacobiWavefn hD b (-r))
         (-((Complex.I • jacobiCLM D b) (jacobiWavefn hD b (-s)))) s := by
-      have h1 := (jacobiWavefn_ode hD b (-s)).comp s (hasDerivAt_neg s)
+      have h1 := (jacobiWavefn_ode hD b (-s)).scomp s (hasDerivAt_neg s)
       simpa using h1
     have hS_d : HasDerivAt (fun r : ℝ ↦ S (jacobiWavefn hD b (-r)))
         (S (-((Complex.I • jacobiCLM D b) (jacobiWavefn hD b (-s))))) s :=
-      (S.restrictScalars ℝ).hasDerivAt.comp s hneg
+      (S.restrictScalars ℝ).hasFDerivAt.comp_hasDerivAt s hneg
     have hsub := hS_d.sub (jacobiWavefn_ode hD b s)
     convert hsub using 1
     dsimp only [u]
@@ -130,7 +130,11 @@ theorem jacobiWavefn_neg_t {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) (t : ℝ) (n
       ext r; exact (real_inner_self_eq_norm_sq (u r)).symm
     rw [hnorm_eq]
     have hskew : @inner ℝ _ _ (u s) ((Complex.I • jacobiCLM D b) (u s)) = 0 := by
-      rw [real_inner_eq_re_inner ℂ, ContinuousLinearMap.smul_apply, inner_smul_right,
+      have hre : @inner ℝ _ _ (u s) ((Complex.I • jacobiCLM D b) (u s)) =
+          (inner ℂ (u s) ((Complex.I • jacobiCLM D b) (u s))).re := by
+        simp only [PiLp.inner_apply, Complex.re_sum]
+        congr 1; ext i; simp [RCLike.inner_apply]
+      rw [hre, ContinuousLinearMap.smul_apply, inner_smul_right,
         Complex.mul_re, Complex.I_re, Complex.I_im, zero_mul, one_mul, zero_sub]
       have hreal : (inner ℂ (u s) (jacobiCLM D b (u s))).im = 0 := by
         have hsa := jacobiCLM_selfAdjoint D b (u s) (u s)
@@ -253,7 +257,7 @@ private lemma gaugedFiniteWavefn_ode (b : ℕ → ℝ) (N m : ℕ) (hm : m ≤ N
       have hpow : -((-Complex.I) ^ (m + 1)) = (-Complex.I) ^ m * Complex.I := by
         rw [pow_succ]; ring
       linear_combination (b (m + 1) : ℂ) * jacobiWavefn (Nat.succ_pos N) b t ⟨m + 1, hlt⟩ * hpow
-  rw [mul_add, ← h1, ← h2, sub_eq_add_neg]
+  simp only [Fin.val_mk]; rw [mul_add, ← h1, ← h2, sub_eq_add_neg]
 
 private lemma gaugedFiniteWavefn_im_zero (b : ℕ → ℝ) (N m : ℕ) (t : ℝ) :
     (gaugedFiniteWavefn b N m t).im = 0 := by
@@ -267,9 +271,9 @@ private lemma gaugedFiniteWavefn_im_zero (b : ℕ → ℝ) (N m : ℕ) (t : ℝ)
         unfold jacobiWavefn; rw [jacobiUnitary_zero]; simp
       rw [h0]
       by_cases hk0 : k = 0
-      · subst hk0; simp [EuclideanSpace.single_apply]
+      · subst hk0; simp [EuclideanSpace.single, Pi.single_apply]
       · have hne : (⟨k, Nat.lt_succ_of_le hk⟩ : Fin (N + 1)) ≠ 0 := fun h ↦ hk0 (congrArg Fin.val h)
-        simp [EuclideanSpace.single_apply, hne]
+        simp [EuclideanSpace.single, Pi.single_apply, hne]
     have hy_ode : ∀ k ≤ N, ∀ s : ℝ,
         HasDerivAt (y k)
           ((if k = 0 then 0 else b k) * y (k - 1) s -
@@ -278,7 +282,8 @@ private lemma gaugedFiniteWavefn_im_zero (b : ℕ → ℝ) (N m : ℕ) (t : ℝ)
       have hd := Complex.imCLM.hasFDerivAt.comp_hasDerivAt s (gaugedFiniteWavefn_ode b N k hk s)
       convert hd using 1
       dsimp only [y]
-      simp only [Complex.imCLM_apply, Complex.sub_im]
+      change _ = (_ - _).im
+      rw [Complex.sub_im]
       congr 1
       · split_ifs <;> simp
       · split_ifs <;> simp
@@ -333,7 +338,8 @@ lemma realFiniteKrylovWavefn_ode (b : ℕ → ℝ) (N m : ℕ) (hm : m ≤ N) (t
        (if m = N then 0 else b (m + 1)) * realFiniteKrylovWavefn b N (m + 1) t) t := by
   have hd := Complex.reCLM.hasFDerivAt.comp_hasDerivAt t (gaugedFiniteWavefn_ode b N m hm t)
   convert hd using 1
-  simp only [Complex.reCLM_apply, Complex.sub_re]
+  change _ = (_ - _).re
+  rw [Complex.sub_re]
   congr 1
   · split_ifs <;> simp [realFiniteKrylovWavefn, gaugedFiniteWavefn]
   · split_ifs <;> simp [realFiniteKrylovWavefn, gaugedFiniteWavefn]
@@ -347,9 +353,9 @@ lemma realFiniteKrylovWavefn_init (b : ℕ → ℝ) (N m : ℕ) (hm : m ≤ N) :
     unfold jacobiWavefn; rw [jacobiUnitary_zero]; simp
   rw [h0]
   by_cases hm0 : m = 0
-  · subst hm0; simp [EuclideanSpace.single_apply]
+  · subst hm0; simp [EuclideanSpace.single, Pi.single_apply]
   · have hne : (⟨m, Nat.lt_succ_of_le hm⟩ : Fin (N + 1)) ≠ 0 := fun h ↦ hm0 (congrArg Fin.val h)
-    simp [EuclideanSpace.single_apply, hne, hm0]
+    simp [EuclideanSpace.single, Pi.single_apply, hne, hm0]
 
 /-- Uniform bound `|realFiniteKrylovWavefn b N m t| ≤ 1`. -/
 lemma realFiniteKrylovWavefn_abs_le_one (b : ℕ → ℝ) (N m : ℕ) (t : ℝ) :
@@ -364,7 +370,10 @@ lemma realFiniteKrylovWavefn_abs_le_one (b : ℕ → ℝ) (N m : ℕ) (t : ℝ) 
       _ ≤ ‖jacobiWavefn (Nat.succ_pos N) b t‖ := PiLp.norm_apply_le _ _
       _ = 1 := by
           unfold jacobiWavefn; rw [jacobiUnitary_norm_preserve]
-          simp [EuclideanSpace.norm_single]
+          have hsq : ‖EuclideanSpace.single (0 : Fin (N + 1)) (1 : ℂ)‖ ^ 2 = 1 := by
+            rw [← real_inner_self_eq_norm_sq, PiLp.inner_apply]
+            simp [EuclideanSpace.single, Pi.single_apply]
+          nlinarith [norm_nonneg (EuclideanSpace.single (0 : Fin (N + 1)) (1 : ℂ))]
   · simp
 
 /-- Pointwise convergence `realFiniteKrylovWavefn b N m t → realInfiniteKrylovWavefn b m t`

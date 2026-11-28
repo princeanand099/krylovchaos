@@ -13,6 +13,7 @@ import KrylovChaos.ClassicalIsingConcrete
 import KrylovChaos.ClusterCumulantAndDecoupling
 import KrylovChaos.ConcreteCombinatorics
 import KrylovChaos.ConcreteEndToEndWiring
+import KrylovChaos.ConcreteOTOCStrip
 import KrylovChaos.ConcreteSpectralStrip
 import KrylovChaos.Cor65LatticeBound
 import KrylovChaos.DepolarizedFrame
