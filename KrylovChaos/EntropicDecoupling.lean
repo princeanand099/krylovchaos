@@ -470,7 +470,7 @@ private lemma jBeta_conj_unitary_sq {N : ℕ} (U Q O : QubitOp N)
       _ = U * (Q * O * Q) * Uᴴ := by simp only [Matrix.mul_assoc]
   rw [hj]
   simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-  calc U * (jBeta Q O)ᴴ * Uᴴ * (U * jBeta Q O * Uᴴ)
+  calc U * ((jBeta Q O)ᴴ * Uᴴ) * (U * jBeta Q O * Uᴴ)
       = U * (jBeta Q O)ᴴ * (Uᴴ * U) * jBeta Q O * Uᴴ := by simp only [Matrix.mul_assoc]
     _ = U * ((jBeta Q O)ᴴ * jBeta Q O) * Uᴴ := by
         rw [hU_unit, Matrix.mul_one]; simp only [Matrix.mul_assoc]
