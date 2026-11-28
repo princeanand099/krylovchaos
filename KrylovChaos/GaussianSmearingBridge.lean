@@ -77,7 +77,7 @@ lemma integral_gaussianKernel_mul_sin {σ : ℝ} (hσ : 0 < σ) (ω : ℝ) :
     ring
   have h1 : ∫ s : ℝ, gaussianKernel σ s * Real.sin (ω * s) =
       ∫ s : ℝ, gaussianKernel σ (-s) * Real.sin (ω * (-s)) :=
-    (MeasureTheory.integral_comp_neg (fun s ↦ gaussianKernel σ s * Real.sin (ω * s))).symm
+    (integral_comp_neg (fun s ↦ gaussianKernel σ s * Real.sin (ω * s))).symm
   simp_rw [hodd, integral_neg] at h1
   linarith
 
@@ -90,6 +90,7 @@ theorem integral_gaussianKernel_mul_cos {σ : ℝ} (hσ : 0 < σ) (ω : ℝ) :
     dsimp only [f]; simp [integral_gaussianKernel_eq_one hσ]
   have hf_deriv : ∀ u : ℝ, HasDerivAt f (-(σ ^ 2) * u * f u) u := by
     intro u
+    -- Step 1: Differentiate under the integral sign.
     have hparam : HasDerivAt f (∫ s : ℝ, -(gaussianKernel σ s * s * Real.sin (u * s))) u := by
       have h1 := hasDerivAt_integral_of_dominated_loc_of_deriv_le
         (F := fun u s ↦ gaussianKernel σ s * Real.cos (u * s))
@@ -118,6 +119,7 @@ theorem integral_gaussianKernel_mul_cos {σ : ℝ} (hσ : 0 < σ) (ω : ℝ) :
             simpa using ((hasDerivAt_id v).mul_const s).cos
           convert hc.const_mul (gaussianKernel σ s) using 1; ring)
       exact h1.2
+    -- Step 2: Integration by parts on `[-R, R]` and `R → ∞`.
     have hibp : ∫ s : ℝ, -(gaussianKernel σ s * s * Real.sin (u * s)) = -(σ ^ 2) * u * f u := by
       have hg_deriv : ∀ s : ℝ, HasDerivAt (gaussianKernel σ) (-(s / σ ^ 2) * gaussianKernel σ s) s := by
         intro s
@@ -218,10 +220,13 @@ theorem integral_gaussianKernel_mul_cos {σ : ℝ} (hσ : 0 < σ) (ω : ℝ) :
         dsimp only [f]; rw [← integral_const_mul]; congr 1; funext s; ring
       rw [hfactor1, hfactor2] at hlim_eq
       have hσ2 : σ ^ 2 ≠ 0 := (sq_pos_of_pos hσ).ne'
-      have hmul := congrArg (fun x ↦ σ ^ 2 * x) hlim_eq
-      field_simp [hσ2] at hmul
+      have hmul : (∫ s : ℝ, -(gaussianKernel σ s * s * Real.sin (u * s))) + σ ^ 2 * (u * f u) = 0 := by
+        have h := congrArg (fun x ↦ σ ^ 2 * x) hlim_eq
+        simp only [mul_add, mul_zero, ← mul_assoc, mul_one_div_cancel hσ2, one_mul] at h
+        exact h
       linarith
     rw [← hibp]; exact hparam
+  -- Step 3: Conclude `exp (σ² u² / 2) * f u = 1` for all `u`.
   let g : ℝ → ℝ := fun u ↦ Real.exp (σ ^ 2 * u ^ 2 / 2) * f u
   have hg_deriv : ∀ u : ℝ, HasDerivAt g 0 u := by
     intro u
@@ -276,8 +281,14 @@ theorem integral_gaussianKernel_mul_cexp {σ : ℝ} (hσ : 0 < σ) (ω : ℝ) :
     hcos_r.ofReal
   have hsin_int : Integrable (fun s : ℝ ↦ Complex.I * ((gaussianKernel σ s * Real.sin (ω * s) : ℝ) : ℂ)) :=
     hsin_r.ofReal.const_mul Complex.I
+  have hc_coe : (∫ a : ℝ, ((gaussianKernel σ a * Real.cos (ω * a) : ℝ) : ℂ)) =
+      ((∫ a : ℝ, gaussianKernel σ a * Real.cos (ω * a) : ℝ) : ℂ) :=
+    Complex.ofRealCLM.integral_comp_comm hcos_r
+  have hs_coe : (∫ a : ℝ, ((gaussianKernel σ a * Real.sin (ω * a) : ℝ) : ℂ)) =
+      ((∫ a : ℝ, gaussianKernel σ a * Real.sin (ω * a) : ℝ) : ℂ) :=
+    Complex.ofRealCLM.integral_comp_comm hsin_r
   rw [hrew, integral_add hcos_int hsin_int, integral_const_mul,
-    integral_ofReal, integral_ofReal,
+    hc_coe, hs_coe,
     integral_gaussianKernel_mul_cos hσ ω, integral_gaussianKernel_mul_sin hσ ω]
   simp
 
@@ -369,6 +380,7 @@ theorem gaussianSmearBochner_eq_gaussianSmear {N : ℕ} {H : QubitOp N} (hH : H.
       funext s; ring
     rw [hrew, integral_const_mul, integral_gaussianKernel_mul_cexp hσ]
   simp_rw [hinner]
+  -- Match the RHS `(U * Matrix.of (...) * Uᴴ) i j`.
   change ∑ a : QubitIdx N, ∑ b : QubitIdx N,
       U i a * B a b * Uᴴ b j *
         ((Real.exp (-(σ ^ 2 / 2) * (hH.eigenvalues a - hH.eigenvalues b) ^ 2) : ℝ) : ℂ) =
@@ -401,6 +413,7 @@ lemma gaussianKernel_tail_le {σ Δt : ℝ} (hσ : 0 < σ) (hΔ : 0 ≤ Δt) :
     ∫ s in {s : ℝ | Δt < |s|}, gaussianKernel σ s ≤ Real.exp (-(Δt ^ 2) / (2 * σ ^ 2)) := by
   have hint_shift1 : Integrable (fun s : ℝ ↦ gaussianKernel σ (s - Δt)) :=
     (integrable_gaussianKernel hσ).comp_sub_right Δt
+  -- Split `{Δt < |s|} = Ioi Δt ∪ Iio (-Δt)`.
   have hset_eq : {s : ℝ | Δt < |s|} = Set.Ioi Δt ∪ Set.Iio (-Δt) := by
     ext s; simp only [Set.mem_setOf_eq, Set.mem_union, Set.mem_Ioi, Set.mem_Iio, lt_abs]
     constructor
@@ -419,7 +432,7 @@ lemma gaussianKernel_tail_le {σ Δt : ℝ} (hσ : 0 < σ) (hΔ : 0 ≤ Δt) :
       Real.exp (-(Δt ^ 2) / (2 * σ ^ 2)) * ∫ s in Set.Ioi 0, gaussianKernel σ s := by
     have hshift : ∫ s in Set.Ioi Δt, gaussianKernel σ (s - Δt) = ∫ u in Set.Ioi 0, gaussianKernel σ u := by
       rw [← integral_indicator measurableSet_Ioi, ← integral_indicator measurableSet_Ioi]
-      have h1 := MeasureTheory.integral_comp_sub_right
+      have h1 := integral_comp_sub_right
         (g := fun u ↦ Set.indicator (Set.Ioi (0 : ℝ)) (gaussianKernel σ) u) Δt
       convert h1 using 2
       funext s; simp only [Set.indicator, Set.mem_Ioi, sub_pos]
@@ -494,7 +507,7 @@ lemma gaussianKernel_mul_exp_tail_le {σ a Δt : ℝ} (hσ : 0 < σ) (ha : 0 ≤
       (Filter.Eventually.of_forall hsub)
   have hshift : ∫ s in {s : ℝ | Δt - σ ^ 2 * a < |s - σ ^ 2 * a|}, gaussianKernel σ (s - σ ^ 2 * a) =
       ∫ u in {u : ℝ | Δt - σ ^ 2 * a < |u|}, gaussianKernel σ u := by
-    have h1 := MeasureTheory.integral_comp_sub_right (g := fun u ↦ Set.indicator {u : ℝ | Δt - σ ^ 2 * a < |u|}
+    have h1 := integral_comp_sub_right (g := fun u ↦ Set.indicator {u : ℝ | Δt - σ ^ 2 * a < |u|}
       (gaussianKernel σ) u) (σ ^ 2 * a)
     have hmeas1 : MeasurableSet {u : ℝ | Δt - σ ^ 2 * a < |u|} :=
       measurableSet_lt measurable_const continuous_abs.measurable
@@ -622,6 +635,7 @@ theorem prop_9_1_part1_2d_finite_window_otoc
             rw [abs_mul, abs_of_nonneg (hg_nn s₂), mul_comm]
             exact mul_le_mul_of_nonneg_right (hF_bdd _ _) (hg_nn s₂)
         _ = M_bound := by rw [integral_const_mul, integral_gaussianKernel_eq_one hσ, mul_one]
+  -- Pointwise bound on `|∫ s₂, g(s₂) (F - model)|` for `|s₁| ≤ Δt` vs `|s₁| > Δt`.
   let E_tail : ℝ := Real.exp (-(Δt ^ 2) / (2 * σ ^ 2))
   let E_exp_tail : ℝ := Real.exp (-((Δt - σ ^ 2 * (lamL / 2)) ^ 2) / (2 * σ ^ 2))
   have hinner_diff_le : ∀ s₁ : ℝ,
@@ -658,7 +672,8 @@ theorem prop_9_1_part1_2d_finite_window_otoc
             rw [abs_mul, abs_mul, abs_mul, abs_of_pos (Real.exp_pos _),
               abs_of_pos (Real.exp_pos _), abs_of_pos (Real.exp_pos _)]; ring
     split_ifs with hs1
-    · have hmeas_win : MeasurableSet {s₂ : ℝ | |s₂| ≤ Δt} :=
+    · -- Case `|s₁| ≤ Δt`: split `s₂` into `|s₂| ≤ Δt` and `|s₂| > Δt`.
+      have hmeas_win : MeasurableSet {s₂ : ℝ | |s₂| ≤ Δt} :=
         measurableSet_le continuous_abs.measurable measurable_const
       have hmeas_tail : MeasurableSet {s₂ : ℝ | Δt < |s₂|} :=
         measurableSet_lt measurable_const continuous_abs.measurable
@@ -715,7 +730,8 @@ theorem prop_9_1_part1_2d_finite_window_otoc
         _ = C_R + (M_bound + |F_d|) * E_tail +
             |ε| * Real.exp (lamL * t) * Real.exp ((lamL / 2) * s₁) *
               Real.exp (σ ^ 2 * lamL ^ 2 / 8) * E_exp_tail := by ring
-    · calc |∫ s₂ : ℝ, gaussianKernel σ s₂ * (F (t + s₁) (t + s₂) - model s₁ s₂)|
+    · -- Case `|s₁| > Δt`: bound globally over `s₂`.
+      calc |∫ s₂ : ℝ, gaussianKernel σ s₂ * (F (t + s₁) (t + s₂) - model s₁ s₂)|
           ≤ ∫ s₂ : ℝ, |gaussianKernel σ s₂ * (F (t + s₁) (t + s₂) - model s₁ s₂)| :=
             abs_integral_le_integral_abs
         _ ≤ ∫ s₂ : ℝ, ((M_bound + |F_d|) * gaussianKernel σ s₂ +
@@ -733,6 +749,7 @@ theorem prop_9_1_part1_2d_finite_window_otoc
               integral_const_mul, integral_const_mul,
               integral_gaussianKernel_eq_one hσ, hexp_val]
             ring
+  -- Integrate the outer difference over `s₁ ∈ ℝ` by splitting `|s₁| ≤ Δt` and `|s₁| > Δt`.
   have houter_sub : (∫ s₁ : ℝ, gaussianKernel σ s₁ * ∫ s₂ : ℝ, gaussianKernel σ s₂ * F (t + s₁) (t + s₂)) -
       (F_d - ε * Real.exp (σ ^ 2 * lamL ^ 2 / 4) * Real.exp (lamL * t)) =
       ∫ s₁ : ℝ, gaussianKernel σ s₁ *
