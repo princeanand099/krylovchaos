@@ -75,15 +75,9 @@ private lemma opNorm_unitary_le_one {N : ℕ} (U : QubitOp N) (hU' : Uᴴ * U = 
 
 private lemma gibbsWightmanNormSq_eq_hsNormSq_jBeta' {N : ℕ} (G : GibbsData N) (X : QubitOp N) :
     gibbsWightmanNormSq G X = ((jBeta G.ρQuarter X)ᴴ * jBeta G.ρQuarter X).trace.re := by
-  unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner jBeta
-  congr 1
-  have hQh : G.ρQuarterᴴ = G.ρQuarter := G.ρQuarter_herm
-  have hQsq : G.ρQuarter * G.ρQuarter = G.ρHalf := G.sq_quarter
-  simp only [Matrix.conjTranspose_mul, hQh, Matrix.mul_assoc]
-  rw [← hQsq]
-  simp only [Matrix.mul_assoc]
-  rw [Matrix.trace_mul_comm G.ρQuarter]
-  simp only [Matrix.mul_assoc]
+  unfold gibbsWightmanNormSq gibbsWightmanInner
+  exact congrArg Complex.re
+    (prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf X X G.ρQuarter_herm G.sq_quarter).symm
 
 set_option maxHeartbeats 400000 in
 /-- For any `X : QubitOp N` and Gibbs state `G = concreteGibbsData hH β`,
