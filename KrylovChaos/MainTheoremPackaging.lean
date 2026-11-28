@@ -99,7 +99,7 @@ lemma concreteTimeOrderedT_le_opNorm_sq_mul_shift {N : ℕ} {H W V : QubitOp N}
         gibbsRhoQuarter hH β := by
     rw [hB_adj]
     unfold B jBeta
-    have hq : G.ρQuarter * G.ρQuarter = gibbsRhoHalf hH β := G.sq_quarter
+    have hq : gibbsRhoQuarter hH β * gibbsRhoQuarter hH β = gibbsRhoHalf hH β := G.sq_quarter
     change (gibbsRhoQuarter hH β * heisenbergEvol hH ((t : ℂ) - Complex.I * (τ : ℂ)) W * gibbsRhoQuarter hH β) *
       (gibbsRhoQuarter hH β * heisenbergEvol hH z W * gibbsRhoQuarter hH β) = _
     calc (gibbsRhoQuarter hH β * heisenbergEvol hH ((t : ℂ) - Complex.I * (τ : ℂ)) W * gibbsRhoQuarter hH β) *
@@ -112,7 +112,7 @@ lemma concreteTimeOrderedT_le_opNorm_sq_mul_shift {N : ℕ} {H W V : QubitOp N}
   have hT_eq : concreteTimeOrderedT hH β W V t τ = hsNormSq (B * V) := by
     unfold concreteTimeOrderedT hsNormSq hsInner
     rw [← hBB]
-    congr 1
+    apply congrArg Complex.re
     rw [Matrix.conjTranspose_mul, hV.eq]
     calc (Bᴴ * B * (V * V)).trace
         = ((Bᴴ * B * V) * V).trace := by simp only [Matrix.mul_assoc]
@@ -426,7 +426,6 @@ theorem theorem_1_2b_from_holoStripHalfWidth_ereal (μ : Measure ℝ) (b : ℕ �
     have hmid : Real.pi / rW ≤ 2 * Real.pi / (β + 2 * κ) := by
       have heq : Real.pi / (β / 2 + κ) = 2 * Real.pi / (β + 2 * κ) := by
         field_simp [hβκ_pos.ne', (show β + 2 * κ ≠ 0 by linarith)]
-        ring
       rw [← heq]
       exact div_le_div_of_nonneg_left Real.pi_pos.le hβκ_pos hrW_ge
     refine ⟨?_, ?_, hstrict_e⟩
