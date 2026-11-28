@@ -32,6 +32,7 @@ import KrylovChaos.HighTempCumulant
 import KrylovChaos.HighTempParams
 import KrylovChaos.HighTempPolymerZ
 import KrylovChaos.HighTempReversePoincare
+import KrylovChaos.HighTempSharpBounds
 import KrylovChaos.InfiniteChainLimit
 import KrylovChaos.InfiniteChainUnconditional
 import KrylovChaos.JacobiSemigroup
