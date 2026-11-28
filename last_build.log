@@ -1,0 +1,368 @@
+COMMIT=6f39fc2859905f3e1a517decbb07afcd73068e2e
+TIMESTAMP=2026-11-28T11:23:38Z
+=== 1. LAKE BUILD ===
+⚠ [3238/3314] Replayed KrylovChaos.Basic
+warning: KrylovChaos/Basic.lean: imports `Mathlib.Analysis.Calculus.Deriv.MeanValue` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Basic.lean: imports `Mathlib.Analysis.SpecialFunctions.ExpDeriv` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Basic.lean: imports `Mathlib.Analysis.SpecialFunctions.Log.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Basic.lean: imports `Mathlib.Analysis.SpecialFunctions.Pow.Real` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Basic.lean: imports `Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Basic.lean: imports `Mathlib.Data.Nat.Choose.Sum` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Basic.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3239/3314] Replayed KrylovChaos.ProductState
+warning: KrylovChaos/ProductState.lean: imports `Mathlib.Algebra.Order.BigOperators.Group.Finset` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ProductState.lean: imports `Mathlib.Analysis.Complex.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ProductState.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3240/3314] Replayed KrylovChaos.WightmanIsometry
+warning: KrylovChaos/WightmanIsometry.lean: imports `Mathlib.Analysis.SpecificLimits.Normed` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/WightmanIsometry.lean: imports `Mathlib.Data.Matrix.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/WightmanIsometry.lean: imports `Mathlib.LinearAlgebra.Matrix.Trace` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/WightmanIsometry.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3241/3314] Replayed KrylovChaos.QubitAlgebra
+warning: KrylovChaos/QubitAlgebra.lean: imports `Mathlib.Data.Matrix.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/QubitAlgebra.lean: imports `Mathlib.LinearAlgebra.Matrix.Trace` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/QubitAlgebra.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3242/3314] Replayed KrylovChaos.ManyBodySetup
+warning: KrylovChaos/ManyBodySetup.lean: imports `Mathlib.Data.Matrix.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ManyBodySetup.lean: imports `Mathlib.LinearAlgebra.Matrix.Trace` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ManyBodySetup.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3351/3625] Replayed KrylovChaos.GibbsConstruction
+warning: KrylovChaos/GibbsConstruction.lean: imports `Mathlib.Analysis.InnerProductSpace.PiL2` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/GibbsConstruction.lean: imports `Mathlib.Analysis.InnerProductSpace.Projection.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/GibbsConstruction.lean: imports `Mathlib.Analysis.Matrix.Spectrum` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/GibbsConstruction.lean: imports `Mathlib.Analysis.SpecialFunctions.ExpDeriv` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/GibbsConstruction.lean: imports `Mathlib.Analysis.SpecialFunctions.Pow.Real` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/GibbsConstruction.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3352/3625] Replayed KrylovChaos.DepolarizedFrame
+warning: KrylovChaos/DepolarizedFrame.lean: imports `Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/DepolarizedFrame.lean: imports `Mathlib.Data.Matrix.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/DepolarizedFrame.lean: imports `Mathlib.LinearAlgebra.Matrix.Trace` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/DepolarizedFrame.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3357/3625] Replayed KrylovChaos.KrylovTail
+warning: KrylovChaos/KrylovTail.lean: imports `Mathlib.Analysis.Calculus.Deriv.Comp` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/KrylovTail.lean: imports `Mathlib.Analysis.Calculus.Deriv.MeanValue` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/KrylovTail.lean: imports `Mathlib.Analysis.SpecialFunctions.Log.Deriv` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/KrylovTail.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3361/3625] Replayed KrylovChaos.CarlemanJacobi
+warning: KrylovChaos/CarlemanJacobi.lean: imports `Mathlib.Analysis.Complex.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/CarlemanJacobi.lean: imports `Mathlib.Analysis.PSeries` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/CarlemanJacobi.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3362/3625] Replayed KrylovChaos.Filtration
+warning: KrylovChaos/Filtration.lean: imports `Mathlib.Analysis.InnerProductSpace.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Filtration.lean: imports `Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Filtration.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3363/3625] Replayed KrylovChaos.VitaliAnalytic
+warning: KrylovChaos/VitaliAnalytic.lean: imports `Mathlib.Analysis.Complex.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/VitaliAnalytic.lean: imports `Mathlib.Analysis.SpecificLimits.Normed` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/VitaliAnalytic.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3604/3625] Replayed KrylovChaos.SpectralDyck
+warning: KrylovChaos/SpectralDyck.lean: imports `Mathlib.Analysis.SpecialFunctions.Gamma.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/SpectralDyck.lean: imports `Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/SpectralDyck.lean: imports `Mathlib.MeasureTheory.Integral.Gamma` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/SpectralDyck.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3605/3625] Replayed KrylovChaos.GlauberDecoupling
+warning: KrylovChaos/GlauberDecoupling.lean: imports `Mathlib.Data.Matrix.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/GlauberDecoupling.lean: imports `Mathlib.LinearAlgebra.Matrix.Trace` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/GlauberDecoupling.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3606/3625] Replayed KrylovChaos.KoteckyPreiss
+warning: KrylovChaos/KoteckyPreiss.lean: imports `Mathlib.Analysis.Complex.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/KoteckyPreiss.lean: imports `Mathlib.Analysis.SpecialFunctions.ExpDeriv` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/KoteckyPreiss.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3607/3625] Replayed KrylovChaos.PolymerTrees
+warning: KrylovChaos/PolymerTrees.lean: imports `Mathlib.Analysis.SpecificLimits.Normed` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/PolymerTrees.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3608/3625] Replayed KrylovChaos.ClassicalIsing
+warning: KrylovChaos/ClassicalIsing.lean: imports `Mathlib.Analysis.SpecialFunctions.Log.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ClassicalIsing.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+info: KrylovChaos/ClassicalIsing.lean:98:8: Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+info: KrylovChaos/ClassicalIsing.lean:98:8: Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+info: KrylovChaos/ClassicalIsing.lean:98:8: Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+info: KrylovChaos/ClassicalIsing.lean:98:8: Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+⚠ [3609/3625] Replayed KrylovChaos.ArakiOneDim
+warning: KrylovChaos/ArakiOneDim.lean: imports `Mathlib.Analysis.Complex.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ArakiOneDim.lean: imports `Mathlib.Analysis.SpecialFunctions.ExpDeriv` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ArakiOneDim.lean: imports `Mathlib.Analysis.SpecificLimits.Normed` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ArakiOneDim.lean: imports `Mathlib.Data.Matrix.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ArakiOneDim.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3610/3625] Replayed KrylovChaos.StructuralNecessity
+warning: KrylovChaos/StructuralNecessity.lean: imports `Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/StructuralNecessity.lean: imports `Mathlib.Data.Nat.Choose.Sum` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/StructuralNecessity.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3611/3625] Replayed KrylovChaos.OperatorBridges
+warning: KrylovChaos/OperatorBridges.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3612/3625] Replayed KrylovChaos.ConcreteCombinatorics
+warning: KrylovChaos/ConcreteCombinatorics.lean: imports `Mathlib.Data.Finset.Card` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ConcreteCombinatorics.lean: imports `Mathlib.Data.Nat.Choose.Sum` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ConcreteCombinatorics.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3613/3625] Replayed KrylovChaos.HighTempConditioning
+warning: KrylovChaos/HighTempConditioning.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3614/3625] Replayed KrylovChaos.HighTempReversePoincare
+warning: KrylovChaos/HighTempReversePoincare.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3615/3625] Replayed KrylovChaos.WightmanProjectors
+warning: KrylovChaos/WightmanProjectors.lean: imports `Mathlib.Analysis.InnerProductSpace.Projection.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/WightmanProjectors.lean: imports `Mathlib.Analysis.InnerProductSpace.PiL2` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/WightmanProjectors.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3617/3716] Replayed KrylovChaos.SupportAndDualFrame
+warning: KrylovChaos/SupportAndDualFrame.lean: imports `Mathlib.Analysis.Normed.Operator.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/SupportAndDualFrame.lean: imports `Mathlib.Analysis.InnerProductSpace.PiL2` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3618/3716] Replayed KrylovChaos.PolymerExpansionConcrete
+warning: KrylovChaos/PolymerExpansionConcrete.lean: imports `Mathlib.Topology.Order.IntermediateValue` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3619/3716] Replayed KrylovChaos.Lemma72Concrete
+warning: KrylovChaos/Lemma72Concrete.lean: imports `Mathlib.Topology.Order.IntermediateValue` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3620/3716] Replayed KrylovChaos.OperatorGlauberAndLanczosFiltration
+warning: KrylovChaos/OperatorGlauberAndLanczosFiltration.lean: imports `Mathlib.Analysis.SpecialFunctions.Log.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/OperatorGlauberAndLanczosFiltration.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3621/3716] Replayed KrylovChaos.ConcreteEndToEndWiring
+warning: KrylovChaos/ConcreteEndToEndWiring.lean: imports `Mathlib.Analysis.Calculus.MeanValue` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ConcreteEndToEndWiring.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3626/3716] Replayed KrylovChaos.SpectralSmearingAndDoubleWell
+warning: KrylovChaos/SpectralSmearingAndDoubleWell.lean: imports `Mathlib.Analysis.SpecificLimits.Normed` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/SpectralSmearingAndDoubleWell.lean: imports `Mathlib.Data.Matrix.Block` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/SpectralSmearingAndDoubleWell.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3627/3716] Replayed KrylovChaos.Theorem12Concrete
+warning: KrylovChaos/Theorem12Concrete.lean: imports `Mathlib.Analysis.Calculus.MeanValue` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Theorem12Concrete.lean: imports `Mathlib.Analysis.SpecialFunctions.Pow.Deriv` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Theorem12Concrete.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3629/3716] Replayed KrylovChaos.ClassicalIsingConcrete
+warning: KrylovChaos/ClassicalIsingConcrete.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3630/3716] Replayed KrylovChaos.Milestone3Bridges
+warning: KrylovChaos/Milestone3Bridges.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3631/3716] Replayed KrylovChaos.MajoranaAlgebra
+warning: KrylovChaos/MajoranaAlgebra.lean: imports `Mathlib.Data.Matrix.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/MajoranaAlgebra.lean: imports `Mathlib.LinearAlgebra.Matrix.Trace` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/MajoranaAlgebra.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3632/3716] Replayed KrylovChaos.CausalNormBounds
+warning: KrylovChaos/CausalNormBounds.lean: imports `Mathlib.Analysis.Normed.Algebra.Exponential` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/CausalNormBounds.lean: imports `Mathlib.Analysis.SpecificLimits.Normed` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/CausalNormBounds.lean: imports `Mathlib.Data.Nat.Choose.Sum` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/CausalNormBounds.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3633/3716] Replayed KrylovChaos.LanczosMoments
+warning: KrylovChaos/LanczosMoments.lean: imports `Mathlib.Data.Matrix.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/LanczosMoments.lean: imports `Mathlib.MeasureTheory.Integral.Gamma` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/LanczosMoments.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3634/3716] Replayed KrylovChaos.JacobiSemigroup
+warning: KrylovChaos/JacobiSemigroup.lean: imports `Mathlib.Analysis.InnerProductSpace.Adjoint` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/JacobiSemigroup.lean: imports `Mathlib.Analysis.InnerProductSpace.Calculus` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/JacobiSemigroup.lean: imports `Mathlib.Analysis.InnerProductSpace.PiL2` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/JacobiSemigroup.lean: imports `Mathlib.Analysis.Normed.Algebra.Exponential` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/JacobiSemigroup.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3635/3716] Replayed KrylovChaos.SpectralMeasure
+warning: KrylovChaos/SpectralMeasure.lean: imports `Mathlib.Analysis.Complex.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/SpectralMeasure.lean: imports `Mathlib.Analysis.SpecialFunctions.ExpDeriv` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/SpectralMeasure.lean: imports `Mathlib.Analysis.SpecialFunctions.Pow.Real` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/SpectralMeasure.lean: imports `Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/SpectralMeasure.lean: imports `Mathlib.Analysis.Calculus.IteratedDeriv.Defs` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/SpectralMeasure.lean: imports `Mathlib.Data.Matrix.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/SpectralMeasure.lean: imports `Mathlib.LinearAlgebra.Matrix.Trace` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/SpectralMeasure.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3636/3716] Replayed KrylovChaos.BimodalExact
+warning: KrylovChaos/BimodalExact.lean: imports `Mathlib.Data.Matrix.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/BimodalExact.lean: imports `Mathlib.LinearAlgebra.Matrix.Trace` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/BimodalExact.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3637/3716] Replayed KrylovChaos.EndToEndTheorems
+warning: KrylovChaos/EndToEndTheorems.lean: imports `Mathlib.Analysis.InnerProductSpace.PiL2` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/EndToEndTheorems.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3638/3716] Replayed KrylovChaos.Theorem11bConcrete
+warning: KrylovChaos/Theorem11bConcrete.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3639/3716] Replayed KrylovChaos.ProductStateDerivation
+warning: KrylovChaos/ProductStateDerivation.lean: imports `Mathlib.Data.Matrix.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ProductStateDerivation.lean: imports `Mathlib.LinearAlgebra.Matrix.Trace` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ProductStateDerivation.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3640/3716] Replayed KrylovChaos.ProductStateMultiSite
+warning: KrylovChaos/ProductStateMultiSite.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3641/3716] Replayed KrylovChaos.ProductStateLambdaMSS
+warning: KrylovChaos/ProductStateLambdaMSS.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3642/3716] Replayed KrylovChaos.Milestone1CoreRemediation
+warning: KrylovChaos/Milestone1CoreRemediation.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3643/3716] Replayed KrylovChaos.Milestone3Sections678
+warning: KrylovChaos/Milestone3Sections678.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3680/3716] Replayed KrylovChaos.Milestone2AnalyticFoundations
+warning: KrylovChaos/Milestone2AnalyticFoundations.lean: imports `Mathlib.MeasureTheory.Measure.Dirac.Def` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone2AnalyticFoundations.lean: imports `Mathlib.MeasureTheory.Measure.Dirac.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone2AnalyticFoundations.lean: imports `Mathlib.MeasureTheory.Integral.Bochner.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone2AnalyticFoundations.lean: imports `Mathlib.MeasureTheory.Integral.DominatedConvergence` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone2AnalyticFoundations.lean: imports `Mathlib.Analysis.Calculus.ParametricIntegral` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone2AnalyticFoundations.lean: imports `Mathlib.Analysis.Complex.LocallyUniformLimit` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone2AnalyticFoundations.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3681/3716] Replayed KrylovChaos.Milestone2SpectralAndVitali
+warning: KrylovChaos/Milestone2SpectralAndVitali.lean: imports `Mathlib.Analysis.Complex.CauchyIntegral` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone2SpectralAndVitali.lean: imports `Mathlib.Analysis.Complex.LocallyUniformLimit` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone2SpectralAndVitali.lean: imports `Mathlib.Analysis.Analytic.IsolatedZeros` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone2SpectralAndVitali.lean: imports `Mathlib.Analysis.Calculus.MeanValue` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone2SpectralAndVitali.lean: imports `Mathlib.MeasureTheory.Integral.Bochner.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone2SpectralAndVitali.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3682/3716] Replayed KrylovChaos.TimeOrderedOTOC
+warning: KrylovChaos/TimeOrderedOTOC.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3683/3716] Replayed KrylovChaos.AllTimeLiebRobinson
+warning: KrylovChaos/AllTimeLiebRobinson.lean: imports `Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/AllTimeLiebRobinson.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3684/3716] Replayed KrylovChaos.ArakiOneDimAllTemp
+warning: KrylovChaos/ArakiOneDimAllTemp.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3685/3716] Replayed KrylovChaos.Milestone4StructuralNecessity
+warning: KrylovChaos/Milestone4StructuralNecessity.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3689/3716] Replayed KrylovChaos.Milestone4Section9AppB
+warning: KrylovChaos/Milestone4Section9AppB.lean: imports `Mathlib.MeasureTheory.Integral.Bochner.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone4Section9AppB.lean: imports `Mathlib.Analysis.SpecialFunctions.Gaussian.GaussianIntegral` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone4Section9AppB.lean: imports `Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone4Section9AppB.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3690/3716] Replayed KrylovChaos.DoubleWellTunneling
+warning: KrylovChaos/DoubleWellTunneling.lean: imports `Mathlib.Analysis.SpecialFunctions.Gaussian.GaussianIntegral` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/DoubleWellTunneling.lean: imports `Mathlib.Analysis.Matrix.Spectrum` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/DoubleWellTunneling.lean: imports `Mathlib.LinearAlgebra.Dimension.Finrank` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/DoubleWellTunneling.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3691/3716] Replayed KrylovChaos.BimodalFullRank
+warning: KrylovChaos/BimodalFullRank.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/BimodalFullRank.lean:194:21: `push_neg` has been deprecated. Prefer using `push Not` instead.
+If you'd rather continue using `push_neg` in your project, you can implement it as follows:
+```
+open Lean.Parser.Tactic in
+macro "push_neg" cfg:optConfig loc:(location)? : tactic =>
+  `(tactic| push $cfg:optConfig Not $[$loc]?)
+```
+warning: KrylovChaos/BimodalFullRank.lean:246:21: `push_neg` has been deprecated. Prefer using `push Not` instead.
+If you'd rather continue using `push_neg` in your project, you can implement it as follows:
+```
+open Lean.Parser.Tactic in
+macro "push_neg" cfg:optConfig loc:(location)? : tactic =>
+  `(tactic| push $cfg:optConfig Not $[$loc]?)
+```
+warning: KrylovChaos/BimodalFullRank.lean:345:65: `push_neg` has been deprecated. Prefer using `push Not` instead.
+If you'd rather continue using `push_neg` in your project, you can implement it as follows:
+```
+open Lean.Parser.Tactic in
+macro "push_neg" cfg:optConfig loc:(location)? : tactic =>
+  `(tactic| push $cfg:optConfig Not $[$loc]?)
+```
+warning: KrylovChaos/BimodalFullRank.lean:375:61: `push_neg` has been deprecated. Prefer using `push Not` instead.
+If you'd rather continue using `push_neg` in your project, you can implement it as follows:
+```
+open Lean.Parser.Tactic in
+macro "push_neg" cfg:optConfig loc:(location)? : tactic =>
+  `(tactic| push $cfg:optConfig Not $[$loc]?)
+```
+⚠ [3692/3716] Replayed KrylovChaos.HighTempPolymerZ
+warning: KrylovChaos/HighTempPolymerZ.lean: imports `Mathlib.Analysis.Complex.CauchyIntegral` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/HighTempPolymerZ.lean: imports `Mathlib.Analysis.Complex.LocallyUniformLimit` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/HighTempPolymerZ.lean: imports `Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/HighTempPolymerZ.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3694/3716] Replayed KrylovChaos.ShiftedThermalSize
+warning: KrylovChaos/ShiftedThermalSize.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3695/3716] Replayed KrylovChaos.DoubleWellKrylovLimit
+warning: KrylovChaos/DoubleWellKrylovLimit.lean: imports `Mathlib.Analysis.Matrix.Spectrum` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/DoubleWellKrylovLimit.lean: imports `Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/DoubleWellKrylovLimit.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/DoubleWellKrylovLimit.lean:294:4: `push_neg` has been deprecated. Prefer using `push Not` instead.
+If you'd rather continue using `push_neg` in your project, you can implement it as follows:
+```
+open Lean.Parser.Tactic in
+macro "push_neg" cfg:optConfig loc:(location)? : tactic =>
+  `(tactic| push $cfg:optConfig Not $[$loc]?)
+```
+warning: KrylovChaos/DoubleWellKrylovLimit.lean:297:22: `push_neg` has been deprecated. Prefer using `push Not` instead.
+If you'd rather continue using `push_neg` in your project, you can implement it as follows:
+```
+open Lean.Parser.Tactic in
+macro "push_neg" cfg:optConfig loc:(location)? : tactic =>
+  `(tactic| push $cfg:optConfig Not $[$loc]?)
+```
+⚠ [3696/3716] Replayed KrylovChaos.GaussianSmearingBridge
+warning: KrylovChaos/GaussianSmearingBridge.lean: imports `Mathlib.Analysis.Calculus.ParametricIntegral` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/GaussianSmearingBridge.lean: imports `Mathlib.MeasureTheory.Integral.IntervalIntegral.IntegrationByParts` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/GaussianSmearingBridge.lean: imports `Mathlib.MeasureTheory.Integral.IntegralEqImproper` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/GaussianSmearingBridge.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3697/3716] Replayed KrylovChaos.Milestone1Majorana
+warning: KrylovChaos/Milestone1Majorana.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3698/3716] Replayed KrylovChaos.InfiniteChainLimit
+warning: KrylovChaos/InfiniteChainLimit.lean: imports `Mathlib.Analysis.Calculus.MeanValue` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/InfiniteChainLimit.lean: imports `Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/InfiniteChainLimit.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3699/3716] Replayed KrylovChaos.Milestone1InfiniteChain
+warning: KrylovChaos/Milestone1InfiniteChain.lean: imports `Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone1InfiniteChain.lean: imports `Mathlib.MeasureTheory.Integral.DominatedConvergence` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone1InfiniteChain.lean: imports `Mathlib.Analysis.SpecificLimits.Normed` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Milestone1InfiniteChain.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3700/3716] Replayed KrylovChaos.InfiniteChainUnconditional
+warning: KrylovChaos/InfiniteChainUnconditional.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3701/3716] Replayed KrylovChaos.MeixnerMomentIdentity
+warning: KrylovChaos/MeixnerMomentIdentity.lean: imports `Mathlib.Analysis.Complex.CauchyIntegral` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/MeixnerMomentIdentity.lean: imports `Mathlib.Analysis.Complex.RemovableSingularity` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/MeixnerMomentIdentity.lean: imports `Mathlib.Analysis.Calculus.ParametricIntegral` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/MeixnerMomentIdentity.lean: imports `Mathlib.Analysis.Calculus.IteratedDeriv.Defs` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/MeixnerMomentIdentity.lean: imports `Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/MeixnerMomentIdentity.lean: imports `Mathlib.Analysis.SpecialFunctions.Trigonometric.ArctanDeriv` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/MeixnerMomentIdentity.lean: imports `Mathlib.MeasureTheory.Integral.IntegralEqImproper` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/MeixnerMomentIdentity.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+info: KrylovChaos/MeixnerMomentIdentity.lean:964:44: Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+info: KrylovChaos/MeixnerMomentIdentity.lean:967:44: Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+info: KrylovChaos/MeixnerMomentIdentity.lean:1037:24: Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+⚠ [3702/3716] Replayed KrylovChaos.ProductExpCumulant
+warning: KrylovChaos/ProductExpCumulant.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3703/3716] Replayed KrylovChaos.Section9EndToEnd
+warning: KrylovChaos/Section9EndToEnd.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+info: KrylovChaos/Section9EndToEnd.lean:1485:20: Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+⚠ [3704/3716] Replayed KrylovChaos.ThermodynamicKMS
+warning: KrylovChaos/ThermodynamicKMS.lean: imports `Mathlib.Topology.Compactness.Compact` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ThermodynamicKMS.lean: imports `Mathlib.Topology.MetricSpace.Basic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ThermodynamicKMS.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3705/3716] Built KrylovChaos.HighTempParams (7.5s)
+warning: KrylovChaos/HighTempParams.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+✔ [3706/3716] Built KrylovChaos.EntropicDecoupling (22s)
+⚠ [3707/3716] Built KrylovChaos.HighTempChaosBound (29s)
+warning: KrylovChaos/HighTempChaosBound.lean: imports `Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/HighTempChaosBound.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3708/3716] Built KrylovChaos.HighTempChaosFull (4.1s)
+warning: KrylovChaos/HighTempChaosFull.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3709/3716] Built KrylovChaos.Cor65LatticeBound (55s)
+warning: KrylovChaos/Cor65LatticeBound.lean: imports `Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/Cor65LatticeBound.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3710/3716] Built KrylovChaos.HighTempSharpBounds (61s)
+warning: KrylovChaos/HighTempSharpBounds.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+⚠ [3711/3716] Built KrylovChaos.ConcreteSpectralStrip (30s)
+warning: KrylovChaos/ConcreteSpectralStrip.lean: imports `Mathlib.Analysis.Complex.CauchyIntegral` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+warning: KrylovChaos/ConcreteSpectralStrip.lean: imports `Mathlib.Tactic` from package `mathlib`, which is designed for use with the module system; consider adding `module` to the start of this file
+✔ [3712/3716] Built KrylovChaos.ConcreteOTOCStrip (38s)
+✔ [3713/3716] Built KrylovChaos.MainTheoremPackaging (7.6s)
+✔ [3714/3716] Built KrylovChaos.SanityChecks (3.5s)
+✔ [3715/3716] Built KrylovChaos (2.2s)
+Build completed successfully (3716 jobs).
+LAKE_BUILD_EXIT=0
