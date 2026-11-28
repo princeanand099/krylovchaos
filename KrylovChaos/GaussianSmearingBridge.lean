@@ -77,7 +77,7 @@ lemma integral_gaussianKernel_mul_sin {σ : ℝ} (hσ : 0 < σ) (ω : ℝ) :
     ring
   have h1 : ∫ s : ℝ, gaussianKernel σ s * Real.sin (ω * s) =
       ∫ s : ℝ, gaussianKernel σ (-s) * Real.sin (ω * (-s)) :=
-    (integral_comp_neg (fun s ↦ gaussianKernel σ s * Real.sin (ω * s))).symm
+    (MeasureTheory.integral_neg_eq_self (fun s ↦ gaussianKernel σ s * Real.sin (ω * s)) volume).symm
   simp_rw [hodd, integral_neg] at h1
   linarith
 
@@ -220,7 +220,7 @@ theorem integral_gaussianKernel_mul_cos {σ : ℝ} (hσ : 0 < σ) (ω : ℝ) :
         dsimp only [f]; rw [← integral_const_mul]; congr 1; funext s; ring
       rw [hfactor1, hfactor2] at hlim_eq
       have hσ2 : σ ^ 2 ≠ 0 := (sq_pos_of_pos hσ).ne'
-      have hmul : (∫ s : ℝ, -(gaussianKernel σ s * s * Real.sin (u * s))) + σ ^ 2 * (u * f u) = 0 := by
+      have hmul : (∫ s : ℝ, -(gaussianKernel σ s * s * Real.sin (u * s))) + σ ^ 2 * u * f u = 0 := by
         have h := congrArg (fun x ↦ σ ^ 2 * x) hlim_eq
         simp only [mul_add, mul_zero, ← mul_assoc, mul_one_div_cancel hσ2, one_mul] at h
         exact h
@@ -432,8 +432,8 @@ lemma gaussianKernel_tail_le {σ Δt : ℝ} (hσ : 0 < σ) (hΔ : 0 ≤ Δt) :
       Real.exp (-(Δt ^ 2) / (2 * σ ^ 2)) * ∫ s in Set.Ioi 0, gaussianKernel σ s := by
     have hshift : ∫ s in Set.Ioi Δt, gaussianKernel σ (s - Δt) = ∫ u in Set.Ioi 0, gaussianKernel σ u := by
       rw [← integral_indicator measurableSet_Ioi, ← integral_indicator measurableSet_Ioi]
-      have h1 := integral_comp_sub_right
-        (g := fun u ↦ Set.indicator (Set.Ioi (0 : ℝ)) (gaussianKernel σ) u) Δt
+      have h1 := MeasureTheory.integral_sub_right_eq_self
+        (fun u ↦ Set.indicator (Set.Ioi (0 : ℝ)) (gaussianKernel σ) u) volume Δt
       convert h1 using 2
       funext s; simp only [Set.indicator, Set.mem_Ioi, sub_pos]
     calc ∫ s in Set.Ioi Δt, gaussianKernel σ s
@@ -507,8 +507,8 @@ lemma gaussianKernel_mul_exp_tail_le {σ a Δt : ℝ} (hσ : 0 < σ) (ha : 0 ≤
       (Filter.Eventually.of_forall hsub)
   have hshift : ∫ s in {s : ℝ | Δt - σ ^ 2 * a < |s - σ ^ 2 * a|}, gaussianKernel σ (s - σ ^ 2 * a) =
       ∫ u in {u : ℝ | Δt - σ ^ 2 * a < |u|}, gaussianKernel σ u := by
-    have h1 := integral_comp_sub_right (g := fun u ↦ Set.indicator {u : ℝ | Δt - σ ^ 2 * a < |u|}
-      (gaussianKernel σ) u) (σ ^ 2 * a)
+    have h1 := MeasureTheory.integral_sub_right_eq_self
+      (fun u ↦ Set.indicator {u : ℝ | Δt - σ ^ 2 * a < |u|} (gaussianKernel σ) u) volume (σ ^ 2 * a)
     have hmeas1 : MeasurableSet {u : ℝ | Δt - σ ^ 2 * a < |u|} :=
       measurableSet_lt measurable_const continuous_abs.measurable
     have hmeas2 : MeasurableSet {s : ℝ | Δt - σ ^ 2 * a < |s - σ ^ 2 * a|} :=

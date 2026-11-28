@@ -248,7 +248,7 @@ private lemma pauliSite_conj_diagonal_XY {N : ℕ} (x : Fin N) (α : Fin 4)
       by_cases hyx : y₀ = x
       · subst hyx; rw [if_pos rfl]
         simp only [bmFlip, Function.update_self] at hy₀
-        rcases hα with rfl | rfl <;> generalize ha : a y₀ = ay at hy₀ ⊢; generalize hb : b y₀ = by_ at hy₀ ⊢; fin_cases ay <;> fin_cases by_ <;> first | exact absurd rfl hy₀ | simp [pauliMat]
+        rcases hα with rfl | rfl <;> (generalize ha : a y₀ = ay at hy₀ ⊢; generalize hb : b y₀ = by_ at hy₀ ⊢; fin_cases ay <;> fin_cases by_ <;> first | exact absurd rfl hy₀ | simp [pauliMat])
       · rw [if_neg hyx]
         simp only [bmFlip, Function.update_of_ne hyx] at hy₀
         rw [if_neg (Ne.symm hy₀)]
@@ -259,7 +259,7 @@ private lemma pauliSite_conj_diagonal_XY {N : ℕ} (x : Fin N) (α : Fin 4)
       rw [bmFlip_bmFlip]; exact eq_comm
     have hmul_one : pauliMat α (s x) (1 - s x) * pauliMat α (bmFlip x s x) (1 - bmFlip x s x) = 1 := by
       simp only [bmFlip, Function.update_self]
-      rcases hα with rfl | rfl <;> generalize hb : s x = b; fin_cases b <;> simp [pauliMat]
+      rcases hα with rfl | rfl <;> (generalize hb : s x = b; fin_cases b <;> simp [pauliMat])
     by_cases hst : s = t
     · rw [if_pos (hflip_eq.mpr hst), if_pos hst]
       calc pauliMat α (s x) (1 - s x) * d (bmFlip x s) *
@@ -681,8 +681,8 @@ private lemma hsInner_sub_conj_le_two {N : ℕ} (P M : QubitOp N)
   have hPMP_norm : hsInner (P * M * P) (P * M * P) = hsInner M M := by
     unfold hsInner
     rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hPh]
-    have h1 : P * Mᴴ * P * (P * M * P) = (P * Mᴴ * M) * P := by
-      calc P * Mᴴ * P * (P * M * P)
+    have h1 : P * (Mᴴ * P) * (P * M * P) = (P * Mᴴ * M) * P := by
+      calc P * (Mᴴ * P) * (P * M * P)
           = P * Mᴴ * (P * P) * M * P := by simp only [mul_assoc]
         _ = P * Mᴴ * 1 * M * P := by rw [hP2]
         _ = (P * Mᴴ * M) * P := by rw [mul_one]
@@ -695,6 +695,7 @@ private lemma hsInner_sub_conj_le_two {N : ℕ} (P M : QubitOp N)
   have hcross_eq : (hsInner (P * M * P) M).re = (hsInner M (P * M * P)).re := by
     unfold hsInner
     have h1 : ((P * M * P)ᴴ * M).trace = star ((Mᴴ * (P * M * P)).trace) := by
+      symm
       rw [← Matrix.trace_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
     rw [h1, Complex.star_def, Complex.conj_re]
   have hexp : hsInner (M + P * M * P) (M + P * M * P) =
