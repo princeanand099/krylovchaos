@@ -6,7 +6,7 @@ Authors: Prince Anand
 import KrylovChaos
 
 /-!
-# Comprehensive Kernel Axiom Verification for `KrylovChaos` (All 69 Modules)
+# Comprehensive Kernel Axiom Verification for `KrylovChaos` (All 74 Modules)
 
 Run with `lake env lean KrylovChaos/AuditAxioms.lean`.
 Every listed headline theorem depends strictly on a subset of
@@ -259,3 +259,22 @@ Every listed headline theorem depends strictly on a subset of
 #print axioms KrylovChaos.heisenbergEvol_1d_all_temp_bound
 #print axioms KrylovChaos.opNorm_heisenbergEvol_pauliSite_1d_all_temp
 #print axioms KrylovChaos.prop_8_1_araki_1d_unconditional
+
+-- End-to-End Double-Well Eigenstates, Bochner-Spectral Gaussian Bridge, Full-Rank Bimodal GibbsData,
+-- KMS-Discharged Theorem 1.3(c) & Two-Hypergraph Product-Exponential Lemma 6.3
+#print axioms KrylovChaos.doubleWellTridiag_exists_even_odd_ground_states
+#print axioms KrylovChaos.doubleWellPsiEvol_schrodinger_ode
+#print axioms KrylovChaos.doubleWellKrylovK_at_tunnelTime
+#print axioms KrylovChaos.prop_9_1_part3_doubleWell_end_to_end_eq_9_3
+#print axioms KrylovChaos.integral_gaussianKernel_mul_cos
+#print axioms KrylovChaos.integral_gaussianKernel_mul_cexp
+#print axioms KrylovChaos.gaussianSmearBochner_eq_gaussianSmear
+#print axioms KrylovChaos.gaussianSmearBochner_spectral_weight
+#print axioms KrylovChaos.prop_9_1_part1_2d_finite_window_otoc
+#print axioms KrylovChaos.bimodalPerturbed_mssThermalSize_lower
+#print axioms KrylovChaos.bimodalPerturbed_lambdaMSS_lower
+#print axioms KrylovChaos.prop_9_1_part2_full_rank_lambdaMSS_violates_H2
+#print axioms KrylovChaos.kms_rate_bound_from_thermo_limit_spectral_measure
+#print axioms KrylovChaos.theorem_1_3c_full_with_kms_discharge
+#print axioms KrylovChaos.normalizedTrace_exp_mul_exp_eq_polymerZ
+#print axioms KrylovChaos.lemma_6_3_product_exp_cumulant_bound
