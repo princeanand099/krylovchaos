@@ -139,19 +139,28 @@ lemma meixnerPhi_zero (n : ℕ) : meixnerPhi n 0 = if n = 0 then 1 else 0 := by
 private lemma hasDerivAt_real_sinh (t : ℝ) : HasDerivAt Real.sinh (Real.cosh t) t := by
   have hrew : Real.sinh = fun x ↦ (Real.exp x - Real.exp (-x)) / 2 := funext Real.sinh_eq
   rw [hrew, Real.cosh_eq]
-  have h1 := (Real.hasDerivAt_exp t).sub ((Real.hasDerivAt_exp (-t)).comp t (hasDerivAt_neg t))
+  have hneg : HasDerivAt (fun x : ℝ ↦ Real.exp (-x)) (Real.exp (-t) * (-1)) t :=
+    (Real.hasDerivAt_exp (-t)).comp t (hasDerivAt_neg t)
+  have h1 : HasDerivAt (fun x : ℝ ↦ Real.exp x - Real.exp (-x)) (Real.exp t - Real.exp (-t) * (-1)) t :=
+    (Real.hasDerivAt_exp t).fun_sub hneg
   convert h1.div_const 2 using 1; ring
 
 private lemma hasDerivAt_real_cosh (t : ℝ) : HasDerivAt Real.cosh (Real.sinh t) t := by
   have hrew : Real.cosh = fun x ↦ (Real.exp x + Real.exp (-x)) / 2 := funext Real.cosh_eq
   rw [hrew, Real.sinh_eq]
-  have h1 := (Real.hasDerivAt_exp t).add ((Real.hasDerivAt_exp (-t)).comp t (hasDerivAt_neg t))
+  have hneg : HasDerivAt (fun x : ℝ ↦ Real.exp (-x)) (Real.exp (-t) * (-1)) t :=
+    (Real.hasDerivAt_exp (-t)).comp t (hasDerivAt_neg t)
+  have h1 : HasDerivAt (fun x : ℝ ↦ Real.exp x + Real.exp (-x)) (Real.exp t + Real.exp (-t) * (-1)) t :=
+    (Real.hasDerivAt_exp t).fun_add hneg
   convert h1.div_const 2 using 1; ring
 
 private lemma hasDerivAt_complex_cosh (z : ℂ) : HasDerivAt Complex.cosh (Complex.sinh z) z := by
-  have hrew : Complex.cosh = fun w ↦ (Complex.exp w + Complex.exp (-w)) / 2 := funext Complex.cosh_eq
-  rw [hrew, Complex.sinh_eq]
-  have h1 := (Complex.hasDerivAt_exp z).add ((Complex.hasDerivAt_exp (-z)).comp z (hasDerivAt_neg z))
+  change HasDerivAt (fun w : ℂ ↦ (Complex.exp w + Complex.exp (-w)) / 2)
+    ((Complex.exp z - Complex.exp (-z)) / 2) z
+  have hneg : HasDerivAt (fun w : ℂ ↦ Complex.exp (-w)) (Complex.exp (-z) * (-1)) z :=
+    (Complex.hasDerivAt_exp (-z)).comp z (hasDerivAt_neg z)
+  have h1 : HasDerivAt (fun w : ℂ ↦ Complex.exp w + Complex.exp (-w)) (Complex.exp z + Complex.exp (-z) * (-1)) z :=
+    (Complex.hasDerivAt_exp z).fun_add hneg
   convert h1.div_const 2 using 1; ring
 
 /-- Exact derivative of `Real.tanh`: `HasDerivAt Real.tanh (1 - (Real.tanh t) ^ 2) t`. -/
@@ -162,7 +171,7 @@ lemma hasDerivAt_tanh (t : ℝ) :
   have h := (hasDerivAt_real_sinh t).div (hasDerivAt_real_cosh t) (Real.cosh_pos t).ne'
   convert h using 1
   have hcs := Real.cosh_sq_sub_sinh_sq t
-  rw [Real.tanh_eq_sinh_div_cosh]
+  dsimp only
   have hc : Real.cosh t ≠ 0 := (Real.cosh_pos t).ne'
   field_simp [hc]
   linarith
@@ -174,25 +183,23 @@ lemma meixnerPhi_hasDerivAt (n : ℕ) (t : ℝ) :
       ((n : ℝ) * meixnerPhi (n - 1) t - ((n + 1 : ℕ) : ℝ) * meixnerPhi (n + 1) t) t := by
   unfold meixnerPhi
   have hc_ne : Real.cosh t ≠ 0 := (Real.cosh_pos t).ne'
-  have hnum : HasDerivAt (fun s ↦ Real.tanh s ^ n)
-      ((n : ℝ) * Real.tanh t ^ (n - 1) * (1 - Real.tanh t ^ 2)) t := by
-    cases n with
-    | zero => simp [hasDerivAt_const]
-    | succ m =>
-      have h1 : HasDerivAt (fun s ↦ Real.tanh s ^ (m + 1))
-          (((m + 1 : ℕ) : ℝ) * Real.tanh t ^ m * (1 - Real.tanh t ^ 2)) t :=
-        (hasDerivAt_tanh t).fun_pow (m + 1)
-      simpa [Nat.add_sub_cancel] using h1
-  have hdiv := hnum.div (hasDerivAt_real_cosh t) hc_ne
-  convert hdiv using 1
-  rw [Real.tanh_eq_sinh_div_cosh] at *
+  have hsc : Real.sinh t = Real.tanh t * Real.cosh t := by
+    rw [Real.tanh_eq_sinh_div_cosh, div_mul_cancel₀ _ hc_ne]
   cases n with
   | zero =>
-    simp only [Nat.cast_zero, zero_mul, zero_sub, pow_zero, Nat.zero_add, Nat.cast_one, one_mul,
-      pow_one]
-    field_simp [hc_ne]
+    have hdiv := (hasDerivAt_const t (1 : ℝ)).div (hasDerivAt_real_cosh t) hc_ne
+    convert hdiv using 1
+    · funext s; simp
+    · simp only [Nat.cast_zero, zero_mul, zero_sub, Nat.zero_add, Nat.cast_one, one_mul, pow_one,
+        hsc]
+      field_simp [hc_ne]
   | succ m =>
-    simp only [Nat.add_sub_cancel, Nat.cast_add, Nat.cast_one]
+    have hnum : HasDerivAt (fun s ↦ Real.tanh s ^ (m + 1))
+        (((m + 1 : ℕ) : ℝ) * Real.tanh t ^ m * (1 - Real.tanh t ^ 2)) t :=
+      (hasDerivAt_tanh t).fun_pow (m + 1)
+    have hdiv := hnum.div (hasDerivAt_real_cosh t) hc_ne
+    convert hdiv using 1
+    simp only [Nat.add_sub_cancel, Nat.cast_add, Nat.cast_one, pow_succ, hsc]
     field_simp [hc_ne]
     ring
 
@@ -581,7 +588,8 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
         ((hasDerivAt_id Complex.I).const_mul ((Real.pi / 2 : ℝ) : ℂ))
       have hsinh : Complex.sinh (((Real.pi / 2 : ℝ) : ℂ) * Complex.I) = Complex.I := by
         rw [Complex.sinh_mul_I, ← Complex.ofReal_sin, Real.sin_pi_div_two]; simp
-      simpa [hsinh, mul_comm] using h1
+      convert h1 using 1
+      rw [hsinh]; ring
     have hslope : Tendsto (fun w : ℂ ↦ Complex.cosh ((Real.pi / 2 : ℝ) * w) / (w - Complex.I))
         (𝓝[≠] Complex.I) (nhds (((Real.pi / 2 : ℝ) : ℂ) * Complex.I)) := by
       have h0 : Complex.cosh ((Real.pi / 2 : ℝ) * Complex.I) = 0 :=
@@ -624,7 +632,7 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
     have hconst_lim : Tendsto (fun w : ℂ ↦ (w - Complex.I) * (f Complex.I - res / (Complex.I - Complex.I)))
         (𝓝[≠] Complex.I) (nhds 0) := by
       have h1 : Tendsto (fun w : ℂ ↦ w - Complex.I) (𝓝[≠] Complex.I) (nhds 0) := by
-        simpa [sub_self] using (((continuous_id (α := ℂ)).sub (continuous_const (y := Complex.I))).tendsto Complex.I).mono_left nhdsWithin_le_nhds
+        simpa [sub_self] using (((continuous_id (X := ℂ)).sub (continuous_const (y := Complex.I))).tendsto Complex.I).mono_left nhdsWithin_le_nhds
       simpa using h1.mul_const (f Complex.I - res / (Complex.I - Complex.I))
     have hsub_lim : Tendsto (fun w : ℂ ↦ (w - Complex.I) * (f w - res / (w - Complex.I)) -
         (w - Complex.I) * (f Complex.I - res / (Complex.I - Complex.I))) (𝓝[≠] Complex.I) (nhds 0) := by
@@ -656,36 +664,36 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
       exact ⟨by linarith [hy.1], by linarith [hy.2]⟩
     have hzero := Complex.integral_boundary_rect_eq_zero_of_differentiableOn g z₁ z₂
       (hg_diff.mono hsub_rect)
-    simp only [z₁, z₂, Complex.neg_re, Complex.ofReal_re, Complex.add_re, Complex.mul_re,
+    simp only [z₁, z₂, Complex.ofReal_neg, Complex.ofReal_zero, Complex.ofReal_ofNat, Complex.neg_re, Complex.ofReal_re, Complex.add_re, Complex.mul_re,
       Complex.re_ofNat, Complex.I_re, mul_zero, Complex.im_ofNat, Complex.I_im, mul_one,
       sub_zero, add_zero, Complex.neg_im, Complex.ofReal_im, neg_zero, Complex.add_im,
       Complex.mul_im, zero_add] at hzero
     -- On all 4 boundary edges of the rectangle, `z ≠ I` so `g z = f z - res / (z - I)`.
-    have hbot : ∀ x : ℝ, g ((x : ℂ) + (0 : ℝ) * Complex.I) = f (x : ℂ) - res * ((x : ℂ) - Complex.I)⁻¹ := by
+    have hbot : ∀ x : ℝ, g (x : ℂ) = f (x : ℂ) - res * ((x : ℂ) - Complex.I)⁻¹ := by
       intro x
       have hne : (x : ℂ) ≠ Complex.I := by
         intro h; have := congrArg Complex.im h; simp at this
-      simp only [Complex.ofReal_zero, zero_mul, add_zero, g, if_neg hne, div_eq_mul_inv]
-    have htop : ∀ x : ℝ, g ((x : ℂ) + (2 : ℝ) * Complex.I) =
+      dsimp only [g]; rw [if_neg hne, div_eq_mul_inv]
+    have htop : ∀ x : ℝ, g ((x : ℂ) + 2 * Complex.I) =
         -Complex.exp (-2 * (t : ℂ)) * f (x : ℂ) - res * ((x : ℂ) + Complex.I)⁻¹ := by
       intro x
-      have hne : ((x : ℂ) + (2 : ℝ) * Complex.I) ≠ Complex.I := by
+      have hne : ((x : ℂ) + 2 * Complex.I) ≠ Complex.I := by
         intro h; have := congrArg Complex.im h; simp at this
-      have hf_top : f ((x : ℂ) + (2 : ℝ) * Complex.I) = -Complex.exp (-2 * (t : ℂ)) * f (x : ℂ) := by
+      have hf_top : f ((x : ℂ) + 2 * Complex.I) = -Complex.exp (-2 * (t : ℂ)) * f (x : ℂ) := by
         dsimp only [f]
-        have hnum : Complex.exp (Complex.I * (t : ℂ) * ((x : ℂ) + (2 : ℝ) * Complex.I)) =
+        have hnum : Complex.exp (Complex.I * (t : ℂ) * ((x : ℂ) + 2 * Complex.I)) =
             Complex.exp (-2 * (t : ℂ)) * Complex.exp (Complex.I * (t : ℂ) * (x : ℂ)) := by
-          rw [← Complex.exp_add]; congr 1; push_cast; ring_nf; rw [Complex.I_sq]; ring
-        have hden : Complex.cosh ((Real.pi / 2 : ℝ) * ((x : ℂ) + (2 : ℝ) * Complex.I)) =
+          rw [← Complex.exp_add]; congr 1; ring_nf; rw [Complex.I_sq]; ring
+        have hden : Complex.cosh ((Real.pi / 2 : ℝ) * ((x : ℂ) + 2 * Complex.I)) =
             -Complex.cosh ((Real.pi / 2 : ℝ) * (x : ℂ)) := by
-          have harg : (Real.pi / 2 : ℝ) * ((x : ℂ) + (2 : ℝ) * Complex.I) =
+          have harg : (Real.pi / 2 : ℝ) * ((x : ℂ) + 2 * Complex.I) =
               (Real.pi / 2 : ℝ) * (x : ℂ) + (Real.pi : ℂ) * Complex.I := by push_cast; ring
           rw [harg, Complex.cosh_add, Complex.cosh_mul_I, Complex.sinh_mul_I,
             ← Complex.ofReal_cos, ← Complex.ofReal_sin, Real.cos_pi, Real.sin_pi]
           simp
         rw [hnum, hden, div_neg, mul_div_assoc]; ring
-      have hsub : (x : ℂ) + (2 : ℝ) * Complex.I - Complex.I = (x : ℂ) + Complex.I := by push_cast; ring
-      simp only [g, if_neg hne, hf_top, hsub, div_eq_mul_inv]
+      have hsub : (x : ℂ) + 2 * Complex.I - Complex.I = (x : ℂ) + Complex.I := by ring
+      dsimp only [g]; rw [if_neg hne, hf_top, hsub, div_eq_mul_inv]
     have hright : ∀ y : ℝ, g ((R : ℂ) + (y : ℂ) * Complex.I) =
         f ((R : ℂ) + (y : ℂ) * Complex.I) - res * ((R : ℂ) + (y : ℂ) * Complex.I - Complex.I)⁻¹ := by
       intro y
@@ -807,7 +815,7 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
         dsimp only [f]
         rw [norm_div, Complex.norm_exp]
         have hre_exp : (Complex.I * (t : ℂ) * ((s * R : ℝ) + (y : ℂ) * Complex.I)).re = -(t * y) := by
-          simp only [Complex.mul_re, Complex.add_re, Complex.ofReal_re, Complex.ofReal_im, Complex.I_re, Complex.I_im, Complex.mul_im]; ring
+          simp only [Complex.mul_re, Complex.add_re, Complex.add_im, Complex.ofReal_re, Complex.ofReal_im, Complex.I_re, Complex.I_im, Complex.mul_im]; ring
         rw [hre_exp]
         have hnum_le : Real.exp (-(t * y)) ≤ Real.exp (2 * |t|) := by
           apply Real.exp_le_exp.mpr
@@ -818,7 +826,7 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
           have h1 := abs_sinh_le_norm_cosh ((Real.pi / 2 : ℝ) * ((s * R : ℝ) + (y : ℂ) * Complex.I))
           have hre_c : ((Real.pi / 2 : ℝ) * ((s * R : ℝ) + (y : ℂ) * Complex.I)).re =
               s * (Real.pi / 2 * R) := by
-            simp only [Complex.mul_re, Complex.add_re, Complex.ofReal_re, Complex.ofReal_im, Complex.I_re, Complex.I_im, Complex.mul_im]; ring
+            simp only [Complex.mul_re, Complex.add_re, Complex.add_im, Complex.ofReal_re, Complex.ofReal_im, Complex.I_re, Complex.I_im, Complex.mul_im]; ring
           rw [hre_c] at h1
           have hspos : 0 < Real.sinh (Real.pi / 2 * R) := real_sinh_pos_of_pos (by positivity)
           rcases hs with rfl | rfl
@@ -1223,6 +1231,7 @@ theorem lemma_5_1_eq_5_5_exact_sech_comparison (b : ℕ → ℝ) (N₀ : ℕ) {�
         (jacobiMat D b ^ N₀ * jacobiMat D b ^ (2 * m)) ⟨0, Nat.succ_pos _⟩ ⟨N₀, hN0_lt⟩ := by
       rw [Matrix.mul_apply]
       exact Finset.single_le_sum
+        (f := fun l : Fin D ↦ ((jacobiMat D b) ^ N₀) ⟨0, Nat.succ_pos _⟩ l * ((jacobiMat D b) ^ (2 * m)) l ⟨N₀, hN0_lt⟩)
         (fun l _ ↦ mul_nonneg (hpow_nn _ _ _) (hpow_nn _ _ _)) (Finset.mem_univ (⟨N₀, hN0_lt⟩ : Fin D))
     exact le_trans (mul_le_mul_of_nonneg_right h2 (hpow_nn _ _ _)) h1
   -- Lower bound each of the 3 factors: ascending `∏ b_k`, shifted Meixner `sech` integral, descending `∏ b_k`.

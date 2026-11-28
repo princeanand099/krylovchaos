@@ -27,11 +27,6 @@ Lanczos moments, thermodynamic-limit OTOC analyticity, and high-temperature chao
 4. `holoStrip_even_moment_bound` and `theorem_1_2b_from_holoStripHalfWidth`:
    prove the complex-analytic Cauchy–Hadamard upper bound directly from holomorphy on `{|Im z| < R}`,
    yielding Eq. (1.16) `2 * liminf (b n / n) ≤ π / r_W ≤ 2π / (β + 2κ) < 2π / β` with holomorphic `r_W`.
-5. `differentiable_concreteOTOC`, `concreteWightmanNormAtShift_eq_autocorr`, and
-   `theorem_1_2c_thermo_limit_otoc_strip`: assemble end-to-end thermodynamic-limit OTOC holomorphy
-   on `{|Im z| < β/4 + κ/2}` (and general compactly bounded strips) with `liminf` Eq. (1.17) RHS.
-6. `theorem_1_3c_concrete_family_complete`: discharges the KMS rate bound in Theorem 1.3(c)
-   directly from the concrete `r`-local family `(H_N, O_N)`.
 -/
 
 namespace KrylovChaos
@@ -237,8 +232,7 @@ theorem theorem_1_2a_concrete_family_holoStrip {r sW : ℕ} (hr : 2 ≤ r)
             μ hweak hM_nn fun N ↦ ?_
           have h1 : ∫ ω : ℝ, (1 : ℝ) ∂(concreteWightmanSpectralMeasure (hH N) β (W N)) ≤ M := by
             simpa [hzero] using (hunif N).2
-          have heq : (fun ω : ℝ ↦ Real.cosh (2 * (0 : ℝ) * ω)) = fun _ ↦ (1 : ℝ) := by
-            funext ω; simp
+          have heq : ∀ ω : ℝ, Real.cosh (2 * (0 : ℝ) * ω) = 1 := fun ω ↦ by simp
           simp_rw [heq]
           have hnn : 0 ≤ᵐ[concreteWightmanSpectralMeasure (hH N) β (W N)] (fun _ : ℝ ↦ (1 : ℝ)) :=
             Eventually.of_forall fun _ ↦ zero_le_one
@@ -323,9 +317,17 @@ lemma adPowOp_eigen_entry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (O : Qu
     rw [hcomm, Matrix.sub_apply, Matrix.diagonal_mul, Matrix.mul_diagonal, ih a b]
     push_cast; rw [pow_succ']; ring
 
+private lemma trace_diag_mul_diag_mul {N : ℕ} (d : QubitIdx N → ℂ) (B M : QubitOp N) :
+    (Matrix.diagonal d * B * Matrix.diagonal d * M).trace =
+      ∑ a : QubitIdx N, ∑ b : QubitIdx N, d a * B a b * d b * M b a := by
+  simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.diagonal_mul, Matrix.mul_diagonal]
+  apply Finset.sum_congr rfl; intro a _
+  apply Finset.sum_congr rfl; intro b _
+  ring
+
+set_option maxHeartbeats 800000 in
 /-- **Concrete Moment–Spectral-Measure Identity**:
 `Re (O | (ad_H)^{2n} O)_β^W = ∫ ω, ω^(2n) ∂(concreteWightmanSpectralMeasure hH β O)`. -/
-set_option maxHeartbeats 800000 in
 theorem concrete_adPowOp_eq_spectralMeasure_moment {N : ℕ} {H O : QubitOp N}
     (hH : H.IsHermitian) (hO : O.IsHermitian) (β : ℝ) (n : ℕ) :
     (gibbsWightmanInner (concreteGibbsData hH β) O (adPowOp H (2 * n) O)).re =
@@ -379,12 +381,7 @@ theorem concrete_adPowOp_eq_spectralMeasure_moment {N : ℕ} {H O : QubitOp N}
       ((Z⁻¹ : ℝ) : ℂ) * ∑ a : QubitIdx N, ∑ b : QubitIdx N,
         d a * B a b * d b * (Uᴴ * A * U) b a := by
     simp only [Matrix.smul_mul, Matrix.mul_smul, smul_smul, hsqZ, Matrix.trace_smul, smul_eq_mul]
-    congr 1
-    simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.diagonal_mul,
-      Matrix.mul_diagonal]
-    apply Finset.sum_congr rfl; intro a _
-    apply Finset.sum_congr rfl; intro b _
-    ring
+    rw [trace_diag_mul_diag_mul]
   rw [htr2]
   have hA_ent : ∀ b a : QubitIdx N, (Uᴴ * A * U) b a =
       (((hH.eigenvalues b - hH.eigenvalues a : ℝ) : ℂ) ^ (2 * n)) * B b a := fun b a ↦
@@ -877,7 +874,7 @@ theorem holoStrip_even_moment_bound (μ : Measure ℝ) {R ρ : ℝ} (hρ_pos : 0
             exact inv_anti₀ (pow_pos hδ_pos _) (pow_le_pow_left₀ hδ_pos.le (hdist_lb u hu θ) _)
           rw [norm_mul, norm_mul, norm_mul, Complex.norm_natCast, hd_norm]
           exact mul_le_mul (mul_le_mul_of_nonneg_left hinv_le (by positivity)) hF_le (norm_nonneg _) (by positivity))
-        intervalIntegrable_const
+        (intervalIntegrable_const (μ := volume))
         (Eventually.of_forall fun θ _ u hu ↦ by
           dsimp only [G, G']
           have hne : circleMap (0 : ℂ) ρ θ - u ≠ 0 :=
