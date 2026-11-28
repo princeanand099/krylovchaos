@@ -174,7 +174,6 @@ lemma hasDerivAt_tanh (t : ℝ) :
   dsimp only
   have hc : Real.cosh t ≠ 0 := (Real.cosh_pos t).ne'
   field_simp [hc]
-  linarith
 
 /-- Exact Lanczos ODE satisfied by `meixnerPhi`:
 `d/dt φ_n(t) = n * φ_{n - 1}(t) - (n + 1) * φ_{n + 1}(t)`. -/
@@ -588,7 +587,7 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
         ((hasDerivAt_id Complex.I).const_mul ((Real.pi / 2 : ℝ) : ℂ))
       have hsinh : Complex.sinh (((Real.pi / 2 : ℝ) : ℂ) * Complex.I) = Complex.I := by
         rw [Complex.sinh_mul_I, ← Complex.ofReal_sin, Real.sin_pi_div_two]; simp
-      convert h1 using 1
+      refine h1.congr_deriv ?_
       rw [hsinh]; ring
     have hslope : Tendsto (fun w : ℂ ↦ Complex.cosh ((Real.pi / 2 : ℝ) * w) / (w - Complex.I))
         (𝓝[≠] Complex.I) (nhds (((Real.pi / 2 : ℝ) : ℂ) * Complex.I)) := by
@@ -632,7 +631,8 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
     have hconst_lim : Tendsto (fun w : ℂ ↦ (w - Complex.I) * (f Complex.I - res / (Complex.I - Complex.I)))
         (𝓝[≠] Complex.I) (nhds 0) := by
       have h1 : Tendsto (fun w : ℂ ↦ w - Complex.I) (𝓝[≠] Complex.I) (nhds 0) := by
-        simpa [sub_self] using (((continuous_id (X := ℂ)).sub (continuous_const (y := Complex.I))).tendsto Complex.I).mono_left nhdsWithin_le_nhds
+        have hcont : Continuous (fun w : ℂ ↦ w - Complex.I) := by fun_prop
+        simpa [sub_self] using (hcont.tendsto Complex.I).mono_left nhdsWithin_le_nhds
       simpa using h1.mul_const (f Complex.I - res / (Complex.I - Complex.I))
     have hsub_lim : Tendsto (fun w : ℂ ↦ (w - Complex.I) * (f w - res / (w - Complex.I)) -
         (w - Complex.I) * (f Complex.I - res / (Complex.I - Complex.I))) (𝓝[≠] Complex.I) (nhds 0) := by
@@ -665,7 +665,7 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
     have hzero := Complex.integral_boundary_rect_eq_zero_of_differentiableOn g z₁ z₂
       (hg_diff.mono hsub_rect)
     simp only [z₁, z₂, Complex.ofReal_neg, Complex.ofReal_zero, Complex.ofReal_ofNat, Complex.neg_re, Complex.ofReal_re, Complex.add_re, Complex.mul_re,
-      Complex.re_ofNat, Complex.I_re, mul_zero, Complex.im_ofNat, Complex.I_im, mul_one,
+      Complex.re_ofNat, Complex.I_re, mul_zero, zero_mul, Complex.im_ofNat, Complex.I_im, mul_one,
       sub_zero, add_zero, Complex.neg_im, Complex.ofReal_im, neg_zero, Complex.add_im,
       Complex.mul_im, zero_add] at hzero
     -- On all 4 boundary edges of the rectangle, `z ≠ I` so `g z = f z - res / (z - I)`.

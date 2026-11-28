@@ -27,6 +27,11 @@ Lanczos moments, thermodynamic-limit OTOC analyticity, and high-temperature chao
 4. `holoStrip_even_moment_bound` and `theorem_1_2b_from_holoStripHalfWidth`:
    prove the complex-analytic Cauchy–Hadamard upper bound directly from holomorphy on `{|Im z| < R}`,
    yielding Eq. (1.16) `2 * liminf (b n / n) ≤ π / r_W ≤ 2π / (β + 2κ) < 2π / β` with holomorphic `r_W`.
+5. `differentiable_concreteOTOC`, `concreteWightmanNormAtShift_eq_autocorr`, and
+   `theorem_1_2c_thermo_limit_otoc_strip`: assemble end-to-end thermodynamic-limit OTOC holomorphy
+   on `{|Im z| < β/4 + κ/2}` (and general compactly bounded strips) with `liminf` Eq. (1.17) RHS.
+6. `theorem_1_3c_concrete_family_complete`: discharges the KMS rate bound in Theorem 1.3(c)
+   directly from the concrete `r`-local family `(H_N, O_N)`.
 -/
 
 namespace KrylovChaos
@@ -320,10 +325,14 @@ lemma adPowOp_eigen_entry {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian) (O : Qu
 private lemma trace_diag_mul_diag_mul {N : ℕ} (d : QubitIdx N → ℂ) (B M : QubitOp N) :
     (Matrix.diagonal d * B * Matrix.diagonal d * M).trace =
       ∑ a : QubitIdx N, ∑ b : QubitIdx N, d a * B a b * d b * M b a := by
-  simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.diagonal_mul, Matrix.mul_diagonal]
+  have h : ∀ a b : QubitIdx N, (Matrix.diagonal d * B * Matrix.diagonal d) a b = d a * B a b * d b := by
+    intro a b
+    rw [Matrix.mul_diagonal, Matrix.diagonal_mul]
+  simp only [Matrix.trace, Matrix.diag]
   apply Finset.sum_congr rfl; intro a _
+  rw [Matrix.mul_apply]
   apply Finset.sum_congr rfl; intro b _
-  ring
+  rw [h a b]
 
 set_option maxHeartbeats 800000 in
 /-- **Concrete Moment–Spectral-Measure Identity**:
@@ -423,7 +432,7 @@ theorem concrete_adPowOp_eq_spectralMeasure_moment {N : ℕ} {H O : QubitOp N}
   apply Finset.sum_congr rfl; intro a _
   rw [Complex.re_sum]
   apply Finset.sum_congr rfl; intro b _
-  simp [smul_eq_mul]
+  rw [Complex.ofReal_re, smul_eq_mul]
 
 /-- Truncation invariance of `(jacobiMat D b ^ k) 0 0` for `k < D`: paths of length `k` from `0`
 cannot reach index `≥ k + 1`, so `(jacobiMat D b ^ k) 0 0 = (jacobiMat (k + 1) b ^ k) 0 0`. -/

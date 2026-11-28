@@ -47,8 +47,9 @@ private lemma jacobiWavefn_coord_hasDerivAt {D : ℕ} (hD : 0 < D) (b : ℕ → 
         map_add' := fun _ _ ↦ rfl
         map_smul' := fun _ _ ↦ rfl }
   have hcoord := L.hasFDerivAt.comp_hasDerivAt t hode
-  convert hcoord using 1
-  change Complex.I * _ = (Complex.I • jacobiCLM D b (jacobiWavefn hD b t)).ofLp n
+  refine hcoord.congr_deriv ?_
+  change (Complex.I • jacobiCLM D b (jacobiWavefn hD b t)).ofLp n = Complex.I * _
+  symm
   simp only [PiLp.smul_apply, smul_eq_mul]
   congr 1
   change _ = ∑ x : Fin D, ((jacobiMat D b n x : ℝ) : ℂ) * (jacobiWavefn hD b t).ofLp x
@@ -123,7 +124,8 @@ theorem jacobiWavefn_neg_t {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) (t : ℝ) (n
         (S (-((Complex.I • jacobiCLM D b) (jacobiWavefn hD b (-s))))) s :=
       (S.restrictScalars ℝ).hasFDerivAt.comp_hasDerivAt s hneg
     have hsub := hS_d.sub (jacobiWavefn_ode hD b s)
-    convert hsub using 1
+    refine hsub.congr_deriv ?_
+    symm
     dsimp only [u]
     rw [ContinuousLinearMap.smul_apply, map_sub, smul_sub, map_neg, ContinuousLinearMap.smul_apply,
       map_smul, hS_anti, smul_neg, neg_neg]
@@ -136,8 +138,9 @@ theorem jacobiWavefn_neg_t {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) (t : ℝ) (n
     have hskew : @inner ℝ _ _ (u s) ((Complex.I • jacobiCLM D b) (u s)) = 0 := by
       have hre : @inner ℝ _ _ (u s) ((Complex.I • jacobiCLM D b) (u s)) =
           (inner ℂ (u s) ((Complex.I • jacobiCLM D b) (u s))).re := by
-        simp only [PiLp.inner_apply, Complex.re_sum, RCLike.inner_apply]
-        congr 1; ext i; simp [Complex.mul_re]
+        simp only [PiLp.inner_apply, Complex.re_sum]
+        apply Finset.sum_congr rfl; intro i _
+        simp [Complex.inner, RCLike.inner_apply]
       rw [hre, ContinuousLinearMap.smul_apply, inner_smul_right,
         Complex.mul_re, Complex.I_re, Complex.I_im, zero_mul, one_mul, zero_sub]
       have hreal : (inner ℂ (u s) (jacobiCLM D b (u s))).im = 0 := by
@@ -145,7 +148,7 @@ theorem jacobiWavefn_neg_t {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) (t : ℝ) (n
           simp only [PiLp.inner_apply, RCLike.inner_apply]
           change ∑ i : Fin D, (u s).ofLp i * star (∑ j : Fin D, ((jacobiMat D b i j : ℝ) : ℂ) * (u s).ofLp j) =
             ∑ i : Fin D, (∑ j : Fin D, ((jacobiMat D b i j : ℝ) : ℂ) * (u s).ofLp j) * star ((u s).ofLp i)
-          simp_rw [map_sum, map_mul, Complex.star_def, Complex.conj_ofReal, Finset.mul_sum, Finset.sum_mul]
+          simp only [star_sum, star_mul', Complex.star_def, Complex.conj_ofReal, Finset.mul_sum, Finset.sum_mul]
           rw [Finset.sum_comm]
           apply Finset.sum_congr rfl; intro i _
           apply Finset.sum_congr rfl; intro j _
@@ -271,13 +274,13 @@ private lemma gaugedFiniteWavefn_ode (b : ℕ → ℝ) (N m : ℕ) (hm : m ≤ N
         if h1 : m + 1 < N.succ then (b (m + 1) : ℂ) * jacobiWavefn (Nat.succ_pos N) b t ⟨m + 1, h1⟩ else 0) := by
     by_cases hmN : m = N
     · subst hmN; simp
-    · have hlt : m + 1 < N.succ := by omega
+    · have hlt : m + 1 < N + 1 := by omega
       have hle : m + 1 ≤ N := by omega
       simp only [hmN, ↓reduceIte, hlt, ↓reduceDIte, gaugedFiniteWavefn, hle]
       have hpow : -((-Complex.I) ^ (m + 1)) = (-Complex.I) ^ m * Complex.I := by
         rw [pow_succ]; ring
       linear_combination (b (m + 1) : ℂ) * jacobiWavefn (Nat.succ_pos N) b t ⟨m + 1, hlt⟩ * hpow
-  simp only [Fin.val_mk]; rw [mul_add, ← h1, ← h2, sub_eq_add_neg]
+  simp only [Fin.val_mk]; rw [mul_add, mul_add, ← h1, ← h2, sub_eq_add_neg]
 
 private lemma gaugedFiniteWavefn_im_zero (b : ℕ → ℝ) (N m : ℕ) (t : ℝ) :
     (gaugedFiniteWavefn b N m t).im = 0 := by
@@ -300,9 +303,9 @@ private lemma gaugedFiniteWavefn_im_zero (b : ℕ → ℝ) (N m : ℕ) (t : ℝ)
            (if k = N then 0 else b (k + 1)) * y (k + 1) s) s := by
       intro k hk s
       have hd := Complex.imCLM.hasFDerivAt.comp_hasDerivAt s (gaugedFiniteWavefn_ode b N k hk s)
-      convert hd using 1
+      refine hd.congr_deriv ?_
       dsimp only [y]
-      change _ = ((_ : ℂ) - (_ : ℂ)).im
+      change (((_ : ℂ) - (_ : ℂ)).im) = _
       rw [Complex.sub_im]
       congr 1
       · split_ifs <;> simp
@@ -357,8 +360,8 @@ lemma realFiniteKrylovWavefn_ode (b : ℕ → ℝ) (N m : ℕ) (hm : m ≤ N) (t
       ((if m = 0 then 0 else b m) * realFiniteKrylovWavefn b N (m - 1) t -
        (if m = N then 0 else b (m + 1)) * realFiniteKrylovWavefn b N (m + 1) t) t := by
   have hd := Complex.reCLM.hasFDerivAt.comp_hasDerivAt t (gaugedFiniteWavefn_ode b N m hm t)
-  convert hd using 1
-  change _ = ((_ : ℂ) - (_ : ℂ)).re
+  refine hd.congr_deriv ?_
+  change (((_ : ℂ) - (_ : ℂ)).re) = _
   rw [Complex.sub_re]
   congr 1
   · split_ifs <;> simp [realFiniteKrylovWavefn, gaugedFiniteWavefn]
@@ -394,7 +397,7 @@ lemma realFiniteKrylovWavefn_abs_le_one (b : ℕ → ℝ) (N m : ℕ) (t : ℝ) 
           rw [h0eq]
           have hsq : ‖EuclideanSpace.single (0 : Fin (N + 1)) (1 : ℂ)‖ ^ 2 = 1 := by
             rw [← real_inner_self_eq_norm_sq, PiLp.inner_apply]
-            simp [EuclideanSpace.single, Pi.single_apply, Finset.sum_ite_eq']
+            simp [EuclideanSpace.single, Pi.single_apply, apply_ite norm, Finset.sum_ite_eq']
           nlinarith [norm_nonneg (EuclideanSpace.single (0 : Fin (N + 1)) (1 : ℂ))]
   · simp
 
