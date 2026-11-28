@@ -1134,7 +1134,7 @@ private lemma lambdaMSS_zero_le_zero {N : ℕ} (G : GibbsData N) : lambdaMSS G 0
         simp only [Matrix.conjTranspose_smul, Matrix.conjTranspose_one, Matrix.mul_smul,
           Matrix.smul_mul, Matrix.mul_one, Matrix.one_mul, smul_smul, Matrix.trace_smul,
           G.sq_half, G.trace_one, smul_eq_mul, mul_one, Complex.star_def]
-        rw [Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
+        rw [Complex.mul_conj', ← Complex.ofReal_pow, Complex.ofReal_re]
       linarith
     have hj : jBeta G.ρQuarter (c • (1 : QubitOp N)) = c • G.ρHalf := by
       unfold jBeta; rw [Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one, G.sq_quarter]
@@ -1173,7 +1173,7 @@ private lemma majoranaLambdaMSS_zero_le_zero {n : ℕ} (G : GibbsData n) :
         simp only [Matrix.conjTranspose_smul, Matrix.conjTranspose_one, Matrix.mul_smul,
           Matrix.smul_mul, Matrix.mul_one, Matrix.one_mul, smul_smul, Matrix.trace_smul,
           G.sq_half, G.trace_one, smul_eq_mul, mul_one, Complex.star_def]
-        rw [Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
+        rw [Complex.mul_conj', ← Complex.ofReal_pow, Complex.ofReal_re]
       linarith
     have hj : jBeta G.ρQuarter (c • (1 : QubitOp n)) = c • G.ρHalf := by
       unfold jBeta; rw [Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one, G.sq_quarter]
@@ -1864,6 +1864,7 @@ theorem prop_6_4_part2_extended {N r s₀ : ℕ}
           apply mul_le_mul_of_nonneg_left (Real.sqrt_le_sqrt (add_le_add hbg_le hIII_up)) (by positivity)
   refine ⟨hIII_le, hbg_le, ?_⟩
   linarith [hdecomp, hII_up, hIII_up]
+
 
 end ExtendedProp64Part2
 
