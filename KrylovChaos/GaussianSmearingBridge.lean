@@ -411,8 +411,42 @@ section TwoDimFiniteWindowOTOC
 `∫ s in {s | Δt < |s|}, gaussianKernel σ s ≤ exp (-Δt² / (2 σ²))`. -/
 lemma gaussianKernel_tail_le {σ Δt : ℝ} (hσ : 0 < σ) (hΔ : 0 ≤ Δt) :
     ∫ s in {s : ℝ | Δt < |s|}, gaussianKernel σ s ≤ Real.exp (-(Δt ^ 2) / (2 * σ ^ 2)) := by
+  have hdom : ∀ s : ℝ, s ∈ {s : ℝ | Δt < |s|} →
+      gaussianKernel σ s ≤ Real.exp (-(Δt ^ 2) / (2 * σ ^ 2)) *
+        (gaussianKernel σ (s - Δt) + gaussianKernel σ (s + Δt)) := by
+    intro s hs
+    have habs : Δt < |s| := hs
+    rcases le_or_gt 0 s with hs0 | hs0
+    · rw [abs_of_nonneg hs0] at habs
+      have hle : gaussianKernel σ s ≤ Real.exp (-(Δt ^ 2) / (2 * σ ^ 2)) * gaussianKernel σ (s - Δt) := by
+        unfold gaussianKernel
+        rw [mul_div_assoc', ← Real.exp_add]
+        apply div_le_div_of_nonneg_right _ (by positivity)
+        apply Real.exp_le_exp.mpr
+        have hsq : Δt ^ 2 + (s - Δt) ^ 2 ≤ s ^ 2 := by nlinarith
+        have hden : 0 < 2 * σ ^ 2 := by positivity
+        rw [← add_div]
+        exact div_le_div_of_nonneg_right (by linarith) hden.le
+      have hnn : 0 ≤ Real.exp (-(Δt ^ 2) / (2 * σ ^ 2)) * gaussianKernel σ (s + Δt) := by
+        have := (gaussianKernel_pos hσ (s + Δt)).le; positivity
+      linarith
+    · rw [abs_of_neg hs0] at habs
+      have hle : gaussianKernel σ s ≤ Real.exp (-(Δt ^ 2) / (2 * σ ^ 2)) * gaussianKernel σ (s + Δt) := by
+        unfold gaussianKernel
+        rw [mul_div_assoc', ← Real.exp_add]
+        apply div_le_div_of_nonneg_right _ (by positivity)
+        apply Real.exp_le_exp.mpr
+        have hsq : Δt ^ 2 + (s + Δt) ^ 2 ≤ s ^ 2 := by nlinarith
+        have hden : 0 < 2 * σ ^ 2 := by positivity
+        rw [← add_div]
+        exact div_le_div_of_nonneg_right (by linarith) hden.le
+      have hnn : 0 ≤ Real.exp (-(Δt ^ 2) / (2 * σ ^ 2)) * gaussianKernel σ (s - Δt) := by
+        have := (gaussianKernel_pos hσ (s - Δt)).le; positivity
+      linarith
   have hint_shift1 : Integrable (fun s : ℝ ↦ gaussianKernel σ (s - Δt)) :=
     (integrable_gaussianKernel hσ).comp_sub_right Δt
+  have hint_shift2 : Integrable (fun s : ℝ ↦ gaussianKernel σ (s + Δt)) :=
+    (integrable_gaussianKernel hσ).comp_add_right Δt
   -- Split `{Δt < |s|} = Ioi Δt ∪ Iio (-Δt)`.
   have hset_eq : {s : ℝ | Δt < |s|} = Set.Ioi Δt ∪ Set.Iio (-Δt) := by
     ext s; simp only [Set.mem_setOf_eq, Set.mem_union, Set.mem_Ioi, Set.mem_Iio, lt_abs]
@@ -433,7 +467,7 @@ lemma gaussianKernel_tail_le {σ Δt : ℝ} (hσ : 0 < σ) (hΔ : 0 ≤ Δt) :
     have hshift : ∫ s in Set.Ioi Δt, gaussianKernel σ (s - Δt) = ∫ u in Set.Ioi 0, gaussianKernel σ u := by
       rw [← integral_indicator measurableSet_Ioi, ← integral_indicator measurableSet_Ioi]
       have h1 := MeasureTheory.integral_sub_right_eq_self
-        (fun u ↦ Set.indicator (Set.Ioi (0 : ℝ)) (gaussianKernel σ) u) volume Δt
+        (fun u ↦ Set.indicator (Set.Ioi (0 : ℝ)) (gaussianKernel σ) u) Δt
       convert h1 using 2
       funext s; simp only [Set.indicator, Set.mem_Ioi, sub_pos]
     calc ∫ s in Set.Ioi Δt, gaussianKernel σ s
@@ -508,7 +542,7 @@ lemma gaussianKernel_mul_exp_tail_le {σ a Δt : ℝ} (hσ : 0 < σ) (ha : 0 ≤
   have hshift : ∫ s in {s : ℝ | Δt - σ ^ 2 * a < |s - σ ^ 2 * a|}, gaussianKernel σ (s - σ ^ 2 * a) =
       ∫ u in {u : ℝ | Δt - σ ^ 2 * a < |u|}, gaussianKernel σ u := by
     have h1 := MeasureTheory.integral_sub_right_eq_self
-      (fun u ↦ Set.indicator {u : ℝ | Δt - σ ^ 2 * a < |u|} (gaussianKernel σ) u) volume (σ ^ 2 * a)
+      (fun u ↦ Set.indicator {u : ℝ | Δt - σ ^ 2 * a < |u|} (gaussianKernel σ) u) (σ ^ 2 * a)
     have hmeas1 : MeasurableSet {u : ℝ | Δt - σ ^ 2 * a < |u|} :=
       measurableSet_lt measurable_const continuous_abs.measurable
     have hmeas2 : MeasurableSet {s : ℝ | Δt - σ ^ 2 * a < |s - σ ^ 2 * a|} :=
