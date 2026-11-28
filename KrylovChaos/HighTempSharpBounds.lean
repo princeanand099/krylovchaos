@@ -117,7 +117,7 @@ theorem prop_6_2_sharp_r_local_high_temp {N r : ℕ} (hr : 2 ≤ r)
     have hW_herm : (pauliSite x α.succ).IsHermitian := pauliSite_herm x α.succ
     have hconj := heisenbergEvol_conjTranspose_of_herm hH hW_herm (Complex.I * ((β / 4 : ℝ) : ℂ))
     have hstar : starRingEnd ℂ (Complex.I * ((β / 4 : ℝ) : ℂ)) = -(Complex.I * ((β / 4 : ℝ) : ℂ)) := by
-      simp
+      rw [map_mul, Complex.conj_I, Complex.conj_ofReal, neg_mul]
     rw [hstar] at hconj
     rw [← opNorm_conjTranspose, hconj]
     exact hneg
@@ -540,7 +540,7 @@ private lemma diagIsing_rhoHalf_eq {N : ℕ} (β : ℝ)
   · subst hij
     rw [← Complex.ofReal_inv, ← Complex.ofReal_mul]
     congr 1
-    rw [Real.sqrt_div (Real.exp_pos _).le, div_eq_inv_mul]
+    rw [Real.sqrt_div (Real.exp_pos _).le, div_eq_inv_mul, mul_comm]
     congr 1
     rw [← Real.exp_half]; congr 1; ring
   · simp
@@ -624,7 +624,9 @@ private lemma diagSpinFn_pauliString_mem_classicalDegree {N k : ℕ} (a : Fin N 
       have hterm0 : pauliMat (a i₀) ((qubitIdxEquivSpinConfig N).symm σ i₀)
           ((qubitIdxEquivSpinConfig N).symm σ i₀) = 0 := by
         rw [pauliMat_diag_eq]
-        rcases hi₀ with h1 | h2 <;> simp [h1, h2]
+        rcases hi₀ with h1 | h2
+        · simp [h1]
+        · simp [h2]
       rw [Finset.prod_eq_zero (Finset.mem_univ i₀) hterm0, Complex.zero_re]; rfl
     rw [hzero]; exact Submodule.zero_mem _
   · push Not at hxy
@@ -683,7 +685,9 @@ private lemma diagQubitOp_character_mem_filtration {N k : ℕ} (S : Finset (Fin 
           have hai : a i = 3 := if_pos hi
           rw [hai, pauliMat_diag_eq, if_neg (by decide), if_pos rfl]
           have hfin2 : q₁ i = 0 ∨ q₁ i = 1 := by generalize h : q₁ i = v; fin_cases v <;> simp
-          rcases hfin2 with h0 | h1 <;> simp [qubitIdxEquivSpinConfig, spinVal, h0, h1]
+          rcases hfin2 with h0 | h1
+          · simp [qubitIdxEquivSpinConfig, spinVal, h0]
+          · simp [qubitIdxEquivSpinConfig, spinVal, h1]
         · intro i _ hiS
           have hai : a i = 0 := if_neg hiS
           rw [hai, pauliMat_diag_eq, if_pos rfl]
@@ -697,9 +701,11 @@ private lemma diagQubitOp_character_mem_filtration {N k : ℕ} (S : Finset (Fin 
       have h0 : pauliMat (a i₀) (q₁ i₀) (q₂ i₀) = 0 := by
         dsimp only [a]; split_ifs
         · generalize h1 : q₁ i₀ = v1; generalize h2 : q₂ i₀ = v2
-          rw [h1, h2] at hi₀; fin_cases v1 <;> fin_cases v2 <;> simp_all [pauliMat, pauliZ]
+          rw [h1, h2] at hi₀
+          fin_cases v1 <;> fin_cases v2 <;> first | exact absurd rfl hi₀ | simp [pauliMat, pauliZ]
         · generalize h1 : q₁ i₀ = v1; generalize h2 : q₂ i₀ = v2
-          rw [h1, h2] at hi₀; fin_cases v1 <;> fin_cases v2 <;> simp_all [pauliMat]
+          rw [h1, h2] at hi₀
+          fin_cases v1 <;> fin_cases v2 <;> first | exact absurd rfl hi₀ | simp [pauliMat]
       rw [Finset.prod_eq_zero (Finset.mem_univ i₀) h0, mul_zero]
   rw [heq]
   apply Submodule.smul_mem
@@ -745,13 +751,13 @@ theorem diagIsing_wightmanQ_eq_classical_degreeFiltrationQ {N : ℕ} (β : ℝ)
           ext i j; simp [diagQubitOpOfSpinFn, Matrix.diagonal_apply]; split_ifs <;> simp
         · intro c x _ hx
           convert Submodule.smul_mem _ (c : ℂ) hx
-          ext i j; simp [diagQubitOpOfSpinFn, Matrix.diagonal_apply]; split_ifs <;> simp
+          ext i j; simp [diagQubitOpOfSpinFn, Matrix.diagonal_apply]
       have hsub_eq : diagQubitOpOfSpinFn f - diagQubitOpOfSpinFn g = diagQubitOpOfSpinFn (f - g) := by
         ext i j; simp [diagQubitOpOfSpinFn, Matrix.diagonal_apply]; split_ifs <;> simp
       apply csInf_le
       · exact ⟨0, by rintro _ ⟨B, _, rfl⟩; exact gibbsWightmanNormSq_nonneg G _⟩
       · refine ⟨diagQubitOpOfSpinFn g, hdiag_mem, ?_⟩
-        rw [hsub_eq, diagIsing_wightmanNormSq_eq_classical_L2]
+        rw [hsub_eq, diagIsing_wightmanNormSq_eq_classical_L2]; rfl
   · apply le_csInf
     · exact ⟨_, 0, Submodule.zero_mem _, rfl⟩
     · rintro r ⟨B, hB, rfl⟩
@@ -763,38 +769,45 @@ theorem diagIsing_wightmanQ_eq_classical_degreeFiltrationQ {N : ℕ} (β : ℝ)
             diagSpinFnOfQubitOp (c • X) =
               c.re • diagSpinFnOfQubitOp X + c.im • diagSpinFnOfQubitOp (Complex.I • X) := fun c X ↦ by
           funext σ; simp [diagSpinFnOfQubitOp]; ring
-        have hboth : ∀ Z ∈ filtrationSubmodule N k,
-            diagSpinFnOfQubitOp Z ∈ classicalDegreeSubspace N k ∧
-            diagSpinFnOfQubitOp (Complex.I • Z) ∈ classicalDegreeSubspace N k := by
-          intro Z hZ
-          refine Submodule.span_induction ?_ ?_ ?_ ?_ hZ
-          · rintro _ ⟨a, ha, rfl⟩
-            refine ⟨diagSpinFn_pauliString_mem_classicalDegree a ha, ?_⟩
-            have him0 : diagSpinFnOfQubitOp (Complex.I • pauliString a) = 0 := by
-              funext σ; simp only [diagSpinFnOfQubitOp, Matrix.smul_apply, smul_eq_mul, Complex.I_mul,
-                Complex.re_ofReal_mul]
-              have hreal : ((pauliString a) ((qubitIdxEquivSpinConfig N).symm σ)
-                  ((qubitIdxEquivSpinConfig N).symm σ)).im = 0 := by
-                unfold pauliString kronOp; simp only [Matrix.of_apply]
-                have h1 : ∀ i : Fin N, ∃ r : ℝ, pauliMat (a i) ((qubitIdxEquivSpinConfig N).symm σ i)
-                    ((qubitIdxEquivSpinConfig N).symm σ i) = (r : ℂ) := by
-                  intro i; rw [pauliMat_diag_eq]; split_ifs <;> [exact ⟨1, by simp⟩; exact ⟨1, by simp⟩;
-                    exact ⟨-1, by simp⟩; exact ⟨0, by simp⟩]
-                choose r hr using h1
-                simp_rw [hr, ← Complex.ofReal_prod, Complex.ofReal_im]
-              simp [Complex.mul_re, hreal]
-            rw [him0]; exact Submodule.zero_mem _
-          · have h0 : diagSpinFnOfQubitOp (0 : QubitOp N) = 0 := by funext σ; simp [diagSpinFnOfQubitOp]
-            simp [h0, Submodule.zero_mem]
-          · intro U V _ _ hU hV
-            refine ⟨by rw [hlin_add]; exact Submodule.add_mem _ hU.1 hV.1,
-              by rw [smul_add, hlin_add]; exact Submodule.add_mem _ hU.2 hV.2⟩
-          · intro z U _ hU
-            refine ⟨by rw [hlin_smul]; exact Submodule.add_mem _ (Submodule.smul_mem _ _ hU.1) (Submodule.smul_mem _ _ hU.2), ?_⟩
-            have hIU : Complex.I • (z • U) = (Complex.I * z) • U := by rw [smul_smul]
-            rw [hIU, hlin_smul]
-            exact Submodule.add_mem _ (Submodule.smul_mem _ _ hU.1) (Submodule.smul_mem _ _ hU.2)
-        exact (hboth B hB).1
+        refine Submodule.span_induction ?_ ?_ ?_ ?_ hB
+        · rintro _ ⟨a, ha, rfl⟩; exact diagSpinFn_pauliString_mem_classicalDegree a ha
+        · have : diagSpinFnOfQubitOp (0 : QubitOp N) = 0 := by funext σ; simp [diagSpinFnOfQubitOp]
+          rw [this]; exact Submodule.zero_mem _
+        · intro X Y _ _ hX hY; rw [hlin_add]; exact Submodule.add_mem _ hX hY
+        · intro c X hX_mem hX
+          exact (by
+            have hboth : ∀ Z ∈ filtrationSubmodule N k,
+                diagSpinFnOfQubitOp Z ∈ classicalDegreeSubspace N k ∧
+                diagSpinFnOfQubitOp (Complex.I • Z) ∈ classicalDegreeSubspace N k := by
+              intro Z hZ
+              refine Submodule.span_induction ?_ ?_ ?_ ?_ hZ
+              · rintro _ ⟨a, ha, rfl⟩
+                refine ⟨diagSpinFn_pauliString_mem_classicalDegree a ha, ?_⟩
+                have him0 : diagSpinFnOfQubitOp (Complex.I • pauliString a) = 0 := by
+                  funext σ; simp only [diagSpinFnOfQubitOp, Matrix.smul_apply, smul_eq_mul, Complex.I_mul,
+                    Complex.re_ofReal_mul]
+                  have hreal : ((pauliString a) ((qubitIdxEquivSpinConfig N).symm σ)
+                      ((qubitIdxEquivSpinConfig N).symm σ)).im = 0 := by
+                    unfold pauliString kronOp; simp only [Matrix.of_apply]
+                    have h1 : ∀ i : Fin N, ∃ r : ℝ, pauliMat (a i) ((qubitIdxEquivSpinConfig N).symm σ i)
+                        ((qubitIdxEquivSpinConfig N).symm σ i) = (r : ℂ) := by
+                      intro i; rw [pauliMat_diag_eq]; split_ifs <;> [exact ⟨1, by simp⟩; exact ⟨1, by simp⟩;
+                        exact ⟨-1, by simp⟩; exact ⟨0, by simp⟩]
+                    choose r hr using h1
+                    simp_rw [hr, ← Complex.ofReal_prod, Complex.ofReal_im]
+                  simp [Complex.mul_re, hreal]
+                rw [him0]; exact Submodule.zero_mem _
+              · have h0 : diagSpinFnOfQubitOp (0 : QubitOp N) = 0 := by funext σ; simp [diagSpinFnOfQubitOp]
+                simp [h0, Submodule.zero_mem]
+              · intro U V _ _ hU hV
+                refine ⟨by rw [hlin_add]; exact Submodule.add_mem _ hU.1 hV.1,
+                  by rw [smul_add, hlin_add]; exact Submodule.add_mem _ hU.2 hV.2⟩
+              · intro z U _ hU
+                refine ⟨by rw [hlin_smul]; exact Submodule.add_mem _ (Submodule.smul_mem _ _ hU.1) (Submodule.smul_mem _ _ hU.2), ?_⟩
+                have hIU : Complex.I • (z • U) = (Complex.I * z) • U := by rw [smul_smul]
+                rw [hIU, hlin_smul]
+                exact Submodule.add_mem _ (Submodule.smul_mem _ _ hU.1) (Submodule.smul_mem _ _ hU.2)
+            exact (hboth (c • X) (Submodule.smul_mem _ c hX_mem)).1)
       refine le_trans ?_ (diagIsing_wightmanNormSq_sub_ge β J hfield f B)
       apply csInf_le
       · exact ⟨0, by
@@ -940,7 +953,9 @@ theorem diagIsing_glauberGen_eq_classical_dirichlet {N : ℕ} (β : ℝ)
             have hai : a i = 3 := if_pos hi
             rw [hai, pauliMat_diag_eq, if_neg (by decide), if_pos rfl]
             have hfin2 : q₁ i = 0 ∨ q₁ i = 1 := by generalize h : q₁ i = v; fin_cases v <;> simp
-            rcases hfin2 with h0 | h1 <;> simp [qubitIdxEquivSpinConfig, spinVal, h0, h1]
+            rcases hfin2 with h0 | h1
+            · simp [qubitIdxEquivSpinConfig, spinVal, h0]
+            · simp [qubitIdxEquivSpinConfig, spinVal, h1]
           · intro i _ hiS; rw [show a i = 0 from if_neg hiS, pauliMat_diag_eq, if_pos rfl]
         rw [hprod]; simp_rw [Complex.ofReal_neg, Finset.prod_neg]
         rw [← mul_assoc, ← mul_pow]; norm_num
@@ -951,9 +966,11 @@ theorem diagIsing_glauberGen_eq_classical_dirichlet {N : ℕ} (β : ℝ)
         have h0 : pauliMat (a i₀) (q₁ i₀) (q₂ i₀) = 0 := by
           dsimp only [a]; split_ifs
           · generalize h1 : q₁ i₀ = v1; generalize h2 : q₂ i₀ = v2
-            rw [h1, h2] at hi₀; fin_cases v1 <;> fin_cases v2 <;> simp_all [pauliMat, pauliZ]
+            rw [h1, h2] at hi₀
+            fin_cases v1 <;> fin_cases v2 <;> first | exact absurd rfl hi₀ | simp [pauliMat, pauliZ]
           · generalize h1 : q₁ i₀ = v1; generalize h2 : q₂ i₀ = v2
-            rw [h1, h2] at hi₀; fin_cases v1 <;> fin_cases v2 <;> simp_all [pauliMat]
+            rw [h1, h2] at hi₀
+            fin_cases v1 <;> fin_cases v2 <;> first | exact absurd rfl hi₀ | simp [pauliMat]
         rw [Finset.prod_eq_zero (Finset.mem_univ i₀) h0, mul_zero]
     rw [hchar_eq]
     exact Submodule.smul_mem _ _ (Submodule.subset_span ⟨a, if_neg hxS, rfl⟩)
@@ -980,7 +997,7 @@ theorem diagIsing_glauberGen_eq_classical_dirichlet {N : ℕ} (β : ℝ)
             unfold pauliString kronOp; simp only [Matrix.of_apply]
             apply Finset.prod_congr rfl; intro i _
             by_cases hi : i = x
-            · subst hi; rw [hax, pauliMat_diag_eq, pauliMat_diag_eq, if_pos rfl]
+            · subst hi; simp only [hax, pauliMat_diag_eq, ↓reduceIte]
             · have hsame : (qubitIdxEquivSpinConfig N).symm (flipSpin σ x) i =
                   (qubitIdxEquivSpinConfig N).symm σ i := by
                 simp [qubitIdxEquivSpinConfig, flipSpin, hi]
@@ -1072,11 +1089,12 @@ private lemma majoranaFiltrationSubmodule_eq_top_of_ge {n s : ℕ} (hs : 2 * n �
 private lemma totalSizeOp_smul {N : ℕ} (c : ℂ) (X : QubitOp N) :
     totalSizeOp (c • X) = c • totalSizeOp X := by
   unfold totalSizeOp siteSizeOp partialTraceSite
-  simp only [Finset.smul_sum, smul_sub, Matrix.mul_smul, Matrix.smul_mul, smul_smul]
-  apply Finset.sum_congr rfl; intro x _
+  rw [Finset.smul_sum]
+  refine Finset.sum_congr rfl fun x _ ↦ ?_
+  rw [smul_sub]
   congr 1
-  simp only [Finset.smul_sum, Matrix.mul_smul, Matrix.smul_mul]
-  congr 1; apply Finset.sum_congr rfl; intro α _; ring_nf
+  simp only [Matrix.mul_smul, Matrix.smul_mul, ← Finset.smul_sum, smul_smul]
+  rw [mul_comm]
 
 /-- For `s = 0`, `lambdaMSS G 0 ≤ 0` because every operator in `filtrationSubmodule N 0` is scalar. -/
 private lemma lambdaMSS_zero_le_zero {N : ℕ} (G : GibbsData N) : lambdaMSS G 0 ≤ 0 := by
@@ -1116,7 +1134,7 @@ private lemma lambdaMSS_zero_le_zero {N : ℕ} (G : GibbsData N) : lambdaMSS G 0
         simp only [Matrix.conjTranspose_smul, Matrix.conjTranspose_one, Matrix.mul_smul,
           Matrix.smul_mul, Matrix.mul_one, Matrix.one_mul, smul_smul, Matrix.trace_smul,
           G.sq_half, G.trace_one, smul_eq_mul, mul_one, Complex.star_def]
-        rw [mul_comm, Complex.mul_conj', ← Complex.ofReal_pow, Complex.ofReal_re]
+        rw [Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
       linarith
     have hj : jBeta G.ρQuarter (c • (1 : QubitOp N)) = c • G.ρHalf := by
       unfold jBeta; rw [Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one, G.sq_quarter]
@@ -1155,15 +1173,24 @@ private lemma majoranaLambdaMSS_zero_le_zero {n : ℕ} (G : GibbsData n) :
         simp only [Matrix.conjTranspose_smul, Matrix.conjTranspose_one, Matrix.mul_smul,
           Matrix.smul_mul, Matrix.mul_one, Matrix.one_mul, smul_smul, Matrix.trace_smul,
           G.sq_half, G.trace_one, smul_eq_mul, mul_one, Complex.star_def]
-        rw [mul_comm, Complex.mul_conj', ← Complex.ofReal_pow, Complex.ofReal_re]
+        rw [Complex.conj_mul', ← Complex.ofReal_pow, Complex.ofReal_re]
       linarith
     have hj : jBeta G.ρQuarter (c • (1 : QubitOp n)) = c • G.ρHalf := by
       unfold jBeta; rw [Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one, G.sq_quarter]
     have hmsmul : majoranaParitySizeOp n (c • G.ρHalf) = c • majoranaParitySizeOp n G.ρHalf := by
+      have heven : evenPart n (c • G.ρHalf) = c • evenPart n G.ρHalf := by
+        unfold evenPart
+        simp only [Matrix.mul_smul, Matrix.smul_mul, smul_add, smul_smul]
+        rw [mul_comm c (1 / 2 : ℂ)]
+      have hodd : oddPart n (c • G.ρHalf) = c • oddPart n G.ρHalf := by
+        unfold oddPart
+        simp only [Matrix.mul_smul, Matrix.smul_mul, smul_sub, smul_smul]
+        rw [mul_comm c (1 / 2 : ℂ)]
       unfold majoranaParitySizeOp majoranaTotalSizeOp majoranaOddTotalSizeOp
-        majoranaModeSizeOp majoranaOddModeSizeOp evenPart oddPart
+        majoranaModeSizeOp majoranaOddModeSizeOp
+      rw [heven, hodd]
       simp only [Finset.smul_sum, smul_add, smul_sub, Matrix.mul_smul, Matrix.smul_mul, smul_smul]
-      congr 1 <;> apply Finset.sum_congr rfl <;> intro j _ <;> ring_nf
+      congr 1 <;> apply Finset.sum_congr rfl <;> intro j _ <;> rw [mul_comm c (1 / 2 : ℂ)]
     unfold majoranaThermalSize
     rw [hj, hmsmul]
     have hin : (hsInner (c • G.ρHalf) (c • majoranaParitySizeOp n G.ρHalf)).re =
@@ -1284,7 +1311,8 @@ theorem theorem_1_1b_family_majorana_2n_normalized {r s₀ : ℕ} (hr : 1 ≤ r)
   have hε_half : ε < 1 / 2 := lt_of_lt_of_le hε_lt (min_le_right _ _)
   have hε_gap : ε < (1 - δ) * (1 - 2 * α / lamL) / 2 := lt_of_lt_of_le hε_lt (min_le_left _ _)
   set η : ℝ := (1 - ε) * (2 * α / lamL)
-  have hη_pos : 0 < η := by dsimp only [η]; positivity
+  have h1mε_pos : 0 < 1 - ε := by linarith
+  have hη_pos : 0 < η := mul_pos h1mε_pos (div_pos (by linarith) hlam)
   have hη_lt : η < 1 - ε := by dsimp only [η]; nlinarith
   have hδ_lt : δ + (1 - δ) * η < 1 - ε := by
     have h1 : η ≤ 2 * α / lamL := by dsimp only [η]; nlinarith [div_pos (by linarith : 0 < 2 * α) hlam]
