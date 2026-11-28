@@ -6,7 +6,7 @@ Authors: Prince Anand
 import KrylovChaos
 
 /-!
-# Comprehensive Kernel Axiom Verification for `KrylovChaos` (All 74 Modules)
+# Comprehensive Kernel Axiom Verification for `KrylovChaos` (All 80 Modules)
 
 Run with `lake env lean KrylovChaos/AuditAxioms.lean`.
 Every listed headline theorem depends strictly on a subset of
@@ -260,21 +260,53 @@ Every listed headline theorem depends strictly on a subset of
 #print axioms KrylovChaos.opNorm_heisenbergEvol_pauliSite_1d_all_temp
 #print axioms KrylovChaos.prop_8_1_araki_1d_unconditional
 
--- End-to-End Double-Well Eigenstates, Bochner-Spectral Gaussian Bridge, Full-Rank Bimodal GibbsData,
--- KMS-Discharged Theorem 1.3(c) & Two-Hypergraph Product-Exponential Lemma 6.3
-#print axioms KrylovChaos.doubleWellTridiag_exists_even_odd_ground_states
-#print axioms KrylovChaos.doubleWellPsiEvol_schrodinger_ode
-#print axioms KrylovChaos.doubleWellKrylovK_at_tunnelTime
-#print axioms KrylovChaos.prop_9_1_part3_doubleWell_end_to_end_eq_9_3
-#print axioms KrylovChaos.integral_gaussianKernel_mul_cos
-#print axioms KrylovChaos.integral_gaussianKernel_mul_cexp
-#print axioms KrylovChaos.gaussianSmearBochner_eq_gaussianSmear
-#print axioms KrylovChaos.gaussianSmearBochner_spectral_weight
-#print axioms KrylovChaos.prop_9_1_part1_2d_finite_window_otoc
-#print axioms KrylovChaos.bimodalPerturbed_mssThermalSize_lower
-#print axioms KrylovChaos.bimodalPerturbed_lambdaMSS_lower
-#print axioms KrylovChaos.prop_9_1_part2_full_rank_lambdaMSS_violates_H2
-#print axioms KrylovChaos.kms_rate_bound_from_thermo_limit_spectral_measure
-#print axioms KrylovChaos.theorem_1_3c_full_with_kms_discharge
-#print axioms KrylovChaos.normalizedTrace_exp_mul_exp_eq_polymerZ
-#print axioms KrylovChaos.lemma_6_3_product_exp_cumulant_bound
+-- Unconditional Infinite-Chain, Exact Meixner/Sech, Concrete Spectral & OTOC Strip Analyticity,
+-- Sharp High-Temperature Bounds, Ising Operator Bridge & Section 9 End-to-End Theorems
+#print axioms KrylovChaos.jacobiWavefn_neg_t
+#print axioms KrylovChaos.infiniteKrylovWavefn_tendsto_all_time
+#print axioms KrylovChaos.realInfiniteKrylovWavefn_tendsto
+#print axioms KrylovChaos.theorem_1_1a_infinite_chain_complete
+#print axioms KrylovChaos.iteratedDeriv_inv_cosh_zero_eq_jacobiMat_pow
+#print axioms KrylovChaos.integral_cos_mul_inv_cosh_pi_half
+#print axioms KrylovChaos.jacobiMat_meixner_unit_moment_eq_sech_integral
+#print axioms KrylovChaos.jacobiMat_meixner_even_moment_eq_sech_integral
+#print axioms KrylovChaos.lemma_5_1_eq_5_5_exact_sech_comparison
+#print axioms KrylovChaos.theorem_1_2a_concrete_spectralMeasure_cosh_bound
+#print axioms KrylovChaos.holoStripHalfWidth_finite_eq_top
+#print axioms KrylovChaos.theorem_1_2a_concrete_family_holoStrip
+#print axioms KrylovChaos.concrete_adPowOp_eq_spectralMeasure_moment
+#print axioms KrylovChaos.thermo_limit_lanczos_moment_eq_spectralMeasure
+#print axioms KrylovChaos.holoStrip_even_moment_bound
+#print axioms KrylovChaos.theorem_1_2b_from_holoStripHalfWidth
+#print axioms KrylovChaos.differentiable_concreteOTOC
+#print axioms KrylovChaos.concreteWightmanNormAtShift_eq_spectralMeasure
+#print axioms KrylovChaos.concreteWightmanNormAtShift_eq_autocorr
+#print axioms KrylovChaos.theorem_1_2c_general_otoc_strip_analyticity
+#print axioms KrylovChaos.theorem_1_2c_thermo_limit_otoc_strip
+#print axioms KrylovChaos.theorem_1_3c_concrete_family_complete
+#print axioms KrylovChaos.prop_6_2_sharp_r_local_high_temp
+#print axioms KrylovChaos.lemma_7_3_part1_multisite_eq_7_11
+#print axioms KrylovChaos.prop_8_1_araki_1d_complete
+#print axioms KrylovChaos.isingPhiMaxExact_le_linear
+#print axioms KrylovChaos.lemma_8_2_ising_hs_mixture
+#print axioms KrylovChaos.prop_8_3_ising_explicit_eq_8_4
+#print axioms KrylovChaos.diagIsing_wightmanQ_eq_classical_degreeFiltrationQ
+#print axioms KrylovChaos.diagIsing_glauberGen_eq_classical_dirichlet
+#print axioms KrylovChaos.prop_8_3_quantum_diag_ising_reverse_poincare
+#print axioms KrylovChaos.theorem_1_1b_family_concrete_qubit_bounded_s
+#print axioms KrylovChaos.theorem_1_1b_family_majorana_2n_normalized
+#print axioms KrylovChaos.prop_6_4_part2_extended
+#print axioms KrylovChaos.lemma_2_1_qubit_exp_bound
+#print axioms KrylovChaos.theorem_1_3a_high_temp_two_sided
+#print axioms KrylovChaos.concreteOTOC_gaussianSmearBochner_eq_2d_conv
+#print axioms KrylovChaos.concreteOTOC_gaussianSmearBochner_re_eq_2d_conv
+#print axioms KrylovChaos.prop_9_1_part1_concrete_2d_otoc_smearing
+#print axioms KrylovChaos.prop_9_1_part1_geom_mean_sqrt_n
+#print axioms KrylovChaos.eq91WitnessOp_wightmanNormSq
+#print axioms KrylovChaos.eq91Bimodal_mssThermalSize_lower
+#print axioms KrylovChaos.eq91Bimodal_lambdaMSS_lower
+#print axioms KrylovChaos.prop_9_1_part2_eq91_violates_H2
+#print axioms KrylovChaos.doubleWell_lanczos_orthonormal
+#print axioms KrylovChaos.doubleWell_lanczos_tridiag_closure
+#print axioms KrylovChaos.doubleWell_krylov_complexity_from_lanczos
+#print axioms KrylovChaos.lemma_B_1_bulk_eigenvalues_in_band
