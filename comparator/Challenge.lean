@@ -10,11 +10,13 @@ import Mathlib.Analysis.InnerProductSpace.Basic
 /-!
 # Locked Headline Theorem Statements for `KrylovChaos` (`comparator` Challenge)
 
-Contains the 25 locked headline theorem signatures corresponding to
+Contains the 33 locked headline theorem signatures corresponding to
 *Finite-Temperature Bounds on Operator Growth and Quantum Chaos* (Prince Anand, 2026),
-including the unconditional infinite-chain Theorem 1.1(a), the `D × D` double-well
-Courant–Fischer bulk eigenvalue localization Lemma B.1, and the 4 ground-up literature
-theorems (Carleman, Kotecký–Preiss, Vitali/Montel, Araki 1D).
+covering the infinite-chain Theorem 1.1(a), concrete `QubitOp N` and `Measure ℝ`
+Theorems 1.2(a)–(c), concrete high-temperature Theorem 1.3(a) Eq. (1.20),
+1D all-temperature Proposition 8.1, active-edge Classical Ising Proposition 8.3 Eq. (8.4),
+`D × D` double-well Lemma B.1 and Proposition 9.1(3) Eq. (9.3), and the 4 ground-up
+literature theorems (Carleman, Kotecký–Preiss, Vitali/Montel, Araki 1D).
 -/
 
 open ChallengeDefs Matrix
@@ -280,4 +282,172 @@ theorem araki_1d_entire_expansional {E : Type*} [NormedAddCommGroup E] [NormedSp
     (a : ℕ → E) (ha : ∀ m : ℕ, ‖a m‖ ≤ C₀ * C₁ ^ m) (τ : ℂ) :
     Summable (fun m : ℕ ↦ (τ ^ m / (m.factorial : ℂ)) • a m) ∧
     ‖∑' m : ℕ, (τ ^ m / (m.factorial : ℂ)) • a m‖ ≤ C₀ * Real.exp (C₁ * ‖τ‖) := by
+  sorry
+
+theorem theorem_1_2a_concrete_family_holoStrip {r sW : ℕ} (hr : 2 ≤ r)
+    {Jsite β C_W : ℝ} (hJ : 0 < Jsite) (hβ : 0 ≤ β) (hCW : 0 ≤ C_W)
+    (E : (N : ℕ) → Finset (Finset (Fin N)))
+    (hcard : ∀ N, ∀ X ∈ E N, X.card ≤ r)
+    (h : (N : ℕ) → Finset (Fin N) → QubitOp N)
+    (hsupp : ∀ N X, h N X ∈ supportedOn X)
+    (hH : ∀ N, (∑ X ∈ E N, h N X).IsHermitian)
+    (hsite : ∀ N, ∀ x : Fin N, ∑ X ∈ (E N).filter (fun X ↦ x ∈ X), opNorm (h N X) ≤ Jsite)
+    (U₀ : (N : ℕ) → Finset (Fin N)) (hU₀ : ∀ N, (U₀ N).card ≤ sW)
+    (W : (N : ℕ) → QubitOp N) (hWherm : ∀ N, (W N).IsHermitian)
+    (hW : ∀ N, W N ∈ supportedOn (U₀ N)) (hW_norm : ∀ N, opNorm (W N) ≤ C_W)
+    (μ : MeasureTheory.Measure ℝ) [MeasureTheory.IsFiniteMeasure μ]
+    (hweak : ∀ f : ℝ → ℝ, Continuous f → HasCompactSupport f →
+      Filter.Tendsto (fun N ↦ ∫ ω, f ω ∂(concreteWightmanSpectralMeasure (hH N) β (W N)))
+        Filter.atTop (nhds (∫ ω, f ω ∂μ))) :
+    let κ : ℝ := 1 / (2 * ((r - 1 : ℕ) : ℝ) * Jsite)
+    (∀ κ' : ℝ, 0 ≤ κ' → κ' < κ →
+      MeasureTheory.Integrable (fun ω : ℝ ↦ Real.cosh ((β / 2 + κ') * ω)) μ ∧
+      ∫ ω : ℝ, Real.cosh ((β / 2 + κ') * ω) ∂μ ≤
+        2 * C_W ^ 2 * (1 - κ' / κ) ^ (-((sW : ℝ) / ((r - 1 : ℕ) : ℝ)))) ∧
+    ((β / 2 + κ : ℝ) : EReal) ≤ holoStripHalfWidth μ := by
+  sorry
+
+theorem theorem_1_2b_from_holoStripHalfWidth_ereal (μ : MeasureTheory.Measure ℝ) (b : ℕ → ℝ)
+    {β κ : ℝ} (hβ : 0 < β) (hκ : 0 < κ)
+    (hrW_lb : ((β / 2 + κ : ℝ) : EReal) ≤ holoStripHalfWidth μ)
+    (hr₀ : ∃ r₀ : ℝ, 0 < r₀ ∧ MeasureTheory.Integrable (fun ω : ℝ ↦ Real.cosh (r₀ * ω)) μ)
+    (hb_pos : ∀ h ≥ 1, 0 < b h)
+    (hmom_eq : ∀ n : ℕ,
+      ((jacobiMat (2 * n + 1) b) ^ (2 * n)) ⟨0, Nat.succ_pos _⟩ ⟨0, Nat.succ_pos _⟩ =
+        ∫ ω : ℝ, ω ^ (2 * n) ∂μ) :
+    let L : ℝ := 2 * Filter.liminf (fun n : ℕ ↦ b n / (n : ℝ)) Filter.atTop
+    ((L : EReal) ≤ piDivEReal (holoStripHalfWidth μ)) ∧
+    (piDivEReal (holoStripHalfWidth μ) ≤ ((2 * Real.pi / (β + 2 * κ) : ℝ) : EReal)) ∧
+    (((2 * Real.pi / (β + 2 * κ) : ℝ) : EReal) < ((2 * Real.pi / β : ℝ) : EReal)) := by
+  sorry
+
+theorem theorem_1_2b_from_holoStripHalfWidth_finite (μ : MeasureTheory.Measure ℝ) (b : ℕ → ℝ)
+    {β κ r_W : ℝ} (hβ : 0 < β) (hκ : 0 < κ)
+    (hrW_eq : holoStripHalfWidth μ = (r_W : EReal))
+    (hrW_lb : β / 2 + κ ≤ r_W)
+    (hr₀ : ∃ r₀ : ℝ, 0 < r₀ ∧ MeasureTheory.Integrable (fun ω : ℝ ↦ Real.cosh (r₀ * ω)) μ)
+    (hb_pos : ∀ h ≥ 1, 0 < b h)
+    (hmom_eq : ∀ n : ℕ,
+      ((jacobiMat (2 * n + 1) b) ^ (2 * n)) ⟨0, Nat.succ_pos _⟩ ⟨0, Nat.succ_pos _⟩ =
+        ∫ ω : ℝ, ω ^ (2 * n) ∂μ) :
+    2 * Filter.liminf (fun n : ℕ ↦ b n / (n : ℝ)) Filter.atTop ≤ Real.pi / r_W ∧
+    Real.pi / r_W ≤ 2 * Real.pi / (β + 2 * κ) ∧
+    2 * Real.pi / (β + 2 * κ) < 2 * Real.pi / β := by
+  sorry
+
+theorem theorem_1_2c_thermo_limit_otoc_strip_three_way {r sW sV : ℕ} (hr : 2 ≤ r)
+    {Jsite β C_W C_V : ℝ} (hJ : 0 < Jsite) (hβ : 0 ≤ β) (hCW : 0 ≤ C_W) (hCV : 0 ≤ C_V)
+    (E : (N : ℕ) → Finset (Finset (Fin N)))
+    (hcard : ∀ N, ∀ X ∈ E N, X.card ≤ r)
+    (h : (N : ℕ) → Finset (Fin N) → QubitOp N)
+    (hsupp : ∀ N X, h N X ∈ supportedOn X)
+    (hH : ∀ N, (∑ X ∈ E N, h N X).IsHermitian)
+    (hsite : ∀ N, ∀ x : Fin N, ∑ X ∈ (E N).filter (fun X ↦ x ∈ X), opNorm (h N X) ≤ Jsite)
+    (U_W U_V : (N : ℕ) → Finset (Fin N))
+    (hUW : ∀ N, (U_W N).card ≤ sW) (hUV : ∀ N, (U_V N).card ≤ sV)
+    (W V : (N : ℕ) → QubitOp N)
+    (hWherm : ∀ N, (W N).IsHermitian) (hVherm : ∀ N, (V N).IsHermitian)
+    (hW : ∀ N, W N ∈ supportedOn (U_W N)) (hV : ∀ N, V N ∈ supportedOn (U_V N))
+    (hW_norm : ∀ N, opNorm (W N) ≤ C_W) (hV_norm : ∀ N, opNorm (V N) ≤ C_V)
+    (F_real : ℝ → ℂ)
+    (hreal_lim : ∀ t : ℝ, Filter.Tendsto (fun N ↦ concreteOTOC (hH N) β (W N) (V N) (t : ℂ))
+      Filter.atTop (nhds (F_real t))) :
+    let κ : ℝ := 1 / (2 * ((r - 1 : ℕ) : ℝ) * Jsite)
+    let S : ℝ := β / 4 + κ / 2
+    ∃ F : ℂ → ℂ,
+      DifferentiableOn ℂ F {z : ℂ | |z.im| < S} ∧
+      (∀ t : ℝ, F (t : ℂ) = F_real t) ∧
+      TendstoLocallyUniformlyOn (fun N z ↦ concreteOTOC (hH N) β (W N) (V N) z) F Filter.atTop
+        {z : ℂ | |z.im| < S} ∧
+      (∀ (t τ : ℝ), |τ| < S →
+        ‖F ((t : ℂ) + Complex.I * (τ : ℂ))‖ ≤
+          min (C_V ^ 2 * Filter.liminf (fun N ↦ concreteWightmanNormAtShift (hH N) β (W N) τ 0) Filter.atTop)
+            (min (C_W ^ 2 * Filter.liminf (fun N ↦ concreteWightmanNormAtShift (hH N) β (V N) (-τ) 0) Filter.atTop)
+              (Filter.liminf (fun N ↦ concreteTimeOrderedT (hH N) β (W N) (V N) t τ) Filter.atTop))) := by
+  sorry
+
+theorem theorem_1_3a_high_temp_eq_1_20 {N r : ℕ} (hr : 2 ≤ r)
+    (E : Finset (Finset (Fin N))) (hne : ∀ X ∈ E, X.Nonempty)
+    (hcard : ∀ X ∈ E, X.card ≤ r)
+    (h : Finset (Fin N) → QubitOp N) (hsupp : ∀ X, h X ∈ supportedOn X)
+    (hH : (∑ X ∈ E, h X).IsHermitian)
+    {Jsite β : ℝ} (hJ : 0 < Jsite)
+    (hsite : ∀ x : Fin N, ∑ X ∈ E.filter (fun X ↦ x ∈ X), opNorm (h X) ≤ Jsite)
+    (hβ0 : 0 ≤ β) (hβ : β ≤ highTempBetaWC r Jsite)
+    (A : QubitOp N) :
+    (concreteGibbsWightmanInner hH β A (concreteQuantumGlauberGen hH β A)).re ≤
+      ∑ x : Fin N, concreteGibbsWightmanNormSq hH β (siteSizeOp x A) ∧
+    ∑ x : Fin N, concreteGibbsWightmanNormSq hH β (siteSizeOp x A) ≤
+      9 * (concreteGibbsWightmanInner hH β A (concreteWightmanQ hH β A)).re := by
+  sorry
+
+theorem prop_8_1_araki_1d_independent_r_R {N r R : ℕ}
+    (E : Finset (Finset (Fin N)))
+    (hne : ∀ X ∈ E, X.Nonempty)
+    (_hcard : ∀ X ∈ E, X.card ≤ r)
+    (hdiam : ∀ X ∈ E, ∀ x ∈ X, ∀ y ∈ X, |(x.val : ℤ) - (y.val : ℤ)| ≤ (R : ℤ))
+    (h : Finset (Fin N) → QubitOp N) (hsupp : ∀ X, h X ∈ supportedOn X)
+    (hH : (∑ X ∈ E, h X).IsHermitian)
+    {J : ℝ} (hJ : 0 ≤ J)
+    (hsite : ∀ y : Fin N, ∑ X ∈ E.filter (fun X ↦ y ∈ X), opNorm (h X) ≤ J)
+    (β : ℝ) (A : QubitOp N) :
+    concreteOtocCW hH β A ≤ (3 / 2 : ℝ) * (araki1DM β (R + 1) J) ^ 2 *
+      (concreteGibbsWightmanInner hH β A (concreteQuantumGlauberGen hH β A)).re ∧
+    (concreteGibbsWightmanInner hH β A (concreteQuantumGlauberGen hH β A)).re ≤
+      ∑ x : Fin N, concreteGibbsWightmanNormSq hH β (siteSizeOp x A) ∧
+    (∀ C_RP : ℝ,
+      (concreteGibbsWightmanInner hH β A (concreteQuantumGlauberGen hH β A)).re ≤
+        C_RP * (concreteGibbsWightmanInner hH β A (concreteWightmanQ hH β A)).re →
+      concreteOtocCW hH β A ≤ (3 / 2 : ℝ) * (araki1DM β (R + 1) J) ^ 2 * C_RP *
+        (concreteGibbsWightmanInner hH β A (concreteWightmanQ hH β A)).re) := by
+  sorry
+
+theorem prop_8_3_ising_explicit_eq_8_4_cosh {N Δ : ℕ} {β H_max : ℝ} (hβ : 0 ≤ β) (hHmax : 0 ≤ H_max)
+    (J : Fin N → Fin N → ℝ) (hfield : Fin N → ℝ)
+    (hdeg : ∀ i : Fin N,
+      (∑ e : IsingEdge N,
+        if J e.1.1 e.1.2 ≠ 0 then
+          ((if e.1.1 = i then (1 : ℝ) else 0) + (if e.1.2 = i then (1 : ℝ) else 0))
+        else 0) ≤ (Δ : ℝ))
+    (hloc : ∀ i : Fin N,
+      |hfield i| +
+        ∑ e : IsingEdge N,
+          ((if e.1.1 = i then |J e.1.1 e.1.2| else 0) + (if e.1.2 = i then |J e.1.1 e.1.2| else 0)) ≤ H_max)
+    (f : SpinConfig N → ℝ) :
+    glauberDirichlet (isingGibbsMeasure β J hfield) f ≤
+      (Real.cosh (β * H_max + ((Δ : ℝ) / 2) * Real.log 2)) ^ 2 *
+        degreeFiltrationQ (isingGibbsMeasure β J hfield) f := by
+  sorry
+
+theorem prop_9_1_part3_doubleWell_end_to_end_eq_9_3 {D : ℕ} (hD : 4 ≤ D) :
+    ∃ (Ep Em : ℝ → ℝ) (φp φm : ℝ → (Fin D → ℝ)),
+      (∀ E_B : ℝ, 2 < E_B →
+        doubleWellTridiag D E_B *ᵥ φp E_B = Ep E_B • φp E_B ∧
+        doubleWellTridiag D E_B *ᵥ φm E_B = Em E_B • φm E_B ∧
+        parityMat D *ᵥ φp E_B = φp E_B ∧
+        parityMat D *ᵥ φm E_B = -(φm E_B) ∧
+        (∑ j : Fin D, φp E_B j ^ 2 = 1) ∧
+        (∑ j : Fin D, φm E_B j ^ 2 = 1) ∧
+        0 < φp E_B ⟨0, by omega⟩ ∧
+        0 < φm E_B ⟨0, by omega⟩ ∧
+        -(1 / (E_B - 2)) ≤ Ep E_B ∧ Ep E_B ≤ 0 ∧
+        -(1 / (E_B - 2)) ≤ Em E_B ∧ Em E_B ≤ 0 ∧
+        Ep E_B ≠ Em E_B) ∧
+      (let ψ0 : ℝ → Fin D → ℂ := fun E_B j ↦
+          (((φp E_B j + φm E_B j) / Real.sqrt 2 : ℝ) : ℂ)
+       let tStar : ℝ → ℝ := fun E_B ↦ Real.pi / |Em E_B - Ep E_B|
+       let ψT : ℝ → Fin D → ℂ := fun E_B j ↦
+          (Complex.exp (-Complex.I * (Ep E_B : ℂ) * (tStar E_B : ℂ)) * (φp E_B j : ℂ) +
+           Complex.exp (-Complex.I * (Em E_B : ℂ) * (tStar E_B : ℂ)) * (φm E_B j : ℂ)) /
+            (Real.sqrt 2 : ℂ)
+       let K_fn : ℝ → ℝ := fun E_B ↦ Real.sin ((Em E_B - Ep E_B) * tStar E_B / 2) ^ 2
+       let Qexp : (Fin D → ℂ) → ℝ := fun ψ ↦ ∑ j : Fin D, (j.val : ℝ) * ‖ψ j‖ ^ 2
+       let Q2exp : (Fin D → ℂ) → ℝ := fun ψ ↦ ∑ j : Fin D, (j.val : ℝ) ^ 2 * ‖ψ j‖ ^ 2
+       let σ0_fn : ℝ → ℝ := fun E_B ↦ Real.sqrt (Q2exp (ψ0 E_B) - Qexp (ψ0 E_B) ^ 2)
+       let ΔQ_fn : ℝ → ℝ := fun E_B ↦ Qexp (ψT E_B) - Qexp (ψ0 E_B)
+       (∀ E_B : ℝ, 2 < E_B → K_fn E_B = 1) ∧
+       Filter.Tendsto σ0_fn Filter.atTop (nhds 0) ∧
+       Filter.Tendsto ΔQ_fn Filter.atTop (nhds ((D : ℝ) - 1)) ∧
+       Filter.Tendsto (fun E_B : ℝ ↦ ΔQ_fn E_B / (K_fn E_B + σ0_fn E_B * Real.sqrt (K_fn E_B)))
+         Filter.atTop (nhds ((D : ℝ) - 1))) := by
   sorry

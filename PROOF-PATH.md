@@ -1,13 +1,18 @@
-# Proof Path & Module Architecture (`KrylovChaos`)
+# Proof Architecture & Dependency Graph
 
-This repository formalizes *Finite-Temperature Bounds on Operator Growth and Quantum Chaos* (`finite_temp_krylov_chaos.tex`, Prince Anand, 2026) across **80** Lean 4 (`v4.35.0`) modules strictly on top of Mathlib `v4.35.0`.
+All **82** library modules under `KrylovChaos/` build strictly on standard Mathlib `v4.35.0` with **0 `sorry`s** and **0 custom axioms**, verified across **296** headline theorems in `KrylovChaos/AuditAxioms.lean` and **33** locked headline theorems in `comparator/`.
 
 ## Dependency Layers
 
-1. **Core Algebra & Parameters**: `Basic`, `QubitAlgebra`, `MajoranaAlgebra`, `WightmanIsometry`, `ManyBodySetup`, `GibbsConstruction`, `WightmanProjectors`, `EndToEndTheorems`, `Milestone1CoreRemediation`, `Milestone1Majorana`.
-2. **Section 3 & 4 — Krylov Tail, Filtration, Product States & Theorem 1.1(a)–(b)**: `KrylovTail`, `JacobiSemigroup`, `InfiniteChainLimit`, `CarlemanJacobi`, `Milestone1InfiniteChain`, `InfiniteChainUnconditional`, `Filtration`, `OperatorGlauberAndLanczosFiltration`, `ConcreteEndToEndWiring`, `Theorem11bConcrete`, `ProductState`, `ProductStateDerivation`, `ProductStateMultiSite`, `ProductStateLambdaMSS`, `HighTempSharpBounds`.
-3. **Section 5 — Spectral Decay, Dyck Paths, Meixner/Sech & OTOC Strip Analyticity (Theorem 1.2(a)–(c))**: `SpectralDyck`, `SpectralMeasure`, `CausalNormBounds`, `VitaliAnalytic`, `Theorem12Concrete`, `TimeOrderedOTOC`, `Milestone2AnalyticFoundations`, `Milestone2SpectralAndVitali`, `MeixnerMomentIdentity`, `ConcreteSpectralStrip`, `ConcreteOTOCStrip`.
-4. **Section 6, 7 & Appendix A — High-Temperature Cluster Expansions, Dual Frame, Shifted Commutator, Entropic Decoupling, All-Time Lieb–Robinson & Theorem 1.3(a)–(c)**: `KoteckyPreiss`, `ConcreteCombinatorics`, `PolymerTrees`, `SupportAndDualFrame`, `PolymerExpansionConcrete`, `Lemma72Concrete`, `DepolarizedFrame`, `HighTempConditioning`, `HighTempReversePoincare`, `MultiSiteCommutator`, `CausalExpansion`, `GlauberDecoupling`, `ClusterCumulantAndDecoupling`, `ShiftedCommutatorAndThm13c`, `OperatorBridges`, `Milestone3Bridges`, `Milestone3Sections678`, `ShiftedThermalSize`, `HighTempParams`, `HighTempPolymerZ`, `HighTempCumulant`, `EntropicDecoupling`, `AllTimeLiebRobinson`, `Cor65LatticeBound`, `HighTempChaosBound`, `HighTempSharpBounds`, `ConcreteOTOCStrip`.
-5. **Section 8 — All-Temperature 1D Araki Expansional & Classical Ising**: `ArakiOneDim`, `Araki1DConcrete`, `ArakiOneDimAllTemp`, `ThermodynamicKMS`, `ClassicalIsing`, `ClassicalIsingConcrete`, `Milestone3Bridges`, `Milestone3Sections678`, `HighTempSharpBounds`.
-6. **Section 9 & Appendix B — Structural Necessity, Bimodal Counterexample & `D × D` Double-Well Tunneling**: `StructuralNecessity`, `BimodalExact`, `SpectralSmearingAndDoubleWell`, `DoubleWellTunneling`, `Milestone4StructuralNecessity`, `Milestone4Section9AppB`, `Section9EndToEnd`.
-7. **Verification Gates**: `SanityChecks` (12 concrete non-vacuity instantiations), `AuditAxioms` (`#print axioms` on 280 headline theorems), and `comparator/{ChallengeDefs,Challenge,Solution}.lean` (23 locked headline theorems verified by `lake comparator`).
+1. **Layer 0 — Foundations & Operator Algebras**:
+   - `Basic.lean`, `WightmanIsometry.lean`, `QubitAlgebra.lean`, `MajoranaAlgebra.lean`, `ManyBodySetup.lean`, `GibbsConstruction.lean`, `SupportAndDualFrame.lean`, `WightmanProjectors.lean`.
+2. **Layer 1 — Krylov Dynamics & Static Reduction (Sections 1–4)**:
+   - `KrylovTail.lean`, `CarlemanJacobi.lean`, `JacobiSemigroup.lean`, `InfiniteChainLimit.lean`, `InfiniteChainUnconditional.lean`, `Filtration.lean`, `ProductState.lean`, `ProductStateDerivation.lean`, `ProductStateMultiSite.lean`, `ProductStateLambdaMSS.lean`, `Theorem11bConcrete.lean`.
+3. **Layer 2 — Spectral Analyticity, Meixner Moments & OTOC Strips (Section 5)**:
+   - `CausalExpansion.lean`, `CausalNormBounds.lean`, `SpectralDyck.lean`, `LanczosMoments.lean`, `MeixnerMomentIdentity.lean`, `SpectralMeasure.lean`, `VitaliAnalytic.lean`, `ThermodynamicKMS.lean`, `Theorem12Concrete.lean`, `TimeOrderedOTOC.lean`, `ConcreteSpectralStrip.lean`, `ConcreteOTOCStrip.lean`.
+4. **Layer 3 — High-Temperature Cluster Expansion, Reverse Poincaré & Chaos Bound (Sections 6–7 & Appendix A)**:
+   - `PolymerTrees.lean`, `KoteckyPreiss.lean`, `ConcreteCombinatorics.lean`, `GlauberDecoupling.lean`, `DepolarizedFrame.lean`, `HighTempConditioning.lean`, `HighTempReversePoincare.lean`, `PolymerExpansionConcrete.lean`, `Lemma72Concrete.lean`, `HighTempParams.lean`, `HighTempSharpBounds.lean`, `ShiftedThermalSize.lean`, `HighTempPolymerZ.lean`, `ProductExpCumulant.lean`, `HighTempCumulant.lean`, `EntropicDecoupling.lean`, `HighTempChaosBound.lean`, `HighTempChaosFull.lean`, `AllTimeLiebRobinson.lean`, `Cor65LatticeBound.lean`.
+5. **Layer 4 — 1D All-Temperature Araki & Classical Ising (Section 8)**:
+   - `ArakiOneDim.lean`, `Araki1DConcrete.lean`, `ArakiOneDimAllTemp.lean`, `ClassicalIsing.lean`, `ClassicalIsingConcrete.lean`.
+6. **Layer 5 — Structural Necessity, Double-Well Tunneling & Packaging (Section 9, Appendix B & Verification)**:
+   - `StructuralNecessity.lean`, `SpectralSmearingAndDoubleWell.lean`, `GaussianSmearingBridge.lean`, `BimodalExact.lean`, `BimodalFullRank.lean`, `DoubleWellTunneling.lean`, `DoubleWellKrylovLimit.lean`, `Section9EndToEnd.lean`, `MainTheoremPackaging.lean`, `SanityChecks.lean`, `AuditAxioms.lean`.

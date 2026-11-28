@@ -107,10 +107,9 @@ theorem sanity_eq91_bimodal_N2 :
         (eq91WitnessOp ⟨0, by omega⟩) = 1 ∧
     ((2 - 1 : ℝ) / 4) * (1 - (1 / 32 : ℝ) - 2 * Real.sqrt (2 * (1 / 32 : ℝ) / (2 : ℝ) ^ 2)) ≤
       lambdaMSS
-        (eq91BimodalGibbs 2 ⟨0, by omega⟩ (by norm_num : (0 : ℝ) < 1 / 32) (by norm_num : (1 / 32 : ℝ) < 1)) 1 := by
-  refine ⟨eq91WitnessOp_wightmanNormSq ⟨0, by omega⟩ (by norm_num) (by norm_num), ?_⟩
-  simpa using eq91Bimodal_lambdaMSS_lower (N := 2) (by omega) ⟨0, by omega⟩
-    (ε := 1 / 32) (by norm_num) (by norm_num)
+        (eq91BimodalGibbs 2 ⟨0, by omega⟩ (by norm_num : (0 : ℝ) < 1 / 32) (by norm_num : (1 / 32 : ℝ) < 1)) 1 :=
+  ⟨eq91WitnessOp_wightmanNormSq ⟨0, by omega⟩ (by norm_num) (by norm_num),
+   eq91Bimodal_lambdaMSS_lower (by omega) ⟨0, by omega⟩ (by norm_num) (by norm_num)⟩
 
 /-- Concrete `D = 4, E_B = 4` non-vacuity witness for the 2D double-well Lanczos basis `{|K₀⟩, |K₁⟩}`. -/
 theorem sanity_doubleWell_lanczos_D4_EB4 :
@@ -168,10 +167,10 @@ theorem sanity_ising_1d_chain_N4_Delta2 (f : SpinConfig 4 → ℝ) :
   · intro i
     rw [hsum_edge (fun p ↦ if J p.1 p.2 ≠ 0 then
       ((if p.1 = i then (1 : ℝ) else 0) + (if p.2 = i then (1 : ℝ) else 0)) else 0)]
-    fin_cases i <;> (simp [Fin.sum_univ_four, J]; norm_num)
+    fin_cases i <;> (simp [Fin.sum_univ_four, J]; try norm_num)
   · intro i
     rw [abs_zero, zero_add]
     rw [hsum_edge (fun p ↦ (if p.1 = i then |J p.1 p.2| else 0) + (if p.2 = i then |J p.1 p.2| else 0))]
-    fin_cases i <;> (simp [Fin.sum_univ_four, J]; norm_num)
+    fin_cases i <;> (simp [Fin.sum_univ_four, J]; try norm_num)
 
 end KrylovChaos
