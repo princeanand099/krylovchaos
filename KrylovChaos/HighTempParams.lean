@@ -89,7 +89,8 @@ theorem highTempBetaWC_discharges_params {N r : ℕ} (hr : 2 ≤ r)
     unfold highTempBetaWC
     apply one_div_le_one_div_of_le (by positivity)
     have h2_le : (2 : ℝ) ≤ (6 : ℝ) ^ r := by linarith
-    nlinarith [Real.exp_pos 2, mul_pos hrpos hJ]
+    have hpos : 0 ≤ 4 * Real.exp 2 * (r : ℝ) * Jsite := by positivity
+    nlinarith
   have hβ_le_wc : β ≤ betaWC_concrete r Jsite := by
     refine le_trans hβ_le_8e2 ?_
     unfold betaWC_concrete
@@ -97,13 +98,16 @@ theorem highTempBetaWC_discharges_params {N r : ℕ} (hr : 2 ≤ r)
     have hr1_le : ((r - 1 : ℕ) : ℝ) ≤ (r : ℝ) := by exact_mod_cast (by omega : r - 1 ≤ r)
     have he2_ge1 : (1 : ℝ) ≤ Real.exp 2 := Real.one_le_exp (by norm_num)
     apply one_div_le_one_div_of_le (by positivity)
-    nlinarith
+    have hr_le : ((r - 1 : ℕ) : ℝ) * Jsite ≤ (r : ℝ) * Jsite :=
+      mul_le_mul_of_nonneg_right hr1_le hJ.le
+    nlinarith [mul_pos hrpos hJ]
   have hβJ_le1 : (β / 2) * Jsite ≤ 1 := by
     have h1 : (β / 2) * Jsite ≤ (1 / (8 * Real.exp 2 * (r : ℝ) * Jsite) / 2) * Jsite := by
       nlinarith
     have h2 : (1 / (8 * Real.exp 2 * (r : ℝ) * Jsite) / 2) * Jsite = 1 / (16 * Real.exp 2 * (r : ℝ)) := by
       field_simp [hJ.ne', (Real.exp_pos 2).ne', hrpos.ne']; ring
     have he2_ge1 : (1 : ℝ) ≤ Real.exp 2 := Real.one_le_exp (by norm_num)
+    have hr1 : (1 : ℝ) ≤ (r : ℝ) := by exact_mod_cast (by omega : 1 ≤ r)
     have h3 : 1 / (16 * Real.exp 2 * (r : ℝ)) ≤ 1 := by
       rw [div_le_one (by positivity)]; nlinarith
     linarith
@@ -137,9 +141,9 @@ theorem highTempBetaWC_discharges_params {N r : ℕ} (hr : 2 ≤ r)
           ∑ X ∈ E.filter (fun X ↦ x ∈ X), opNorm (h X) := (Finset.mul_sum _ _ _).symm
       _ ≤ (6 : ℝ) ^ r * Real.exp 1 * (β / 2) * Jsite :=
           mul_le_mul_of_nonneg_left (hsite x) (by positivity)
-      _ ≤ (6 : ℝ) ^ r * Real.exp 1 * (highTempBetaWC r Jsite / 2) * Jsite := by
-          have : 0 ≤ (6 : ℝ) ^ r * Real.exp 1 := by positivity
-          nlinarith
+      _ ≤ (6 : ℝ) ^ r * Real.exp 1 * (highTempBetaWC r Jsite / 2) * Jsite :=
+          mul_le_mul_of_nonneg_right
+            (mul_le_mul_of_nonneg_left (by linarith) (by positivity)) hJ.le
       _ = 1 / (8 * Real.exp 1 * (r : ℝ)) := by
           unfold highTempBetaWC; rw [he2_eq]
           field_simp [h6r_pos.ne', he1_pos.ne', hrpos.ne', hJ.ne']; ring

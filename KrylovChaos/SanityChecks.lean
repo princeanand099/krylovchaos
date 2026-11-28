@@ -153,15 +153,25 @@ theorem sanity_ising_1d_chain_N4_Delta2 (f : SpinConfig 4 → ℝ) :
       (Real.cosh (1 * 2 + ((2 : ℕ) : ℝ) / 2 * Real.log 2)) ^ 2 *
         degreeFiltrationQ (isingGibbsMeasure 1 J (fun _ ↦ 0)) f := by
   intro J
+  have hsum_edge : ∀ g : Fin 4 × Fin 4 → ℝ,
+      (∑ e : IsingEdge 4, g e.1) =
+        ∑ a : Fin 4, ∑ b : Fin 4, if a < b then g (a, b) else 0 := by
+    intro g
+    rw [← Fintype.sum_prod_type', ← Finset.sum_filter]
+    refine Finset.sum_bij (fun e _ ↦ e.1) ?_ ?_ ?_ ?_
+    · intro e _; exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, e.2⟩
+    · intro e₁ _ e₂ _ h; exact Subtype.ext h
+    · intro p hp; exact ⟨⟨p, (Finset.mem_filter.mp hp).2⟩, Finset.mem_univ _, rfl⟩
+    · intro _ _; rfl
   refine prop_8_3_ising_explicit_eq_8_4_cosh (N := 4) (Δ := 2) (β := 1) (H_max := 2)
     (by norm_num) (by norm_num) J (fun _ ↦ 0) ?_ ?_ f
   · intro i
-    fin_cases i <;>
-    · simp only [Fin.sum_univ_def, Fintype.sum_subtype_add_sum_subtype, IsingEdge]
-      decide +revert
+    rw [hsum_edge (fun p ↦ if J p.1 p.2 ≠ 0 then
+      ((if p.1 = i then (1 : ℝ) else 0) + (if p.2 = i then (1 : ℝ) else 0)) else 0)]
+    fin_cases i <;> (simp [Fin.sum_univ_four, J]; norm_num)
   · intro i
-    fin_cases i <;>
-    · simp only [abs_zero, zero_add]
-      decide +revert
+    rw [abs_zero, zero_add]
+    rw [hsum_edge (fun p ↦ (if p.1 = i then |J p.1 p.2| else 0) + (if p.2 = i then |J p.1 p.2| else 0))]
+    fin_cases i <;> (simp [Fin.sum_univ_four, J]; norm_num)
 
 end KrylovChaos
