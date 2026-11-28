@@ -102,7 +102,10 @@ theorem prop_6_2_sharp_r_local_high_temp {N r : ℕ} (hr : 2 ≤ r)
     have hpauli := opNorm_pauliSite_le x α
     have hbd' : opNorm (heisenbergEvol hH (-(Complex.I * ((β / 4 : ℝ) : ℂ))) (pauliSite x α.succ)) ≤
         opNorm (pauliSite x α.succ) * (1 - β / (4 * κ)) ^ (-((1 : ℝ) / ((r - 1 : ℕ) : ℝ))) := by
-      simpa [κ, hq_eq] using hbd
+      dsimp only at hbd
+      change opNorm (heisenbergEvol hH (-(Complex.I * ((β / 4 : ℝ) : ℂ))) (pauliSite x α.succ)) ≤
+        opNorm (pauliSite x α.succ) * (1 - (β / 4) / κ) ^ (-(((1 : ℕ) : ℝ) / ((r - 1 : ℕ) : ℝ))) at hbd
+      rwa [hq_eq, Nat.cast_one] at hbd
     calc opNorm (heisenbergEvol hH (-(Complex.I * ((β / 4 : ℝ) : ℂ))) (pauliSite x α.succ))
         ≤ opNorm (pauliSite x α.succ) * (1 - β / (4 * κ)) ^ (-((1 : ℝ) / ((r - 1 : ℕ) : ℝ))) := hbd'
       _ ≤ 1 * (1 - β / (4 * κ)) ^ (-((1 : ℝ) / ((r - 1 : ℕ) : ℝ))) :=
@@ -113,8 +116,8 @@ theorem prop_6_2_sharp_r_local_high_temp {N r : ℕ} (hr : 2 ≤ r)
       (1 - β / (4 * κ))⁻¹ := by
     have hW_herm : (pauliSite x α.succ).IsHermitian := pauliSite_herm x α.succ
     have hconj := heisenbergEvol_conjTranspose_of_herm hH hW_herm (Complex.I * ((β / 4 : ℝ) : ℂ))
-    have hstar : star (Complex.I * ((β / 4 : ℝ) : ℂ)) = -(Complex.I * ((β / 4 : ℝ) : ℂ)) := by
-      simp [Complex.star_def]
+    have hstar : starRingEnd ℂ (Complex.I * ((β / 4 : ℝ) : ℂ)) = -(Complex.I * ((β / 4 : ℝ) : ℂ)) := by
+      simp
     rw [hstar] at hconj
     rw [← opNorm_conjTranspose, hconj]
     exact hneg
@@ -132,7 +135,7 @@ theorem lemma_7_3_part1_multisite_eq_7_11 {N : ℕ} (s s' : Fin N → Fin 6)
   have h3 := prodDepolNormSq_matComm_supportedOn_le s s' hW A
   have hpow : (3 : ℝ) ^ U.card ≤ (9 : ℝ) ^ U.card := pow_le_pow_left₀ (by norm_num) (by norm_num) _
   have hsum_nn : 0 ≤ ∑ y ∈ U, prodDepolDistSq s s' (singleSiteTrivialSubmodule N y) A :=
-    Finset.sum_nonneg fun y _ ↦ prodDepolDistSq_nonneg s s' _ A
+    Finset.sum_nonneg fun y _ ↦ by unfold prodDepolDistSq; apply Real.sInf_nonneg; rintro _ ⟨_, _, rfl⟩; exact prodDepolNormSq_nonneg s s' _
   calc prodDepolNormSq s s' (matComm A W)
       ≤ 4 * (3 : ℝ) ^ U.card * (opNorm W) ^ 2 *
           ∑ y ∈ U, prodDepolDistSq s s' (singleSiteTrivialSubmodule N y) A := h3
@@ -308,7 +311,9 @@ theorem lemma_8_2_ising_hs_mixture {N : ℕ} {β : ℝ} (hβ : 0 ≤ β)
             rcases Finset.mem_insert.mp ha with rfl | hat
             · exact le_max_left _ _
             · exact le_trans (ih a hat) (le_max_right _ _)
-      exact hgen Finset.univ _ i (Finset.mem_univ i)
+      exact hgen Finset.univ (fun j ↦ β * |hfield j| + ∑ e : IsingEdge N,
+        ((if e.1.1 = j then isingHSParam β (J e.1.1 e.1.2) else 0) +
+         (if e.1.2 = j then isingHSParam β (J e.1.1 e.1.2) else 0))) i (Finset.mem_univ i)
     exact le_trans h1 hfold_le
   have hmix : ∀ σ : SpinConfig N, isingGibbsMeasure β J hfield σ =
       ∑ ξ : Ξ, w ξ * prodBernoulli (h_eff ξ) σ := by
@@ -329,19 +334,23 @@ theorem lemma_8_2_ising_hs_mixture {N : ℕ} {β : ℝ} (hβ : 0 ≤ β)
       have hexp_split : Real.exp (-β * isingHamiltonianStrict J hfield σ) =
           Real.exp (∑ i : Fin N, β * hfield i * spinVal (σ i)) *
           ∏ e : IsingEdge N, Real.exp (β * J e.1.1 e.1.2 * spinVal (σ e.1.1) * spinVal (σ e.1.2)) := by
-        unfold isingHamiltonianStrict
-        rw [neg_mul, neg_neg, mul_add, Real.exp_add, mul_comm (Real.exp (β * _)), Real.exp_sum]
+        rw [← Real.exp_sum, ← Real.exp_add]
         congr 1
-        · rw [Finset.mul_sum]; congr 1; ext i; ring
-        · rw [Finset.mul_sum, Real.exp_sum]; apply Finset.prod_congr rfl; intro e _; congr 1; ring
+        unfold isingHamiltonianStrict
+        have h1 : β * (∑ i : Fin N, hfield i * spinVal (σ i)) = ∑ i : Fin N, β * hfield i * spinVal (σ i) := by
+          rw [Finset.mul_sum]; apply Finset.sum_congr rfl; intro i _; ring
+        have h2 : β * (∑ e : IsingEdge N, J e.1.1 e.1.2 * spinVal (σ e.1.1) * spinVal (σ e.1.2)) =
+            ∑ e : IsingEdge N, β * J e.1.1 e.1.2 * spinVal (σ e.1.1) * spinVal (σ e.1.2) := by
+          rw [Finset.mul_sum]; apply Finset.sum_congr rfl; intro e _; ring
+        linarith
       rw [hexp_split]
       have hedge : ∀ e : IsingEdge N,
           Real.exp (β * J e.1.1 e.1.2 * spinVal (σ e.1.1) * spinVal (σ e.1.2)) =
             (Real.exp (-β * |J e.1.1 e.1.2|) * (1 / 2 : ℝ)) *
               ∑ b : Bool, Real.exp ((if b then c e else -c e) * (spinVal (σ e.1.1) + sgn e * spinVal (σ e.1.2))) :=
         fun e ↦ single_edge_discrete_hs hβ (J e.1.1 e.1.2) (σ e.1.1) (σ e.1.2)
-      simp_rw [hedge, Finset.prod_mul_distrib]
-      rw [← mul_assoc, mul_comm (Real.exp _), mul_assoc]
+      simp_rw [hedge]
+      rw [Finset.prod_mul_distrib, ← mul_assoc, mul_comm (Real.exp _), mul_assoc]
       congr 1
       rw [Fintype.prod_sum, Finset.mul_sum]
       apply Finset.sum_congr rfl; intro ξ _
@@ -480,9 +489,13 @@ private lemma diagIsing_rhoHalf_eq {N : ℕ} (β : ℝ)
           _ = U * Matrix.diagonal (fun i ↦ (hH.eigenvalues i : ℂ)) * (Uᴴ * U) := by simp only [Matrix.mul_assoc]
           _ = U * Matrix.diagonal (fun i ↦ (hH.eigenvalues i : ℂ)) := by rw [hU_mul', Matrix.mul_one]
       have hqk := congrFun (congrFun hHU q) k
-      simp only [Hdiag, diagQubitOpOfSpinFn, Matrix.mul_apply, Matrix.diagonal_apply,
-        ite_mul, zero_mul, mul_ite, mul_zero, Finset.sum_ite_eq, Finset.sum_ite_eq',
+      simp only [Matrix.mul_apply, Matrix.diagonal_apply, mul_ite, mul_zero, Finset.sum_ite_eq',
         Finset.mem_univ, ↓reduceIte] at hqk
+      have hlhs : ∑ x : QubitIdx N, Hdiag q x * U x k =
+          ((isingHamiltonianStrict J hfield (qubitIdxEquivSpinConfig N q) : ℝ) : ℂ) * U q k := by
+        simp only [Hdiag, diagQubitOpOfSpinFn, Matrix.diagonal_apply, ite_mul, zero_mul,
+          Finset.sum_ite_eq, Finset.mem_univ, ↓reduceIte]
+      rw [hlhs] at hqk
       simpa [mul_comm] using hqk
     ext q r
     change (U * Matrix.diagonal (fun k ↦ g (hH.eigenvalues k)) * Uᴴ) q r = _
@@ -525,7 +538,7 @@ private lemma diagIsing_rhoHalf_eq {N : ℕ} (β : ℝ)
   simp only [Matrix.smul_apply, Matrix.diagonal_apply, smul_eq_mul, isingGibbsMeasure]
   split_ifs with hij
   · subst hij
-    rw [← Complex.ofReal_exp, ← Complex.ofReal_inv, ← Complex.ofReal_mul]
+    rw [← Complex.ofReal_inv, ← Complex.ofReal_mul]
     congr 1
     rw [Real.sqrt_div (Real.exp_pos _).le, div_eq_inv_mul]
     congr 1
@@ -567,8 +580,9 @@ private lemma diagIsing_wightmanNormSq_sub_ge {N : ℕ} (β : ℝ)
           _ = _ := by rw [← Complex.ofReal_mul]
       rw [hmul, Complex.ofReal_re]
     simp_rw [hterm_eq]
-    exact Finset.single_le_sum (fun q₂ _ ↦ mul_nonneg (mul_nonneg (Real.sqrt_nonneg _) (Real.sqrt_nonneg _))
-      (sq_nonneg _)) (Finset.mem_univ q)
+    exact Finset.single_le_sum (f := fun q₂ : QubitIdx N ↦ d q * d q₂ * ‖X q₂ q‖ ^ 2)
+      (fun q₂ _ ↦ mul_nonneg (mul_nonneg (Real.sqrt_nonneg _) (Real.sqrt_nonneg _))
+        (sq_nonneg _)) (Finset.mem_univ q)
   have hμ_nn : ∀ σ : SpinConfig N, 0 ≤ isingGibbsMeasure β J hfield σ := fun σ ↦ by
     unfold isingGibbsMeasure
     exact div_nonneg (Real.exp_pos _).le (Finset.sum_nonneg fun _ _ ↦ (Real.exp_pos _).le)
@@ -594,7 +608,7 @@ private lemma pauliMat_diag_eq (α : Fin 4) (b : Fin 2) :
       if α = 0 then 1
       else if α = 3 then (if b = 0 then 1 else -1)
       else 0 := by
-  fin_cases α <;> fin_cases b <;> simp [pauliMat, pauliI, pauliX, pauliY, pauliZ]
+  fin_cases α <;> fin_cases b <;> simp [pauliMat, pauliX, pauliY, pauliZ]
 
 /-- Diagonal real part of a Pauli string `pauliString a` lies in `classicalDegreeSubspace N k`
 whenever `|{i | a i ≠ 0}| ≤ k`. -/
@@ -605,7 +619,7 @@ private lemma diagSpinFn_pauliString_mem_classicalDegree {N k : ℕ} (a : Fin N 
   · rcases hxy with ⟨i₀, hi₀⟩
     have hzero : diagSpinFnOfQubitOp (pauliString a) = 0 := by
       funext σ
-      unfold diagSpinFnOfQubitOp pauliString
+      unfold diagSpinFnOfQubitOp pauliString kronOp
       simp only [Matrix.of_apply]
       have hterm0 : pauliMat (a i₀) ((qubitIdxEquivSpinConfig N).symm σ i₀)
           ((qubitIdxEquivSpinConfig N).symm σ i₀) = 0 := by
@@ -622,7 +636,7 @@ private lemma diagSpinFn_pauliString_mem_classicalDegree {N k : ℕ} (a : Fin N 
     have hfn : diagSpinFnOfQubitOp (pauliString a) =
         ((-1 : ℝ) ^ S.card) • (fun σ : SpinConfig N ↦ ∏ i ∈ S, spinVal (σ i)) := by
       funext σ
-      unfold diagSpinFnOfQubitOp pauliString
+      unfold diagSpinFnOfQubitOp pauliString kronOp
       simp only [Matrix.of_apply, Pi.smul_apply, smul_eq_mul]
       have hprod : ∏ i : Fin N, pauliMat (a i) ((qubitIdxEquivSpinConfig N).symm σ i)
           ((qubitIdxEquivSpinConfig N).symm σ i) =
@@ -638,7 +652,7 @@ private lemma diagSpinFn_pauliString_mem_classicalDegree {N k : ℕ} (a : Fin N 
             have hne3 : a i ≠ 3 := by simpa [S] using hiS
             have h12 := hxy i
             have ha_cases : a i = 0 ∨ a i = 1 ∨ a i = 2 ∨ a i = 3 := by
-              fin_cases h : a i <;> simp
+              generalize h : a i = v; fin_cases v <;> simp
             rcases ha_cases with h | h | h | h
             · exact h
             · exact absurd h h12.1
@@ -658,7 +672,7 @@ private lemma diagQubitOp_character_mem_filtration {N k : ℕ} (S : Finset (Fin 
       ((-1 : ℂ) ^ S.card) • pauliString a := by
     ext q₁ q₂
     simp only [diagQubitOpOfSpinFn, Matrix.diagonal_apply, Matrix.smul_apply, smul_eq_mul,
-      pauliString, Matrix.of_apply]
+      pauliString, kronOp, Matrix.of_apply]
     by_cases hq : q₁ = q₂
     · subst hq
       rw [if_pos rfl, Complex.ofReal_prod]
@@ -668,7 +682,7 @@ private lemma diagQubitOp_character_mem_filtration {N k : ℕ} (S : Finset (Fin 
         · apply Finset.prod_congr rfl; intro i hi
           have hai : a i = 3 := if_pos hi
           rw [hai, pauliMat_diag_eq, if_neg (by decide), if_pos rfl]
-          have hfin2 : q₁ i = 0 ∨ q₁ i = 1 := by fin_cases h : q₁ i <;> simp
+          have hfin2 : q₁ i = 0 ∨ q₁ i = 1 := by generalize h : q₁ i = v; fin_cases v <;> simp
           rcases hfin2 with h0 | h1 <;> simp [qubitIdxEquivSpinConfig, spinVal, h0, h1]
         · intro i _ hiS
           have hai : a i = 0 := if_neg hiS
@@ -682,10 +696,10 @@ private lemma diagQubitOp_character_mem_filtration {N k : ℕ} (S : Finset (Fin 
       rcases hne_coord with ⟨i₀, hi₀⟩
       have h0 : pauliMat (a i₀) (q₁ i₀) (q₂ i₀) = 0 := by
         dsimp only [a]; split_ifs
-        · fin_cases h1 : q₁ i₀ <;> fin_cases h2 : q₂ i₀ <;>
-            simp_all [pauliMat, pauliZ]
-        · fin_cases h1 : q₁ i₀ <;> fin_cases h2 : q₂ i₀ <;>
-            simp_all [pauliMat, pauliI]
+        · generalize h1 : q₁ i₀ = v1; generalize h2 : q₂ i₀ = v2
+          rw [h1, h2] at hi₀; fin_cases v1 <;> fin_cases v2 <;> simp_all [pauliMat, pauliZ]
+        · generalize h1 : q₁ i₀ = v1; generalize h2 : q₂ i₀ = v2
+          rw [h1, h2] at hi₀; fin_cases v1 <;> fin_cases v2 <;> simp_all [pauliMat]
       rw [Finset.prod_eq_zero (Finset.mem_univ i₀) h0, mul_zero]
   rw [heq]
   apply Submodule.smul_mem
@@ -737,7 +751,7 @@ theorem diagIsing_wightmanQ_eq_classical_degreeFiltrationQ {N : ℕ} (β : ℝ)
       apply csInf_le
       · exact ⟨0, by rintro _ ⟨B, _, rfl⟩; exact gibbsWightmanNormSq_nonneg G _⟩
       · refine ⟨diagQubitOpOfSpinFn g, hdiag_mem, ?_⟩
-        rw [hsub_eq, diagIsing_wightmanNormSq_eq_classical_L2]; rfl
+        rw [hsub_eq, diagIsing_wightmanNormSq_eq_classical_L2]
   · apply le_csInf
     · exact ⟨_, 0, Submodule.zero_mem _, rfl⟩
     · rintro r ⟨B, hB, rfl⟩
@@ -747,7 +761,7 @@ theorem diagIsing_wightmanQ_eq_classical_degreeFiltrationQ {N : ℕ} (β : ℝ)
           funext σ; simp [diagSpinFnOfQubitOp]
         have hlin_smul : ∀ (c : ℂ) (X : QubitOp N),
             diagSpinFnOfQubitOp (c • X) =
-              c.re • diagSpinFnOfQubitOp X + (-c.im) • diagSpinFnOfQubitOp (Complex.I • X) := fun c X ↦ by
+              c.re • diagSpinFnOfQubitOp X + c.im • diagSpinFnOfQubitOp (Complex.I • X) := fun c X ↦ by
           funext σ; simp [diagSpinFnOfQubitOp]; ring
         have hboth : ∀ Z ∈ filtrationSubmodule N k,
             diagSpinFnOfQubitOp Z ∈ classicalDegreeSubspace N k ∧
@@ -761,14 +775,14 @@ theorem diagIsing_wightmanQ_eq_classical_degreeFiltrationQ {N : ℕ} (β : ℝ)
                 Complex.re_ofReal_mul]
               have hreal : ((pauliString a) ((qubitIdxEquivSpinConfig N).symm σ)
                   ((qubitIdxEquivSpinConfig N).symm σ)).im = 0 := by
-                unfold pauliString; simp only [Matrix.of_apply]
+                unfold pauliString kronOp; simp only [Matrix.of_apply]
                 have h1 : ∀ i : Fin N, ∃ r : ℝ, pauliMat (a i) ((qubitIdxEquivSpinConfig N).symm σ i)
                     ((qubitIdxEquivSpinConfig N).symm σ i) = (r : ℂ) := by
                   intro i; rw [pauliMat_diag_eq]; split_ifs <;> [exact ⟨1, by simp⟩; exact ⟨1, by simp⟩;
                     exact ⟨-1, by simp⟩; exact ⟨0, by simp⟩]
                 choose r hr using h1
                 simp_rw [hr, ← Complex.ofReal_prod, Complex.ofReal_im]
-              simp [Complex.mul_re, hreal]; rfl
+              simp [Complex.mul_re, hreal]
             rw [him0]; exact Submodule.zero_mem _
           · have h0 : diagSpinFnOfQubitOp (0 : QubitOp N) = 0 := by funext σ; simp [diagSpinFnOfQubitOp]
             simp [h0, Submodule.zero_mem]
@@ -783,9 +797,12 @@ theorem diagIsing_wightmanQ_eq_classical_degreeFiltrationQ {N : ℕ} (β : ℝ)
         exact (hboth B hB).1
       refine le_trans ?_ (diagIsing_wightmanNormSq_sub_ge β J hfield f B)
       apply csInf_le
-      · exact ⟨0, by rintro _ ⟨g, _, rfl⟩; exact Finset.sum_nonneg fun σ _ ↦
-          mul_nonneg (by unfold isingGibbsMeasure; exact div_nonneg (Real.exp_pos _).le
-            (Finset.sum_nonneg fun _ _ ↦ (Real.exp_pos _).le)) (sq_nonneg _)⟩
+      · exact ⟨0, by
+          rintro _ ⟨g, _, rfl⟩
+          exact Finset.sum_nonneg fun σ _ ↦ mul_nonneg (by
+            unfold isingGibbsMeasure
+            exact div_nonneg (Real.exp_pos _).le (Finset.sum_nonneg fun _ _ ↦ (Real.exp_pos _).le))
+            (sq_nonneg _)⟩
       · exact ⟨diagSpinFnOfQubitOp B, hdiag_mem, rfl⟩
 
 /-- **Exact Diagonal Ising Quantum-to-Classical Glauber Dirichlet Identity**:
@@ -839,7 +856,7 @@ theorem diagIsing_glauberGen_eq_classical_dirichlet {N : ℕ} (β : ℝ)
           have hterm : ∀ i ∈ Finset.univ.erase x, 1 + spinVal (τ i) * spinVal (σ i) = 2 := by
             intro i hi
             have hne : i ≠ x := (Finset.mem_erase.mp hi).1
-            rw [hall i hne]; cases σ i <;> simp [spinVal]
+            rw [hall i hne]; cases σ i <;> simp [spinVal] <;> norm_num
           rw [Finset.prod_congr rfl hterm, Finset.prod_const, Finset.card_erase_of_mem (Finset.mem_univ x),
             Finset.card_univ, Fintype.card_fin]
         · rw [if_neg hall]; push Not at hall
@@ -855,7 +872,7 @@ theorem diagIsing_glauberGen_eq_classical_dirichlet {N : ℕ} (β : ℝ)
         trans (∑ S ∈ (Finset.univ.erase x).powerset, ∑ τ : SpinConfig N,
             (1 / (2 : ℝ) ^ N) * (g τ * ((∏ i ∈ S, spinVal (τ i)) * (∏ i ∈ S, spinVal (σ i)))))
         · apply Finset.sum_congr rfl; intro S _
-          rw [mul_assoc, Finset.mul_sum, Finset.sum_mul]
+          rw [mul_assoc, Finset.sum_mul, Finset.mul_sum]
           apply Finset.sum_congr rfl; intro τ _; ring
         · rw [Finset.sum_comm]
           apply Finset.sum_congr rfl; intro τ _
@@ -913,7 +930,7 @@ theorem diagIsing_glauberGen_eq_classical_dirichlet {N : ℕ} (β : ℝ)
         ((-1 : ℂ) ^ S.card) • pauliString a := by
       ext q₁ q₂
       simp only [diagQubitOpOfSpinFn, Matrix.diagonal_apply, Matrix.smul_apply, smul_eq_mul,
-        pauliString, Matrix.of_apply]
+        pauliString, kronOp, Matrix.of_apply]
       by_cases hq : q₁ = q₂
       · subst hq; rw [if_pos rfl, Complex.ofReal_prod]
         have hprod : ∏ i : Fin N, pauliMat (a i) (q₁ i) (q₁ i) =
@@ -922,7 +939,7 @@ theorem diagIsing_glauberGen_eq_classical_dirichlet {N : ℕ} (β : ℝ)
           · apply Finset.prod_congr rfl; intro i hi
             have hai : a i = 3 := if_pos hi
             rw [hai, pauliMat_diag_eq, if_neg (by decide), if_pos rfl]
-            have hfin2 : q₁ i = 0 ∨ q₁ i = 1 := by fin_cases h : q₁ i <;> simp
+            have hfin2 : q₁ i = 0 ∨ q₁ i = 1 := by generalize h : q₁ i = v; fin_cases v <;> simp
             rcases hfin2 with h0 | h1 <;> simp [qubitIdxEquivSpinConfig, spinVal, h0, h1]
           · intro i _ hiS; rw [show a i = 0 from if_neg hiS, pauliMat_diag_eq, if_pos rfl]
         rw [hprod]; simp_rw [Complex.ofReal_neg, Finset.prod_neg]
@@ -933,8 +950,10 @@ theorem diagIsing_glauberGen_eq_classical_dirichlet {N : ℕ} (β : ℝ)
         rcases hne_coord with ⟨i₀, hi₀⟩
         have h0 : pauliMat (a i₀) (q₁ i₀) (q₂ i₀) = 0 := by
           dsimp only [a]; split_ifs
-          · fin_cases h1 : q₁ i₀ <;> fin_cases h2 : q₂ i₀ <;> simp_all [pauliMat, pauliZ]
-          · fin_cases h1 : q₁ i₀ <;> fin_cases h2 : q₂ i₀ <;> simp_all [pauliMat, pauliI]
+          · generalize h1 : q₁ i₀ = v1; generalize h2 : q₂ i₀ = v2
+            rw [h1, h2] at hi₀; fin_cases v1 <;> fin_cases v2 <;> simp_all [pauliMat, pauliZ]
+          · generalize h1 : q₁ i₀ = v1; generalize h2 : q₂ i₀ = v2
+            rw [h1, h2] at hi₀; fin_cases v1 <;> fin_cases v2 <;> simp_all [pauliMat]
         rw [Finset.prod_eq_zero (Finset.mem_univ i₀) h0, mul_zero]
     rw [hchar_eq]
     exact Submodule.smul_mem _ _ (Submodule.subset_span ⟨a, if_neg hxS, rfl⟩)
@@ -958,7 +977,7 @@ theorem diagIsing_glauberGen_eq_classical_dirichlet {N : ℕ} (β : ℝ)
           intro Z hZ
           refine Submodule.span_induction ?_ ?_ ?_ ?_ hZ
           · rintro _ ⟨a, hax, rfl⟩ σ
-            unfold pauliString; simp only [Matrix.of_apply]
+            unfold pauliString kronOp; simp only [Matrix.of_apply]
             apply Finset.prod_congr rfl; intro i _
             by_cases hi : i = x
             · subst hi; rw [hax, pauliMat_diag_eq, pauliMat_diag_eq, if_pos rfl]
@@ -1034,7 +1053,7 @@ private lemma filtrationSubmodule_eq_top_of_ge {N s : ℕ} (hs : N ≤ s) :
     rintro _ ⟨a, _, rfl⟩
     apply Submodule.subset_span
     refine ⟨a, ?_, rfl⟩
-    exact le_trans (Finset.card_filter_le _ _) (by simp)
+    unfold stringWeight; exact le_trans (Finset.card_filter_le _ _) (by simp)
   · exact filtrationSubmodule_mono N hs
 
 /-- For `s ≥ 2 * n`, `majoranaFiltrationSubmodule n s = majoranaFiltrationSubmodule n (2 * n)`. -/
@@ -1071,12 +1090,13 @@ private lemma lambdaMSS_zero_le_zero {N : ℕ} (G : GibbsData N) : lambdaMSS G 0
       · rintro _ ⟨a, ha, rfl⟩
         have ha0 : a = fun _ ↦ 0 := by
           funext i; by_contra hi
-          have : 1 ≤ (Finset.univ.filter (fun j : Fin N ↦ a j ≠ 0)).card :=
+          have h1 : 1 ≤ (Finset.univ.filter (fun j : Fin N ↦ a j ≠ 0)).card :=
             Finset.card_pos.mpr ⟨i, Finset.mem_filter.mpr ⟨Finset.mem_univ i, hi⟩⟩
+          unfold stringWeight at ha
           omega
         refine ⟨1, ?_⟩
         rw [ha0, one_smul]
-        ext i j; unfold pauliString; simp only [Matrix.of_apply, Matrix.one_apply]
+        ext i j; unfold pauliString kronOp; simp only [Matrix.of_apply, Matrix.one_apply]
         by_cases hij : i = j
         · subst hij; rw [if_pos rfl]; apply Finset.prod_eq_one; intro k _
           rw [pauliMat_diag_eq, if_pos rfl]
@@ -1084,7 +1104,8 @@ private lemma lambdaMSS_zero_le_zero {N : ℕ} (G : GibbsData N) : lambdaMSS G 0
           have hne_c : ∃ k : Fin N, i k ≠ j k := by by_contra h; push Not at h; exact hij (funext h)
           rcases hne_c with ⟨k, hk⟩
           apply Finset.prod_eq_zero (Finset.mem_univ k)
-          fin_cases h1 : i k <;> fin_cases h2 : j k <;> simp_all [pauliMat, pauliI]
+          generalize h1 : i k = v1; generalize h2 : j k = v2
+          rw [h1, h2] at hk; fin_cases v1 <;> fin_cases v2 <;> simp_all [pauliMat]
       · exact ⟨0, by simp⟩
       · rintro X Y _ _ ⟨c₁, rfl⟩ ⟨c₂, rfl⟩; exact ⟨c₁ + c₂, by rw [add_smul]⟩
       · rintro c X _ ⟨c₁, rfl⟩; exact ⟨c * c₁, by rw [smul_smul]⟩
@@ -1092,10 +1113,10 @@ private lemma lambdaMSS_zero_le_zero {N : ℕ} (G : GibbsData N) : lambdaMSS G 0
     have hnorm_c : ‖c‖ ^ 2 = 1 := by
       have h1 : gibbsWightmanNormSq G (c • (1 : QubitOp N)) = ‖c‖ ^ 2 := by
         unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
-        rw [Matrix.conjTranspose_smul, Matrix.conjTranspose_one, Matrix.mul_smul, Matrix.smul_mul,
-          Matrix.mul_smul, Matrix.mul_one, Matrix.mul_one, smul_smul, Matrix.trace_smul,
-          G.sq_half, G.trace_one, smul_eq_mul, mul_one, Complex.star_def, mul_comm,
-          Complex.mul_conj', Complex.ofReal_pow, Complex.ofReal_re]
+        simp only [Matrix.conjTranspose_smul, Matrix.conjTranspose_one, Matrix.mul_smul,
+          Matrix.smul_mul, Matrix.mul_one, Matrix.one_mul, smul_smul, Matrix.trace_smul,
+          G.sq_half, G.trace_one, smul_eq_mul, mul_one, Complex.star_def]
+        rw [mul_comm, Complex.mul_conj', ← Complex.ofReal_pow, Complex.ofReal_re]
       linarith
     have hj : jBeta G.ρQuarter (c • (1 : QubitOp N)) = c • G.ρHalf := by
       unfold jBeta; rw [Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one, G.sq_quarter]
@@ -1106,7 +1127,7 @@ private lemma lambdaMSS_zero_le_zero {N : ℕ} (G : GibbsData N) : lambdaMSS G 0
       unfold hsInner
       rw [Matrix.conjTranspose_smul, Matrix.smul_mul, Matrix.mul_smul, smul_smul,
         Matrix.trace_smul, smul_eq_mul, Complex.star_def, mul_comm (starRingEnd ℂ c),
-        Complex.mul_conj', Complex.ofReal_pow, Complex.re_ofReal_mul]
+        Complex.mul_conj', ← Complex.ofReal_pow, Complex.re_ofReal_mul]
     rw [hin, hnorm_c, one_mul, sub_self]
   · rw [Set.not_nonempty_iff_eq_empty.mp hne, Real.sSup_empty]
 
@@ -1131,18 +1152,18 @@ private lemma majoranaLambdaMSS_zero_le_zero {n : ℕ} (G : GibbsData n) :
     have hnorm_c : ‖c‖ ^ 2 = 1 := by
       have h1 : gibbsWightmanNormSq G (c • (1 : QubitOp n)) = ‖c‖ ^ 2 := by
         unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
-        rw [Matrix.conjTranspose_smul, Matrix.conjTranspose_one, Matrix.mul_smul, Matrix.smul_mul,
-          Matrix.mul_smul, Matrix.mul_one, Matrix.mul_one, smul_smul, Matrix.trace_smul,
-          G.sq_half, G.trace_one, smul_eq_mul, mul_one, Complex.star_def, mul_comm,
-          Complex.mul_conj', Complex.ofReal_pow, Complex.ofReal_re]
+        simp only [Matrix.conjTranspose_smul, Matrix.conjTranspose_one, Matrix.mul_smul,
+          Matrix.smul_mul, Matrix.mul_one, Matrix.one_mul, smul_smul, Matrix.trace_smul,
+          G.sq_half, G.trace_one, smul_eq_mul, mul_one, Complex.star_def]
+        rw [mul_comm, Complex.mul_conj', ← Complex.ofReal_pow, Complex.ofReal_re]
       linarith
     have hj : jBeta G.ρQuarter (c • (1 : QubitOp n)) = c • G.ρHalf := by
       unfold jBeta; rw [Matrix.mul_smul, Matrix.smul_mul, Matrix.mul_one, G.sq_quarter]
     have hmsmul : majoranaParitySizeOp n (c • G.ρHalf) = c • majoranaParitySizeOp n G.ρHalf := by
-      unfold majoranaParitySizeOp majoranaModeSizeOp majoranaOddModeSizeOp
-        majoranaEvenPart majoranaOddPart fermionParityOp
+      unfold majoranaParitySizeOp majoranaTotalSizeOp majoranaOddTotalSizeOp
+        majoranaModeSizeOp majoranaOddModeSizeOp evenPart oddPart
       simp only [Finset.smul_sum, smul_add, smul_sub, Matrix.mul_smul, Matrix.smul_mul, smul_smul]
-      congr 1 <;> congr 1 <;> apply Finset.sum_congr rfl <;> intro j _ <;> ring_nf
+      congr 1 <;> apply Finset.sum_congr rfl <;> intro j _ <;> ring_nf
     unfold majoranaThermalSize
     rw [hj, hmsmul]
     have hin : (hsInner (c • G.ρHalf) (c • majoranaParitySizeOp n G.ρHalf)).re =
@@ -1150,7 +1171,7 @@ private lemma majoranaLambdaMSS_zero_le_zero {n : ℕ} (G : GibbsData n) :
       unfold hsInner
       rw [Matrix.conjTranspose_smul, Matrix.smul_mul, Matrix.mul_smul, smul_smul,
         Matrix.trace_smul, smul_eq_mul, Complex.star_def, mul_comm (starRingEnd ℂ c),
-        Complex.mul_conj', Complex.ofReal_pow, Complex.re_ofReal_mul]
+        Complex.mul_conj', ← Complex.ofReal_pow, Complex.re_ofReal_mul]
     rw [hin, hnorm_c, one_mul, sub_self]
   · rw [Set.not_nonempty_iff_eq_empty.mp hne, Real.sSup_empty]
 
@@ -1186,7 +1207,7 @@ theorem theorem_1_1b_family_concrete_qubit_bounded_s
     have hrhs : 0 ≤ C₁ * (0 : ℝ) + C₂ * (N : ℝ) ^ δ * ((0 : ℝ) ^ (1 - δ)) := by
       have : (0 : ℝ) ^ (1 - δ) = 0 := Real.zero_rpow (by linarith)
       simp [this]
-    exact le_trans h0 hrhs
+    simpa using le_trans h0 hrhs
   · have hs1 : 1 ≤ s := Nat.pos_of_ne_zero hs0
     by_cases hsN : s ≤ N
     · exact hH2 N s hN hs1 hsN
@@ -1276,24 +1297,38 @@ theorem theorem_1_1b_family_majorana_2n_normalized {r s₀ : ℕ} (hr : 1 ≤ r)
       have := Real.add_one_lt_exp (by norm_num : (1 : ℝ) ≠ 0); linarith
     have heinv : Real.exp 1 * Real.exp (-1) = 1 := by rw [← Real.exp_add, add_neg_cancel, Real.exp_zero]
     have hden : 0 < (Real.exp 1 + Real.exp (-1)) / 2 := by linarith [Real.exp_pos (1 : ℝ), Real.exp_pos (-1 : ℝ)]
-    rw [le_div_iff₀ hden]
+    rw [mul_div_assoc', le_div_iff₀ hden]
     nlinarith [Real.exp_pos (-1 : ℝ)]
   set a : ℝ := min ((1 - ε - η) / 2) ((1 - ε - (δ + (1 - δ) * η)) / 2)
   have ha_pos : 0 < a := lt_min (by linarith) (by linarith)
   have hlog_little : ∀ᶠ x : ℝ in Filter.atTop, Real.log x ≤ x ^ a := by
-    have hlim := Real.tendsto_pow_log_div_mul_add_atTop 1 0 a ha_pos
-    have hlim' : Filter.Tendsto (fun x : ℝ ↦ Real.log x / x ^ a) Filter.atTop (nhds 0) := by
-      simpa using hlim
-    filter_upwards [(Metric.tendsto_atTop.mp hlim') 1 one_pos, Filter.eventually_gt_atTop (1 : ℝ)] with x hx hx1
+    refine Filter.eventually_atTop.mpr ⟨max 2 ((2 / a) ^ (2 / a)), fun x hx ↦ ?_⟩
+    have hx2 : (2 : ℝ) ≤ x := le_trans (le_max_left _ _) hx
     have hx_pos : 0 < x := by linarith
-    have hlog_nn : 0 ≤ Real.log x := Real.log_nonneg hx1.le
-    rw [Real.dist_eq, sub_zero, abs_of_nonneg (div_nonneg hlog_nn (Real.rpow_pos_of_pos hx_pos a).le)] at hx
-    exact (div_le_one (Real.rpow_pos_of_pos hx_pos a)).mp hx.le
+    have ha2_pos : 0 < a / 2 := by linarith
+    have hlog_half : (a / 2) * Real.log x ≤ x ^ (a / 2) := by
+      have h1 : Real.log (x ^ (a / 2)) ≤ x ^ (a / 2) := Real.log_le_self (Real.rpow_pos_of_pos hx_pos _).le
+      rwa [Real.log_rpow hx_pos] at h1
+    have h2a_le : 2 / a ≤ x ^ (a / 2) := by
+      have hx_ge : (2 / a) ^ (2 / a) ≤ x := le_trans (le_max_right _ _) hx
+      have hpow := Real.rpow_le_rpow (Real.rpow_nonneg (by positivity) _) hx_ge ha2_pos.le
+      rw [← Real.rpow_mul (by positivity : (0 : ℝ) ≤ 2 / a)] at hpow
+      have hmul1 : (2 / a) * (a / 2) = 1 := by field_simp [ha_pos.ne']
+      rw [hmul1, Real.rpow_one] at hpow
+      exact hpow
+    have hlog_bd : Real.log x ≤ (2 / a) * x ^ (a / 2) := by
+      have := mul_le_mul_of_nonneg_left hlog_half (show 0 ≤ 2 / a by positivity)
+      have hcancel : (2 / a) * ((a / 2) * Real.log x) = Real.log x := by field_simp [ha_pos.ne']
+      linarith
+    calc Real.log x ≤ (2 / a) * x ^ (a / 2) := hlog_bd
+      _ ≤ x ^ (a / 2) * x ^ (a / 2) := mul_le_mul_of_nonneg_right h2a_le (Real.rpow_nonneg hx_pos.le _)
+      _ = x ^ (a / 2 + a / 2) := (Real.rpow_add hx_pos _ _).symm
+      _ = x ^ a := by congr 1; ring
   obtain ⟨X₀, hX₀⟩ := Filter.eventually_atTop.mp hlog_little
   set K_s : ℝ := (s₀ : ℝ) + ((r - 1 : ℕ) : ℝ) * 3
   have hKs_nn : 0 ≤ K_s := by dsimp only [K_s]; positivity
   set B_tail : ℝ := 2 * Real.sqrt E₀ + E₀
-  have hBtail_nn : 0 ≤ B_tail := by dsimp only [B_tail]; positivity
+  have hBtail_nn : 0 ≤ B_tail := by dsimp only [B_tail]; linarith [Real.sqrt_nonneg E₀, hE₀_pos]
   have hexp1 : η + a - (1 - ε) < 0 := by
     have : a ≤ (1 - ε - η) / 2 := min_le_left _ _; linarith
   have hexp2 : δ + (1 - δ) * (η + a) - (1 - ε) < 0 := by
@@ -1369,13 +1404,15 @@ theorem theorem_1_1b_family_majorana_2n_normalized {r s₀ : ℕ} (hr : 1 ≤ r)
       congr 2; norm_num
     have hx_m1 : x * x ^ (-2 : ℝ) ≤ 1 := by
       have : x * x ^ (-2 : ℝ) = x ^ (-1 : ℝ) := by
-        conv_lhs => rw [← Real.rpow_one x]
-        rw [← Real.rpow_add hx_pos]; norm_num
+        calc x * x ^ (-2 : ℝ) = x ^ (1 : ℝ) * x ^ (-2 : ℝ) := by rw [Real.rpow_one]
+          _ = x ^ ((1 : ℝ) + (-2 : ℝ)) := (Real.rpow_add hx_pos _ _).symm
+          _ = x ^ (-1 : ℝ) := by norm_num
       rw [this, Real.rpow_neg_one]; exact inv_le_one_of_one_le₀ (by linarith)
     have hx_m3 : x * x ^ (-4 : ℝ) ≤ 1 := by
       have : x * x ^ (-4 : ℝ) = x ^ (-3 : ℝ) := by
-        conv_lhs => rw [← Real.rpow_one x]
-        rw [← Real.rpow_add hx_pos]; norm_num
+        calc x * x ^ (-4 : ℝ) = x ^ (1 : ℝ) * x ^ (-4 : ℝ) := by rw [Real.rpow_one]
+          _ = x ^ ((1 : ℝ) + (-4 : ℝ)) := (Real.rpow_add hx_pos _ _).symm
+          _ = x ^ (-3 : ℝ) := by norm_num
       rw [this, Real.rpow_neg hx_pos.le]
       exact inv_le_one_of_one_le₀ (Real.one_le_rpow (by linarith) (by norm_num))
     have h1 : 2 * x * Real.sqrt (E₀ * Real.exp (-4 * Real.tanh (4 / 4) * (M : ℝ) * Real.exp (-2 * α * tn))) ≤
@@ -1682,7 +1719,11 @@ theorem prop_6_4_part2_extended {N r s₀ : ℕ}
             · have hih := ih hm2
               have hm_ge2 : (2 : ℝ) ≤ (m : ℝ) := by exact_mod_cast hm2
               have hstep : 2 * ((m + 1 : ℕ) : ℝ) ^ 3 ≤ 8 * (2 * (m : ℝ) ^ 3) := by
-                push_cast; nlinarith
+                push_cast
+                have hm1 : (m : ℝ) + 1 ≤ 2 * (m : ℝ) := by linarith
+                have hcube : ((m : ℝ) + 1) ^ 3 ≤ (2 * (m : ℝ)) ^ 3 :=
+                  pow_le_pow_left₀ (by linarith) hm1 3
+                linarith [show (2 * (m : ℝ)) ^ 3 = 8 * (m : ℝ) ^ 3 by ring]
               calc 2 * ((m + 1 : ℕ) : ℝ) ^ 3 ≤ 8 * (2 * (m : ℝ) ^ 3) := hstep
                 _ ≤ 8 * (8 : ℝ) ^ m := mul_le_mul_of_nonneg_left hih (by norm_num)
                 _ = (8 : ℝ) ^ (m + 1) := by rw [pow_succ]; ring

@@ -63,6 +63,7 @@ import KrylovChaos.ProductStateDerivation
 import KrylovChaos.ProductStateLambdaMSS
 import KrylovChaos.ProductStateMultiSite
 import KrylovChaos.QubitAlgebra
+import KrylovChaos.Section9EndToEnd
 import KrylovChaos.ShiftedCommutatorAndThm13c
 import KrylovChaos.ShiftedThermalSize
 import KrylovChaos.SpectralDyck
