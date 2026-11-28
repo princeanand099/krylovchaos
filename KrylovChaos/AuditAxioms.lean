@@ -6,7 +6,7 @@ Authors: Prince Anand
 import KrylovChaos
 
 /-!
-# Comprehensive Kernel Axiom Verification for `KrylovChaos` (All 80 Modules)
+# Comprehensive Kernel Axiom Verification for `KrylovChaos` (All 81 Modules)
 
 Run with `lake env lean KrylovChaos/AuditAxioms.lean`.
 Every listed headline theorem depends strictly on a subset of
@@ -310,3 +310,10 @@ Every listed headline theorem depends strictly on a subset of
 #print axioms KrylovChaos.doubleWell_lanczos_tridiag_closure
 #print axioms KrylovChaos.doubleWell_krylov_complexity_from_lanczos
 #print axioms KrylovChaos.lemma_B_1_bulk_eigenvalues_in_band
+
+-- Packaging Theorems for Eqs. (1.16), (1.17), and (1.20)
+#print axioms KrylovChaos.theorem_1_3a_high_temp_eq_1_20
+#print axioms KrylovChaos.theorem_1_2c_general_otoc_strip_three_way
+#print axioms KrylovChaos.theorem_1_2c_thermo_limit_otoc_strip_three_way
+#print axioms KrylovChaos.theorem_1_2b_from_holoStripHalfWidth_ereal
+#print axioms KrylovChaos.theorem_1_2b_from_holoStripHalfWidth_finite
