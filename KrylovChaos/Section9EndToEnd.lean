@@ -1160,7 +1160,7 @@ private lemma eq91_mssThermalSize_bddAbove {N : ℕ} (G : GibbsData N) (s : ℕ)
             unfold siteSizeOp partialTraceSite
             rw [Fin.sum_univ_succ, pauliSite_zero, Matrix.one_mul, Matrix.mul_one,
               Finset.sum_sub_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin]
-            ext i j; simp only [Matrix.sub_apply, Matrix.smul_apply, Matrix.sum_apply, smul_eq_mul, nsmul_eq_mul, Nat.cast_ofNat]; ring
+            ext i j; simp only [Matrix.sub_apply, Matrix.add_apply, Matrix.smul_apply, Matrix.sum_apply, smul_eq_mul]; simp only [nsmul_eq_mul, Nat.cast_ofNat]; ring
           rw [hsite_eq]; unfold hsInner
           rw [Matrix.mul_smul, Matrix.trace_smul, smul_eq_mul, Matrix.mul_sum, Matrix.trace_sum,
             show (1 / 4 : ℂ) = ((1 / 4 : ℝ) : ℂ) by push_cast; rfl, Complex.re_ofReal_mul, Complex.re_sum]
