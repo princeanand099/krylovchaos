@@ -50,7 +50,7 @@ private lemma opNorm_unitary_le_one {N : ℕ} (U : QubitOp N) (hU' : Uᴴ * U = 
   have heq : ‖opToCLM U v‖ ^ 2 = ‖v‖ ^ 2 := by
     rw [EuclideanSpace.norm_sq_eq, EuclideanSpace.norm_sq_eq]
     have hcoord : ∀ i, ‖(opToCLM U v) i‖ ^ 2 = ‖(U.mulVec v.ofLp) i‖ ^ 2 := fun i ↦ by
-      congr 1; simp [opToCLM]
+      simp [opToCLM]
     have hinner : ∀ w : QubitIdx N → ℂ,
         (∑ i, star (w i) * w i) = ∑ i, ((‖w i‖ ^ 2 : ℝ) : ℂ) := by
       intro w; apply Finset.sum_congr rfl; intro i _
@@ -126,7 +126,7 @@ lemma gibbsWightmanNormSq_le_opNorm_sq {N : ℕ} {H : QubitOp N} (hH : H.IsHermi
     have hJ_tr : (G.ρHalf * Xᴴ * G.ρHalf * X).trace = ((jBeta G.ρQuarter X)ᴴ * jBeta G.ρQuarter X).trace := by
       unfold jBeta
       have hQh : G.ρQuarterᴴ = G.ρQuarter := G.ρQuarter_herm
-      have hQsq : G.ρQuarter * G.ρQuarter = G.ρHalf := G.ρQuarter_sq
+      have hQsq : G.ρQuarter * G.ρQuarter = G.ρHalf := G.sq_quarter
       simp only [Matrix.conjTranspose_mul, hQh]
       calc (G.ρHalf * Xᴴ * G.ρHalf * X).trace
           = (G.ρQuarter * (G.ρQuarter * Xᴴ * G.ρQuarter * G.ρQuarter * X)).trace := by
@@ -760,7 +760,9 @@ theorem cor_6_5_all_time_eq_6_10 {N r R_int s₀ d : ℕ}
           _ ≤ (8 * C_O * ((s₀ : ℝ) + 1) * Real.exp (-(n : ℝ) / 4)) ^ 2 :=
               pow_le_pow_left₀ (opNorm_nonneg _) hcomm_op 2
           _ = 64 * C_O ^ 2 * ((s₀ : ℝ) + 1) ^ 2 * Real.exp (-(n : ℝ) / 2) := by
-              rw [mul_pow, mul_pow, mul_pow, ← Real.exp_nat_mul]; congr 1; ring
+              rw [mul_pow, mul_pow, mul_pow, ← Real.exp_nat_mul,
+                show ((2 : ℕ) : ℝ) * (-(n : ℝ) / 4) = -(n : ℝ) / 2 by push_cast; ring]
+              ring
       -- Partition `Fin N` into `S_in` and `shell n` (`0 ≤ n < M_max`).
       let S_in : Finset (Fin N) := Finset.univ.filter (fun x ↦ ∃ u ∈ U₀, dist u x ≤ (L₀ + 2) * R_int)
       let shell : ℕ → Finset (Fin N) := fun n ↦
