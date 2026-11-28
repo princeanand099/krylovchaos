@@ -458,17 +458,31 @@ end PSDGibbsVariational
 
 section ThermalBackgroundShells
 
-set_option maxHeartbeats 400000 in
+private lemma jBeta_conj_unitary_sq {N : ℕ} (U Q O : QubitOp N)
+    (hU_unit : Uᴴ * U = 1) (hcomm_Q : Q * U = U * Q) (hcomm_QH : Q * Uᴴ = Uᴴ * Q) :
+    (jBeta Q (U * O * Uᴴ))ᴴ * jBeta Q (U * O * Uᴴ) =
+      U * ((jBeta Q O)ᴴ * jBeta Q O) * Uᴴ := by
+  have hj : jBeta Q (U * O * Uᴴ) = U * jBeta Q O * Uᴴ := by
+    unfold jBeta
+    calc Q * (U * O * Uᴴ) * Q
+        = (Q * U) * O * (Uᴴ * Q) := by simp only [Matrix.mul_assoc]
+      _ = (U * Q) * O * (Q * Uᴴ) := by rw [hcomm_Q, ← hcomm_QH]
+      _ = U * (Q * O * Q) * Uᴴ := by simp only [Matrix.mul_assoc]
+  rw [hj]
+  simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+  calc U * (jBeta Q O)ᴴ * Uᴴ * (U * jBeta Q O * Uᴴ)
+      = U * (jBeta Q O)ᴴ * (Uᴴ * U) * jBeta Q O * Uᴴ := by simp only [Matrix.mul_assoc]
+    _ = U * ((jBeta Q O)ᴴ * jBeta Q O) * Uᴴ := by
+        rw [hU_unit, Matrix.mul_one]; simp only [Matrix.mul_assoc]
+
 /-- Heisenberg evolution invariance of `rhoO_op`:
 `rhoO_op hH β (heisenbergEvol hH (t : ℂ) O) = U(t) * rhoO_op hH β O * U(t)ᴴ`. -/
 lemma rhoO_op_heisenbergEvol_eq_conj {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β t : ℝ) (O : QubitOp N) :
     rhoO_op hH β (heisenbergEvol hH (t : ℂ) O) =
       complexPropagator hH (t : ℂ) * rhoO_op hH β O * (complexPropagator hH (t : ℂ))ᴴ := by
-  let U := complexPropagator hH (t : ℂ)
-  let Q := (concreteGibbsData hH β).ρQuarter
-  have hU_unit : Uᴴ * U = 1 := by
-    dsimp only [U, complexPropagator]
+  have hU_unit : (complexPropagator hH (t : ℂ))ᴴ * complexPropagator hH (t : ℂ) = 1 := by
+    unfold complexPropagator
     rw [hermFunc_conjTranspose, hermFunc_mul]
     have hfun : (fun x : ℝ ↦ star (Complex.exp (Complex.I * (t : ℂ) * (x : ℂ))) *
         Complex.exp (Complex.I * (t : ℂ) * (x : ℂ))) = fun _ ↦ 1 := by
@@ -479,47 +493,34 @@ lemma rhoO_op_heisenbergEvol_eq_conj {N : ℕ} {H : QubitOp N} (hH : H.IsHermiti
       have h0 : -Complex.I * (t : ℂ) * (x : ℂ) + Complex.I * (t : ℂ) * (x : ℂ) = 0 := by ring
       rw [h0, Complex.exp_zero]
     rw [hfun, hermFunc_one]
-  have hU_neg : complexPropagator hH (-(t : ℂ)) = Uᴴ := by
-    dsimp only [U, complexPropagator]
+  have hU_neg : complexPropagator hH (-(t : ℂ)) = (complexPropagator hH (t : ℂ))ᴴ := by
+    unfold complexPropagator
     rw [hermFunc_conjTranspose]
     congr 1; funext x
     rw [Complex.star_def, ← Complex.exp_conj]
     simp only [map_mul, Complex.conj_I, Complex.conj_ofReal]; congr 1; ring
-  have hcomm_Q : Q * U = U * Q := by
-    change gibbsRhoQuarter hH β * complexPropagator hH (t : ℂ) =
-      complexPropagator hH (t : ℂ) * gibbsRhoQuarter hH β
+  have hcomm_Q : gibbsRhoQuarter hH β * complexPropagator hH (t : ℂ) =
+      complexPropagator hH (t : ℂ) * gibbsRhoQuarter hH β := by
     unfold gibbsRhoQuarter complexPropagator
     rw [Matrix.smul_mul, Matrix.mul_smul, hermFunc_mul, hermFunc_mul]
     have hfn : (fun x : ℝ ↦ ((Real.exp (-(β / 4) * x) : ℝ) : ℂ) * Complex.exp (Complex.I * (t : ℂ) * (x : ℂ))) =
         (fun x : ℝ ↦ Complex.exp (Complex.I * (t : ℂ) * (x : ℂ)) * ((Real.exp (-(β / 4) * x) : ℝ) : ℂ)) := by
       funext x; ring
     rw [hfn]
-  have hcomm_QH : Q * Uᴴ = Uᴴ * Q := by
+  have hcomm_QH : gibbsRhoQuarter hH β * (complexPropagator hH (t : ℂ))ᴴ =
+      (complexPropagator hH (t : ℂ))ᴴ * gibbsRhoQuarter hH β := by
     rw [← hU_neg]
-    change gibbsRhoQuarter hH β * complexPropagator hH (-(t : ℂ)) =
-      complexPropagator hH (-(t : ℂ)) * gibbsRhoQuarter hH β
     unfold gibbsRhoQuarter complexPropagator
     rw [Matrix.smul_mul, Matrix.mul_smul, hermFunc_mul, hermFunc_mul]
     have hfn : (fun x : ℝ ↦ ((Real.exp (-(β / 4) * x) : ℝ) : ℂ) * Complex.exp (Complex.I * -(t : ℂ) * (x : ℂ))) =
         (fun x : ℝ ↦ Complex.exp (Complex.I * -(t : ℂ) * (x : ℂ)) * ((Real.exp (-(β / 4) * x) : ℝ) : ℂ)) := by
       funext x; ring
     rw [hfn]
-  have hj : jBeta Q (heisenbergEvol hH (t : ℂ) O) = U * jBeta Q O * Uᴴ := by
-    unfold jBeta heisenbergEvol
-    rw [hU_neg]
-    calc Q * (U * O * Uᴴ) * Q
-        = (Q * U) * O * (Uᴴ * Q) := by simp only [Matrix.mul_assoc]
-      _ = (U * Q) * O * (Q * Uᴴ) := by rw [hcomm_Q, ← hcomm_QH]
-      _ = U * (Q * O * Q) * Uᴴ := by simp only [Matrix.mul_assoc]
-  change (jBeta Q (heisenbergEvol hH (t : ℂ) O))ᴴ * jBeta Q (heisenbergEvol hH (t : ℂ) O) =
-    U * ((jBeta Q O)ᴴ * jBeta Q O) * Uᴴ
-  rw [hj]
-  simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-  calc U * (jBeta Q O)ᴴ * Uᴴ * (U * jBeta Q O * Uᴴ)
-      = U * (jBeta Q O)ᴴ * (Uᴴ * U) * jBeta Q O * Uᴴ := by
-        simp only [Matrix.mul_assoc]
-    _ = U * ((jBeta Q O)ᴴ * jBeta Q O) * Uᴴ := by
-        rw [hU_unit, Matrix.mul_one]; simp only [Matrix.mul_assoc]
+  unfold rhoO_op heisenbergEvol
+  dsimp only [concreteGibbsData]
+  rw [hU_neg]
+  exact jBeta_conj_unitary_sq (complexPropagator hH (t : ℂ)) (gibbsRhoQuarter hH β) O
+    hU_unit hcomm_Q hcomm_QH
 
 /-- The `m`-th imaginary-time commutator shell of
 `Δ_{x,α} = e^{(β/2) H} σ_x^α e^{-(β/2) H} - σ_x^α` (`m = 0` gives `0`). -/
@@ -706,7 +707,7 @@ private lemma hasSum_cauchy_product_complex_bg {a b : ℕ → ℂ} {A B : ℂ}
       rw [Finset.mem_range] at hp1 hp2
       exact Finset.mem_biUnion.mpr ⟨p.1 + p.2, Finset.mem_range.mpr (by omega),
         Finset.mem_antidiagonal.mpr rfl⟩
-    rw [dist_zero_right, hT_eq, hsq_eq, ← Finset.sum_sdiff hsq_sub_T]
+    rw [dist_zero_right, hT_eq, hsq_eq, ← Finset.sum_sdiff hsq_sub_T, add_sub_cancel_right]
     have hnorm_le : ‖∑ p ∈ T \ (Finset.range n ×ˢ Finset.range n), a p.1 * b p.2‖ ≤
         ∑ p ∈ T \ (Finset.range n ×ˢ Finset.range n), ‖a p.1 * b p.2‖ := norm_sum_le _ _
     have hsdiff_eq : ∑ p ∈ T \ (Finset.range n ×ˢ Finset.range n), ‖a p.1 * b p.2‖ =
@@ -1160,9 +1161,7 @@ theorem bgShell_local_decomp {N r : ℕ} (hr : 2 ≤ r)
                 (∑ f₂ ∈ cSeq x (k - m), if y ∈ causalUnionOp {x} f₂ then (∏ j, w (f₁ j)) * ∏ j, w (f₂ j) else 0) =
                 (∏ j, w (f₁ j)) * ∑ f₂ ∈ (cSeq x (k - m)).filter (fun f₂ ↦ y ∈ causalUnionOp {x} f₂), ∏ j, w (f₂ j) := by
               intro f₁ _
-              rw [Finset.mul_sum, Finset.sum_filter]
-              apply Finset.sum_congr rfl; intro f₂ _
-              split_ifs <;> ring
+              rw [Finset.mul_sum, ← Finset.sum_filter]
             rw [Finset.sum_congr rfl hinner, ← Finset.sum_mul]; rfl
           rw [hrew]
           have h1 : ∑ x : Fin N, fwdCausalSum E w m {x} *
