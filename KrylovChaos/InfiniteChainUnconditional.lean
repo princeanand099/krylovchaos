@@ -63,7 +63,7 @@ private lemma jacobiWavefn_coord_hasDerivAt {D : ℕ} (hD : 0 < D) (b : ℕ → 
     · have h2 : ¬(n.1 = x.1 + 1) := by omega
       rw [if_pos h1, if_neg h2, if_pos h1]; simp
     · by_cases h2 : n.1 = x.1 + 1
-      · rw [if_neg h1, if_pos h2, if_pos h2, if_neg h1]; simp
+      · rw [if_neg h1, if_pos h2, if_pos h2, if_neg h1]; simp [h2]
       · rw [if_neg h1, if_neg h2, if_neg h2, if_neg h1]; simp
   simp_rw [hstep, Finset.sum_add_distrib]
   congr 1
@@ -368,8 +368,14 @@ lemma realFiniteKrylovWavefn_ode (b : ℕ → ℝ) (N m : ℕ) (hm : m ≤ N) (t
   change (((_ : ℂ) - (_ : ℂ)).re) = _
   rw [Complex.sub_re]
   congr 1
-  · split_ifs <;> simp [realFiniteKrylovWavefn, gaugedFiniteWavefn]
-  · split_ifs <;> simp [realFiniteKrylovWavefn, gaugedFiniteWavefn]
+  · by_cases hm0 : m = 0
+    · simp [hm0]
+    · simp only [hm0, ↓reduceIte, realFiniteKrylovWavefn, gaugedFiniteWavefn]
+      split_ifs <;> simp
+  · by_cases hmN : m = N
+    · simp [hmN]
+    · simp only [hmN, ↓reduceIte, realFiniteKrylovWavefn, gaugedFiniteWavefn]
+      split_ifs <;> simp
 
 /-- Initial condition `realFiniteKrylovWavefn b N m 0 = δ_{m0}` for `m ≤ N`. -/
 lemma realFiniteKrylovWavefn_init (b : ℕ → ℝ) (N m : ℕ) (hm : m ≤ N) :

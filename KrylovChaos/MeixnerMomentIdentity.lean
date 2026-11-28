@@ -770,6 +770,9 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
       intervalIntegral.integral_const_mul, intervalIntegral.integral_const_mul,
       intervalIntegral.integral_const_mul,
       intervalIntegral_inv_sub_I R, intervalIntegral_inv_add_I R] at hzero
+    have h42 : ((4 * Real.arctan R : ℝ) : ℂ) = 2 * ((2 * Real.arctan R : ℝ) : ℂ) := by
+      push_cast; ring
+    rw [h42]
     linear_combination hzero
   -- Take `R → ∞` on both sides of `hrect_eq R`.
   have hf_real_int : Integrable (fun x : ℝ ↦ f (x : ℂ)) := by

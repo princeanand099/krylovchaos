@@ -227,7 +227,7 @@ theorem concreteWightmanNormAtShift_eq_autocorr {N : ℕ} {H W : QubitOp N}
       _ = _ := by
             push_cast
             have hZeq : Z = gibbsPartitionFn hH β := rfl
-            rw [hZeq]; ring
+            rw [hZeq]
   rw [htr2, Complex.re_sum]
   simp only [Complex.re_sum, Complex.ofReal_re]
   rw [Finset.sum_comm]
@@ -241,8 +241,9 @@ theorem concreteWightmanNormAtShift_eq_autocorr {N : ℕ} {H W : QubitOp N}
     have hnorm : ‖B b a‖ = ‖B a b‖ := by rw [hba, norm_star]
     have hnorm' : ‖((hH.eigenvectorUnitary : QubitOp N)ᴴ * W * (hH.eigenvectorUnitary : QubitOp N)) b a‖ =
         ‖((hH.eigenvectorUnitary : QubitOp N)ᴴ * W * (hH.eigenvectorUnitary : QubitOp N)) a b‖ := hnorm
+    dsimp only
     rw [hnorm', add_comm]
-  rw [hwsym]
+  rw [hwsym, smul_eq_mul]
 
 /-- Helper: `liminf (c * a_N) ≤ c * liminf a_N` for `c ≥ 0` and bounded nonneg `a_N`. -/
 private lemma liminf_const_mul_le_of_bdd {a : ℕ → ℝ} {c B : ℝ}
@@ -582,9 +583,11 @@ theorem theorem_1_3c_concrete_family_complete {r s₀ : ℕ} (hr : 2 ≤ r)
     · exact (theorem_1_3c_unconditional_family hr hJ hβ_pos hβ hκ_pos hα hγ hα_kms hCO_ge1
         hlamW hlamMSS E hE_ne hE_card h hh_supp hH hH_site U₀ hU₀ O hO hO_supp hOnorm hCO
         hb_lin hH1_W hH1_MSS).1.1
-    · -- `β = 0`: `otocCW ≤ 54 * ((r - 1) * K + s₀)` from `theorem_1_3b_high_temp`!
+    · -- `β = 0`: `otocCW ≤ 216 * ((r - 1) * K + s₀)` from `theorem_1_3b_high_temp`!
       have hβ_eq : β = 0 := le_antisymm (le_of_not_gt hβ_pos) hβ0
       subst hβ_eq
+      -- Apply `theorem_1_3c_unconditional_family`? Actually `theorem_1_3b_high_temp` holds for `0 ≤ β`!
+      -- Use the exact same `contradiction` argument with `theorem_1_3c_eq_1_24_concrete` + `theorem_1_3b_high_temp`!
       by_contra hgt; push Not at hgt
       set ε₀ : ℝ := min ((lamW - 2 * α) / (2 * lamW)) (1 / 2)
       have hε₀ : 0 < ε₀ := lt_min (div_pos (by linarith) (by linarith)) (by norm_num)
@@ -595,6 +598,7 @@ theorem theorem_1_3c_concrete_family_complete {r s₀ : ℕ} (hr : 2 ≤ r)
         nlinarith
       set η : ℝ := (1 - ε) * (2 * α / lamW)
       have hη_lt : η < 1 - ε := hθ
+      -- For `N ≥ max N₁ 2`, `c N^(1-ε) ≤ 216 * ((r-1) * C_K * N^η + s₀)`.
       set C_K : ℝ := Real.exp ((1 / 2 + γ / α) * 1) / (4 * Real.exp 1 * Real.tanh (1 / 4))
       have hCK_pos : 0 < C_K := by
         dsimp only [C_K]
@@ -641,10 +645,7 @@ theorem theorem_1_3c_concrete_family_complete {r s₀ : ℕ} (hr : 2 ≤ r)
               concreteKrylovComplexity (hH N) 0 (O N) (((1 - ε) / lamW) * Real.log (N : ℝ)) +
               (s₀ : ℝ)) := h13b
         have hr1_nn : (0 : ℝ) ≤ ((r - 1 : ℕ) : ℝ) := Nat.cast_nonneg _
-        have hs0_nn : (0 : ℝ) ≤ (s₀ : ℝ) := Nat.cast_nonneg _
-        have hK_nn : 0 ≤ concreteKrylovComplexity (hH N) 0 (O N) (((1 - ε) / lamW) * Real.log (N : ℝ)) :=
-          Finset.sum_nonneg fun k _ ↦ mul_nonneg (Nat.cast_nonneg k) (sq_nonneg _)
-        nlinarith [hlow, h1, h11a, hK_nn]
+        nlinarith [hlow, h1, h11a]
       have hdiv : c ≤ 216 * ((r - 1 : ℕ) : ℝ) * C_K * (N : ℝ) ^ (η - (1 - ε)) +
           216 * (s₀ : ℝ) * (N : ℝ) ^ (-(1 - ε)) := by
         have h := div_le_div_of_nonneg_right hcomb hN_rpow_pos.le
@@ -669,6 +670,7 @@ theorem theorem_1_3c_concrete_family_complete {r s₀ : ℕ} (hr : 2 ≤ r)
         hb_lin hH1_W hH1_MSS).2.1
     · have hβ_eq : β = 0 := le_antisymm (le_of_not_gt hβ_pos) hβ0
       subst hβ_eq
+      -- At `β = 0`, `theorem_1_3c_eq_1_24_concrete` applies directly for all `0 ≤ β ≤ highTempBetaWC`!
       by_contra hgt; push Not at hgt
       set ε₀ : ℝ := min ((lamMSS - 2 * α) / (2 * lamMSS)) (1 / 2)
       have hε₀ : 0 < ε₀ := lt_min (div_pos (by linarith) (by linarith)) (by norm_num)
@@ -699,6 +701,13 @@ theorem theorem_1_3c_concrete_family_complete {r s₀ : ℕ} (hr : 2 ≤ r)
         positivity
       set A₁ : ℝ := 216 * ((r - 1 : ℕ) : ℝ) * C_K
       set A₂ : ℝ := 216 * (s₀ : ℝ)
+      -- Since `η < 1 - ε` and `1/2 < 1 - ε`, `N^η / N^(1-ε) → 0`, `√(N * N^η) / N^(1-ε) = N^((1+η)/2 - (1-ε)) → 0`?
+      -- Wait: `(1 + η)/2 < 1 - ε` requires `ε` small enough! Choose `ε₀ = min ((lamMSS - 2α)/(4 lamMSS)) ((1 - 2α/lamMSS)/4)`!
+      -- Even simpler: pick `ε₀' := min ((lamMSS - 2 * α) / (4 * lamMSS)) (1 / 4)` — wait, we already got `ε` from `ε₀`!
+      -- Let's re-invoke `hH1_MSS` with `ε₀' := min ((lamMSS - 2 * α) / (4 * lamMSS)) (1 / 4)`?
+      -- Better: for `0 < 1 - 2α/lamMSS`, `(1 + η)/2 < 1 - ε` iff `2 ε < 1 - η = 1 - (1 - ε)(2α/lamMSS)` iff `ε (2 - 2α/lamMSS) < 1 - 2α/lamMSS`,
+      -- which holds whenever `ε < (1 - 2α/lamMSS) / 2 = (lamMSS - 2α) / (2 lamMSS)`!!
+      -- AND OUR `ε < ε₀ ≤ (lamMSS - 2α) / (2 lamMSS)` ALREADY SATISFIES THAT!
       have hmid_lt : (1 + η) / 2 < 1 - ε := by
         have hε_bound : ε < (lamMSS - 2 * α) / (2 * lamMSS) := lt_of_lt_of_le hε_lt (min_le_left _ _)
         have h1 : 2 * ε < 1 - 2 * α / lamMSS := by
@@ -771,10 +780,11 @@ theorem theorem_1_3c_concrete_family_complete {r s₀ : ℕ} (hr : 2 ≤ r)
             (Real.sqrt_nonneg ((s₀ : ℝ) * (N : ℝ)))]
         have h3 : Real.sqrt (((r - 1 : ℕ) : ℝ) * C_K * (N : ℝ) ^ (1 + η)) =
             Real.sqrt (((r - 1 : ℕ) : ℝ) * C_K) * (N : ℝ) ^ ((1 + η) / 2) := by
-          rw [Real.sqrt_mul (by positivity), Real.sqrt_eq_rpow, ← Real.rpow_mul (by linarith)]
+          rw [Real.sqrt_mul (by positivity), Real.sqrt_eq_rpow ((N : ℝ) ^ (1 + η)),
+            ← Real.rpow_mul (by linarith)]
           congr 2; ring
         have h4 : Real.sqrt ((s₀ : ℝ) * (N : ℝ)) = Real.sqrt (s₀ : ℝ) * (N : ℝ) ^ ((1 : ℝ) / 2) := by
-          rw [Real.sqrt_mul (Nat.cast_nonneg s₀), Real.sqrt_eq_rpow]
+          rw [Real.sqrt_mul (Nat.cast_nonneg s₀), Real.sqrt_eq_rpow (N : ℝ)]
         exact le_trans (Real.sqrt_le_sqrt h1) (by rw [← h3, ← h4]; exact h2)
       have hsqrtN : Real.sqrt (N : ℝ) = (N : ℝ) ^ ((1 : ℝ) / 2) := Real.sqrt_eq_rpow (N : ℝ)
       have hcomb : c * (N : ℝ) ^ (1 - ε) ≤
