@@ -10,10 +10,11 @@ import Mathlib.Analysis.InnerProductSpace.Basic
 /-!
 # Locked Headline Theorem Statements for `KrylovChaos` (`comparator` Challenge)
 
-Contains the 23 locked headline theorem signatures corresponding to
+Contains the 25 locked headline theorem signatures corresponding to
 *Finite-Temperature Bounds on Operator Growth and Quantum Chaos* (Prince Anand, 2026),
-including genuine `theorem_1_2c_otoc_dominance` (from `V² ⪯ vNormSq • 1`)
-and the 4 ground-up literature theorems (Carleman, Kotecký–Preiss, Vitali/Montel, Araki 1D).
+including the unconditional infinite-chain Theorem 1.1(a), the `D × D` double-well
+Courant–Fischer bulk eigenvalue localization Lemma B.1, and the 4 ground-up literature
+theorems (Carleman, Kotecký–Preiss, Vitali/Montel, Araki 1D).
 -/
 
 open ChallengeDefs Matrix
@@ -58,6 +59,31 @@ theorem theorem_1_1a_infinite_tail_and_complexity {α γ θ₀ : ℝ}
     (∑' n : ℕ, (n : ℝ) * (φ n t) ^ 2 ≤
       (Real.exp ((1 / 2 + γ / α) * θ₀) / (4 * Real.exp 1 * Real.tanh (θ₀ / 4))) *
         Real.exp (2 * α * t)) := by
+  sorry
+
+theorem theorem_1_1a_infinite_chain_complete (b : ℕ → ℝ) {α γ : ℝ}
+    (hα : 0 < α) (hγ : 0 ≤ γ)
+    (hb0 : b 0 = 0)
+    (hb_nn : ∀ n, 1 ≤ n → 0 ≤ b n)
+    (hb_lin : ∀ n, 1 ≤ n → b n ≤ α * (n : ℝ) + γ) :
+    ∃ φ : ℕ → ℝ → ℝ,
+      ((∀ m, φ m 0 = if m = 0 then 1 else 0) ∧
+       (∀ m, Continuous (φ m)) ∧
+       (∀ m t, HasDerivAt (φ m) (b m * φ (m - 1) t - b (m + 1) * φ (m + 1) t) t) ∧
+       (∀ t : ℝ, Summable (fun m : ℕ ↦ (φ m t) ^ 2) ∧ ∑' m : ℕ, (φ m t) ^ 2 = 1)) ∧
+      (∀ (ψ : ℕ → ℝ → ℝ) (T C : ℝ), 0 ≤ T → 0 ≤ C →
+        (∀ m s, HasDerivAt (ψ m) (b m * ψ (m - 1) s - b (m + 1) * ψ (m + 1) s) s) →
+        (∀ m, ψ m 0 = if m = 0 then 1 else 0) →
+        (∀ s ∈ Set.Icc 0 T, Summable (fun m ↦ (ψ m s) ^ 2) ∧ ∑' m, (ψ m s) ^ 2 ≤ C) →
+        ∀ t ∈ Set.Icc 0 T, ∀ m : ℕ, ψ m t = φ m t) ∧
+      (∀ θ₀ : ℝ, 0 < θ₀ → ∀ t ≥ 0,
+        (∀ n : ℕ, ∑' m : ℕ, (φ (n + m) t) ^ 2 ≤
+          Real.exp ((1 / 2 + γ / α) * θ₀) *
+            Real.exp (-4 * Real.tanh (θ₀ / 4) * (n : ℝ) * Real.exp (-2 * α * t))) ∧
+        (∑' m : ℕ, (m : ℝ) * (φ m t) ^ 2 ≤
+          (Real.exp ((1 / 2 + γ / α) * θ₀) / (4 * Real.exp 1 * Real.tanh (θ₀ / 4))) *
+            Real.exp (2 * α * t))) ∧
+      Filter.limsup (fun t : ℝ ↦ Real.log (∑' m : ℕ, (m : ℝ) * (φ m t) ^ 2) / t) Filter.atTop ≤ 2 * α := by
   sorry
 
 theorem prop_4_1_krylov_filtration {E : Type*} [AddCommGroup E] [Module ℂ E]
@@ -202,6 +228,14 @@ theorem prop_9_1_no_linear_lower_bound {C' σ : ℝ} (b : ℕ → ℝ)
 theorem lemma_B_1_neumann_tail_sum {d : ℕ} {EB : ℝ} (hd : 1 ≤ d) (hEB : 2 < EB) :
     Real.sqrt 2 * (∑' m : ℕ, (2 : ℝ) ^ (d - 1 + m) / EB ^ (d - 1 + m + 1)) =
     (Real.sqrt 2 / (EB - 2)) * (2 / EB) ^ (d - 1) := by
+  sorry
+
+theorem lemma_B_1_bulk_eigenvalues_in_band {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} (hEB : 2 < E_B) :
+    let hL := doubleWellTridiag_isHermitian D E_B
+    (∀ k : Fin D, hL.eigenvalues k ≤ E_B + 2) ∧
+    (Finset.univ.filter (fun k : Fin D ↦ hL.eigenvalues k < E_B - 2)).card ≤ 2 ∧
+    D - 2 ≤ (Finset.univ.filter (fun k : Fin D ↦ E_B - 2 ≤ hL.eigenvalues k ∧
+      hL.eigenvalues k ≤ E_B + 2)).card := by
   sorry
 
 theorem carleman_deficiency_zero {s : ℝ} (hs : s ≠ 0)

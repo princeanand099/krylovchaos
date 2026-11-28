@@ -4,11 +4,17 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Prince Anand
 -/
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
+import Mathlib.Analysis.Analytic.IsolatedZeros
 import Mathlib.Analysis.Calculus.Deriv.Basic
 import Mathlib.Analysis.Calculus.Deriv.Comp
 import Mathlib.Analysis.Calculus.Deriv.MeanValue
+import Mathlib.Analysis.Calculus.IteratedDeriv.Defs
 import Mathlib.Analysis.Calculus.MeanValue
+import Mathlib.Analysis.Calculus.ParametricIntegral
 import Mathlib.Analysis.Complex.Basic
+import Mathlib.Analysis.Complex.CauchyIntegral
+import Mathlib.Analysis.Complex.LocallyUniformLimit
+import Mathlib.Analysis.Complex.RemovableSingularity
 import Mathlib.Analysis.InnerProductSpace.Adjoint
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.InnerProductSpace.Calculus
@@ -16,24 +22,38 @@ import Mathlib.Analysis.InnerProductSpace.PiL2
 import Mathlib.Analysis.InnerProductSpace.Projection.Basic
 import Mathlib.Analysis.Matrix.Spectrum
 import Mathlib.Analysis.Normed.Algebra.Exponential
+import Mathlib.Analysis.Normed.Operator.Basic
 import Mathlib.Analysis.PSeries
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.SpecialFunctions.Gamma.Basic
+import Mathlib.Analysis.SpecialFunctions.Gaussian.GaussianIntegral
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
 import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
+import Mathlib.Analysis.SpecialFunctions.Pow.Deriv
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.ArctanDeriv
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
 import Mathlib.Analysis.SpecificLimits.Normed
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.Matrix.Block
 import Mathlib.Data.Nat.Choose.Sum
+import Mathlib.LinearAlgebra.Dimension.Finrank
 import Mathlib.LinearAlgebra.Matrix.Trace
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.DominatedConvergence
 import Mathlib.MeasureTheory.Integral.Gamma
+import Mathlib.MeasureTheory.Integral.IntegralEqImproper
+import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
+import Mathlib.MeasureTheory.Integral.IntervalIntegral.IntegrationByParts
+import Mathlib.MeasureTheory.Measure.Dirac.Basic
+import Mathlib.MeasureTheory.Measure.Dirac.Def
 import Mathlib.Tactic
 import Mathlib.Topology.Compactness.Compact
 import Mathlib.Topology.MetricSpace.Basic
+import Mathlib.Topology.Order.IntermediateValue
 
 /-!
 # Locked Challenge Definitions for `KrylovChaos`
@@ -110,5 +130,21 @@ noncomputable def polymerZ {Γ : Type*} [DecidableEq Γ]
 /-- Kotecký–Preiss effective activity `r(γ) = ‖w γ‖ e^{a γ}`. -/
 noncomputable def kpActivity {Γ : Type*} (w : Γ → ℂ) (a : Γ → ℝ) (γ : Γ) : ℝ :=
   ‖w γ‖ * Real.exp (a γ)
+
+/-- Symmetric `D × D` tridiagonal double-well matrix `ℒ(E_B)` from Section 9 / Appendix B. -/
+def doubleWellTridiag (D : ℕ) (E_B : ℝ) : Matrix (Fin D) (Fin D) ℝ :=
+  Matrix.of fun i j ↦
+    if i = j then (if i.val = 0 ∨ i.val = D - 1 then 0 else E_B)
+    else if i.val + 1 = j.val ∨ j.val + 1 = i.val then 1
+    else 0
+
+lemma doubleWellTridiag_isHermitian (D : ℕ) (E_B : ℝ) :
+    (doubleWellTridiag D E_B).IsHermitian := by
+  ext i j
+  simp only [Matrix.conjTranspose_apply, star_trivial, doubleWellTridiag, Matrix.of_apply]
+  by_cases hij : i = j
+  · subst hij; simp
+  · have hji : j ≠ i := Ne.symm hij
+    simp only [hij, hji, ↓reduceIte, or_comm]
 
 end ChallengeDefs

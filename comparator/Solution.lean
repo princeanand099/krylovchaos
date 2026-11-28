@@ -9,8 +9,8 @@ import KrylovChaos
 /-!
 # Verified Solution for `KrylovChaos` (`comparator` Solution)
 
-Discharges all 25 locked headline theorems in `Challenge.lean` directly from `KrylovChaos`,
-completely verified against Mathlib `v4.35.0` with zero external literature hypotheses.
+Discharges all 25 locked headline theorems in `Challenge.lean` directly from `KrylovChaos`
+with zero `sorry`s, zero custom axioms, and zero external literature hypotheses.
 -/
 
 open ChallengeDefs Matrix
@@ -56,6 +56,32 @@ theorem theorem_1_1a_infinite_tail_and_complexity {α γ θ₀ : ℝ}
       (Real.exp ((1 / 2 + γ / α) * θ₀) / (4 * Real.exp 1 * Real.tanh (θ₀ / 4))) *
         Real.exp (2 * α * t)) :=
   KrylovChaos.theorem_1_1a_infinite_tail_and_complexity φ hα hγ hθ₀ t ht hfatou
+
+theorem theorem_1_1a_infinite_chain_complete (b : ℕ → ℝ) {α γ : ℝ}
+    (hα : 0 < α) (hγ : 0 ≤ γ)
+    (hb0 : b 0 = 0)
+    (hb_nn : ∀ n, 1 ≤ n → 0 ≤ b n)
+    (hb_lin : ∀ n, 1 ≤ n → b n ≤ α * (n : ℝ) + γ) :
+    ∃ φ : ℕ → ℝ → ℝ,
+      ((∀ m, φ m 0 = if m = 0 then 1 else 0) ∧
+       (∀ m, Continuous (φ m)) ∧
+       (∀ m t, HasDerivAt (φ m) (b m * φ (m - 1) t - b (m + 1) * φ (m + 1) t) t) ∧
+       (∀ t : ℝ, Summable (fun m : ℕ ↦ (φ m t) ^ 2) ∧ ∑' m : ℕ, (φ m t) ^ 2 = 1)) ∧
+      (∀ (ψ : ℕ → ℝ → ℝ) (T C : ℝ), 0 ≤ T → 0 ≤ C →
+        (∀ m s, HasDerivAt (ψ m) (b m * ψ (m - 1) s - b (m + 1) * ψ (m + 1) s) s) →
+        (∀ m, ψ m 0 = if m = 0 then 1 else 0) →
+        (∀ s ∈ Set.Icc 0 T, Summable (fun m ↦ (ψ m s) ^ 2) ∧ ∑' m, (ψ m s) ^ 2 ≤ C) →
+        ∀ t ∈ Set.Icc 0 T, ∀ m : ℕ, ψ m t = φ m t) ∧
+      (∀ θ₀ : ℝ, 0 < θ₀ → ∀ t ≥ 0,
+        (∀ n : ℕ, ∑' m : ℕ, (φ (n + m) t) ^ 2 ≤
+          Real.exp ((1 / 2 + γ / α) * θ₀) *
+            Real.exp (-4 * Real.tanh (θ₀ / 4) * (n : ℝ) * Real.exp (-2 * α * t))) ∧
+        (∑' m : ℕ, (m : ℝ) * (φ m t) ^ 2 ≤
+          (Real.exp ((1 / 2 + γ / α) * θ₀) / (4 * Real.exp 1 * Real.tanh (θ₀ / 4))) *
+            Real.exp (2 * α * t))) ∧
+      Filter.limsup (fun t : ℝ ↦ Real.log (∑' m : ℕ, (m : ℝ) * (φ m t) ^ 2) / t) Filter.atTop ≤ 2 * α :=
+  ⟨KrylovChaos.realInfiniteKrylovWavefn b,
+   KrylovChaos.theorem_1_1a_infinite_chain_complete b hα hγ hb0 hb_nn hb_lin⟩
 
 theorem prop_4_1_krylov_filtration {E : Type*} [AddCommGroup E] [Module ℂ E]
     {N r s₀ : ℕ} (hr : 1 ≤ r)
@@ -158,15 +184,8 @@ theorem theorem_1_3b_constants {r : ℕ} {β Jsite : ℝ}
     (hr : 2 ≤ r) (hJ : 0 < Jsite) (hβ0 : 0 ≤ β) (hβ : β ≤ betaWC r Jsite) :
     (3 / 2 : ℝ) * (1 - β / (4 * invLocalityScale r Jsite))⁻¹ ^ 2 * 9 < 54 ∧
     2 * β * (3 : ℝ) ^ (r - 1) * Real.exp 1 * (r : ℝ) * Jsite ≤ 1 / 2 ∧
-    (3 / 8 : ℝ) * (24 : ℝ) ^ 2 = 216 := by
-  have hβ' : β ≤ KrylovChaos.betaWC r Jsite := by
-    have hEq : ChallengeDefs.betaWC r Jsite = KrylovChaos.betaWC r Jsite := by
-      unfold ChallengeDefs.betaWC KrylovChaos.betaWC; ring
-    rwa [← hEq]
-  have hκ : ChallengeDefs.invLocalityScale r Jsite = KrylovChaos.invLocalityScale r Jsite := by
-    unfold ChallengeDefs.invLocalityScale KrylovChaos.invLocalityScale; ring
-  rw [hκ]
-  exact KrylovChaos.theorem_1_3b_constants hr hJ hβ0 hβ'
+    (3 / 8 : ℝ) * (24 : ℝ) ^ 2 = 216 :=
+  KrylovChaos.theorem_1_3b_constants hr hJ hβ0 hβ
 
 theorem theorem_1_3c_mss_lyapunov_bound {α lamL A B C : ℝ}
     (hα : 0 < α) (hlam : 0 < lamL) (hA : 0 ≤ A) (hB : 0 ≤ B) (hC : 0 ≤ C)
@@ -207,6 +226,14 @@ theorem lemma_B_1_neumann_tail_sum {d : ℕ} {EB : ℝ} (hd : 1 ≤ d) (hEB : 2 
     Real.sqrt 2 * (∑' m : ℕ, (2 : ℝ) ^ (d - 1 + m) / EB ^ (d - 1 + m + 1)) =
     (Real.sqrt 2 / (EB - 2)) * (2 / EB) ^ (d - 1) :=
   KrylovChaos.lemma_B_1_neumann_tail_sum hd hEB
+
+theorem lemma_B_1_bulk_eigenvalues_in_band {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} (hEB : 2 < E_B) :
+    let hL := doubleWellTridiag_isHermitian D E_B
+    (∀ k : Fin D, hL.eigenvalues k ≤ E_B + 2) ∧
+    (Finset.univ.filter (fun k : Fin D ↦ hL.eigenvalues k < E_B - 2)).card ≤ 2 ∧
+    D - 2 ≤ (Finset.univ.filter (fun k : Fin D ↦ E_B - 2 ≤ hL.eigenvalues k ∧
+      hL.eigenvalues k ≤ E_B + 2)).card :=
+  KrylovChaos.lemma_B_1_bulk_eigenvalues_in_band hD hEB
 
 theorem carleman_deficiency_zero {s : ℝ} (hs : s ≠ 0)
     (b : ℕ → ℝ) (hb0 : b 0 = 0) (hb_pos : ∀ n ≥ 1, 0 < b n)
