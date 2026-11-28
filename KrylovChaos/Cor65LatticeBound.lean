@@ -79,12 +79,11 @@ private lemma gibbsWightmanNormSq_eq_hsNormSq_jBeta' {N : ℕ} (G : GibbsData N)
   congr 1
   have hQh : G.ρQuarterᴴ = G.ρQuarter := G.ρQuarter_herm
   have hQsq : G.ρQuarter * G.ρQuarter = G.ρHalf := G.sq_quarter
-  simp only [Matrix.conjTranspose_mul, hQh]
-  calc (G.ρHalf * Xᴴ * G.ρHalf * X).trace
-      = (G.ρQuarter * (G.ρQuarter * Xᴴ * G.ρQuarter * G.ρQuarter * X)).trace := by
-        rw [← hQsq]; simp only [Matrix.mul_assoc]
-    _ = ((G.ρQuarter * Xᴴ * G.ρQuarter * G.ρQuarter * X) * G.ρQuarter).trace := Matrix.trace_mul_comm _ _
-    _ = (G.ρQuarter * Xᴴ * G.ρQuarter * (G.ρQuarter * X * G.ρQuarter)).trace := by simp only [Matrix.mul_assoc]
+  simp only [Matrix.conjTranspose_mul, hQh, Matrix.mul_assoc]
+  rw [← hQsq]
+  simp only [Matrix.mul_assoc]
+  rw [Matrix.trace_mul_comm G.ρQuarter]
+  simp only [Matrix.mul_assoc]
 
 set_option maxHeartbeats 400000 in
 /-- For any `X : QubitOp N` and Gibbs state `G = concreteGibbsData hH β`,
@@ -140,13 +139,11 @@ lemma gibbsWightmanNormSq_le_opNorm_sq {N : ℕ} {H : QubitOp N} (hH : H.IsHermi
     set M : QubitOp N := Matrix.diagonal (fun i ↦ ((Real.sqrt (Real.sqrt (p i)) : ℝ) : ℂ)) * Y *
       Matrix.diagonal (fun j ↦ ((Real.sqrt (Real.sqrt (p j)) : ℝ) : ℂ))
     have htr : ((U * M * Uᴴ)ᴴ * (U * M * Uᴴ)).trace = (Mᴴ * M).trace := by
-      simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
-      calc (U * Mᴴ * Uᴴ * (U * M * Uᴴ)).trace
-          = (U * (Mᴴ * (Uᴴ * U) * M) * Uᴴ).trace := by simp only [Matrix.mul_assoc]
-        _ = (U * (Mᴴ * M) * Uᴴ).trace := by rw [hU'_unit, Matrix.mul_one]
-        _ = (Uᴴ * (U * (Mᴴ * M))).trace := Matrix.trace_mul_comm _ _
-        _ = ((Uᴴ * U) * (Mᴴ * M)).trace := by simp only [Matrix.mul_assoc]
-        _ = (Mᴴ * M).trace := by rw [hU'_unit, Matrix.one_mul]
+      simp only [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose, Matrix.mul_assoc]
+      have h1 : Uᴴ * (U * (M * Uᴴ)) = M * Uᴴ := by
+        rw [← Matrix.mul_assoc Uᴴ U, hU'_unit, Matrix.one_mul]
+      rw [h1, Matrix.trace_mul_comm U]
+      simp only [Matrix.mul_assoc, hU'_unit, Matrix.mul_one]
     rw [htr]
     simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.conjTranspose_apply, Complex.re_sum]
     rw [Finset.sum_comm]
