@@ -616,7 +616,7 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
       field_simp [hpi, Complex.I_ne_zero]
       rw [Complex.I_sq]; ring
     rw [hres_eq] at hprod
-    have hsub := hprod.sub tendsto_const_nhds
+    have hsub := hprod.sub (tendsto_const_nhds (x := res))
     rw [sub_self] at hsub
     refine hsub.congr' ?_
     filter_upwards [self_mem_nhdsWithin] with w hw
@@ -719,7 +719,7 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
       refine (Complex.continuous_exp.comp (continuous_const.mul Complex.continuous_ofReal)).div
         (Complex.continuous_cosh.comp (continuous_const.mul Complex.continuous_ofReal)) fun x ↦ ?_
       have hne : (x : ℂ) ≠ Complex.I := fun h ↦ by have := congrArg Complex.im h; simp at this
-      exact hcosh_ne_punct (x : ℂ) (by simp [Ω]; norm_num) hne
+      exact hcosh_ne_punct (x : ℂ) (by simp [Ω]) hne
     have hcp_bot : Continuous (fun x : ℝ ↦ res * ((x : ℂ) - Complex.I)⁻¹) :=
       continuous_const.mul ((Complex.continuous_ofReal.sub continuous_const).inv₀ fun x ↦ by
         intro h; have := congrArg Complex.im h; simp at this)
@@ -750,16 +750,20 @@ theorem integral_cos_mul_inv_cosh_pi_half (t : ℝ) :
       rw [heq, norm_zero, hre, Real.sinh_neg, abs_neg] at h1
       have h2 : 0 < Real.sinh (Real.pi / 2 * R) := real_sinh_pos_of_pos (by positivity)
       linarith [abs_of_pos h2]
+    have hcf_top : Continuous (fun x : ℝ ↦ -Complex.exp (-2 * (t : ℂ)) * f (x : ℂ)) :=
+      continuous_const.mul hcf_bot
     have hcp_right : Continuous (fun y : ℝ ↦ res * ((R : ℂ) + (y : ℂ) * Complex.I - Complex.I)⁻¹) :=
       continuous_const.mul (((continuous_const.add (Complex.continuous_ofReal.mul continuous_const)).sub
         continuous_const).inv₀ fun y h ↦ by
-        have := congrArg Complex.re h; simp only [Complex.sub_re, Complex.add_re, Complex.neg_re, Complex.ofReal_re, Complex.mul_re, Complex.I_re, Complex.I_im, Complex.ofReal_im, mul_zero, sub_zero, add_zero] at this; linarith)
+        dsimp only [Pi.sub_apply, Pi.add_apply, Pi.mul_apply] at h
+        have := congrArg Complex.re h; simp at this; linarith)
     have hcp_left : Continuous (fun y : ℝ ↦ res * (-(R : ℂ) + (y : ℂ) * Complex.I - Complex.I)⁻¹) :=
       continuous_const.mul (((continuous_const.add (Complex.continuous_ofReal.mul continuous_const)).sub
         continuous_const).inv₀ fun y h ↦ by
-        have := congrArg Complex.re h; simp only [Complex.sub_re, Complex.add_re, Complex.neg_re, Complex.ofReal_re, Complex.mul_re, Complex.I_re, Complex.I_im, Complex.ofReal_im, mul_zero, sub_zero, add_zero] at this; linarith)
+        dsimp only [Pi.sub_apply, Pi.add_apply, Pi.mul_apply] at h
+        have := congrArg Complex.re h; simp at this; linarith)
     rw [intervalIntegral.integral_sub (hcf_bot.intervalIntegrable _ _) (hcp_bot.intervalIntegrable _ _),
-      intervalIntegral.integral_sub ((continuous_const.mul hcf_bot).intervalIntegrable _ _) (hcp_top.intervalIntegrable _ _),
+      intervalIntegral.integral_sub (hcf_top.intervalIntegrable _ _) (hcp_top.intervalIntegrable _ _),
       intervalIntegral.integral_sub (hcf_right.intervalIntegrable _ _) (hcp_right.intervalIntegrable _ _),
       intervalIntegral.integral_sub (hcf_left.intervalIntegrable _ _) (hcp_left.intervalIntegrable _ _),
       intervalIntegral.integral_const_mul, intervalIntegral.integral_const_mul,

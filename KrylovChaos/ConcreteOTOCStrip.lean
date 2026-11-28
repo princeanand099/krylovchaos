@@ -47,20 +47,26 @@ theorem differentiable_concreteOTOC {N : ℕ} {H : QubitOp N} (hH : H.IsHermitia
     intro A B hA hB i j
     simp only [Matrix.mul_apply]
     exact Differentiable.fun_sum fun k _ ↦ (hA i k).mul (hB k j)
-  have hevol_diff : ∀ i j, Differentiable ℂ (fun z ↦ (heisenbergEvol hH z W) i j) := by
-    intro i j
-    unfold heisenbergEvol
-    refine hmat_mul_diff _ _ (hmat_mul_diff _ _ (fun a b ↦ ?_) (fun a b ↦ differentiable_const _))
-      (fun a b ↦ ?_) i j
-    · simpa using hprop_diff 1 a b
-    · simpa using hprop_diff (-1) a b
+  have hp1 : ∀ a b, Differentiable ℂ (fun z : ℂ ↦ (complexPropagator hH z) a b) := fun a b ↦ by
+    simpa using hprop_diff 1 a b
+  have hpm1 : ∀ a b, Differentiable ℂ (fun z : ℂ ↦ (complexPropagator hH (-z)) a b) := fun a b ↦ by
+    simpa using hprop_diff (-1) a b
+  have hevol_diff : ∀ i j, Differentiable ℂ (fun z ↦ (heisenbergEvol hH z W) i j) :=
+    hmat_mul_diff (fun z ↦ complexPropagator hH z * W) (fun z ↦ complexPropagator hH (-z))
+      (hmat_mul_diff (fun z ↦ complexPropagator hH z) (fun _ ↦ W) hp1 (fun _ _ ↦ differentiable_const _))
+      hpm1
+  let Rq : QubitOp N := (concreteGibbsData hH β).ρQuarter
   have hstep_diff : ∀ i j, Differentiable ℂ (fun z ↦
-      (jBeta (concreteGibbsData hH β).ρQuarter (heisenbergEvol hH z W) * V) i j) := by
-    intro i j
-    unfold jBeta
-    exact hmat_mul_diff _ _ (hmat_mul_diff _ _ (hmat_mul_diff _ _ (fun _ _ ↦ differentiable_const _)
-      hevol_diff) (fun _ _ ↦ differentiable_const _)) (fun _ _ ↦ differentiable_const _) i j
-  have hsq_diff := hmat_mul_diff _ _ hstep_diff hstep_diff
+      (jBeta Rq (heisenbergEvol hH z W) * V) i j) :=
+    hmat_mul_diff (fun z ↦ Rq * heisenbergEvol hH z W * Rq) (fun _ ↦ V)
+      (hmat_mul_diff (fun z ↦ Rq * heisenbergEvol hH z W) (fun _ ↦ Rq)
+        (hmat_mul_diff (fun _ ↦ Rq) (fun z ↦ heisenbergEvol hH z W)
+          (fun _ _ ↦ differentiable_const _) hevol_diff)
+        (fun _ _ ↦ differentiable_const _))
+      (fun _ _ ↦ differentiable_const _)
+  have hsq_diff := hmat_mul_diff
+    (fun z ↦ jBeta Rq (heisenbergEvol hH z W) * V)
+    (fun z ↦ jBeta Rq (heisenbergEvol hH z W) * V) hstep_diff hstep_diff
   unfold concreteOTOC Matrix.trace Matrix.diag
   exact Differentiable.fun_sum fun i _ ↦ hsq_diff i i
 
@@ -91,6 +97,20 @@ theorem concreteWightmanNormAtShift_eq_spectralMeasure {N : ℕ} {H W : QubitOp 
   have h2 : (2 : ℕ) * (-τ * (hH.eigenvalues a - hH.eigenvalues b)) =
       -2 * τ * (hH.eigenvalues a - hH.eigenvalues b) := by push_cast; ring
   rw [h2]; ring
+
+private lemma trace_conj_quad {N : ℕ} (U R W A : QubitOp N) (hU1 : U * Uᴴ = 1) :
+    (R * W * R * A).trace = ((Uᴴ * R * U) * (Uᴴ * W * U) * (Uᴴ * R * U) * (Uᴴ * A * U)).trace := by
+  have h1 : (R * W * R * A).trace = (Uᴴ * (R * W * R * A) * U).trace := by
+    calc (R * W * R * A).trace = ((U * Uᴴ) * (R * W * R * A)).trace := by rw [hU1, Matrix.one_mul]
+      _ = (U * (Uᴴ * (R * W * R * A))).trace := by simp only [Matrix.mul_assoc]
+      _ = ((Uᴴ * (R * W * R * A)) * U).trace := Matrix.trace_mul_comm _ _
+      _ = (Uᴴ * (R * W * R * A) * U).trace := by simp only [Matrix.mul_assoc]
+  rw [h1]; congr 1
+  calc Uᴴ * (R * W * R * A) * U
+      = Uᴴ * R * (U * Uᴴ) * W * (U * Uᴴ) * R * (U * Uᴴ) * A * U := by
+          rw [hU1]; simp only [Matrix.mul_one, Matrix.mul_assoc]
+    _ = (Uᴴ * R * U) * (Uᴴ * W * U) * (Uᴴ * R * U) * (Uᴴ * A * U) := by
+          simp only [Matrix.mul_assoc]
 
 set_option maxHeartbeats 800000 in
 /-- Exact autocorrelation identity for the imaginary-time shifted Wightman norm:
@@ -146,18 +166,8 @@ theorem concreteWightmanNormAtShift_eq_autocorr {N : ℕ} {H W : QubitOp N}
   set R := (concreteGibbsData hH β).ρHalf
   set A := heisenbergEvol hH (2 * Complex.I * (τ : ℂ)) W
   have htr : (R * Wᴴ * R * A).trace =
-      ((Uᴴ * R * U) * (Uᴴ * Wᴴ * U) * (Uᴴ * R * U) * (Uᴴ * A * U)).trace := by
-    have h1 : (R * Wᴴ * R * A).trace = (Uᴴ * (R * Wᴴ * R * A) * U).trace := by
-      calc (R * Wᴴ * R * A).trace = ((U * Uᴴ) * (R * Wᴴ * R * A)).trace := by rw [hU1, Matrix.one_mul]
-        _ = (U * (Uᴴ * (R * Wᴴ * R * A))).trace := by simp only [Matrix.mul_assoc]
-        _ = ((Uᴴ * (R * Wᴴ * R * A)) * U).trace := Matrix.trace_mul_comm _ _
-        _ = (Uᴴ * (R * Wᴴ * R * A) * U).trace := by simp only [Matrix.mul_assoc]
-    rw [h1]; congr 1
-    calc Uᴴ * (R * Wᴴ * R * A) * U
-        = Uᴴ * R * (U * Uᴴ) * Wᴴ * (U * Uᴴ) * R * (U * Uᴴ) * A * U := by
-            rw [hU1]; simp only [Matrix.mul_one, Matrix.mul_assoc]
-      _ = (Uᴴ * R * U) * (Uᴴ * Wᴴ * U) * (Uᴴ * R * U) * (Uᴴ * A * U) := by
-            simp only [Matrix.mul_assoc]
+      ((Uᴴ * R * U) * (Uᴴ * Wᴴ * U) * (Uᴴ * R * U) * (Uᴴ * A * U)).trace :=
+    trace_conj_quad U R Wᴴ A hU1
   rw [htr, hρHalf_eq, hW.eq, hevol_diag]
   have hsqZ : (((Real.sqrt Z)⁻¹ : ℝ) : ℂ) * (((Real.sqrt Z)⁻¹ : ℝ) : ℂ) = ((Z⁻¹ : ℝ) : ℂ) := by
     rw [← Complex.ofReal_mul, ← mul_inv, Real.mul_self_sqrt hZpos.le]
@@ -168,7 +178,26 @@ theorem concreteWightmanNormAtShift_eq_autocorr {N : ℕ} {H W : QubitOp N}
       ∑ a : QubitIdx N, ∑ b : QubitIdx N,
         ((wightmanSpectralWeight hH β W a b * Real.exp (-2 * τ * (hH.eigenvalues b - hH.eigenvalues a)) : ℝ) : ℂ) := by
     simp only [Matrix.smul_mul, Matrix.mul_smul, smul_smul, hsqZ, Matrix.trace_smul, smul_eq_mul]
-    simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply, Matrix.diagonal_mul, Matrix.mul_diagonal]
+    have htr_diag : (Matrix.diagonal d * B * Matrix.diagonal d *
+        (Matrix.diagonal (fun a ↦ Complex.exp (-2 * (τ : ℂ) * (hH.eigenvalues a : ℂ))) * B *
+         Matrix.diagonal (fun b ↦ Complex.exp (2 * (τ : ℂ) * (hH.eigenvalues b : ℂ))))).trace =
+        ∑ a : QubitIdx N, ∑ b : QubitIdx N,
+          d a * B a b * d b *
+            (Complex.exp (-2 * (τ : ℂ) * (hH.eigenvalues b : ℂ)) * B b a *
+             Complex.exp (2 * (τ : ℂ) * (hH.eigenvalues a : ℂ))) := by
+      have hL : ∀ a b, (Matrix.diagonal d * B * Matrix.diagonal d) a b = d a * B a b * d b := fun a b ↦ by
+        rw [Matrix.mul_diagonal, Matrix.diagonal_mul]
+      have hR : ∀ b a, (Matrix.diagonal (fun x ↦ Complex.exp (-2 * (τ : ℂ) * (hH.eigenvalues x : ℂ))) * B *
+          Matrix.diagonal (fun x ↦ Complex.exp (2 * (τ : ℂ) * (hH.eigenvalues x : ℂ)))) b a =
+          Complex.exp (-2 * (τ : ℂ) * (hH.eigenvalues b : ℂ)) * B b a *
+            Complex.exp (2 * (τ : ℂ) * (hH.eigenvalues a : ℂ)) := fun b a ↦ by
+        rw [Matrix.mul_diagonal, Matrix.diagonal_mul]
+      simp only [Matrix.trace, Matrix.diag]
+      apply Finset.sum_congr rfl; intro a _
+      rw [Matrix.mul_apply]
+      apply Finset.sum_congr rfl; intro b _
+      rw [hL a b, hR b a]
+    rw [htr_diag]
     rw [Finset.mul_sum]
     apply Finset.sum_congr rfl; intro a _
     rw [Finset.mul_sum]
@@ -222,18 +251,18 @@ private lemma liminf_const_mul_le_of_bdd {a : ℕ → ℝ} {c B : ℝ}
   by_cases hc0 : c = 0
   · subst hc0; simp
   have hc_pos : 0 < c := lt_of_le_of_ne hc (Ne.symm hc0)
-  have hge_a : Filter.IsBoundedUnder (· ≥ ·) atTop a := ⟨0, Eventually.of_forall ha0⟩
-  have hle_a : Filter.IsBoundedUnder (· ≤ ·) atTop a := ⟨B, Eventually.of_forall haB⟩
-  have hle_ca : Filter.IsBoundedUnder (· ≤ ·) atTop (fun N ↦ c * a N) :=
-    ⟨c * B, Eventually.of_forall fun N ↦ mul_le_mul_of_nonneg_left (haB N) hc⟩
-  have hcob_ca : Filter.IsCoboundedUnder (· ≥ ·) atTop (fun N ↦ c * a N) :=
-    hle_ca.isCoboundedUnder_ge
-  refine Filter.liminf_le_of_le hcob_ca fun b hb ↦ ?_
+  have hge_a : Filter.IsBoundedUnder (· ≥ ·) atTop a :=
+    ⟨0, Filter.eventually_map.mpr (Eventually.of_forall ha0)⟩
+  have hle_a : Filter.IsBoundedUnder (· ≤ ·) atTop a :=
+    ⟨B, Filter.eventually_map.mpr (Eventually.of_forall haB)⟩
+  have hge_ca : Filter.IsBoundedUnder (· ≥ ·) atTop (fun N ↦ c * a N) :=
+    ⟨0, Filter.eventually_map.mpr (Eventually.of_forall fun N ↦ mul_nonneg hc (ha0 N))⟩
+  refine Filter.liminf_le_of_le hge_ca fun b hb ↦ ?_
   have hb' : ∀ᶠ N in atTop, b / c ≤ a N := by
     filter_upwards [hb] with N hN
     exact (div_le_iff₀ hc_pos).mpr (by linarith)
   have hle_lim : b / c ≤ Filter.liminf a atTop :=
-    Filter.le_liminf_of_le hle_a.isCoboundedUnder_le hb'
+    Filter.le_liminf_of_le hle_a.isCoboundedUnder_ge hb'
   exact (div_le_iff₀ hc_pos).mp hle_lim |>.trans_eq (mul_comm _ _)
 
 /-- **Theorem 1.2(c) (General Strip `S_OTOC` Analytic Continuation)**:
@@ -279,9 +308,10 @@ theorem theorem_1_2c_general_otoc_strip_analyticity {β S_OTOC C_V : ℝ}
     rw [← htend_z.liminf_eq]
     have hbdd_ca : Filter.IsBoundedUnder (· ≤ ·) atTop
         (fun N ↦ C_V ^ 2 * concreteWightmanNormAtShift (hH N) β (W N) τ 0) :=
-      ⟨C_V ^ 2 * B, Eventually.of_forall fun N ↦ mul_le_mul_of_nonneg_left (hB N) (sq_nonneg C_V)⟩
+      ⟨C_V ^ 2 * B, Filter.eventually_map.mpr (Eventually.of_forall fun N ↦
+        mul_le_mul_of_nonneg_left (hB N) (sq_nonneg C_V))⟩
     refine Filter.liminf_le_liminf (Eventually.of_forall fun N ↦ ?_)
-      htend_z.isBoundedUnder_ge hbdd_ca.isCoboundedUnder_le
+      htend_z.isBoundedUnder_ge hbdd_ca.isCoboundedUnder_ge
     have h3 := (concreteOTOC_three_way_eq_1_17 (hH N) (hW N) (hV N) β t τ).1
     have hVsq : (opNorm (V N)) ^ 2 ≤ C_V ^ 2 := by nlinarith [opNorm_nonneg (V N), hV_norm N]
     exact le_trans h3 (mul_le_mul_of_nonneg_right hVsq (gibbsWightmanNormSq_nonneg _ _))
@@ -396,7 +426,7 @@ theorem theorem_1_2c_thermo_limit_otoc_strip {r sW : ℕ} (hr : 2 ≤ r)
     have hleB : 2 * (2 * (opNorm (W N)) ^ 2 * (1 - κ' / κ) ^ (-((sW : ℝ) / ((r - 1 : ℕ) : ℝ)))) ≤ B := by
       dsimp only [B]
       have := mul_le_mul_of_nonneg_right (show 4 * (opNorm (W N)) ^ 2 ≤ 4 * C_W ^ 2 by linarith)
-        (Real.rpow_nonneg h1sub.le _)
+        (Real.rpow_nonneg h1sub.le (-((sW : ℝ) / ((r - 1 : ℕ) : ℝ))))
       linarith
     dsimp only [κ] at hleB
     linarith
@@ -425,6 +455,7 @@ theorem theorem_1_2c_thermo_limit_otoc_strip {r sW : ℕ} (hr : 2 ≤ r)
     (fun τ hτ ↦ by rcases hshift_unif |τ| (abs_nonneg τ) hτ with ⟨B, _, hB⟩; exact ⟨B, fun N ↦ hB N τ le_rfl⟩)
     F_real hreal_lim
 
+set_option maxHeartbeats 800000 in
 /-- **Theorem 1.3(c) (Fully Concrete-Family High-Temperature Chaos Bound with KMS Rate Discharged)**:
 Discharges ALL Theorem 1.2(a)–(b) inputs (`μ_N`, `hunif`, `hmom_eq`) directly from the concrete
 `r`-local family `(H_N, O_N)` (zero disconnected abstract measure/moment hypotheses), establishing
@@ -551,7 +582,7 @@ theorem theorem_1_3c_concrete_family_complete {r s₀ : ℕ} (hr : 2 ≤ r)
     · exact (theorem_1_3c_unconditional_family hr hJ hβ_pos hβ hκ_pos hα hγ hα_kms hCO_ge1
         hlamW hlamMSS E hE_ne hE_card h hh_supp hH hH_site U₀ hU₀ O hO hO_supp hOnorm hCO
         hb_lin hH1_W hH1_MSS).1.1
-    · -- `β = 0`: `otocCW ≤ 216 * ((r - 1) * K + s₀)` from `theorem_1_3b_high_temp`!
+    · -- `β = 0`: `otocCW ≤ 54 * ((r - 1) * K + s₀)` from `theorem_1_3b_high_temp`!
       have hβ_eq : β = 0 := le_antisymm (le_of_not_gt hβ_pos) hβ0
       subst hβ_eq
       by_contra hgt; push Not at hgt
@@ -606,11 +637,14 @@ theorem theorem_1_3c_concrete_family_complete {r s₀ : ℕ} (hr : 2 ≤ r)
           216 * ((r - 1 : ℕ) : ℝ) * C_K * (N : ℝ) ^ η + 216 * (s₀ : ℝ) := by
         have h1 : otocCW (concreteGibbsData (hH N) 0)
             (heisenbergEvol (hH N) ((((1 - ε) / lamW) * Real.log (N : ℝ) : ℝ) : ℂ) (O N)) ≤
-            216 * (((r - 1 : ℕ) : ℝ) *
+            54 * (((r - 1 : ℕ) : ℝ) *
               concreteKrylovComplexity (hH N) 0 (O N) (((1 - ε) / lamW) * Real.log (N : ℝ)) +
               (s₀ : ℝ)) := h13b
         have hr1_nn : (0 : ℝ) ≤ ((r - 1 : ℕ) : ℝ) := Nat.cast_nonneg _
-        nlinarith [hlow, h1, h11a]
+        have hs0_nn : (0 : ℝ) ≤ (s₀ : ℝ) := Nat.cast_nonneg _
+        have hK_nn : 0 ≤ concreteKrylovComplexity (hH N) 0 (O N) (((1 - ε) / lamW) * Real.log (N : ℝ)) :=
+          Finset.sum_nonneg fun k _ ↦ mul_nonneg (Nat.cast_nonneg k) (sq_nonneg _)
+        nlinarith [hlow, h1, h11a, hK_nn]
       have hdiv : c ≤ 216 * ((r - 1 : ℕ) : ℝ) * C_K * (N : ℝ) ^ (η - (1 - ε)) +
           216 * (s₀ : ℝ) * (N : ℝ) ^ (-(1 - ε)) := by
         have h := div_le_div_of_nonneg_right hcomb hN_rpow_pos.le

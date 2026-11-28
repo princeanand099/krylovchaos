@@ -61,21 +61,21 @@ private lemma jacobiWavefn_coord_hasDerivAt {D : ℕ} (hD : 0 < D) (b : ℕ → 
     unfold jacobiMat; simp only [Matrix.of_apply]
     by_cases h1 : x.1 = n.1 + 1
     · have h2 : ¬(n.1 = x.1 + 1) := by omega
-      simp [h1, h2]
+      rw [if_pos h1, if_neg h2, if_pos h1]; simp
     · by_cases h2 : n.1 = x.1 + 1
-      · simp [h1, h2]
-      · simp [h1, h2]
+      · rw [if_neg h1, if_pos h2, if_pos h2, if_neg h1]; simp
+      · rw [if_neg h1, if_neg h2, if_neg h2, if_neg h1]; simp
   simp_rw [hstep, Finset.sum_add_distrib]
   congr 1
   · by_cases h0 : 0 < n.1
     · rw [dif_pos h0, Finset.sum_eq_single ⟨n.1 - 1, by omega⟩]
-      · rw [if_pos (by dsimp; omega)]; rfl
+      · rw [if_pos (by dsimp; omega)]
       · intro x _ hx; rw [if_neg (fun h ↦ hx (Fin.ext (by dsimp; omega)))]
       · intro h; exact absurd (Finset.mem_univ _) h
     · rw [dif_neg h0]; symm; apply Finset.sum_eq_zero; intro x _; rw [if_neg (by omega)]
   · by_cases h1 : n.1 + 1 < D
     · rw [dif_pos h1, Finset.sum_eq_single ⟨n.1 + 1, h1⟩]
-      · rw [if_pos rfl]; rfl
+      · rw [if_pos rfl]
       · intro x _ hx; rw [if_neg (fun h ↦ hx (Fin.ext (by dsimp; omega)))]
       · intro h; exact absurd (Finset.mem_univ _) h
     · rw [dif_neg h1]; symm; apply Finset.sum_eq_zero; intro x _; rw [if_neg (by omega)]
@@ -129,6 +129,7 @@ theorem jacobiWavefn_neg_t {D : ℕ} (hD : 0 < D) (b : ℕ → ℝ) (t : ℝ) (n
     dsimp only [u]
     rw [ContinuousLinearMap.smul_apply, map_sub, smul_sub, map_neg, ContinuousLinearMap.smul_apply,
       map_smul, hS_anti, smul_neg, neg_neg]
+    rfl
   have hnormSq_deriv : ∀ s : ℝ, HasDerivAt (fun r : ℝ ↦ ‖u r‖ ^ 2) 0 s := by
     intro s
     have hinner := HasDerivAt.inner ℝ (hu_deriv s) (hu_deriv s)
@@ -360,6 +361,9 @@ lemma realFiniteKrylovWavefn_ode (b : ℕ → ℝ) (N m : ℕ) (hm : m ≤ N) (t
       ((if m = 0 then 0 else b m) * realFiniteKrylovWavefn b N (m - 1) t -
        (if m = N then 0 else b (m + 1)) * realFiniteKrylovWavefn b N (m + 1) t) t := by
   have hd := Complex.reCLM.hasFDerivAt.comp_hasDerivAt t (gaugedFiniteWavefn_ode b N m hm t)
+  have hfun : realFiniteKrylovWavefn b N m = Complex.reCLM ∘ gaugedFiniteWavefn b N m := by
+    funext s; simp [realFiniteKrylovWavefn, gaugedFiniteWavefn, hm]
+  rw [hfun]
   refine hd.congr_deriv ?_
   change (((_ : ℂ) - (_ : ℂ)).re) = _
   rw [Complex.sub_re]
