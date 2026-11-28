@@ -123,8 +123,8 @@ private lemma integrable_gaussianKernel {σ : ℝ} (hσ : 0 < σ) : Integrable (
   exact (hconst.const_mul (1 / (Real.sqrt (2 * Real.pi) * σ))).congr (Eventually.of_forall fun s ↦ by
     unfold gaussianKernel
     dsimp only
-    rw [one_div, div_eq_inv_mul]
-    congr 1; congr 1; ring)
+    have harg : -(1 / (2 * σ ^ 2)) * s ^ 2 = -s ^ 2 / (2 * σ ^ 2) := by ring
+    rw [harg]; ring)
 
 private lemma integrable_gaussianKernel_mul_heisenbergEvol_entry {N : ℕ} {H : QubitOp N}
     (hH : H.IsHermitian) {σ : ℝ} (hσ : 0 < σ) (W : QubitOp N) (i j : QubitIdx N) :
@@ -173,7 +173,10 @@ theorem concreteOTOC_gaussianSmearBochner_eq_2d_conv {N : ℕ} {H : QubitOp N}
   have htrace_expand := trace_LARLBR_expand L R
   have hOTOC_lhs : concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V (t : ℂ) =
       Matrix.trace (L * gaussianSmearBochner hH σ W₀ * R * (L * gaussianSmearBochner hH σ W₀ * R)) := by
-    unfold concreteOTOC; rw [hLR]
+    unfold concreteOTOC
+    change Matrix.trace ((jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t : ℂ) (gaussianSmearBochner hH σ W₀)) * V) *
+      (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t : ℂ) (gaussianSmearBochner hH σ W₀)) * V)) = _
+    rw [hLR]
   have hOTOC_two : ∀ s₁ s₂ : ℝ, concreteTwoTimeOTOC hH β W₀ V (t + s₁) (t + s₂) =
       Matrix.trace (L * heisenbergEvol hH (s₁ : ℂ) W₀ * R * (L * heisenbergEvol hH (s₂ : ℂ) W₀ * R)) := by
     intro s₁ s₂; unfold concreteTwoTimeOTOC; rw [hLR_shift s₁, hLR_shift s₂]
@@ -267,6 +270,40 @@ theorem concreteOTOC_gaussianSmearBochner_eq_2d_conv {N : ℕ} {H : QubitOp N}
       (gaussianSmearBochner hH σ W₀) j k
   ring
 
+private lemma continuous_gaussian_conv_param_complex {σ M : ℝ} (hσ : 0 < σ)
+    (Φ : ℝ → ℝ → ℂ) (hcont : Continuous (fun p : ℝ × ℝ ↦ Φ p.1 p.2))
+    (hbdd : ∀ x y, ‖Φ x y‖ ≤ M) (t : ℝ) :
+    Continuous (fun s₁ : ℝ ↦ ∫ s₂ : ℝ, ((gaussianKernel σ s₂ : ℝ) : ℂ) * Φ (t + s₁) (t + s₂)) := by
+  have hg_int : Integrable (gaussianKernel σ) := integrable_gaussianKernel hσ
+  refine continuous_of_dominated (bound := fun s₂ : ℝ ↦ gaussianKernel σ s₂ * M)
+    ?_ ?_ (hg_int.mul_const M) ?_
+  · intro s₁
+    exact ((Complex.continuous_ofReal.comp (by unfold gaussianKernel; fun_prop)).mul
+      (hcont.comp (continuous_const.prodMk (continuous_const.add continuous_id)))).aestronglyMeasurable
+  · intro s₁; filter_upwards with s₂
+    have hgnn : 0 ≤ gaussianKernel σ s₂ := by unfold gaussianKernel; positivity
+    rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hgnn]
+    exact mul_le_mul_of_nonneg_left (hbdd _ _) hgnn
+  · filter_upwards with s₂
+    exact continuous_const.mul (hcont.comp ((continuous_const.add continuous_id).prodMk continuous_const))
+
+private lemma continuous_gaussian_conv_param_real {σ M : ℝ} (hσ : 0 < σ)
+    (Φ : ℝ → ℝ → ℝ) (hcont : Continuous (fun p : ℝ × ℝ ↦ Φ p.1 p.2))
+    (hbdd : ∀ x y, |Φ x y| ≤ M) (t : ℝ) :
+    Continuous (fun s₁ : ℝ ↦ ∫ s₂ : ℝ, gaussianKernel σ s₂ * Φ (t + s₁) (t + s₂)) := by
+  have hg_int : Integrable (gaussianKernel σ) := integrable_gaussianKernel hσ
+  refine continuous_of_dominated (bound := fun s₂ : ℝ ↦ gaussianKernel σ s₂ * M)
+    ?_ ?_ (hg_int.mul_const M) ?_
+  · intro s₁
+    exact ((by unfold gaussianKernel; fun_prop : Continuous _).mul
+      (hcont.comp (continuous_const.prodMk (continuous_const.add continuous_id)))).aestronglyMeasurable
+  · intro s₁; filter_upwards with s₂
+    have hgnn : 0 ≤ gaussianKernel σ s₂ := by unfold gaussianKernel; positivity
+    rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg hgnn]
+    exact mul_le_mul_of_nonneg_left (hbdd _ _) hgnn
+  · filter_upwards with s₂
+    exact continuous_const.mul (hcont.comp ((continuous_const.add continuous_id).prodMk continuous_const))
+
 set_option maxHeartbeats 400000 in
 /-- Real-part 2D Gaussian convolution identity for `concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V t`. -/
 theorem concreteOTOC_gaussianSmearBochner_re_eq_2d_conv {N : ℕ} {H : QubitOp N}
@@ -344,18 +381,8 @@ theorem concreteOTOC_gaussianSmearBochner_re_eq_2d_conv {N : ℕ} {H : QubitOp N
   have hint_out : Integrable (fun s₁ : ℝ ↦ ((gaussianKernel σ s₁ : ℝ) : ℂ) *
       (∫ s₂ : ℝ, ((gaussianKernel σ s₂ : ℝ) : ℂ) * concreteTwoTimeOTOC hH β W₀ V (t + s₁) (t + s₂))) := by
     have hcont_in : Continuous (fun s₁ : ℝ ↦
-        ∫ s₂ : ℝ, ((gaussianKernel σ s₂ : ℝ) : ℂ) * concreteTwoTimeOTOC hH β W₀ V (t + s₁) (t + s₂)) := by
-      refine continuous_of_dominated
-        (bound := fun s₂ : ℝ ↦ gaussianKernel σ s₂ * M) ?_ ?_ (hg_int.mul_const M) ?_
-      · intro s₁; exact (hint_in s₁).aestronglyMeasurable
-      · intro s₁; filter_upwards with s₂
-        have hgnn : 0 ≤ gaussianKernel σ s₂ := by unfold gaussianKernel; positivity
-        rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hgnn]
-        exact mul_le_mul_of_nonneg_left (hM_bd _ _) hgnn
-      · filter_upwards with s₂
-        have hpair : Continuous (fun s₁ : ℝ ↦ (t + s₁, t + s₂)) :=
-          Continuous.prodMk (continuous_const.add continuous_id) continuous_const
-        exact continuous_const.mul (hcont_two.comp hpair)
+        ∫ s₂ : ℝ, ((gaussianKernel σ s₂ : ℝ) : ℂ) * concreteTwoTimeOTOC hH β W₀ V (t + s₁) (t + s₂)) :=
+      continuous_gaussian_conv_param_complex hσ (concreteTwoTimeOTOC hH β W₀ V) hcont_two hM_bd t
     refine (hg_int.const_mul M).mono' ?_ ?_
     · exact ((Complex.continuous_ofReal.comp (by unfold gaussianKernel; fun_prop)).mul
         hcont_in).aestronglyMeasurable
@@ -428,19 +455,8 @@ theorem prop_9_1_part1_concrete_2d_otoc_smearing {N : ℕ} {H : QubitOp N} (hH :
       (fun s₁ : ℝ ↦ ∫ s₂ : ℝ, gaussianKernel σ s₂ *
         (concreteTwoTimeOTOC hH β W₀ V (t + s₁) (t + s₂)).re) volume := by
     have hcont_out : Continuous (fun s₁ : ℝ ↦ ∫ s₂ : ℝ, gaussianKernel σ s₂ *
-        (concreteTwoTimeOTOC hH β W₀ V (t + s₁) (t + s₂)).re) := by
-      refine continuous_of_dominated (bound := fun s₂ : ℝ ↦ gaussianKernel σ s₂ * M_bound)
-        ?_ ?_ (hg_int.mul_const M_bound) ?_
-      · intro s₁
-        exact ((by unfold gaussianKernel; fun_prop : Continuous _).aestronglyMeasurable).mul (hF_meas s₁)
-      · intro s₁; filter_upwards with s₂
-        have hgnn : 0 ≤ gaussianKernel σ s₂ := by unfold gaussianKernel; positivity
-        rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg hgnn]
-        exact mul_le_mul_of_nonneg_left (hF_bdd _ _) hgnn
-      · filter_upwards with s₂
-        have hpair : Continuous (fun s₁ : ℝ ↦ (t + s₁, t + s₂)) :=
-          Continuous.prodMk (continuous_const.add continuous_id) continuous_const
-        exact continuous_const.mul (hcont_two.comp hpair)
+        (concreteTwoTimeOTOC hH β W₀ V (t + s₁) (t + s₂)).re) :=
+      continuous_gaussian_conv_param_real hσ (fun x y ↦ (concreteTwoTimeOTOC hH β W₀ V x y).re) hcont_two hF_bdd t
     exact hcont_out.aestronglyMeasurable
   exact prop_9_1_part1_2d_finite_window_otoc hσ hlam hΔ hM hCR
     (fun t₁ t₂ ↦ (concreteTwoTimeOTOC hH β W₀ V t₁ t₂).re)
@@ -1144,7 +1160,7 @@ private lemma eq91_mssThermalSize_bddAbove {N : ℕ} (G : GibbsData N) (s : ℕ)
             unfold siteSizeOp partialTraceSite
             rw [Fin.sum_univ_succ, pauliSite_zero, Matrix.one_mul, Matrix.mul_one,
               Finset.sum_sub_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin]
-            ext i j; simp [Matrix.sum_apply, nsmul_eq_mul]; ring
+            ext i j; simp only [Matrix.sub_apply, Matrix.smul_apply, Matrix.sum_apply, smul_eq_mul, nsmul_eq_mul, Nat.cast_ofNat]; ring
           rw [hsite_eq]; unfold hsInner
           rw [Matrix.mul_smul, Matrix.trace_smul, smul_eq_mul, Matrix.mul_sum, Matrix.trace_sum,
             show (1 / 4 : ℂ) = ((1 / 4 : ℝ) : ℂ) by push_cast; rfl, Complex.re_ofReal_mul, Complex.re_sum]
@@ -1451,7 +1467,7 @@ theorem doubleWell_krylov_complexity_from_lanczos {D : ℕ} (hD : 4 ≤ D) {E_B 
   have hnorm_c0 : ‖(ep + em) / 2‖ ^ 2 = Real.cos θ ^ 2 := by
     have heq : (ep + em) / 2 = Complex.exp ((φ : ℂ) * Complex.I) * (Real.cos θ : ℂ) := by
       rw [hep_fac, hem_fac, ← mul_add, mul_div_assoc]
-      congr 1; rw [Complex.ofReal_cos, Complex.cos]; ring_nf
+      congr 1; rw [Complex.ofReal_cos, Complex.cos]
     rw [heq, norm_mul, Complex.norm_exp_ofReal_mul_I, one_mul, Complex.norm_real, Real.norm_eq_abs, sq_abs]
   have hnorm_c1 : ‖(ep - em) / 2‖ ^ 2 = Real.sin θ ^ 2 := by
     have heq : (ep - em) / 2 = Complex.exp ((φ : ℂ) * Complex.I) * Complex.I * (Real.sin θ : ℂ) := by
