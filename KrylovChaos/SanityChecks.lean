@@ -108,8 +108,8 @@ theorem sanity_eq91_bimodal_N2 :
     ((2 - 1 : ℝ) / 4) * (1 - (1 / 32 : ℝ) - 2 * Real.sqrt (2 * (1 / 32 : ℝ) / (2 : ℝ) ^ 2)) ≤
       lambdaMSS
         (eq91BimodalGibbs 2 ⟨0, by omega⟩ (by norm_num : (0 : ℝ) < 1 / 32) (by norm_num : (1 / 32 : ℝ) < 1)) 1 :=
-  ⟨eq91WitnessOp_wightmanNormSq ⟨0, by omega⟩ (by norm_num) (by norm_num),
-   eq91Bimodal_lambdaMSS_lower (by omega) ⟨0, by omega⟩ (by norm_num) (by norm_num)⟩
+  ⟨eq91WitnessOp_wightmanNormSq (N := 2) ⟨0, by omega⟩ (by norm_num) (by norm_num),
+   eq91Bimodal_lambdaMSS_lower (N := 2) (by omega) ⟨0, by omega⟩ (by norm_num) (by norm_num)⟩
 
 /-- Concrete `D = 4, E_B = 4` non-vacuity witness for the 2D double-well Lanczos basis `{|K₀⟩, |K₁⟩}`. -/
 theorem sanity_doubleWell_lanczos_D4_EB4 :
