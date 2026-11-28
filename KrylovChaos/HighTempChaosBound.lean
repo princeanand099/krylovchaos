@@ -42,14 +42,15 @@ section FiltrationSupportBridge
 `filtrationSubmodule N s`. -/
 lemma supportedOn_le_filtrationSubmodule {N s : ℕ} {U : Finset (Fin N)} (hU : U.card ≤ s) :
     supportedOn U ≤ filtrationSubmodule N s := by
-  unfold supportedOn filtrationSubmodule
-  refine Submodule.span_mono ?_
-  rintro A ⟨a, ha, rfl⟩
+  apply Submodule.span_le.mpr
+  rintro _ ⟨a, ha, rfl⟩
+  apply Submodule.subset_span
   refine ⟨a, ?_, rfl⟩
-  unfold pauliWeight
-  refine le_trans (Finset.card_le_card ?_) hU
-  intro x hx
-  exact ha x (Finset.mem_filter.mp hx).2
+  have hsub : Finset.univ.filter (fun x : Fin N ↦ a x ≠ 0) ⊆ U := by
+    intro x hx
+    by_contra hxU
+    exact (Finset.mem_filter.mp hx).2 (ha x hxU)
+  exact le_trans (Finset.card_le_card hsub) hU
 
 /-- An `r`-local Hamiltonian `∑ Z ∈ E, h Z` belongs to `filtrationSubmodule N r`. -/
 lemma localHamiltonian_mem_filtrationSubmodule {N r : ℕ}
@@ -138,6 +139,7 @@ theorem theorem_1_3c_eq_1_24_concrete {N r s₀ : ℕ}
     rw [show 2 * Real.sqrt (216 * K) * Real.sqrt ((1 + C₂) * (N : ℝ)) =
         2 * (Real.sqrt (216 * K) * Real.sqrt ((1 + C₂) * (N : ℝ))) by ring,
       ← Real.sqrt_mul (by positivity : 0 ≤ 216 * K)]
+    have halg : 216 * K * ((1 + C₂) * (N : ℝ)) = (12 ^ 2 * (3 * (1 + C₂) / 2)) * ((N : ℝ) * K) := by ring
     have h216_le : 216 * K * ((1 + C₂) * (N : ℝ)) ≤ (12 ^ 2 * (3 * (1 + C₂))) * ((N : ℝ) * K) := by
       have hnn : 0 ≤ (1 + C₂) * ((N : ℝ) * K) := by positivity
       nlinarith
@@ -177,7 +179,7 @@ theorem theorem_1_3c_eq_1_24_concrete {N r s₀ : ℕ}
     ring_nf; exact le_rfl
   linarith [h64, h13b, hcross_big]
 
-/-- Helper: if `c > 0` and `δ₁, δ₂, δ₃ > 0`, then for sufficiently large `N : ℕ`,
+/-- Helper: if `c > 0`, `A, B, C ≥ 0`, and `δ₁, δ₂, δ₃ > 0`, then for sufficiently large `N : ℕ`,
 `A * N^(-δ₁) + B * N^(-δ₂) + C * N^(-δ₃) < c`. -/
 private lemma eventually_three_rpow_neg_lt {c A B C δ₁ δ₂ δ₃ : ℝ}
     (hc : 0 < c) (hδ₁ : 0 < δ₁) (hδ₂ : 0 < δ₂) (hδ₃ : 0 < δ₃) :
@@ -244,8 +246,13 @@ theorem theorem_1_3c_unconditional_family {r s₀ : ℕ} (hr : 2 ≤ r)
     dsimp only [C_K]
     have htanh : 0 < Real.tanh (1 / 4) := by
       rw [Real.tanh_eq_sinh_div_cosh]
-      exact div_pos (Real.sinh_pos_iff.mpr (by norm_num)) (Real.cosh_pos _)
+      have hsinh : 0 < Real.sinh (1 / 4) := by
+        rw [Real.sinh_eq]
+        have hlt : Real.exp (-(1 / 4 : ℝ)) < Real.exp (1 / 4 : ℝ) := Real.exp_lt_exp.mpr (by norm_num)
+        linarith
+      exact div_pos hsinh (Real.cosh_pos _)
     positivity
+  -- Part 1: `lamW ≤ 2 * α` via Theorem 1.3(b) (`otocCW ≤ 54 * ((r - 1) K_β^W(t) + s₀)`) + Theorem 1.1(a).
   have hlamW_le : lamW ≤ 2 * α := by
     by_contra hgt; push Not at hgt
     set θ : ℝ := 2 * α / lamW
@@ -294,6 +301,7 @@ theorem theorem_1_3c_unconditional_family {r s₀ : ℕ} (hr : 2 ≤ r)
     rw [mul_div_assoc, hr1_eq, hr2_eq] at hdiv
     have hlt := hN₂ N hN2
     linarith
+  -- Part 2: `lamMSS ≤ 2 * α` via Eq. (1.24) + Theorem 1.1(a) (ZERO `(H2)` hypothesis!).
   have hlamMSS_le : lamMSS ≤ 2 * α := by
     by_contra hgt; push Not at hgt
     set θ : ℝ := 2 * α / lamMSS
@@ -358,7 +366,9 @@ theorem theorem_1_3c_unconditional_family {r s₀ : ℕ} (hr : 2 ≤ r)
           ≤ Real.sqrt (A_K * (N : ℝ) ^ (1 + θ * (1 - ε))) := Real.sqrt_le_sqrt h1
         _ = Real.sqrt A_K * Real.sqrt ((N : ℝ) ^ (1 + θ * (1 - ε))) := Real.sqrt_mul hAK_pos.le _
         _ = Real.sqrt A_K * (N : ℝ) ^ ((1 + θ * (1 - ε)) / 2) := by
-            rw [Real.sqrt_eq_rpow, ← Real.rpow_mul hN_pos.le]; ring_nf
+            congr 1
+            rw [Real.sqrt_eq_rpow, ← Real.rpow_mul hN_pos.le]
+            congr 1; ring
     have hsqrt_N : Real.sqrt (N : ℝ) = (N : ℝ) ^ ((1 : ℝ) / 2) := Real.sqrt_eq_rpow (N : ℝ)
     have hup : mssThermalSize (concreteGibbsData (hH N) β) (heisenbergEvol (hH N) (tN : ℂ) (O N)) ≤
         216 * A_K * (N : ℝ) ^ (θ * (1 - ε)) +
