@@ -50,7 +50,7 @@ private lemma opNorm_unitary_le_one {N : ℕ} (U : QubitOp N) (hU' : Uᴴ * U = 
   have heq : ‖opToCLM U v‖ ^ 2 = ‖v‖ ^ 2 := by
     rw [EuclideanSpace.norm_sq_eq, EuclideanSpace.norm_sq_eq]
     have hcoord : ∀ i, ‖(opToCLM U v) i‖ ^ 2 = ‖(U.mulVec v.ofLp) i‖ ^ 2 := fun i ↦ by
-      simp [opToCLM]
+      simp [opToCLM]; rfl
     have hinner : ∀ w : QubitIdx N → ℂ,
         (∑ i, star (w i) * w i) = ∑ i, ((‖w i‖ ^ 2 : ℝ) : ℂ) := by
       intro w; apply Finset.sum_congr rfl; intro i _
@@ -73,6 +73,20 @@ private lemma opNorm_unitary_le_one {N : ℕ} (U : QubitOp N) (hU' : Uᴴ * U = 
       _ = ∑ i, ‖v.ofLp i‖ ^ 2 := hre
   nlinarith [norm_nonneg (opToCLM U v), norm_nonneg v]
 
+private lemma gibbsWightmanNormSq_eq_hsNormSq_jBeta' {N : ℕ} (G : GibbsData N) (X : QubitOp N) :
+    gibbsWightmanNormSq G X = ((jBeta G.ρQuarter X)ᴴ * jBeta G.ρQuarter X).trace.re := by
+  unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner jBeta
+  congr 1
+  have hQh : G.ρQuarterᴴ = G.ρQuarter := G.ρQuarter_herm
+  have hQsq : G.ρQuarter * G.ρQuarter = G.ρHalf := G.sq_quarter
+  simp only [Matrix.conjTranspose_mul, hQh]
+  calc (G.ρHalf * Xᴴ * G.ρHalf * X).trace
+      = (G.ρQuarter * (G.ρQuarter * Xᴴ * G.ρQuarter * G.ρQuarter * X)).trace := by
+        rw [← hQsq]; simp only [Matrix.mul_assoc]
+    _ = ((G.ρQuarter * Xᴴ * G.ρQuarter * G.ρQuarter * X) * G.ρQuarter).trace := Matrix.trace_mul_comm _ _
+    _ = (G.ρQuarter * Xᴴ * G.ρQuarter * (G.ρQuarter * X * G.ρQuarter)).trace := by simp only [Matrix.mul_assoc]
+
+set_option maxHeartbeats 400000 in
 /-- For any `X : QubitOp N` and Gibbs state `G = concreteGibbsData hH β`,
 `gibbsWightmanNormSq G X ≤ opNorm X ^ 2`. -/
 lemma gibbsWightmanNormSq_le_opNorm_sq {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
@@ -122,18 +136,7 @@ lemma gibbsWightmanNormSq_le_opNorm_sq {N : ℕ} {H : QubitOp N} (hH : H.IsHermi
     simp only [Matrix.mul_assoc]
   have hW_eq : gibbsWightmanNormSq G X =
       ∑ i : QubitIdx N, ∑ j : QubitIdx N, Real.sqrt (p i) * Real.sqrt (p j) * ‖Y i j‖ ^ 2 := by
-    unfold gibbsWightmanNormSq gibbsWightmanInner wightmanInner
-    have hJ_tr : (G.ρHalf * Xᴴ * G.ρHalf * X).trace = ((jBeta G.ρQuarter X)ᴴ * jBeta G.ρQuarter X).trace := by
-      unfold jBeta
-      have hQh : G.ρQuarterᴴ = G.ρQuarter := G.ρQuarter_herm
-      have hQsq : G.ρQuarter * G.ρQuarter = G.ρHalf := G.sq_quarter
-      simp only [Matrix.conjTranspose_mul, hQh]
-      calc (G.ρHalf * Xᴴ * G.ρHalf * X).trace
-          = (G.ρQuarter * (G.ρQuarter * Xᴴ * G.ρQuarter * G.ρQuarter * X)).trace := by
-            rw [← hQsq]; simp only [Matrix.mul_assoc]
-        _ = ((G.ρQuarter * Xᴴ * G.ρQuarter * G.ρQuarter * X) * G.ρQuarter).trace := Matrix.trace_mul_comm _ _
-        _ = (G.ρQuarter * Xᴴ * G.ρQuarter * (G.ρQuarter * X * G.ρQuarter)).trace := by simp only [Matrix.mul_assoc]
-    rw [hJ_tr, hJ_eq]
+    rw [gibbsWightmanNormSq_eq_hsNormSq_jBeta' G X, hJ_eq]
     set M : QubitOp N := Matrix.diagonal (fun i ↦ ((Real.sqrt (Real.sqrt (p i)) : ℝ) : ℂ)) * Y *
       Matrix.diagonal (fun j ↦ ((Real.sqrt (Real.sqrt (p j)) : ℝ) : ℂ))
     have htr : ((U * M * Uᴴ)ᴴ * (U * M * Uᴴ)).trace = (Mᴴ * M).trace := by
