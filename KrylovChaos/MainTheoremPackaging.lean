@@ -123,7 +123,8 @@ lemma concreteTimeOrderedT_le_opNorm_sq_mul_shift {N : ℕ} {H W V : QubitOp N}
   have hB_norm : hsNormSq B = concreteWightmanNormAtShift hH β W τ 0 := by
     rw [← concreteWightmanNormAtShift_time_invariant hH β W τ t]
     unfold concreteWightmanNormAtShift gibbsWightmanNormSq gibbsWightmanInner hsNormSq
-    rw [prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter]
+    rw [← prop_2_2_wightman_isometry_inner G.ρQuarter G.ρHalf _ _ G.ρQuarter_herm G.sq_quarter]
+    rfl
   rw [hB_norm] at hle
   exact hle
 
