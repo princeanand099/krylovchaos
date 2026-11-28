@@ -52,6 +52,7 @@ import KrylovChaos.OperatorBridges
 import KrylovChaos.OperatorGlauberAndLanczosFiltration
 import KrylovChaos.PolymerExpansionConcrete
 import KrylovChaos.PolymerTrees
+import KrylovChaos.ProductExpCumulant
 import KrylovChaos.ProductState
 import KrylovChaos.ProductStateDerivation
 import KrylovChaos.ProductStateLambdaMSS
