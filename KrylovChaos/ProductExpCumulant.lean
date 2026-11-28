@@ -743,7 +743,7 @@ lemma differentiable_prodPolyWeight {N : ℕ}
       refine hs.congr_fun fun m ↦ ?_
       change f m ζ = normalizedTrace (M * (((-(1 : ℝ) : ℂ) ^ m / (m.factorial : ℂ)) • polyTermSum (fun Z ↦ (-ζ) • B Z) T₂ m))
       dsimp only [f]
-      rw [Matrix.mul_smul, normalizedTrace_smul, smul_eq_mul]
+      rw [Matrix.mul_smul, normalizedTrace_smul]
     exact hs'.tsum_eq
   have hloc := (htend.mono Metric.ball_subset_closedBall).tendstoLocallyUniformlyOn
   have hdiff_ball : DifferentiableOn ℂ
@@ -849,7 +849,10 @@ private lemma hermFunc_sub_scalar_exp {N : ℕ} {X : QubitOp N} (hX : X.IsHermit
     let Ψ : (QubitIdx N → ℂ) →L[ℂ] QubitOp N :=
       LinearMap.toContinuousLinearMap
         { toFun := fun v ↦ U * Matrix.diagonal v * Uᴴ
-          map_add' := fun v w ↦ by have hd : Matrix.diagonal (v + w) = Matrix.diagonal v + Matrix.diagonal w := by ext i j; simp [Matrix.diagonal_apply]; split_ifs <;> simp; rw [hd, mul_add, add_mul]
+          map_add' := fun v w ↦ by
+            have hd : Matrix.diagonal (v + w) = Matrix.diagonal v + Matrix.diagonal w := by
+              ext i j; simp [Matrix.diagonal_apply]; split_ifs <;> simp
+            rw [hd, mul_add, add_mul]
           map_smul' := fun c v ↦ by simp [Matrix.diagonal_smul, Matrix.mul_smul, Matrix.smul_mul] }
     have hvec : HasSum (fun k : ℕ ↦ fun i : QubitIdx N ↦
         ((lam : ℂ) * ((hX.eigenvalues i - μ : ℝ) : ℂ)) ^ k / (k.factorial : ℂ))
@@ -1519,6 +1522,8 @@ theorem lemma_6_3_product_exp_cumulant_bound {N r k_X : ℕ}
         rw [Complex.norm_real, Real.norm_eq_abs, div_pow, sq_abs]; ring
     _ ≤ 8 * (N : ℝ) * lam ^ 2 / Λ₀' ^ 2 := by
         have hnn : 0 ≤ (N : ℝ) * lam ^ 2 / Λ₀' ^ 2 := by positivity
+        have h4 : 4 * (N : ℝ) * lam ^ 2 / Λ₀' ^ 2 = 4 * ((N : ℝ) * lam ^ 2 / Λ₀' ^ 2) := by ring
+        have h8 : 8 * (N : ℝ) * lam ^ 2 / Λ₀' ^ 2 = 8 * ((N : ℝ) * lam ^ 2 / Λ₀' ^ 2) := by ring
         linarith
 
 end ProductExpPolymer
