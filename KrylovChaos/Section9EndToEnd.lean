@@ -45,8 +45,8 @@ section Prop91Part1Concrete2DAndGeomMean
 `F_{W,V}(t₁, t₂) = Tr(J_β(W(t₁)) V J_β(W(t₂)) V)` on `QubitOp N`. -/
 noncomputable def concreteTwoTimeOTOC {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (W V : QubitOp N) (t₁ t₂ : ℝ) : ℂ :=
-  Matrix.trace (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₁ : ℂ) W) * V *
-    jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₂ : ℂ) W) * V)
+  Matrix.trace ((jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₁ : ℂ) W) * V) *
+    (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₂ : ℂ) W) * V))
 
 lemma concreteTwoTimeOTOC_diag {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (W V : QubitOp N) (t : ℝ) :
@@ -122,7 +122,8 @@ private lemma integrable_gaussianKernel {σ : ℝ} (hσ : 0 < σ) : Integrable (
     integrable_exp_neg_mul_sq (by positivity)
   exact (hconst.const_mul (1 / (Real.sqrt (2 * Real.pi) * σ))).congr (Eventually.of_forall fun s ↦ by
     unfold gaussianKernel
-    rw [div_eq_mul_inv, mul_comm (Real.exp _), ← one_div]
+    dsimp only
+    rw [one_div, div_eq_inv_mul]
     congr 1; congr 1; ring)
 
 private lemma integrable_gaussianKernel_mul_heisenbergEvol_entry {N : ℕ} {H : QubitOp N}
@@ -137,11 +138,22 @@ private lemma integrable_gaussianKernel_mul_heisenbergEvol_entry {N : ℕ} {H : 
     rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hgnn, mul_comm]
     exact mul_le_mul_of_nonneg_right (norm_heisenbergEvol_entry_le hH W s i j) hgnn
 
+private lemma trace_LARLBR_expand {ι : Type*} [Fintype ι] (L R A B : Matrix ι ι ℂ) :
+    Matrix.trace (L * A * R * (L * B * R)) =
+    ∑ i : ι, ∑ l : ι, ∑ k : ι, ∑ j : ι, ∑ q : ι, ∑ p : ι,
+      ((L i j * R k l * L l p * R q i) * A j k * B p q) := by
+  simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply]
+  refine Finset.sum_congr rfl fun i _ ↦ ?_
+  refine Finset.sum_congr rfl fun l _ ↦ ?_
+  simp_rw [Finset.sum_mul, Finset.mul_sum]
+  refine Finset.sum_congr rfl fun k _ ↦ Finset.sum_congr rfl fun j _ ↦
+    Finset.sum_congr rfl fun q _ ↦ Finset.sum_congr rfl fun p _ ↦ by ring
+
+set_option maxHeartbeats 400000 in
 /-- **Exact 2D Bochner-Convolution Identity for `concreteOTOC` (Proposition 9.1(1))**:
 For every `σ > 0`, Hermitian `H : QubitOp N`, `W₀, V : QubitOp N`, and `β, t : ℝ`:
 `concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V t =
   ∬ g_σ(s₁) g_σ(s₂) F_{W₀,V}(t + s₁, t + s₂) ds₁ ds₂`. -/
-set_option maxHeartbeats 400000 in
 theorem concreteOTOC_gaussianSmearBochner_eq_2d_conv {N : ℕ} {H : QubitOp N}
     (hH : H.IsHermitian) (β : ℝ) {σ : ℝ} (hσ : 0 < σ) (W₀ V : QubitOp N) (t : ℝ) :
     concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V (t : ℂ) =
@@ -158,29 +170,7 @@ theorem concreteOTOC_gaussianSmearBochner_eq_2d_conv {N : ℕ} {H : QubitOp N}
       jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH ((t + s : ℝ) : ℂ) W₀) * V := by
     intro s
     rw [← hLR, Complex.ofReal_add, ← heisenbergEvol_add hH (t : ℂ) (s : ℂ) W₀]
-  have htrace_expand : ∀ (A B : QubitOp N),
-      Matrix.trace (L * A * R * (L * B * R)) =
-      ∑ i : QubitIdx N, ∑ j : QubitIdx N, ∑ k : QubitIdx N,
-        ∑ l : QubitIdx N, ∑ p : QubitIdx N, ∑ q : QubitIdx N,
-          ((L i j * R k l * L l p * R q i) * A j k * B p q) := by
-    intro A B
-    simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply]
-    refine Finset.sum_congr rfl fun i _ ↦ ?_
-    calc ∑ l : QubitIdx N, (∑ k : QubitIdx N, (∑ j : QubitIdx N, L i j * A j k) * R k l) *
-          (∑ q : QubitIdx N, (∑ p : QubitIdx N, L l p * B p q) * R q i)
-        = ∑ l : QubitIdx N, ∑ k : QubitIdx N, ∑ j : QubitIdx N, ∑ q : QubitIdx N, ∑ p : QubitIdx N,
-            ((L i j * R k l * L l p * R q i) * A j k * B p q) := by
-          refine Finset.sum_congr rfl fun l _ ↦ ?_
-          simp_rw [Finset.sum_mul, Finset.mul_sum]
-          refine Finset.sum_congr rfl fun k _ ↦ Finset.sum_congr rfl fun j _ ↦
-            Finset.sum_congr rfl fun q _ ↦ Finset.sum_congr rfl fun p _ ↦ by ring
-      _ = ∑ j : QubitIdx N, ∑ k : QubitIdx N, ∑ l : QubitIdx N, ∑ p : QubitIdx N, ∑ q : QubitIdx N,
-            ((L i j * R k l * L l p * R q i) * A j k * B p q) := by
-          rw [Finset.sum_comm]
-          refine Finset.sum_congr rfl fun k _ ↦ ?_
-          rw [Finset.sum_comm]
-          refine Finset.sum_congr rfl fun j _ ↦ ?_
-          exact Finset.sum_congr rfl fun l _ ↦ Finset.sum_comm
+  have htrace_expand := trace_LARLBR_expand L R
   have hOTOC_lhs : concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V (t : ℂ) =
       Matrix.trace (L * gaussianSmearBochner hH σ W₀ * R * (L * gaussianSmearBochner hH σ W₀ * R)) := by
     unfold concreteOTOC; rw [hLR]
@@ -190,16 +180,16 @@ theorem concreteOTOC_gaussianSmearBochner_eq_2d_conv {N : ℕ} {H : QubitOp N}
   have hint_e := integrable_gaussianKernel_mul_heisenbergEvol_entry hH hσ W₀
   have hinner_eq : ∀ s₁ : ℝ,
       (∫ s₂ : ℝ, ((gaussianKernel σ s₂ : ℝ) : ℂ) * concreteTwoTimeOTOC hH β W₀ V (t + s₁) (t + s₂)) =
-      ∑ i : QubitIdx N, ∑ j : QubitIdx N, ∑ k : QubitIdx N,
-        ∑ l : QubitIdx N, ∑ p : QubitIdx N, ∑ q : QubitIdx N,
+      ∑ i : QubitIdx N, ∑ l : QubitIdx N, ∑ k : QubitIdx N,
+        ∑ j : QubitIdx N, ∑ q : QubitIdx N, ∑ p : QubitIdx N,
           ((L i j * R k l * L l p * R q i) * (heisenbergEvol hH (s₁ : ℂ) W₀) j k *
             (gaussianSmearBochner hH σ W₀) p q) := by
     intro s₁
     simp_rw [hOTOC_two s₁, htrace_expand, Finset.mul_sum]
-    have hint6 : ∀ i j k l p q, Integrable (fun s₂ : ℝ ↦
+    have hint6 : ∀ i l k j q p, Integrable (fun s₂ : ℝ ↦
         ((gaussianKernel σ s₂ : ℝ) : ℂ) *
           ((L i j * R k l * L l p * R q i) * (heisenbergEvol hH (s₁ : ℂ) W₀) j k *
-            (heisenbergEvol hH (s₂ : ℂ) W₀) p q)) := fun i j k l p q ↦ by
+            (heisenbergEvol hH (s₂ : ℂ) W₀) p q)) := fun i l k j q p ↦ by
       have hrew : (fun s₂ : ℝ ↦ ((gaussianKernel σ s₂ : ℝ) : ℂ) *
           ((L i j * R k l * L l p * R q i) * (heisenbergEvol hH (s₁ : ℂ) W₀) j k *
             (heisenbergEvol hH (s₂ : ℂ) W₀) p q)) =
@@ -207,24 +197,24 @@ theorem concreteOTOC_gaussianSmearBochner_eq_2d_conv {N : ℕ} {H : QubitOp N}
             (((gaussianKernel σ s₂ : ℝ) : ℂ) * (heisenbergEvol hH (s₂ : ℂ) W₀) p q) := by
         funext s₂; ring
       rw [hrew]; exact (hint_e p q).const_mul _
-    rw [integral_finset_sum _ fun i _ ↦ integrable_finset_sum _ fun j _ ↦
-        integrable_finset_sum _ fun k _ ↦ integrable_finset_sum _ fun l _ ↦
-        integrable_finset_sum _ fun p _ ↦ integrable_finset_sum _ fun q _ ↦ hint6 i j k l p q]
+    rw [integral_finset_sum _ fun i _ ↦ integrable_finset_sum _ fun l _ ↦
+        integrable_finset_sum _ fun k _ ↦ integrable_finset_sum _ fun j _ ↦
+        integrable_finset_sum _ fun q _ ↦ integrable_finset_sum _ fun p _ ↦ hint6 i l k j q p]
     refine Finset.sum_congr rfl fun i _ ↦ ?_
-    rw [integral_finset_sum _ fun j _ ↦ integrable_finset_sum _ fun k _ ↦
-        integrable_finset_sum _ fun l _ ↦ integrable_finset_sum _ fun p _ ↦
-        integrable_finset_sum _ fun q _ ↦ hint6 i j k l p q]
-    refine Finset.sum_congr rfl fun j _ ↦ ?_
-    rw [integral_finset_sum _ fun k _ ↦ integrable_finset_sum _ fun l _ ↦
-        integrable_finset_sum _ fun p _ ↦ integrable_finset_sum _ fun q _ ↦ hint6 i j k l p q]
-    refine Finset.sum_congr rfl fun k _ ↦ ?_
-    rw [integral_finset_sum _ fun l _ ↦ integrable_finset_sum _ fun p _ ↦
-        integrable_finset_sum _ fun q _ ↦ hint6 i j k l p q]
+    rw [integral_finset_sum _ fun l _ ↦ integrable_finset_sum _ fun k _ ↦
+        integrable_finset_sum _ fun j _ ↦ integrable_finset_sum _ fun q _ ↦
+        integrable_finset_sum _ fun p _ ↦ hint6 i l k j q p]
     refine Finset.sum_congr rfl fun l _ ↦ ?_
-    rw [integral_finset_sum _ fun p _ ↦ integrable_finset_sum _ fun q _ ↦ hint6 i j k l p q]
-    refine Finset.sum_congr rfl fun p _ ↦ ?_
-    rw [integral_finset_sum _ fun q _ ↦ hint6 i j k l p q]
+    rw [integral_finset_sum _ fun k _ ↦ integrable_finset_sum _ fun j _ ↦
+        integrable_finset_sum _ fun q _ ↦ integrable_finset_sum _ fun p _ ↦ hint6 i l k j q p]
+    refine Finset.sum_congr rfl fun k _ ↦ ?_
+    rw [integral_finset_sum _ fun j _ ↦ integrable_finset_sum _ fun q _ ↦
+        integrable_finset_sum _ fun p _ ↦ hint6 i l k j q p]
+    refine Finset.sum_congr rfl fun j _ ↦ ?_
+    rw [integral_finset_sum _ fun q _ ↦ integrable_finset_sum _ fun p _ ↦ hint6 i l k j q p]
     refine Finset.sum_congr rfl fun q _ ↦ ?_
+    rw [integral_finset_sum _ fun p _ ↦ hint6 i l k j q p]
+    refine Finset.sum_congr rfl fun p _ ↦ ?_
     have hrew : (fun s₂ : ℝ ↦ ((gaussianKernel σ s₂ : ℝ) : ℂ) *
         ((L i j * R k l * L l p * R q i) * (heisenbergEvol hH (s₁ : ℂ) W₀) j k *
           (heisenbergEvol hH (s₂ : ℂ) W₀) p q)) =
@@ -235,10 +225,10 @@ theorem concreteOTOC_gaussianSmearBochner_eq_2d_conv {N : ℕ} {H : QubitOp N}
     rfl
   rw [hOTOC_lhs, htrace_expand]
   simp_rw [hinner_eq, Finset.mul_sum]
-  have hint_out6 : ∀ i j k l p q, Integrable (fun s₁ : ℝ ↦
+  have hint_out6 : ∀ i l k j q p, Integrable (fun s₁ : ℝ ↦
       ((gaussianKernel σ s₁ : ℝ) : ℂ) *
         ((L i j * R k l * L l p * R q i) * (heisenbergEvol hH (s₁ : ℂ) W₀) j k *
-          (gaussianSmearBochner hH σ W₀) p q)) := fun i j k l p q ↦ by
+          (gaussianSmearBochner hH σ W₀) p q)) := fun i l k j q p ↦ by
     have hrew : (fun s₁ : ℝ ↦ ((gaussianKernel σ s₁ : ℝ) : ℂ) *
         ((L i j * R k l * L l p * R q i) * (heisenbergEvol hH (s₁ : ℂ) W₀) j k *
           (gaussianSmearBochner hH σ W₀) p q)) =
@@ -246,24 +236,24 @@ theorem concreteOTOC_gaussianSmearBochner_eq_2d_conv {N : ℕ} {H : QubitOp N}
           (((gaussianKernel σ s₁ : ℝ) : ℂ) * (heisenbergEvol hH (s₁ : ℂ) W₀) j k) := by
       funext s₁; ring
     rw [hrew]; exact (hint_e j k).const_mul _
-  rw [integral_finset_sum _ fun i _ ↦ integrable_finset_sum _ fun j _ ↦
-      integrable_finset_sum _ fun k _ ↦ integrable_finset_sum _ fun l _ ↦
-      integrable_finset_sum _ fun p _ ↦ integrable_finset_sum _ fun q _ ↦ hint_out6 i j k l p q]
+  rw [integral_finset_sum _ fun i _ ↦ integrable_finset_sum _ fun l _ ↦
+      integrable_finset_sum _ fun k _ ↦ integrable_finset_sum _ fun j _ ↦
+      integrable_finset_sum _ fun q _ ↦ integrable_finset_sum _ fun p _ ↦ hint_out6 i l k j q p]
   refine Finset.sum_congr rfl fun i _ ↦ ?_
-  rw [integral_finset_sum _ fun j _ ↦ integrable_finset_sum _ fun k _ ↦
-      integrable_finset_sum _ fun l _ ↦ integrable_finset_sum _ fun p _ ↦
-      integrable_finset_sum _ fun q _ ↦ hint_out6 i j k l p q]
-  refine Finset.sum_congr rfl fun j _ ↦ ?_
-  rw [integral_finset_sum _ fun k _ ↦ integrable_finset_sum _ fun l _ ↦
-      integrable_finset_sum _ fun p _ ↦ integrable_finset_sum _ fun q _ ↦ hint_out6 i j k l p q]
-  refine Finset.sum_congr rfl fun k _ ↦ ?_
-  rw [integral_finset_sum _ fun l _ ↦ integrable_finset_sum _ fun p _ ↦
-      integrable_finset_sum _ fun q _ ↦ hint_out6 i j k l p q]
+  rw [integral_finset_sum _ fun l _ ↦ integrable_finset_sum _ fun k _ ↦
+      integrable_finset_sum _ fun j _ ↦ integrable_finset_sum _ fun q _ ↦
+      integrable_finset_sum _ fun p _ ↦ hint_out6 i l k j q p]
   refine Finset.sum_congr rfl fun l _ ↦ ?_
-  rw [integral_finset_sum _ fun p _ ↦ integrable_finset_sum _ fun q _ ↦ hint_out6 i j k l p q]
-  refine Finset.sum_congr rfl fun p _ ↦ ?_
-  rw [integral_finset_sum _ fun q _ ↦ hint_out6 i j k l p q]
+  rw [integral_finset_sum _ fun k _ ↦ integrable_finset_sum _ fun j _ ↦
+      integrable_finset_sum _ fun q _ ↦ integrable_finset_sum _ fun p _ ↦ hint_out6 i l k j q p]
+  refine Finset.sum_congr rfl fun k _ ↦ ?_
+  rw [integral_finset_sum _ fun j _ ↦ integrable_finset_sum _ fun q _ ↦
+      integrable_finset_sum _ fun p _ ↦ hint_out6 i l k j q p]
+  refine Finset.sum_congr rfl fun j _ ↦ ?_
+  rw [integral_finset_sum _ fun q _ ↦ integrable_finset_sum _ fun p _ ↦ hint_out6 i l k j q p]
   refine Finset.sum_congr rfl fun q _ ↦ ?_
+  rw [integral_finset_sum _ fun p _ ↦ hint_out6 i l k j q p]
+  refine Finset.sum_congr rfl fun p _ ↦ ?_
   have hrew : (fun s₁ : ℝ ↦ ((gaussianKernel σ s₁ : ℝ) : ℂ) *
       ((L i j * R k l * L l p * R q i) * (heisenbergEvol hH (s₁ : ℂ) W₀) j k *
         (gaussianSmearBochner hH σ W₀) p q)) =
@@ -277,8 +267,8 @@ theorem concreteOTOC_gaussianSmearBochner_eq_2d_conv {N : ℕ} {H : QubitOp N}
       (gaussianSmearBochner hH σ W₀) j k
   ring
 
-/-- Real-part 2D Gaussian convolution identity for `concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V t`. -/
 set_option maxHeartbeats 400000 in
+/-- Real-part 2D Gaussian convolution identity for `concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V t`. -/
 theorem concreteOTOC_gaussianSmearBochner_re_eq_2d_conv {N : ℕ} {H : QubitOp N}
     (hH : H.IsHermitian) (β : ℝ) {σ : ℝ} (hσ : 0 < σ) (W₀ V : QubitOp N) (t : ℝ) :
     (concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V (t : ℂ)).re =
@@ -294,8 +284,8 @@ theorem concreteOTOC_gaussianSmearBochner_re_eq_2d_conv {N : ℕ} {H : QubitOp N
       unfold jBeta
       refine (continuous_const.mul ?_).mul continuous_const
       exact continuous_matrix fun i j ↦ continuous_heisenbergEvol_entry hH W₀ i j
-    exact htr.comp ((((hj.comp continuous_fst).mul continuous_const).mul
-      (hj.comp continuous_snd)).mul continuous_const)
+    exact htr.comp (((hj.comp continuous_fst).mul continuous_const).mul
+      ((hj.comp continuous_snd).mul continuous_const))
   have hbdd_two : ∃ M : ℝ, 0 ≤ M ∧ ∀ t₁ t₂ : ℝ, ‖concreteTwoTimeOTOC hH β W₀ V t₁ t₂‖ ≤ M := by
     let G := concreteGibbsData hH β
     refine ⟨(2 : ℝ) ^ N * (opNorm G.ρQuarter) ^ 4 * (opNorm W₀) ^ 2 * (opNorm V) ^ 2, by positivity,
@@ -324,8 +314,8 @@ theorem concreteOTOC_gaussianSmearBochner_re_eq_2d_conv {N : ℕ} {H : QubitOp N
         _ = (opNorm G.ρQuarter) ^ 2 * opNorm W₀ := by
             rw [opNorm_heisenbergEvol_real hH s W₀]; change _ = (opNorm (gibbsRhoQuarter hH β)) ^ 2 * opNorm W₀; ring
     refine le_trans (htr_le _) ?_
-    have hmul : opNorm (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₁ : ℂ) W₀) * V *
-        jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₂ : ℂ) W₀) * V) ≤
+    have hmul : opNorm ((jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₁ : ℂ) W₀) * V) *
+        (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₂ : ℂ) W₀) * V)) ≤
         ((opNorm G.ρQuarter) ^ 2 * opNorm W₀ * opNorm V) * ((opNorm G.ρQuarter) ^ 2 * opNorm W₀ * opNorm V) := by
       have h1 : opNorm (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₁ : ℂ) W₀) * V) ≤
           (opNorm G.ρQuarter) ^ 2 * opNorm W₀ * opNorm V :=
@@ -333,18 +323,10 @@ theorem concreteOTOC_gaussianSmearBochner_re_eq_2d_conv {N : ℕ} {H : QubitOp N
       have h2 : opNorm (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₂ : ℂ) W₀) * V) ≤
           (opNorm G.ρQuarter) ^ 2 * opNorm W₀ * opNorm V :=
         le_trans (opNorm_mul_le _ _) (mul_le_mul_of_nonneg_right (hj_le t₂) (opNorm_nonneg _))
-      calc opNorm (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₁ : ℂ) W₀) * V *
-            jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₂ : ℂ) W₀) * V)
-          = opNorm ((jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₁ : ℂ) W₀) * V) *
-            (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₂ : ℂ) W₀) * V)) := by
-              simp only [Matrix.mul_assoc]
-        _ ≤ opNorm (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₁ : ℂ) W₀) * V) *
-            opNorm (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₂ : ℂ) W₀) * V) :=
-              opNorm_mul_le _ _
-        _ ≤ _ := mul_le_mul h1 h2 (opNorm_nonneg _)
-            (mul_nonneg (mul_nonneg (sq_nonneg _) (opNorm_nonneg _)) (opNorm_nonneg _))
-    calc (2 : ℝ) ^ N * opNorm (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₁ : ℂ) W₀) * V *
-            jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₂ : ℂ) W₀) * V)
+      exact le_trans (opNorm_mul_le _ _) (mul_le_mul h1 h2 (opNorm_nonneg _)
+        (mul_nonneg (mul_nonneg (sq_nonneg _) (opNorm_nonneg _)) (opNorm_nonneg _)))
+    calc (2 : ℝ) ^ N * opNorm ((jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₁ : ℂ) W₀) * V) *
+            (jBeta (gibbsRhoQuarter hH β) (heisenbergEvol hH (t₂ : ℂ) W₀) * V))
         ≤ (2 : ℝ) ^ N * (((opNorm G.ρQuarter) ^ 2 * opNorm W₀ * opNorm V) *
             ((opNorm G.ρQuarter) ^ 2 * opNorm W₀ * opNorm V)) :=
           mul_le_mul_of_nonneg_left hmul (by positivity)
@@ -371,8 +353,9 @@ theorem concreteOTOC_gaussianSmearBochner_re_eq_2d_conv {N : ℕ} {H : QubitOp N
         rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hgnn]
         exact mul_le_mul_of_nonneg_left (hM_bd _ _) hgnn
       · filter_upwards with s₂
-        exact continuous_const.mul
-          (hcont_two.comp ((continuous_const.add continuous_id).prodMk continuous_const))
+        have hpair : Continuous (fun s₁ : ℝ ↦ (t + s₁, t + s₂)) :=
+          Continuous.prodMk (continuous_const.add continuous_id) continuous_const
+        exact continuous_const.mul (hcont_two.comp hpair)
     refine (hg_int.const_mul M).mono' ?_ ?_
     · exact ((Complex.continuous_ofReal.comp (by unfold gaussianKernel; fun_prop)).mul
         hcont_in).aestronglyMeasurable
@@ -407,10 +390,10 @@ theorem concreteOTOC_gaussianSmearBochner_re_eq_2d_conv {N : ℕ} {H : QubitOp N
   change (((gaussianKernel σ s₂ : ℝ) : ℂ) * concreteTwoTimeOTOC hH β W₀ V (t + s₁) (t + s₂)).re = _
   rw [Complex.re_ofReal_mul]
 
+set_option maxHeartbeats 400000 in
 /-- **Proposition 9.1(1) — Concrete 2D Finite-Window OTOC Lyapunov Preservation**:
 Applies `concreteOTOC_gaussianSmearBochner_re_eq_2d_conv` directly to `prop_9_1_part1_2d_finite_window_otoc`
 so the finite-window OTOC Lyapunov bound holds directly on `concreteOTOC hH β (gaussianSmearBochner hH σ W₀) V t`. -/
-set_option maxHeartbeats 400000 in
 theorem prop_9_1_part1_concrete_2d_otoc_smearing {N : ℕ} {H : QubitOp N} (hH : H.IsHermitian)
     (β : ℝ) (W₀ V : QubitOp N) {σ Δt lamL F_d ε M_bound C_R t : ℝ}
     (hσ : 0 < σ) (hlam : 0 < lamL) (hΔ : σ ^ 2 * (lamL / 2) ≤ Δt)
@@ -435,8 +418,8 @@ theorem prop_9_1_part1_concrete_2d_otoc_smearing {N : ℕ} {H : QubitOp N} (hH :
       unfold jBeta
       refine (continuous_const.mul ?_).mul continuous_const
       exact continuous_matrix fun i j ↦ continuous_heisenbergEvol_entry hH W₀ i j
-    exact htr.comp ((((hj.comp continuous_fst).mul continuous_const).mul
-      (hj.comp continuous_snd)).mul continuous_const)
+    exact htr.comp (((hj.comp continuous_fst).mul continuous_const).mul
+      ((hj.comp continuous_snd).mul continuous_const))
   have hg_int : Integrable (gaussianKernel σ) := integrable_gaussianKernel hσ
   have hF_meas : ∀ s₁ : ℝ, AEStronglyMeasurable
       (fun s₂ : ℝ ↦ (concreteTwoTimeOTOC hH β W₀ V (t + s₁) (t + s₂)).re) volume := fun s₁ ↦
@@ -455,8 +438,9 @@ theorem prop_9_1_part1_concrete_2d_otoc_smearing {N : ℕ} {H : QubitOp N} (hH :
         rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg hgnn]
         exact mul_le_mul_of_nonneg_left (hF_bdd _ _) hgnn
       · filter_upwards with s₂
-        exact continuous_const.mul
-          (hcont_two.comp ((continuous_const.add continuous_id).prodMk continuous_const))
+        have hpair : Continuous (fun s₁ : ℝ ↦ (t + s₁, t + s₂)) :=
+          Continuous.prodMk (continuous_const.add continuous_id) continuous_const
+        exact continuous_const.mul (hcont_two.comp hpair)
     exact hcont_out.aestronglyMeasurable
   exact prop_9_1_part1_2d_finite_window_otoc hσ hlam hΔ hM hCR
     (fun t₁ t₂ ↦ (concreteTwoTimeOTOC hH β W₀ V t₁ t₂).re)
@@ -502,8 +486,7 @@ private lemma jacobiMat_pow_desc_lower {D : ℕ} (b : ℕ → ℝ) (hb : ∀ k, 
         (fun k _ ↦ mul_nonneg (jacobiMat_entry_nonneg b hb _ k) (jacobiMat_pow_entry_nonneg b hb m k _))
         (Finset.mem_univ ⟨m, by omega⟩)
       have hstep : jacobiMat D b ⟨m + 1, hm⟩ ⟨m, by omega⟩ = b (m + 1) := by
-        unfold jacobiMat; simp only [Matrix.of_apply]
-        rw [if_neg (by omega), if_pos rfl]
+        unfold jacobiMat; simp only [Matrix.of_apply, if_neg (by omega : ¬(m = m + 1 + 1)), ↓reduceIte]
       rw [hstep] at hterm
       have hmul : (∏ k ∈ Finset.range m, b (k + 1)) * b (m + 1) ≤
           b (m + 1) * ((jacobiMat D b) ^ m) ⟨m, by omega⟩ ⟨0, by omega⟩ := by
@@ -563,7 +546,7 @@ theorem prop_9_1_part1_geom_mean_sqrt_n (μ : Measure ℝ) [IsFiniteMeasure μ]
       have h3 : (Real.exp (x / (n : ℝ) - 1)) ^ n = Real.exp x * (Real.exp 1)⁻¹ ^ n := by
         rw [← Real.exp_nat_mul]
         have harg : (n : ℝ) * (x / (n : ℝ) - 1) = x + -(n : ℝ) := by
-          field_simp [hn_pos.ne']
+          field_simp [hn_pos.ne']; ring
         rw [harg, Real.exp_add, show -(n : ℝ) = (n : ℝ) * (-1) by ring,
           Real.exp_nat_mul, Real.exp_neg]
       rw [h3, div_pow] at h2
@@ -1161,7 +1144,7 @@ private lemma eq91_mssThermalSize_bddAbove {N : ℕ} (G : GibbsData N) (s : ℕ)
             unfold siteSizeOp partialTraceSite
             rw [Fin.sum_univ_succ, pauliSite_zero, Matrix.one_mul, Matrix.mul_one,
               Finset.sum_sub_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin]
-            ext i j; simp; ring
+            ext i j; simp [Matrix.sum_apply, nsmul_eq_mul]; ring
           rw [hsite_eq]; unfold hsInner
           rw [Matrix.mul_smul, Matrix.trace_smul, smul_eq_mul, Matrix.mul_sum, Matrix.trace_sum,
             show (1 / 4 : ℂ) = ((1 / 4 : ℝ) : ℂ) by push_cast; rfl, Complex.re_ofReal_mul, Complex.re_sum]
@@ -1169,21 +1152,23 @@ private lemma eq91_mssThermalSize_bddAbove {N : ℕ} (G : GibbsData N) (s : ℕ)
               ∑ _α : Fin 3, (2 : ℝ) := by
             apply Finset.sum_le_sum; intro α _
             set U := pauliSite x α.succ
-            have hU_h : Uᴴ = U := (pauliSite_herm x α.succ).eq
+            have hU_h : Uᴴ = U := pauliSite_herm x α.succ
             have hU_sq : U * U = 1 := pauliSite_sq x α.succ
             have hnn : 0 ≤ (hsInner (M + U * M * U) (M + U * M * U)).re := hsNormSq_nonneg _
             have hUMU : (hsInner (U * M * U) (U * M * U)).re = (hsInner M M).re := by
               unfold hsInner
               rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hU_h]
-              have h1 : U * Mᴴ * U * (U * M * U) = U * (Mᴴ * M) * U := by
-                calc U * Mᴴ * U * (U * M * U) = U * Mᴴ * (U * U) * M * U := by simp only [Matrix.mul_assoc]
+              have h1 : U * (Mᴴ * U) * (U * M * U) = U * (Mᴴ * M) * U := by
+                calc U * (Mᴴ * U) * (U * M * U) = U * Mᴴ * (U * U) * M * U := by simp only [Matrix.mul_assoc]
                   _ = U * (Mᴴ * M) * U := by rw [hU_sq, Matrix.mul_one]; simp only [Matrix.mul_assoc]
               rw [h1, Matrix.trace_mul_cycle, hU_sq, Matrix.one_mul]
             have hsym : (hsInner (U * M * U) M).re = (hsInner M (U * M * U)).re := by
               unfold hsInner
               rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hU_h]
-              have h1 : (U * Mᴴ * U * M).trace = (Mᴴ * (U * M * U)).trace := by
-                rw [Matrix.trace_mul_cycle]; simp only [Matrix.mul_assoc]
+              have h1 : (U * (Mᴴ * U) * M).trace = (Mᴴ * (U * M * U)).trace := by
+                calc (U * (Mᴴ * U) * M).trace = (U * (Mᴴ * U * M)).trace := by simp only [Matrix.mul_assoc]
+                  _ = ((Mᴴ * U * M) * U).trace := Matrix.trace_mul_comm _ _
+                  _ = (Mᴴ * (U * M * U)).trace := by simp only [Matrix.mul_assoc]
               rw [h1]
             have hexp : (hsInner (M + U * M * U) (M + U * M * U)).re =
                 2 * (hsInner M M).re + 2 * (hsInner M (U * M * U)).re := by
@@ -1194,7 +1179,7 @@ private lemma eq91_mssThermalSize_bddAbove {N : ℕ} (G : GibbsData N) (s : ℕ)
             have hdiff : (Mᴴ * (M - U * M * U)).trace.re = (hsInner M M).re - (hsInner M (U * M * U)).re := by
               unfold hsInner; rw [Matrix.mul_sub, Matrix.trace_sub, Complex.sub_re]
             linarith
-          simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul] at h3
+          simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul, Nat.cast_ofNat] at h3
           linarith
       _ = (3 / 2 : ℝ) * (N : ℝ) := by simp [mul_comm]
   linarith [neg_abs_le (hsInner G.ρHalf (totalSizeOp G.ρHalf)).re]
@@ -1425,7 +1410,8 @@ theorem doubleWell_krylov_complexity_from_lanczos {D : ℕ} (hD : 4 ≤ D) {E_B 
     unfold vecInner doubleWellK0 doubleWellPsi0 doubleWellPsiEvol
     change ∑ j : Fin D, (starRingEnd ℂ) ((((P.φp j : ℝ) + P.φm j) / Real.sqrt 2 : ℝ) : ℂ) *
       ((ep * (P.φp j : ℂ) + em * (P.φm j : ℂ)) / (Real.sqrt 2 : ℂ)) = (ep + em) / 2
-    simp only [Complex.conj_ofReal, Complex.ofReal_div, Complex.ofReal_add]
+    simp_rw [Complex.conj_ofReal]
+    simp only [Complex.ofReal_div, Complex.ofReal_add]
     have hsum : ∑ j : Fin D, ((P.φp j : ℂ) + (P.φm j : ℂ)) / (Real.sqrt 2 : ℂ) *
         ((ep * (P.φp j : ℂ) + em * (P.φm j : ℂ)) / (Real.sqrt 2 : ℂ)) =
         (ep * (∑ j : Fin D, (P.φp j : ℂ) * (P.φp j : ℂ)) +
@@ -1436,13 +1422,14 @@ theorem doubleWell_krylov_complexity_from_lanczos {D : ℕ} (hD : 4 ≤ D) {E_B 
       refine Finset.sum_congr rfl fun j _ ↦ ?_
       have hden : (Real.sqrt 2 : ℂ) ≠ 0 := by
         exact_mod_cast (Real.sqrt_pos.mpr (by norm_num : (0 : ℝ) < 2)).ne'
-      field_simp [hden]; rw [show (Real.sqrt 2 : ℂ) ^ 2 = 2 by rw [sq, hsq2]]
+      field_simp [hden]; rw [show (Real.sqrt 2 : ℂ) ^ 2 = 2 by rw [sq, hsq2]]; ring
     rw [hsum, hφp2, hφpm, hφmp, hφm2]; ring
   have hc1 : vecInner (doubleWellK1 hD hEB) (doubleWellPsiEvol hD hEB t) = (ep - em) / 2 := by
     unfold vecInner doubleWellK1 doubleWellPsiEvol
     change ∑ j : Fin D, (starRingEnd ℂ) ((((P.φp j : ℝ) - P.φm j) / Real.sqrt 2 : ℝ) : ℂ) *
       ((ep * (P.φp j : ℂ) + em * (P.φm j : ℂ)) / (Real.sqrt 2 : ℂ)) = (ep - em) / 2
-    simp only [Complex.conj_ofReal, Complex.ofReal_div, Complex.ofReal_sub]
+    simp_rw [Complex.conj_ofReal]
+    simp only [Complex.ofReal_div, Complex.ofReal_sub]
     have hsum : ∑ j : Fin D, ((P.φp j : ℂ) - (P.φm j : ℂ)) / (Real.sqrt 2 : ℂ) *
         ((ep * (P.φp j : ℂ) + em * (P.φm j : ℂ)) / (Real.sqrt 2 : ℂ)) =
         (ep * (∑ j : Fin D, (P.φp j : ℂ) * (P.φp j : ℂ)) +
@@ -1453,7 +1440,7 @@ theorem doubleWell_krylov_complexity_from_lanczos {D : ℕ} (hD : 4 ≤ D) {E_B 
       refine Finset.sum_congr rfl fun j _ ↦ ?_
       have hden : (Real.sqrt 2 : ℂ) ≠ 0 := by
         exact_mod_cast (Real.sqrt_pos.mpr (by norm_num : (0 : ℝ) < 2)).ne'
-      field_simp [hden]; rw [show (Real.sqrt 2 : ℂ) ^ 2 = 2 by rw [sq, hsq2]]
+      field_simp [hden]; rw [show (Real.sqrt 2 : ℂ) ^ 2 = 2 by rw [sq, hsq2]]; ring
     rw [hsum, hφp2, hφpm, hφmp, hφm2]; ring
   set θ : ℝ := (P.Em - P.Ep) * t / 2
   set φ : ℝ := -(P.Ep + P.Em) * t / 2
@@ -1631,14 +1618,14 @@ theorem lemma_B_1_bulk_eigenvalues_in_band {D : ℕ} (hD : 4 ≤ D) {E_B : ℝ} 
           ∑ i : Fin D, v i ^ 2 := by
         rw [Finset.sum_filter]
         refine Finset.sum_congr rfl fun i _ ↦ ?_
-        split_ifs with hi
-        · rfl
-        · push Not at hi
+        by_cases hi : i.val = 0 ∨ i.val = D - 1
+        · rw [if_neg (not_not.mpr hi)]
           rcases hi with h0 | h1
           · have hi0 : i = ⟨0, by omega⟩ := Fin.ext h0
             rw [hi0, hv0]; norm_num
           · have hi1 : i = ⟨D - 1, by omega⟩ := Fin.ext h1
             rw [hi1, hv1]; norm_num
+        · rw [if_pos hi]
       have hdot_eq : dotProduct v v = ∑ i : Fin D, v i ^ 2 := by simp [dotProduct, sq]
       have hhop_lo : -(2 * ∑ i : Fin D, v i ^ 2) ≤
           2 * ∑ i : Fin (D - 1), v ⟨i.val, by omega⟩ * v ⟨i.val + 1, by omega⟩ := (abs_le.mp hhop).1
